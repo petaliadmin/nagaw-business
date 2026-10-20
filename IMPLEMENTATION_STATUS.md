@@ -87,8 +87,11 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
   Test de mutation : retirer le filtre d'appartenance du `TenantGuard` fait échouer 7 tests d'isolation.
 
+- **Vérifié en production** (2026-10-20) :
+  - pages d'authentification servies ;
+  - `GET /api/v1/health/ready` répond 503 avec `{ database: "not_configured", auth: "ok" }` : le projet publie bien des clés asymétriques, et seule `DATABASE_URL` manque.
 - **Non vérifié** :
-  - le parcours réel Supabase (e-mail de confirmation, connexion, appel de l'API avec un vrai jeton), qui dépend des actions manuelles 1 à 4 ;
+  - le parcours réel Supabase (e-mail de confirmation, connexion, appel de l'API avec un vrai jeton), qui dépend des actions manuelles 1, 2 et 4 ;
   - le format des clés de signature du projet (HS256 _legacy_ ou asymétrique), qui se lira sur `/health/ready` après déploiement.
 - **Problèmes connus** : pas de limitation de débit côté API ; SMTP Supabase par défaut ; TLS Postgres non vérifié (`require`).
 - **Reste à faire, phases suivantes** : invitations et gestion des membres (Phase 4) ; navigation et tableau de bord (Phase 3).

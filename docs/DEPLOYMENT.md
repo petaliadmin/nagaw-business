@@ -69,7 +69,7 @@ Elles ne peuvent pas être réalisées par les connecteurs, ou ne doivent pas l'
    postgresql://nagaw_api.zvswytzuukogmdqyhufn:<mot de passe>@<hôte du pooler>:6543/postgres
    ```
    Redéployer ensuite `nagaw-api`. `GET /api/v1/health/ready` doit répondre `database: "ok"`.
-3. **Clés de signature JWT asymétriques.** Dans Supabase, ouvrir _Project Settings → JWT Keys_ et vérifier que la clé courante est de type ECC (P-256) ou RSA. Si c'est encore le secret HS256 _legacy_, migrer puis faire une rotation. `GET /api/v1/health/ready` doit répondre `auth: "ok"`.
+3. ~~Clés de signature JWT asymétriques~~ : **déjà en place**. Le 2026-10-20, `GET /api/v1/health/ready` en production a répondu `auth: "ok"`, ce qui signifie que le JWKS du projet publie des clés.
 4. **URL de redirection Auth.** Dans Supabase, ouvrir _Authentication → URL Configuration_ :
    - _Site URL_ : `https://nagaw-web-petalia.vercel.app` ;
    - _Redirect URLs_ : `https://nagaw-web-petalia.vercel.app/auth/callback` et `http://localhost:3000/auth/callback`.
