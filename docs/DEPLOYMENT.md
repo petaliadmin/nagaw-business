@@ -4,11 +4,11 @@ Cible : ADR-010 (tout sur Vercel) et ADR-006 (traitement asynchrone compatible V
 
 ## Infrastructure configurée (2026-10-20)
 
-| Ressource                 | Identifiant                                           | Configuration                                      | État                                                                                   |
-| ------------------------- | ----------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Projet Vercel `nagaw-web` | `prj_7KiARAv1hXQS9x01O8IH6HV5pIAN` (équipe `Petalia`) | racine `apps/web`, Next.js, Node 24, région `cdg1` | Créé, relié à GitHub                                                                   |
-| Projet Vercel `nagaw-api` | `prj_0lolA8mrzpJIs1I01ZApAchYhqhh` (équipe `Petalia`) | racine `apps/api`, NestJS, Node 24, région `cdg1`  | Créé, relié à GitHub                                                                   |
-| Projet Supabase           | —                                                     | prévu : `nagaw-business`, `eu-west-3`              | **Non créé** : limite de 2 projets gratuits atteinte dans l'organisation `petaliadmin` |
+| Ressource                        | Identifiant                                           | Configuration                                                       | État                         |
+| -------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------- |
+| Projet Vercel `nagaw-web`        | `prj_7KiARAv1hXQS9x01O8IH6HV5pIAN` (équipe `Petalia`) | racine `apps/web`, Next.js, Node 24, région `cdg1`                  | Créé, relié à GitHub         |
+| Projet Vercel `nagaw-api`        | `prj_0lolA8mrzpJIs1I01ZApAchYhqhh` (équipe `Petalia`) | racine `apps/api`, NestJS, Node 24, région `cdg1`                   | Créé, relié à GitHub         |
+| Projet Supabase `nagaw-business` | `zvswytzuukogmdqyhufn` (organisation `petaliadmin`)   | `eu-west-3` (Paris), URL `https://zvswytzuukogmdqyhufn.supabase.co` | Créé ; schéma vide (Phase 2) |
 
 Domaines de production : `nagaw-web.vercel.app` / `nagaw-web-petalia.vercel.app` et `nagaw-api-petalia.vercel.app`.
 
@@ -16,23 +16,25 @@ Vercel ignore automatiquement le build d'un projet qu'un commit ne touche pas (m
 
 Commande de build des deux projets : `pnpm --filter @nagaw/shared build && pnpm build`. L'installation se fait depuis la racine du monorepo (`pnpm install --frozen-lockfile`).
 
-**Protection** : Vercel Authentication est active sur toutes les URL `*.vercel.app` (réglage par défaut de l'équipe). Les déploiements ne sont donc accessibles qu'aux membres connectés de l'équipe. Pour que `nagaw-web` puisse appeler `nagaw-api` côté serveur, il faudra, au choix :
+**Protection** :
 
-- rendre l'API publique sur son URL de production ;
-- lui associer un domaine personnalisé ;
-- configurer un jeton de contournement (_Protection Bypass for Automation_).
+- `nagaw-api` : Vercel Authentication sur les **préversions uniquement**. La production est publique, car chaque route métier exigera un JWT dès la Phase 2.
+- `nagaw-web` : Vercel Authentication sur toutes les URL `*.vercel.app` (réglage par défaut), jusqu'à l'ajout d'un domaine personnalisé ou une décision d'ouverture.
 
-Cette décision sera prise en Phase 2.
+**Pièges Vercel rencontrés** :
+
+- pas de _top-level await_ dans `apps/api/src/main.ts` ;
+- Vercel revérifie les types de l'API avec sa propre résolution de modules : un import par défaut d'un paquet CommonJS doit passer par `interopDefault`.
 
 **Branche de production** : Vercel déploie en production la branche par défaut du dépôt GitHub. Elle est actuellement `claude/beautiful-cerf-cbbkzm`, car le dépôt était vide (voir l'audit, § 6). Après la création de `main`, il faut la définir comme branche par défaut sur GitHub et comme _Production Branch_ dans les deux projets Vercel.
 
 ## Environnements
 
-| Environnement | Web                                | API                                | Base                                                          |
-| ------------- | ---------------------------------- | ---------------------------------- | ------------------------------------------------------------- |
-| Local         | `pnpm dev` (port 3000)             | `pnpm dev` (port 3001)             | Supabase CLI (Docker), Phase 2                                |
-| Préproduction | Déploiements _preview_ `nagaw-web` | Déploiements _preview_ `nagaw-api` | Projet Supabase de préproduction                              |
-| Production    | `nagaw-web` production             | `nagaw-api` production             | Projet Supabase de production, **sur autorisation explicite** |
+| Environnement | Web                                | API                                | Base                             |
+| ------------- | ---------------------------------- | ---------------------------------- | -------------------------------- |
+| Local         | `pnpm dev` (port 3000)             | `pnpm dev` (port 3001)             | Supabase CLI (Docker), Phase 2   |
+| Préproduction | Déploiements _preview_ `nagaw-web` | Déploiements _preview_ `nagaw-api` | Projet Supabase `nagaw-business` | `zvswytzuukogmdqyhufn` (organisation `petaliadmin`) | `eu-west-3` (Paris), URL `https://zvswytzuukogmdqyhufn.supabase.co` | Créé ; schéma vide (Phase 2) |
+| Production    | `nagaw-web` production             | `nagaw-api` production             | Projet Supabase `nagaw-business` | `zvswytzuukogmdqyhufn` (organisation `petaliadmin`) | `eu-west-3` (Paris), URL `https://zvswytzuukogmdqyhufn.supabase.co` | Créé ; schéma vide (Phase 2) |
 
 ## Variables d'environnement
 
