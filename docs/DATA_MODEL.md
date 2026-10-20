@@ -1,0 +1,57 @@
+# Modèle de données
+
+> **État** : modèle **proposé** (Phase 0). Aucune migration n'existe encore. Les tables seront créées progressivement, dans la phase qui en a besoin (colonne « Phase »).
+
+## Conventions
+
+- Clés primaires `uuid` (`gen_random_uuid()`).
+- `created_at` / `updated_at` de type `timestamptz`, stockés en UTC et convertis dans le fuseau de l'organisation à l'affichage.
+- Toute table métier possède `organization_id uuid not null references organizations(id)`, avec un index composite commençant par `organization_id`.
+- Les statuts sont des types `enum` Postgres ou des `text` + `CHECK`. Ils sont dupliqués dans `packages/shared` pour le typage.
+- Pas de `ON DELETE CASCADE` sur les historiques (`audit_logs`, `task_events`, `approval_events`) : on archive plutôt que supprimer.
+- L'idempotence repose sur des contraintes `UNIQUE (organization_id, idempotency_key)`.
+- Les montants sont stockés en `bigint` (unités mineures) avec un code devise ISO 4217.
+
+## Tables
+
+| Table | Rôle | Colonnes clés / contraintes | Phase |
+|---|---|---|---|
+| `user_profiles` | Profil lié à `auth.users` | `id = auth.users.id`, `display_name`, `locale`, `timezone` | 2 |
+| `organizations` | Tenant | `name`, `slug UNIQUE`, `status (active, suspended, deleted)`, `timezone`, `default_currency` | 2 |
+| `organization_memberships` | Appartenance + rôle | `UNIQUE(organization_id, user_id)`, `role`, `status (active, disabled)` | 2 |
+| `organization_invitations` | Invitations | `email`, `role`, `token_hash UNIQUE`, `expires_at`, `status (pending, accepted, revoked, expired)` | 4 |
+| `organization_settings` | Paramètres | `organization_id PK`, `settings jsonb` validé par schéma | 4 |
+| `audit_logs` | Journal immuable | `actor_type (user, agent, system, platform_admin)`, `actor_id`, `action`, `target_type`, `target_id`, `metadata jsonb`, `ip`, insert-only (trigger interdisant UPDATE et DELETE) | 2 |
+| `agents` | Agent numérique | `name`, `description`, `role_key`, `avatar`, `status (draft, active, suspended, error, archived)`, `current_version_id` | 5 |
+| `agent_versions` | Configuration versionnée et immuable | `agent_id`, `version`, `instructions`, `objectives`, `provider`, `model`, `limits jsonb`, `error_policy`, `UNIQUE(agent_id, version)` | 5 |
+| `agent_tool_permissions` | Outils autorisés + politique | `agent_id`, `tool_key`, `policy`, `conditions jsonb`, `UNIQUE(agent_id, tool_key)` | 5 / 8 |
+| `responsibilities` | Délégation durable | `agent_id`, `title`, `objective`, `scope`, `rules`, `success_criteria`, `limits jsonb`, `escalation jsonb`, `status`, `starts_at`, `ends_at` | 6 |
+| `responsibility_triggers` | Déclencheurs | `type (manual, schedule, event)`, `cron`, `timezone`, `event_key`, `enabled` | 6 / 11 |
+| `tasks` | Exécution | `agent_id`, `responsibility_id NULL`, `agent_version_id`, `trigger`, `input jsonb`, `status (pending, scheduled, running, awaiting_approval, succeeded, failed, cancelled)`, `result jsonb`, `error jsonb`, `started_at`, `finished_at`, `idempotency_key`, `attempt` | 7 |
+| `task_steps` | Étapes | `task_id`, `index`, `type (llm, tool, approval)`, `tool_key`, `input`, `output`, `status`, `usage jsonb`, `UNIQUE(task_id, index)` | 7 |
+| `task_events` | Événements immuables | `task_id`, `type`, `payload`, insert-only | 7 |
+| `approvals` | Demandes d'approbation | `task_id`, `step_id`, `tool_key`, `action_hash`, `params_snapshot jsonb`, `status (pending, approved, rejected, expired, invalidated)`, `requested_by_agent_id`, `decided_by`, `decided_at`, `expires_at` | 8 |
+| `approval_events` | Historique des décisions | insert-only | 8 |
+| `action_policies` | Politiques par organisation | `tool_key`, `policy`, `conditions jsonb` (seuils), `UNIQUE(organization_id, tool_key)` | 8 |
+| `integrations` | Connexions | `provider`, `status (not_configured, connected, error, revoked)`, `config jsonb` non sensible, `last_checked_at` | 9 |
+| `integration_credentials` | Secrets chiffrés | `integration_id`, `ciphertext bytea`, `key_version`, jamais exposé par l'API | 9 |
+| `data_sources` / `documents` | Ressources métier | `storage_path`, `mime_type`, `size`, `sha256`, `visibility`, `status` | 10 |
+| `notifications` | Centre de notifications | `user_id`, `type`, `target_type`, `target_id`, `read_at` | 11 |
+| `notification_deliveries` | Envois par canal | `channel`, `status (queued, sent, failed)`, `attempts`, `last_error`, `provider_message_id` | 11 |
+| `plans` | Offres | `key UNIQUE`, `limits jsonb` (membres, agents, tokens/mois) | 12 |
+| `subscriptions` | Abonnement | `organization_id UNIQUE`, `plan_id`, `status`, `current_period_end` | 12 |
+| `usage_records` | Consommation | `task_id`, `provider`, `model`, `input_tokens`, `output_tokens`, `cost_micros`, index `(organization_id, created_at)` | 7 |
+| `webhook_events` | Webhooks entrants | `provider`, `event_id`, `UNIQUE(provider, event_id)`, `processed_at` | 12 |
+| `platform_admins` | Admins plateforme | `user_id PK` | 13 |
+
+La planification (`scheduled_jobs`) est gérée par pg-boss dans son propre schéma, et non par une table maison.
+
+## Rétention (proposition, à valider)
+
+| Données | Rétention |
+|---|---|
+| `audit_logs` | 2 ans minimum, export possible |
+| `task_events`, `task_steps` | 12 mois, puis agrégation |
+| `notifications` lues | 90 jours |
+| `webhook_events` | 90 jours |
+| Compte supprimé | désactivation immédiate, purge des données personnelles sous 30 jours, en conservant les journaux d'audit pseudonymisés |
