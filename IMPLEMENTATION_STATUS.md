@@ -60,7 +60,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 2 — Base de données, authentification et multi-tenant
 
 - **Objectif** : un utilisateur authentifié n'accède qu'aux ressources autorisées.
-- **Statut** : code livré et testé. **En attente des actions manuelles** (`docs/DEPLOYMENT.md` § Actions manuelles) pour vérifier le parcours réel en production, puis de la validation du propriétaire.
+- **Statut** : livrée et **vérifiée de bout en bout en production**. En attente de la validation du propriétaire.
 - **Fonctionnalités terminées** :
   - Migration `20261020194209_tenancy_foundation`, **appliquée** au projet Supabase `nagaw-business` (analyse de sécurité Supabase : 0 alerte) :
     - schéma privé `app` : `user_profiles`, synchronisé depuis `auth.users` par trigger ; `organizations` ; `organization_memberships` ; `audit_logs`, en ajout seul ;
@@ -90,8 +90,12 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Vérifié en production** (2026-10-20) :
   - pages d'authentification servies ;
   - `GET /api/v1/health/ready` répond **200** avec `{ "status": "ready", "database": "ok", "auth": "ok" }` : l'API se connecte à Postgres avec le rôle `nagaw_api` via le pooler, et le projet publie des clés asymétriques.
-- **Non vérifié** :
-  - le parcours réel Supabase (e-mail de confirmation, connexion, appel de l'API avec un vrai jeton), qui dépend encore de l'action manuelle 4 (URL de redirection Auth), non réalisable par les connecteurs ;
+- **Parcours réel vérifié en production** (2026-10-20, par le propriétaire et contrôlé en base) :
+  - inscription, puis confirmation de l'adresse e-mail ;
+  - connexion par mot de passe : session ouverte ;
+  - création de l'organisation via l'API : le créateur en est `owner` actif ;
+  - entrée `organization.created` dans le journal d'audit, avec l'acteur et l'identifiant de requête.
+- **Incident constaté puis corrigé** : un lien de confirmation ouvert dans un autre navigateur confirme bien l'adresse, mais ne peut pas ouvrir de session (cookie PKCE absent). La page affichait alors « lien invalide ». Le callback journalise désormais la raison de l'échec, et la page invite à se connecter (commit `2d32acc`).
 - **Problèmes connus** : pas de limitation de débit côté API ; SMTP Supabase par défaut ; TLS Postgres non vérifié (`require`).
 - **Correctif après fusion** : les logs HTTP enregistraient tous les en-têtes, y compris le jeton OIDC Vercel (`x-vercel-oidc-token`) et la signature du proxy. Ils ne gardent plus que l'identifiant, la méthode et le chemin (liste blanche testée dans `apps/api/src/common/logging.spec.ts`).
 - **Reste à faire, phases suivantes** : invitations et gestion des membres (Phase 4) ; navigation et tableau de bord (Phase 3).
