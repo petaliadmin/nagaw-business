@@ -77,6 +77,6 @@ test('auth callback without a code lands on the invalid-link page', async ({
   await page.goto('/auth/callback?next=https://evil.example');
   await expect(page).toHaveURL(/\/lien-invalide$/);
   await expect(
-    page.getByRole('heading', { name: 'Lien invalide ou expiré' }),
+    page.getByRole('heading', { name: 'Ce lien n’a pas pu ouvrir de session' }),
   ).toBeVisible();
 });
