@@ -13,7 +13,8 @@
     "test": "pnpm --filter @nagaw/shared build && pnpm -r test",
     "test:integration": "pnpm --filter @nagaw/shared build && pnpm --filter @nagaw/api test:integration",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:e2e": "pnpm --filter @nagaw/shared build && pnpm --filter @nagaw/web build && pnpm --filter @nagaw/web test:e2e"
   },
   "devDependencies": {
     "prettier": "^3.4.2"

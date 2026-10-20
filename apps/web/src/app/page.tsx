@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { fetchApiHealth } from '@/lib/api-health';
@@ -40,9 +41,23 @@ export default function Home() {
           déléguer des responsabilités.
         </p>
         <p className="text-zinc-600 dark:text-zinc-400">
-          La plateforme est en cours de construction. Aucun module métier
-          n&apos;est encore disponible.
+          La plateforme est en cours de construction. Seuls la création de
+          compte et d&apos;organisation sont disponibles.
         </p>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/inscription"
+            className="rounded-md bg-emerald-700 px-4 py-2 font-medium text-white hover:bg-emerald-800"
+          >
+            Créer un compte
+          </Link>
+          <Link
+            href="/connexion"
+            className="rounded-md border border-zinc-300 px-4 py-2 font-medium dark:border-zinc-700"
+          >
+            Se connecter
+          </Link>
+        </div>
       </div>
       <section
         aria-labelledby="status-title"

@@ -6,6 +6,7 @@ import request from 'supertest';
 import { inject } from 'vitest';
 import { AppModule } from '../../src/app.module.js';
 import { setupApp } from '../../src/app.setup.js';
+import { AUTH_PROBE } from '../../src/auth/auth-probe.js';
 import { JWT_VERIFIER } from '../../src/auth/jwt-verifier.js';
 import { ENV, loadEnv } from '../../src/config/env.js';
 import { createTestAuth } from './jwt.js';
@@ -31,6 +32,9 @@ export async function createTestContext() {
     )
     .overrideProvider(JWT_VERIFIER)
     .useValue(auth.verifier)
+    // The test key pair stands in for the project JWKS.
+    .overrideProvider(AUTH_PROBE)
+    .useValue({ check: () => Promise.resolve('ok') })
     .compile();
   const app: INestApplication = moduleRef.createNestApplication();
   setupApp(app);

@@ -1,8 +1,10 @@
 # Modèle de données
 
-> **État** : modèle **proposé** (Phase 0). Aucune migration n'existe encore. Les tables seront créées progressivement, dans la phase qui en a besoin (colonne « Phase »).
+> **État** : les tables `user_profiles`, `organizations`, `organization_memberships` et `audit_logs` sont **implémentées** (migration `supabase/migrations/20261020194209_tenancy_foundation.sql`, Phase 2). Les autres restent **proposées** et seront créées dans la phase indiquée.
 
 ## Conventions
+
+- Les tables métier vivent dans le schéma privé **`app`**, que l'API Data de Supabase n'expose pas. Seul le rôle `nagaw_api` y accède, avec des droits minimaux (ADR-013).
 
 - Clés primaires `uuid` (`gen_random_uuid()`).
 - `created_at` / `updated_at` de type `timestamptz`, stockés en UTC et convertis dans le fuseau de l'organisation à l'affichage.
@@ -17,7 +19,7 @@
 | Table                        | Rôle                                 | Colonnes clés / contraintes                                                                                                                                                                                                                                           | Phase  |
 | ---------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | `user_profiles`              | Profil lié à `auth.users`            | `id = auth.users.id`, `display_name`, `locale`, `timezone`                                                                                                                                                                                                            | 2      |
-| `organizations`              | Tenant                               | `name`, `slug UNIQUE`, `status (active, suspended, deleted)`, `timezone`, `default_currency`                                                                                                                                                                          | 2      |
+| `organizations`              | Tenant                               | `name`, `slug UNIQUE`, `status (active, suspended)`, `timezone`, `default_currency`                                                                                                                                                                                   | 2      |
 | `organization_memberships`   | Appartenance + rôle                  | `UNIQUE(organization_id, user_id)`, `role`, `status (active, disabled)`                                                                                                                                                                                               | 2      |
 | `organization_invitations`   | Invitations                          | `email`, `role`, `token_hash UNIQUE`, `expires_at`, `status (pending, accepted, revoked, expired)`                                                                                                                                                                    | 4      |
 | `organization_settings`      | Paramètres                           | `organization_id PK`, `settings jsonb` validé par schéma                                                                                                                                                                                                              | 4      |

@@ -1,5 +1,6 @@
 import { Controller, Get, HttpStatus, Inject, Logger } from '@nestjs/common';
 import type { HealthResponse } from '@nagaw/shared';
+import { AUTH_PROBE, type AuthProbe } from '../auth/auth-probe.js';
 import { Public } from '../auth/public.decorator.js';
 import { ApiException } from '../common/api-exception.js';
 import { ENV, type Env } from '../config/env.js';
@@ -13,6 +14,7 @@ export class HealthController {
   constructor(
     @Inject(ENV) private readonly env: Env,
     private readonly database: DatabaseService,
+    @Inject(AUTH_PROBE) private readonly authProbe: AuthProbe,
   ) {}
 
   /** Liveness: the function runs. */
@@ -27,26 +29,41 @@ export class HealthController {
     };
   }
 
-  /** Readiness: dependencies (database) are reachable. */
+  /**
+   * Readiness: the database answers and the Supabase project publishes the
+   * keys needed to verify user tokens. 503 with the failing part otherwise.
+   */
   @Get('ready')
-  async ready(): Promise<{ status: 'ready'; database: 'ok' }> {
-    if (!this.database.isConfigured) {
+  async ready(): Promise<{
+    status: 'ready';
+    database: 'ok';
+    auth: 'ok';
+  }> {
+    const [database, auth] = await Promise.all([
+      this.databaseReadiness(),
+      this.authProbe.check(),
+    ]);
+    if (database !== 'ok' || auth !== 'ok') {
       throw new ApiException(
         HttpStatus.SERVICE_UNAVAILABLE,
-        'DATABASE_NOT_CONFIGURED',
-        'La base de données n’est pas configurée.',
+        'NOT_READY',
+        'Service partiellement indisponible.',
+        [{ database, auth }],
       );
     }
+    return { status: 'ready', database, auth };
+  }
+
+  private async databaseReadiness(): Promise<
+    'ok' | 'not_configured' | 'unreachable'
+  > {
+    if (!this.database.isConfigured) return 'not_configured';
     try {
       await this.database.ping();
+      return 'ok';
     } catch (error) {
       this.logger.error({ err: error }, 'Database readiness check failed');
-      throw new ApiException(
-        HttpStatus.SERVICE_UNAVAILABLE,
-        'DATABASE_UNREACHABLE',
-        'La base de données est injoignable.',
-      );
+      return 'unreachable';
     }
-    return { status: 'ready', database: 'ok' };
   }
 }

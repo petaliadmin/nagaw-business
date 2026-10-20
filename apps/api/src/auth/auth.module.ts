@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { createRemoteJWKSet } from 'jose';
 import { ENV, type Env } from '../config/env.js';
+import { AUTH_PROBE, JwksAuthProbe } from './auth-probe.js';
 import {
   JWT_VERIFIER,
   SupabaseJwtVerifier,
@@ -22,7 +23,17 @@ import {
         return new SupabaseJwtVerifier(jwks, issuer);
       },
     },
+    {
+      provide: AUTH_PROBE,
+      inject: [ENV],
+      useFactory: (env: Env) =>
+        new JwksAuthProbe(
+          env.SUPABASE_URL
+            ? `${supabaseIssuer(env.SUPABASE_URL)}/.well-known/jwks.json`
+            : undefined,
+        ),
+    },
   ],
-  exports: [JWT_VERIFIER],
+  exports: [JWT_VERIFIER, AUTH_PROBE],
 })
 export class AuthModule {}

@@ -88,3 +88,24 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 - **Statut** : Acceptée (Q7, 2026-10-20)
 - **Décision** : pas de bibliothèque i18n. Les textes sont écrits directement en français. Les dates et montants passent par `Intl` avec la locale `fr`, dans le fuseau de l'organisation. Un passage à l'i18n reste possible plus tard, mais ne sera pas préparé à l'avance.
+
+## ADR-013 — Schéma privé `app` et rôle Postgres dédié `nagaw_api`
+
+- **Statut** : Acceptée (Phase 2)
+- **Décision** :
+  - les tables métier sont dans le schéma `app`, non exposé par l'API Data de Supabase ;
+  - l'API se connecte avec le rôle `nagaw_api`, qui dispose de `SELECT`, `INSERT` et `UPDATE` sur les tables utiles, de `SELECT` et `INSERT` seulement sur `audit_logs`, et d'aucun `DELETE` ;
+  - `anon` et `authenticated` n'ont aucun droit sur le schéma ;
+  - la RLS est activée partout, avec des politiques ouvertes uniquement à `nagaw_api` ;
+  - `audit_logs` est protégé contre `UPDATE`, `DELETE` et `TRUNCATE` par des triggers, y compris pour le propriétaire des tables.
+- **Conséquence** : la clé publishable de Supabase, présente dans le navigateur, ne donne accès à aucune donnée métier, même en cas de bug de l'API.
+- **Mot de passe du rôle** : il est défini par le propriétaire, hors de Git (voir `docs/DEPLOYMENT.md`).
+
+## ADR-014 — Authentification : Supabase Auth, jetons asymétriques vérifiés par l'API
+
+- **Statut** : Acceptée (Phase 2)
+- **Décision** :
+  - le web utilise `@supabase/ssr` : session dans des cookies, rafraîchie par `proxy.ts`, et formulaires traités par des Server Actions qui valident les champs côté serveur ;
+  - les liens d'e-mail (confirmation, réinitialisation du mot de passe) utilisent le flux PKCE et aboutissent sur `/auth/callback`, qui n'accepte que des redirections internes ;
+  - l'API vérifie chaque jeton avec le JWKS du projet : signature ES256/RS256, émetteur, audience `authenticated`, expiration, rejet des utilisateurs anonymes ;
+  - un projet encore signé avec le secret HS256 _legacy_ n'est pas pris en charge : `/health/ready` le détecte (`auth: "no_signing_keys"`).

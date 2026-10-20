@@ -1,6 +1,19 @@
 # Stratégie de tests
 
-> **État** : en place depuis la Phase 1 pour les tests unitaires et d'intégration. Les tests end-to-end (Playwright) arrivent avec la Phase 2.
+> **État** : tests unitaires (Vitest), tests d'intégration de l'API sur un vrai Postgres, et tests end-to-end Playwright (bureau et mobile) en place.
+
+## Base de données des tests d'intégration
+
+`apps/api/test/support/global-setup.ts` crée une base jetable à partir des **vraies migrations** (`supabase/migrations`), précédées d'un substitut minimal du schéma `auth` de Supabase (`test/support/supabase-stub.sql`). Les tests se connectent avec le rôle `nagaw_api`, avec les mêmes droits qu'en production.
+
+- En local : un Postgres 16+ accessible via `TEST_DATABASE_ADMIN_URL` (par défaut `postgres://postgres@127.0.0.1:54329/postgres`).
+- En CI : service `postgres:17`.
+
+Les jetons sont signés par une vraie paire de clés ES256 locale, qui remplace le JWKS du projet.
+
+## Limites des tests end-to-end
+
+Les tests Playwright tournent sur le build de production **sans Supabase ni API configurés**. Ils couvrent le rendu, la validation côté serveur, les états « non configuré » et la protection contre les redirections externes. Le parcours complet (inscription, confirmation par e-mail, connexion, création d'organisation) dépend d'un vrai projet Supabase et d'une boîte e-mail : il se vérifie manuellement sur le déploiement Vercel (voir `IMPLEMENTATION_STATUS.md`).
 
 ## Niveaux
 
@@ -26,7 +39,7 @@ pnpm lint
 pnpm typecheck
 pnpm test            # unitaires
 pnpm test:integration
-pnpm test:e2e         # à partir de la Phase 2
+pnpm test:e2e        # build + Playwright (PLAYWRIGHT_CHROMIUM_PATH pour un Chromium préinstallé)
 pnpm build
 ```
 

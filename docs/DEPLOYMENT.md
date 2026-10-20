@@ -45,15 +45,37 @@ Commande de build des deux projets : `pnpm --filter @nagaw/shared build && pnpm 
 | `LOG_LEVEL`                                                        | api           |   non   | `info`                                                              | 1     |
 | `CORS_ORIGINS`                                                     | api           |   non   | `https://nagaw-web.vercel.app,https://nagaw-web-petalia.vercel.app` | 1     |
 | `APP_VERSION`                                                      | api           |   non   | non défini (`dev`)                                                  | 1     |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | web           |   non   | —                                                                   | 2     |
-| `SUPABASE_URL` (JWKS dérivé)                                       | api           |   non   | —                                                                   | 2     |
-| `DATABASE_URL` (pooler, mode transaction)                          | api           | **oui** | —                                                                   | 2     |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | web           |   non   | configurées (URL du projet, clé `sb_publishable_…`)                 | 2     |
+| `SITE_URL`                                                         | web (serveur) |   non   | `https://nagaw-web-petalia.vercel.app` (production)                 | 2     |
+| `SUPABASE_URL` (JWKS dérivé)                                       | api           |   non   | `https://zvswytzuukogmdqyhufn.supabase.co`                          | 2     |
+| `DATABASE_SSL`                                                     | api           |   non   | `require`                                                           | 2     |
+| `DATABASE_URL` (pooler, mode transaction, rôle `nagaw_api`)        | api           | **oui** | **à saisir par le propriétaire**                                    | 2     |
 | `CRON_SECRET`                                                      | api           | **oui** | —                                                                   | 7     |
 | `CREDENTIALS_ENCRYPTION_KEY`                                       | api           | **oui** | —                                                                   | 9     |
 | `EMAIL_PROVIDER_API_KEY`                                           | api           | **oui** | —                                                                   | 4 / 9 |
 
 Les fichiers `apps/*/.env.example` listent les variables locales, sans valeurs secrètes. Les secrets se saisissent dans Vercel (type _Sensitive_) et ne sont jamais commités.
 
+## Actions manuelles requises (Phase 2)
+
+Elles ne peuvent pas être réalisées par les connecteurs, ou ne doivent pas l'être, car elles impliquent un secret ou un réglage du tableau de bord Supabase.
+
+1. **Mot de passe du rôle API.** Dans Supabase, ouvrir _SQL Editor_ et exécuter, avec un mot de passe long et aléatoire :
+   ```sql
+   alter role nagaw_api with login password '<mot de passe fort>';
+   ```
+2. **`DATABASE_URL` sur Vercel** (projet `nagaw-api`, type _Sensitive_, cibles Production et Preview). Utiliser le pooler en mode transaction (Supabase → _Connect_ → _Transaction pooler_), en remplaçant l'utilisateur :
+   ```
+   postgresql://nagaw_api.zvswytzuukogmdqyhufn:<mot de passe>@<hôte du pooler>:6543/postgres
+   ```
+   Redéployer ensuite `nagaw-api`. `GET /api/v1/health/ready` doit répondre `database: "ok"`.
+3. **Clés de signature JWT asymétriques.** Dans Supabase, ouvrir _Project Settings → JWT Keys_ et vérifier que la clé courante est de type ECC (P-256) ou RSA. Si c'est encore le secret HS256 _legacy_, migrer puis faire une rotation. `GET /api/v1/health/ready` doit répondre `auth: "ok"`.
+4. **URL de redirection Auth.** Dans Supabase, ouvrir _Authentication → URL Configuration_ :
+   - _Site URL_ : `https://nagaw-web-petalia.vercel.app` ;
+   - _Redirect URLs_ : `https://nagaw-web-petalia.vercel.app/auth/callback` et `http://localhost:3000/auth/callback`.
+5. **Mot de passe minimal.** Dans _Authentication → Policies_ (ou _Providers → Email_), régler la longueur minimale à 8, comme dans le formulaire.
+6. **SMTP.** Le service d'e-mail intégré à Supabase est fortement limité, et peut n'envoyer qu'aux membres de l'organisation Supabase. Configurer un SMTP dédié (_Authentication → SMTP Settings_) avant d'ouvrir l'inscription à de vrais utilisateurs.
+
 ## Migrations
 
-Elles seront appliquées via la Supabase CLI depuis la CI, sur la préproduction d'abord, puis sur la production après validation. Toute migration doit rester rétrocompatible avec la version précédente de l'API (déploiement en deux temps).
+La migration `20261020194209_tenancy_foundation` a été appliquée au projet `nagaw-business` le 2026-10-20 via le connecteur Supabase. Le nom du fichier reprend la version enregistrée par Supabase, pour garder l'historique aligné. Les suivantes seront appliquées via la Supabase CLI depuis la CI, sur la préproduction d'abord, puis sur la production après validation. Toute migration doit rester rétrocompatible avec la version précédente de l'API (déploiement en deux temps).

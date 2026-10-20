@@ -10,7 +10,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 1 — Socle technique
 
 - **Objectif** : disposer d'un projet stable, outillé et vérifiable automatiquement.
-- **Statut** : livrée et **vérifiée en production Vercel**, en attente de validation.
+- **Statut** : **validée** par le propriétaire le 2026-10-20.
 - **Fonctionnalités terminées** :
   - monorepo pnpm : `apps/web`, `apps/api`, `packages/shared` ;
   - API NestJS 12 :
@@ -57,6 +57,42 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Configuration encore nécessaire** : définir `main` comme branche par défaut sur GitHub (puis comme _Production Branch_ dans les deux projets Vercel si besoin) et protéger `main`.
 - **Prochaine action recommandée** : Phase 2 (base de données, Auth, multi-tenant). Le projet Supabase est prêt.
 
-## Phases 2 à 15
+## Phase 2 — Base de données, authentification et multi-tenant
+
+- **Objectif** : un utilisateur authentifié n'accède qu'aux ressources autorisées.
+- **Statut** : code livré et testé. **En attente des actions manuelles** (`docs/DEPLOYMENT.md` § Actions manuelles) pour vérifier le parcours réel en production, puis de la validation du propriétaire.
+- **Fonctionnalités terminées** :
+  - Migration `20261020194209_tenancy_foundation`, **appliquée** au projet Supabase `nagaw-business` (analyse de sécurité Supabase : 0 alerte) :
+    - schéma privé `app` : `user_profiles`, synchronisé depuis `auth.users` par trigger ; `organizations` ; `organization_memberships` ; `audit_logs`, en ajout seul ;
+    - rôle `nagaw_api` aux droits minimaux, RLS, aucun accès `anon`/`authenticated`.
+  - API :
+    - vérification des JWT Supabase par JWKS ;
+    - `AuthGuard` global et `TenantGuard` (appartenance vérifiée en base, 404 pour les étrangers, 403 pour un rôle insuffisant) ;
+    - rôles `owner`, `admin`, `member`, `viewer` et permissions partagées ;
+    - endpoints `GET /me`, `POST /organizations`, `GET|PATCH /organizations/current`, `GET /organizations/current/members`, `GET /audit-logs`, `GET /health/ready` (base et clés de signature) ;
+    - audit transactionnel.
+  - Web :
+    - inscription, connexion, déconnexion, mot de passe oublié et réinitialisation (Server Actions, validation côté serveur, messages en français) ;
+    - callback PKCE protégé contre les redirections externes, page « lien invalide » ;
+    - espace connecté : création d'une première organisation et liste des organisations avec le rôle.
+  - CI : service Postgres 17, tests end-to-end Playwright.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                            |
+  | ------------------------------ | ------------------------------------------------------------------- |
+  | `pnpm test`                    | 48 tests OK (shared 8, api 21, web 19)                              |
+  | `pnpm test:integration`        | 29 tests OK sur un vrai Postgres 16 construit depuis les migrations |
+  | `pnpm test:e2e`                | 12 tests OK (6 scénarios × bureau et mobile)                        |
+  | lint, typecheck, build, format | OK                                                                  |
+
+  Test de mutation : retirer le filtre d'appartenance du `TenantGuard` fait échouer 7 tests d'isolation.
+
+- **Non vérifié** :
+  - le parcours réel Supabase (e-mail de confirmation, connexion, appel de l'API avec un vrai jeton), qui dépend des actions manuelles 1 à 4 ;
+  - le format des clés de signature du projet (HS256 _legacy_ ou asymétrique), qui se lira sur `/health/ready` après déploiement.
+- **Problèmes connus** : pas de limitation de débit côté API ; SMTP Supabase par défaut ; TLS Postgres non vérifié (`require`).
+- **Reste à faire, phases suivantes** : invitations et gestion des membres (Phase 4) ; navigation et tableau de bord (Phase 3).
+
+## Phases 3 à 15
 
 Non commencées.

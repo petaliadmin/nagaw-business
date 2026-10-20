@@ -74,7 +74,11 @@ describe('Organizations, memberships and tenant isolation', () => {
     it('keeps health endpoints public', async () => {
       await ctx.http().get('/api/v1/health').expect(200);
       const res = await ctx.http().get('/api/v1/health/ready').expect(200);
-      expect(res.body).toEqual({ status: 'ready', database: 'ok' });
+      expect(res.body).toEqual({
+        status: 'ready',
+        database: 'ok',
+        auth: 'ok',
+      });
     });
   });
 
