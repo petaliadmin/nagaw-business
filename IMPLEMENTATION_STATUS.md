@@ -89,11 +89,11 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
 - **Vérifié en production** (2026-10-20) :
   - pages d'authentification servies ;
-  - `GET /api/v1/health/ready` répond 503 avec `{ database: "not_configured", auth: "ok" }` : le projet publie bien des clés asymétriques, et seule `DATABASE_URL` manque.
+  - `GET /api/v1/health/ready` répond **200** avec `{ "status": "ready", "database": "ok", "auth": "ok" }` : l'API se connecte à Postgres avec le rôle `nagaw_api` via le pooler, et le projet publie des clés asymétriques.
 - **Non vérifié** :
-  - le parcours réel Supabase (e-mail de confirmation, connexion, appel de l'API avec un vrai jeton), qui dépend des actions manuelles 1, 2 et 4 ;
-  - le format des clés de signature du projet (HS256 _legacy_ ou asymétrique), qui se lira sur `/health/ready` après déploiement.
+  - le parcours réel Supabase (e-mail de confirmation, connexion, appel de l'API avec un vrai jeton), qui dépend encore de l'action manuelle 4 (URL de redirection Auth), non réalisable par les connecteurs ;
 - **Problèmes connus** : pas de limitation de débit côté API ; SMTP Supabase par défaut ; TLS Postgres non vérifié (`require`).
+- **Correctif après fusion** : les logs HTTP enregistraient tous les en-têtes, y compris le jeton OIDC Vercel (`x-vercel-oidc-token`) et la signature du proxy. Ils ne gardent plus que l'identifiant, la méthode et le chemin (liste blanche testée dans `apps/api/src/common/logging.spec.ts`).
 - **Reste à faire, phases suivantes** : invitations et gestion des membres (Phase 4) ; navigation et tableau de bord (Phase 3).
 
 ## Phases 3 à 15
