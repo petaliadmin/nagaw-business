@@ -38,21 +38,21 @@ Commande de build des deux projets : `pnpm --filter @nagaw/shared build && pnpm 
 
 ## Variables d'environnement
 
-| Variable                                                           | Projet        | Secret  | Valeur configurée                                                   | Phase |
-| ------------------------------------------------------------------ | ------------- | :-----: | ------------------------------------------------------------------- | ----- |
-| `API_URL`                                                          | web (serveur) |   non   | `https://nagaw-api-petalia.vercel.app`                              | 1     |
-| `APP_ENV`                                                          | api           |   non   | `production` / `preview`                                            | 1     |
-| `LOG_LEVEL`                                                        | api           |   non   | `info`                                                              | 1     |
-| `CORS_ORIGINS`                                                     | api           |   non   | `https://nagaw-web.vercel.app,https://nagaw-web-petalia.vercel.app` | 1     |
-| `APP_VERSION`                                                      | api           |   non   | non défini (`dev`)                                                  | 1     |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | web           |   non   | configurées (URL du projet, clé `sb_publishable_…`)                 | 2     |
-| `SITE_URL`                                                         | web (serveur) |   non   | `https://nagaw-web-petalia.vercel.app` (production)                 | 2     |
-| `SUPABASE_URL` (JWKS dérivé)                                       | api           |   non   | `https://zvswytzuukogmdqyhufn.supabase.co`                          | 2     |
-| `DATABASE_SSL`                                                     | api           |   non   | `require`                                                           | 2     |
-| `DATABASE_URL` (pooler, mode transaction, rôle `nagaw_api`)        | api           | **oui** | **à saisir par le propriétaire**                                    | 2     |
-| `CRON_SECRET`                                                      | api           | **oui** | —                                                                   | 7     |
-| `CREDENTIALS_ENCRYPTION_KEY`                                       | api           | **oui** | —                                                                   | 9     |
-| `EMAIL_PROVIDER_API_KEY`                                           | api           | **oui** | —                                                                   | 4 / 9 |
+| Variable                                                           | Projet        | Secret  | Valeur configurée                                                         | Phase |
+| ------------------------------------------------------------------ | ------------- | :-----: | ------------------------------------------------------------------------- | ----- |
+| `API_URL`                                                          | web (serveur) |   non   | `https://nagaw-api-petalia.vercel.app`                                    | 1     |
+| `APP_ENV`                                                          | api           |   non   | `production` / `preview`                                                  | 1     |
+| `LOG_LEVEL`                                                        | api           |   non   | `info`                                                                    | 1     |
+| `CORS_ORIGINS`                                                     | api           |   non   | `https://nagaw-web.vercel.app,https://nagaw-web-petalia.vercel.app`       | 1     |
+| `APP_VERSION`                                                      | api           |   non   | non défini (`dev`)                                                        | 1     |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | web           |   non   | configurées (URL du projet, clé `sb_publishable_…`)                       | 2     |
+| `SITE_URL`                                                         | web (serveur) |   non   | `https://nagaw-web-petalia.vercel.app` (production)                       | 2     |
+| `SUPABASE_URL` (JWKS dérivé)                                       | api           |   non   | `https://zvswytzuukogmdqyhufn.supabase.co`                                | 2     |
+| `DATABASE_SSL`                                                     | api           |   non   | `require`                                                                 | 2     |
+| `DATABASE_URL` (pooler, mode transaction, rôle `nagaw_api`)        | api           | **oui** | configurée (_Sensitive_), hôte `aws-1-eu-west-3.pooler.supabase.com:6543` | 2     |
+| `CRON_SECRET`                                                      | api           | **oui** | —                                                                         | 7     |
+| `CREDENTIALS_ENCRYPTION_KEY`                                       | api           | **oui** | —                                                                         | 9     |
+| `EMAIL_PROVIDER_API_KEY`                                           | api           | **oui** | —                                                                         | 4 / 9 |
 
 Les fichiers `apps/*/.env.example` listent les variables locales, sans valeurs secrètes. Les secrets se saisissent dans Vercel (type _Sensitive_) et ne sont jamais commités.
 
@@ -60,17 +60,10 @@ Les fichiers `apps/*/.env.example` listent les variables locales, sans valeurs s
 
 Elles ne peuvent pas être réalisées par les connecteurs, ou ne doivent pas l'être, car elles impliquent un secret ou un réglage du tableau de bord Supabase.
 
-1. **Mot de passe du rôle API.** Dans Supabase, ouvrir _SQL Editor_ et exécuter, avec un mot de passe long et aléatoire :
-   ```sql
-   alter role nagaw_api with login password '<mot de passe fort>';
-   ```
-2. **`DATABASE_URL` sur Vercel** (projet `nagaw-api`, type _Sensitive_, cibles Production et Preview). Utiliser le pooler en mode transaction (Supabase → _Connect_ → _Transaction pooler_), en remplaçant l'utilisateur :
-   ```
-   postgresql://nagaw_api.zvswytzuukogmdqyhufn:<mot de passe>@<hôte du pooler>:6543/postgres
-   ```
-   Redéployer ensuite `nagaw-api`. `GET /api/v1/health/ready` doit répondre `database: "ok"`.
+1. ~~Mot de passe du rôle API~~ : **fait le 2026-10-20** avec l'autorisation du propriétaire. Le mot de passe a été généré aléatoirement, appliqué par SQL, enregistré uniquement dans Vercel, puis la copie locale a été supprimée. Pour en changer : `alter role nagaw_api with login password '…'` dans _SQL Editor_, puis mettre à jour `DATABASE_URL` sur Vercel et redéployer.
+2. ~~`DATABASE_URL` sur Vercel~~ : **fait**. Pooler en mode transaction, `postgresql://nagaw_api.zvswytzuukogmdqyhufn:<mot de passe>@aws-1-eu-west-3.pooler.supabase.com:6543/postgres`. Le projet est sur la grappe `aws-1` ; l'hôte `aws-0` renvoie « Tenant or user not found ». Vérification : `GET /api/v1/health/ready` répond `{"status":"ready","database":"ok","auth":"ok"}`.
 3. ~~Clés de signature JWT asymétriques~~ : **déjà en place**. Le 2026-10-20, `GET /api/v1/health/ready` en production a répondu `auth: "ok"`, ce qui signifie que le JWKS du projet publie des clés.
-4. **URL de redirection Auth.** Dans Supabase, ouvrir _Authentication → URL Configuration_ :
+4. **URL de redirection Auth** (reste à faire, aucun connecteur ne permet de modifier la configuration Auth). Dans Supabase, ouvrir _Authentication → URL Configuration_ :
    - _Site URL_ : `https://nagaw-web-petalia.vercel.app` ;
    - _Redirect URLs_ : `https://nagaw-web-petalia.vercel.app/auth/callback` et `http://localhost:3000/auth/callback`.
 5. **Mot de passe minimal.** Dans _Authentication → Policies_ (ou _Providers → Email_), régler la longueur minimale à 8, comme dans le formulaire.
