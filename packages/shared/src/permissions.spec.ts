@@ -1,0 +1,23 @@
+import { describe, expect, it } from 'vitest';
+import { PERMISSIONS, ROLES, roleHasPermission } from './permissions.js';
+
+describe('roleHasPermission', () => {
+  it('grants every permission to owners', () => {
+    for (const permission of PERMISSIONS) {
+      expect(roleHasPermission('owner', permission)).toBe(true);
+    }
+  });
+
+  it('keeps organization updates and audit reading away from members and viewers', () => {
+    for (const role of ['member', 'viewer'] as const) {
+      expect(roleHasPermission(role, 'organization.update')).toBe(false);
+      expect(roleHasPermission(role, 'audit.read')).toBe(false);
+    }
+  });
+
+  it('lets every role read its organization', () => {
+    for (const role of ROLES) {
+      expect(roleHasPermission(role, 'organization.read')).toBe(true);
+    }
+  });
+});
