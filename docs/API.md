@@ -1,6 +1,6 @@
 # API
 
-> **État** : aucun endpoint n'existe. Ce document fixe les **conventions** qui s'appliqueront dès la Phase 1. Les endpoints seront listés ici au fur et à mesure de leur livraison, et la documentation OpenAPI générée sera servie par l'API sur `/api/v1/docs` (hors production publique).
+> La documentation OpenAPI générée est servie sur `/api/v1/docs` (désactivée en production).
 
 ## Conventions
 
@@ -9,7 +9,14 @@
 - Organisation active : en-tête `X-Organization-Id`, appartenance vérifiée côté serveur.
 - Format d'erreur unique :
   ```json
-  { "error": { "code": "AGENT_NOT_FOUND", "message": "…", "requestId": "…", "details": [] } }
+  {
+    "error": {
+      "code": "AGENT_NOT_FOUND",
+      "message": "…",
+      "requestId": "…",
+      "details": []
+    }
+  }
   ```
 - Une ressource d'une autre organisation renvoie `404`, jamais `403`.
 - Pagination par curseur : `?limit=25&cursor=…`, réponse `{ "data": [...], "nextCursor": "…" | null }`.
@@ -18,4 +25,8 @@
 
 ## Endpoints livrés
 
-Aucun.
+| Méthode | Chemin           | Auth   | Description                                       | Contrat                                  |
+| ------- | ---------------- | ------ | ------------------------------------------------- | ---------------------------------------- |
+| GET     | `/api/v1/health` | aucune | Vivacité de l'API (version, environnement, heure) | `healthResponseSchema` (`@nagaw/shared`) |
+
+Chaque réponse porte un en-tête `X-Request-Id`. Il reprend celui envoyé par le client s'il est bien formé (`[\w-]{1,64}`), et il est généré sinon.

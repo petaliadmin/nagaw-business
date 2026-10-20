@@ -1,28 +1,53 @@
 # Déploiement
 
-> **État** : rien n'est déployé. Aucune configuration de déploiement n'existe. Cible proposée : ADR-010.
+Cible : ADR-010 (tout sur Vercel) et ADR-006 (traitement asynchrone compatible Vercel).
 
-## Environnements prévus
+## Infrastructure configurée (2026-10-20)
 
-| Environnement | Frontend | API + worker | Base | Mise en place |
-|---|---|---|---|---|
-| Local | `pnpm dev` | `pnpm dev` | Supabase CLI (Docker) | Phase 1–2 |
-| Préproduction | Vercel (preview / branche `staging`) | Conteneur (Render ou Fly.io) | Projet Supabase dédié | Phase 2 |
-| Production | Vercel | Conteneur | Projet Supabase dédié | Phase 15, **sur autorisation explicite** |
+| Ressource                 | Identifiant                                           | Configuration                                      | État                                                                                   |
+| ------------------------- | ----------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Projet Vercel `nagaw-web` | `prj_7KiARAv1hXQS9x01O8IH6HV5pIAN` (équipe `Petalia`) | racine `apps/web`, Next.js, Node 24, région `cdg1` | Créé, relié à GitHub                                                                   |
+| Projet Vercel `nagaw-api` | `prj_0lolA8mrzpJIs1I01ZApAchYhqhh` (équipe `Petalia`) | racine `apps/api`, NestJS, Node 24, région `cdg1`  | Créé, relié à GitHub                                                                   |
+| Projet Supabase           | —                                                     | prévu : `nagaw-business`, `eu-west-3`              | **Non créé** : limite de 2 projets gratuits atteinte dans l'organisation `petaliadmin` |
 
-## Variables d'environnement (prévisionnel)
+Commande de build des deux projets : `pnpm --filter @nagaw/shared build && pnpm build`. L'installation se fait depuis la racine du monorepo (`pnpm install --frozen-lockfile`).
 
-| Variable | Côté | Secret |
-|---|---|:-:|
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL` | web | non |
-| `SUPABASE_URL`, `SUPABASE_JWKS_URL` | api | non |
-| `DATABASE_URL` | api / worker | **oui** |
-| `CREDENTIALS_ENCRYPTION_KEY` | api / worker | **oui** |
-| `ANTHROPIC_API_KEY` (et autres fournisseurs) | worker | **oui** |
-| `EMAIL_PROVIDER_API_KEY` | api / worker | **oui** |
+**Protection** : Vercel Authentication est active sur toutes les URL `*.vercel.app` (réglage par défaut de l'équipe). Les déploiements ne sont donc accessibles qu'aux membres connectés de l'équipe. Pour que `nagaw-web` puisse appeler `nagaw-api` côté serveur, il faudra, au choix :
 
-Un fichier `.env.example` sans valeurs réelles sera ajouté en Phase 1.
+- rendre l'API publique sur son URL de production ;
+- lui associer un domaine personnalisé ;
+- configurer un jeton de contournement (_Protection Bypass for Automation_).
+
+Cette décision sera prise en Phase 2.
+
+**Branche de production** : Vercel déploie en production la branche par défaut du dépôt GitHub. Elle est actuellement `claude/beautiful-cerf-cbbkzm`, car le dépôt était vide (voir l'audit, § 6). Après la création de `main`, il faut la définir comme branche par défaut sur GitHub et comme _Production Branch_ dans les deux projets Vercel.
+
+## Environnements
+
+| Environnement | Web                                | API                                | Base                                                          |
+| ------------- | ---------------------------------- | ---------------------------------- | ------------------------------------------------------------- |
+| Local         | `pnpm dev` (port 3000)             | `pnpm dev` (port 3001)             | Supabase CLI (Docker), Phase 2                                |
+| Préproduction | Déploiements _preview_ `nagaw-web` | Déploiements _preview_ `nagaw-api` | Projet Supabase de préproduction                              |
+| Production    | `nagaw-web` production             | `nagaw-api` production             | Projet Supabase de production, **sur autorisation explicite** |
+
+## Variables d'environnement
+
+| Variable                                                           | Projet        | Secret  | Valeur configurée              | Phase |
+| ------------------------------------------------------------------ | ------------- | :-----: | ------------------------------ | ----- |
+| `API_URL`                                                          | web (serveur) |   non   | `https://nagaw-api.vercel.app` | 1     |
+| `APP_ENV`                                                          | api           |   non   | `production` / `preview`       | 1     |
+| `LOG_LEVEL`                                                        | api           |   non   | `info`                         | 1     |
+| `CORS_ORIGINS`                                                     | api           |   non   | `https://nagaw-web.vercel.app` | 1     |
+| `APP_VERSION`                                                      | api           |   non   | non défini (`dev`)             | 1     |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | web           |   non   | —                              | 2     |
+| `SUPABASE_URL` (JWKS dérivé)                                       | api           |   non   | —                              | 2     |
+| `DATABASE_URL` (pooler, mode transaction)                          | api           | **oui** | —                              | 2     |
+| `CRON_SECRET`                                                      | api           | **oui** | —                              | 7     |
+| `CREDENTIALS_ENCRYPTION_KEY`                                       | api           | **oui** | —                              | 9     |
+| `EMAIL_PROVIDER_API_KEY`                                           | api           | **oui** | —                              | 4 / 9 |
+
+Les fichiers `apps/*/.env.example` listent les variables locales, sans valeurs secrètes. Les secrets se saisissent dans Vercel (type _Sensitive_) et ne sont jamais commités.
 
 ## Migrations
 
-Elles seront appliquées via `supabase db push` depuis la CI, sur la préproduction d'abord, puis sur la production après validation. Toute migration doit être rétrocompatible avec la version précédente de l'API (déploiement en deux temps).
+Elles seront appliquées via la Supabase CLI depuis la CI, sur la préproduction d'abord, puis sur la production après validation. Toute migration doit rester rétrocompatible avec la version précédente de l'API (déploiement en deux temps).

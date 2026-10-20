@@ -8,16 +8,16 @@ Nagaw Business est une plateforme SaaS multi-entreprises de gestion et d'orchest
 
 ## Concepts
 
-| Concept | Définition |
-|---|---|
-| Organisation | Entreprise cliente (tenant). Toutes les données lui appartiennent et en sont isolées. |
-| Membre | Utilisateur appartenant à une organisation, avec un rôle propre à cette organisation. |
-| Agent numérique | Collaborateur numérique configuré : instructions, modèle IA, outils autorisés, limites, politique d'erreur. Versionné. |
-| Responsabilité | Délégation durable confiée à un agent : objectif, périmètre, règles, déclencheurs, critères de réussite, escalade. |
-| Tâche (exécution) | Une exécution concrète, ponctuelle ou issue d'une responsabilité, avec ses étapes, résultats, erreurs et consommation. |
-| Outil | Capacité d'action ou de lecture exposée aux agents (ex. envoyer un e-mail), soumise à une politique. |
+| Concept            | Définition                                                                                                                                                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Organisation       | Entreprise cliente (tenant). Toutes les données lui appartiennent et en sont isolées.                                                                                                                                    |
+| Membre             | Utilisateur appartenant à une organisation, avec un rôle propre à cette organisation.                                                                                                                                    |
+| Agent numérique    | Collaborateur numérique configuré : instructions, modèle IA, outils autorisés, limites, politique d'erreur. Versionné.                                                                                                   |
+| Responsabilité     | Délégation durable confiée à un agent : objectif, périmètre, règles, déclencheurs, critères de réussite, escalade.                                                                                                       |
+| Tâche (exécution)  | Une exécution concrète, ponctuelle ou issue d'une responsabilité, avec ses étapes, résultats, erreurs et consommation.                                                                                                   |
+| Outil              | Capacité d'action ou de lecture exposée aux agents (ex. envoyer un e-mail), soumise à une politique.                                                                                                                     |
 | Politique d'action | `lecture seule` · `préparation sans exécution` · `exécution automatique dans un périmètre limité` · `approbation obligatoire` · `interdite`. Elle peut comporter des conditions, comme un seuil de montant configurable. |
-| Approbation | Décision humaine liée à une action précise et à ses paramètres. Elle devient invalide si ceux-ci changent. |
+| Approbation        | Décision humaine liée à une action précise et à ses paramètres. Elle devient invalide si ceux-ci changent.                                                                                                               |
 
 ## Persona principal
 

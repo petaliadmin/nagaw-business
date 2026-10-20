@@ -82,14 +82,14 @@ Les contenus externes (e-mails, documents) sont injectés dans le contexte comme
 
 ## 5. Rôles et permissions (proposition initiale)
 
-| Permission | owner | admin | member | viewer |
-|---|:-:|:-:|:-:|:-:|
-| Lire les données de l'organisation | ✔ | ✔ | ✔ | ✔ |
-| Gérer agents et responsabilités | ✔ | ✔ | ✔ | |
-| Lancer / annuler des tâches | ✔ | ✔ | ✔ | |
-| Approuver des actions | ✔ | ✔ | configurable | |
-| Gérer intégrations et politiques | ✔ | ✔ | | |
-| Gérer membres et invitations | ✔ | ✔ | | |
-| Abonnement, suppression de l'organisation | ✔ | | | |
+| Permission                                | owner | admin |    member    | viewer |
+| ----------------------------------------- | :---: | :---: | :----------: | :----: |
+| Lire les données de l'organisation        |   ✔   |   ✔   |      ✔       |   ✔    |
+| Gérer agents et responsabilités           |   ✔   |   ✔   |      ✔       |        |
+| Lancer / annuler des tâches               |   ✔   |   ✔   |      ✔       |        |
+| Approuver des actions                     |   ✔   |   ✔   | configurable |        |
+| Gérer intégrations et politiques          |   ✔   |   ✔   |              |        |
+| Gérer membres et invitations              |   ✔   |   ✔   |              |        |
+| Abonnement, suppression de l'organisation |   ✔   |       |              |        |
 
 L'administration plateforme utilise une table séparée (`platform_admins`) et des endpoints `/api/v1/admin/*`. Elle ne donne **pas** accès au contenu métier des organisations.

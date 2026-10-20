@@ -4,17 +4,51 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
 ## Phase 0 — Audit du dépôt et plan d'exécution
 
-- **Objectif** : comprendre l'existant et définir le plan.
-- **Statut** : terminée, **en attente de validation du propriétaire**.
-- **Constat** : le dépôt GitHub était vide (aucun commit, aucune branche). Il n'y avait rien à exécuter, à corriger ou à préserver.
-- **Fonctionnalités terminées** : aucune fonctionnalité applicative (phase documentaire).
-- **Fichiers principaux** : `docs/AUDIT_PHASE_0.md`, `docs/DECISIONS.md`, `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/SECURITY.md`, `docs/TESTING.md`, `docs/ROADMAP.md`, `docs/PRODUCT_SPEC.md`, `docs/API.md`, `docs/DEPLOYMENT.md`, `docs/OPERATIONS.md`, `README.md`, `CLAUDE.md`, `.gitignore`.
-- **Tests exécutés** : aucun, faute de code. Vérifications d'accès au dépôt : `git ls-remote`, API GitHub (`409 Git Repository is empty`).
-- **Problèmes connus** : la branche de travail devient la branche par défaut du dépôt (voir l'audit, § 6).
-- **Configuration nécessaire** : création de `main` et protection de branche ; réponses aux questions Q1 à Q8 de l'audit.
-- **Critères d'acceptation restants** : validation des ADR 001 à 010 et du périmètre MVP par le propriétaire.
-- **Prochaine action recommandée** : Phase 1, socle technique.
+- **Statut** : **validée** par le propriétaire le 2026-10-20, avec les ajustements suivants : IA reportée, API sur Vercel, interface en français uniquement.
+- **Constat** : le dépôt était vide. Les livrables sont dans `docs/AUDIT_PHASE_0.md` et les ADR dans `docs/DECISIONS.md`.
 
-## Phases 1 à 15
+## Phase 1 — Socle technique
+
+- **Objectif** : disposer d'un projet stable, outillé et vérifiable automatiquement.
+- **Statut** : livrée, **en attente de validation**.
+- **Fonctionnalités terminées** :
+  - monorepo pnpm : `apps/web`, `apps/api`, `packages/shared` ;
+  - API NestJS 12 :
+    - préfixe `/api/v1` ;
+    - configuration validée par zod au démarrage, qui échoue immédiatement si elle est invalide ;
+    - logs JSON pino avec identifiant de requête et masquage de `Authorization` et des cookies ;
+    - filtre d'erreurs global au format documenté, sans fuite de détails internes ;
+    - en-têtes de sécurité (helmet) et CORS limité à une liste d'origines ;
+    - Swagger sur `/api/v1/docs`, hors production ;
+    - `GET /api/v1/health` ;
+  - web Next.js 16 : page d'accueil en français, qui annonce honnêtement que la plateforme est en construction et affiche l'état **réel** de l'API ;
+  - contrats partagés (`@nagaw/shared`) : schémas zod de l'enveloppe d'erreur et de la réponse de santé ;
+  - CI GitHub Actions : format, lint, types, tests unitaires et d'intégration, build et scan de secrets (gitleaks) ;
+  - projets Vercel `nagaw-web` et `nagaw-api` créés et reliés au dépôt.
+- **Tests exécutés** :
+
+  | Commande                | Résultat                                 |
+  | ----------------------- | ---------------------------------------- |
+  | `pnpm format:check`     | OK                                       |
+  | `pnpm lint`             | OK                                       |
+  | `pnpm typecheck`        | OK                                       |
+  | `pnpm test`             | 10 tests OK (shared 2, api 3, web 5)     |
+  | `pnpm test:integration` | 5 tests OK (pipeline HTTP réel de l'API) |
+  | `pnpm build`            | OK                                       |
+
+  Tests manuels : API démarrée, `health` → 200, route inconnue → 404 au format documenté, Swagger → 200. Page web rendue avec l'API démarrée (« API opérationnelle ») puis arrêtée (« API indisponible »).
+
+  La CI GitHub Actions ne s'exécutera qu'à l'ouverture d'une PR ou sur `main`.
+
+- **Problèmes connus** :
+  - **projet Supabase non créé** : l'organisation `petaliadmin` a atteint la limite de 2 projets gratuits actifs ;
+  - Vercel Authentication protège les URL `*.vercel.app` : l'appel serveur du web vers l'API recevra une réponse 401 tant que ce point n'est pas réglé (voir `docs/DEPLOYMENT.md`) ;
+  - la branche de production Vercel est la branche par défaut GitHub, aujourd'hui `claude/beautiful-cerf-cbbkzm` ;
+  - Node local 22.22.0 : `@nestjs/schematics` déclare `^22.22.3`. Ce n'est qu'un avertissement, la CI et Vercel utilisant Node 24.
+- **Configuration encore nécessaire** : choix pour Supabase (voir le rapport), création et protection de `main`, choix de la protection de l'API.
+- **Critères d'acceptation restants** : vérification d'un premier déploiement Vercel réussi.
+- **Prochaine action recommandée** : Phase 2 (base de données, Auth, multi-tenant), une fois le projet Supabase disponible.
+
+## Phases 2 à 15
 
 Non commencées.

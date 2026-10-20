@@ -22,4 +22,17 @@
 
 ## Commandes
 
-Elles seront définies en Phase 1 (`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`).
+À exécuter depuis la racine, toutes vertes avant chaque commit :
+
+```
+pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration && pnpm build
+```
+
+## Conventions
+
+- L'interface est en français uniquement (ADR-012), sans bibliothèque i18n.
+- L'IA est reportée (ADR-007) : aucun fournisseur à intégrer sans décision du propriétaire.
+- API : modules ESM, donc des imports relatifs suffixés `.js`. Les tests unitaires s'écrivent dans `src/**/*.spec.ts`, les tests d'intégration dans `test/**/*.integration-spec.ts`. `setupApp()` est partagé entre `main.ts` et les tests.
+- Web : Next.js 16 avec Cache Components. Lire `apps/web/node_modules/next/dist/docs/` avant d'utiliser une API Next.js. Une donnée dynamique doit être placée sous `<Suspense>`.
+- Contrats partagés : `packages/shared`, à reconstruire (`pnpm --filter @nagaw/shared build`) avant le typecheck des applications.
+- Hébergement : tout sur Vercel (ADR-010). Pas de processus permanent, le traitement asynchrone suit ADR-006.

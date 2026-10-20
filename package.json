@@ -1,0 +1,21 @@
+{
+  "name": "nagaw-business",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @nagaw/shared build && pnpm --parallel --filter @nagaw/web --filter @nagaw/api dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm --filter @nagaw/shared build && pnpm -r typecheck",
+    "test": "pnpm --filter @nagaw/shared build && pnpm -r test",
+    "test:integration": "pnpm --filter @nagaw/shared build && pnpm --filter @nagaw/api test:integration",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2"
+  }
+}
