@@ -36,19 +36,19 @@ Cette décision sera prise en Phase 2.
 
 ## Variables d'environnement
 
-| Variable                                                           | Projet        | Secret  | Valeur configurée              | Phase |
-| ------------------------------------------------------------------ | ------------- | :-----: | ------------------------------ | ----- |
-| `API_URL`                                                          | web (serveur) |   non   | `https://nagaw-api.vercel.app` | 1     |
-| `APP_ENV`                                                          | api           |   non   | `production` / `preview`       | 1     |
-| `LOG_LEVEL`                                                        | api           |   non   | `info`                         | 1     |
-| `CORS_ORIGINS`                                                     | api           |   non   | `https://nagaw-web.vercel.app` | 1     |
-| `APP_VERSION`                                                      | api           |   non   | non défini (`dev`)             | 1     |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | web           |   non   | —                              | 2     |
-| `SUPABASE_URL` (JWKS dérivé)                                       | api           |   non   | —                              | 2     |
-| `DATABASE_URL` (pooler, mode transaction)                          | api           | **oui** | —                              | 2     |
-| `CRON_SECRET`                                                      | api           | **oui** | —                              | 7     |
-| `CREDENTIALS_ENCRYPTION_KEY`                                       | api           | **oui** | —                              | 9     |
-| `EMAIL_PROVIDER_API_KEY`                                           | api           | **oui** | —                              | 4 / 9 |
+| Variable                                                           | Projet        | Secret  | Valeur configurée                                                   | Phase |
+| ------------------------------------------------------------------ | ------------- | :-----: | ------------------------------------------------------------------- | ----- |
+| `API_URL`                                                          | web (serveur) |   non   | `https://nagaw-api-petalia.vercel.app`                              | 1     |
+| `APP_ENV`                                                          | api           |   non   | `production` / `preview`                                            | 1     |
+| `LOG_LEVEL`                                                        | api           |   non   | `info`                                                              | 1     |
+| `CORS_ORIGINS`                                                     | api           |   non   | `https://nagaw-web.vercel.app,https://nagaw-web-petalia.vercel.app` | 1     |
+| `APP_VERSION`                                                      | api           |   non   | non défini (`dev`)                                                  | 1     |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | web           |   non   | —                                                                   | 2     |
+| `SUPABASE_URL` (JWKS dérivé)                                       | api           |   non   | —                                                                   | 2     |
+| `DATABASE_URL` (pooler, mode transaction)                          | api           | **oui** | —                                                                   | 2     |
+| `CRON_SECRET`                                                      | api           | **oui** | —                                                                   | 7     |
+| `CREDENTIALS_ENCRYPTION_KEY`                                       | api           | **oui** | —                                                                   | 9     |
+| `EMAIL_PROVIDER_API_KEY`                                           | api           | **oui** | —                                                                   | 4 / 9 |
 
 Les fichiers `apps/*/.env.example` listent les variables locales, sans valeurs secrètes. Les secrets se saisissent dans Vercel (type _Sensitive_) et ne sont jamais commités.
 

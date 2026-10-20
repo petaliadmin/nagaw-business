@@ -32,7 +32,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   | `pnpm format:check`     | OK                                       |
   | `pnpm lint`             | OK                                       |
   | `pnpm typecheck`        | OK                                       |
-  | `pnpm test`             | 10 tests OK (shared 2, api 3, web 5)     |
+  | `pnpm test`             | 15 tests OK (shared 2, api 7, web 6)     |
   | `pnpm test:integration` | 5 tests OK (pipeline HTTP réel de l'API) |
   | `pnpm build`            | OK                                       |
 
