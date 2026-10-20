@@ -36,11 +36,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
+      const payload = exception.getResponse();
+      const explicit = readExplicitError(payload);
       const body: ApiError = {
         error: {
-          code: STATUS_CODES[status] ?? `HTTP_${status}`,
+          code: explicit?.code ?? STATUS_CODES[status] ?? `HTTP_${status}`,
           message: extractMessage(exception),
           requestId,
+          ...(explicit?.details ? { details: explicit.details } : {}),
         },
       };
       if (status >= 500) {
@@ -60,6 +63,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
     };
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json(body);
   }
+}
+
+function readExplicitError(
+  payload: unknown,
+): { code: string; details?: unknown[] } | undefined {
+  if (payload === null || typeof payload !== 'object') return undefined;
+  const { code, details } = payload as { code?: unknown; details?: unknown };
+  if (typeof code !== 'string') return undefined;
+  return { code, details: Array.isArray(details) ? details : undefined };
 }
 
 function extractMessage(exception: HttpException): string {

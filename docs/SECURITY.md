@@ -1,6 +1,6 @@
 # Sécurité
 
-> **État** : exigences et conception **proposées**. Aucun contrôle n'est encore implémenté. Chaque contrôle sera marqué « implémenté et testé » dans [`IMPLEMENTATION_STATUS.md`](../IMPLEMENTATION_STATUS.md) au moment de sa livraison.
+> **État** : les contrôles de la Phase 2 sont **implémentés et testés** (voir la section ci-dessous). Les autres restent prévus.
 
 ## Principes
 
@@ -27,3 +27,24 @@
 | Abus / brute force                   | Throttling sur auth, invitations, déclenchement de tâches                                               | 2–7   |
 | Explosion des coûts IA               | Quotas par organisation, `max_steps` et `max_tokens` par exécution                                      | 7     |
 | Admin plateforme trop puissant       | Pas d'accès au contenu métier, actions auditées                                                         | 13    |
+
+## Contrôles implémentés (Phase 2)
+
+| Contrôle                                                                                                                                       | Où                                                   | Preuve (test)                                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Vérification JWT : signature JWKS, émetteur, audience, expiration, utilisateurs anonymes et rôle `service_role` refusés                        | `apps/api/src/auth/jwt-verifier.ts`                  | `jwt-verifier.spec.ts` (clés ES256 réelles, jeton falsifié)                                                          |
+| Authentification par défaut sur toutes les routes (`@Public` explicite)                                                                        | `AuthGuard` global                                   | `organizations.integration-spec.ts` › authentication                                                                 |
+| Organisation active vérifiée en base (membre actif, organisation active) ; 404 identique pour un étranger et pour une organisation inexistante | `TenantGuard`                                        | isolation et rôles, 29 tests d'intégration ; un test de mutation (filtre d'appartenance retiré) fait échouer 7 tests |
+| Permissions par rôle côté serveur                                                                                                              | `packages/shared/src/permissions.ts` + `TenantGuard` | role-based permissions                                                                                               |
+| Validation stricte des entrées (`.strict()`), y compris contre l'affectation de champs serveur                                                 | `ZodValidationPipe`                                  | validates input server-side                                                                                          |
+| Aucun accès `anon`/`authenticated` au schéma `app`, aucun `DELETE` pour l'API, audit en ajout seul                                             | migration                                            | `database-security.integration-spec.ts`                                                                              |
+| Audit écrit dans la même transaction que la modification                                                                                       | `AuditService.record(trx, …)`                        | records organization.created / exact changes                                                                         |
+| Redirections après authentification limitées aux chemins internes (_open redirect_)                                                            | `apps/web/src/lib/auth/redirect.ts`                  | `auth.test.ts`, e2e callback                                                                                         |
+| Réponse neutre à la demande de réinitialisation (pas d'énumération des comptes)                                                                | `requestPasswordReset`                               | —                                                                                                                    |
+| Aucune clé privilégiée côté web : seule la clé publishable est utilisée                                                                        | `apps/web/src/lib/env.ts`                            | revue                                                                                                                |
+
+## Risques encore ouverts
+
+- **Limitation de débit** : absente côté API. Supabase Auth limite déjà ses propres routes ; un mécanisme pour l'API (Vercel Firewall ou compteur Postgres) reste à mettre en place.
+- **Envoi d'e-mails** : le SMTP par défaut de Supabase est très limité. Un SMTP dédié est requis avant toute ouverture aux utilisateurs.
+- **TLS vers Postgres** : `DATABASE_SSL=require` chiffre la connexion sans vérifier le certificat. `verify-full` avec le certificat CA Supabase est recommandé.

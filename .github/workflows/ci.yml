@@ -16,6 +16,21 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Throwaway CI database, not a secret.
+      TEST_DATABASE_ADMIN_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,6 +50,8 @@ jobs:
       - run: pnpm test
       - run: pnpm test:integration
       - run: pnpm build
+      - run: pnpm --filter @nagaw/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @nagaw/web test:e2e
 
       - name: Scan for committed secrets
         uses: gitleaks/gitleaks-action@v2

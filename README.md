@@ -6,7 +6,7 @@ Plateforme SaaS multi-entreprises pour centraliser les informations d'une entrep
 
 ## État du projet
 
-**Phase 1 (socle technique) livrée. Aucun module métier n'est encore disponible.** Voir [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md).
+**Phase 2 (base de données, authentification, multi-tenant) en cours de validation.** Disponible : création de compte, connexion et création d'organisation. Voir [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md).
 
 ## Documentation
 
@@ -26,14 +26,15 @@ Plateforme SaaS multi-entreprises pour centraliser les informations d'une entrep
 
 ## Stack
 
-Next.js 16 · NestJS 12 · TypeScript 6 · pnpm workspaces · Tailwind 4 · zod · pino · Vitest · GitHub Actions · Vercel. Prévu : Supabase (Postgres, Auth, Storage) et Playwright.
+Next.js 16 · NestJS 12 · TypeScript 6 · pnpm workspaces · Tailwind 4 · zod · pino · Vitest · GitHub Actions · Vercel. Supabase (Postgres, Auth) · Kysely · jose · Playwright.
 
 ## Structure
 
 ```
 apps/web         Next.js (App Router), interface en français
 apps/api         API NestJS, préfixe /api/v1
-packages/shared  contrats partagés (schémas zod)
+packages/shared  contrats partagés (schémas zod, rôles, permissions)
+supabase/        migrations SQL (source de vérité du schéma)
 docs/            documentation
 ```
 
@@ -58,6 +59,7 @@ pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test               # tests unitaires
-pnpm test:integration   # tests d'intégration de l'API
+pnpm test:integration   # tests d'intégration de l'API (Postgres requis, voir docs/TESTING.md)
 pnpm build
+pnpm test:e2e           # Playwright
 ```

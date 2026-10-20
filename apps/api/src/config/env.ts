@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+const optionalUrl = z
+  .string()
+  .trim()
+  .transform((value) => (value === '' ? undefined : value))
+  .pipe(z.url().optional())
+  .optional();
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
@@ -19,6 +26,19 @@ const envSchema = z.object({
         .filter((origin) => origin.length > 0),
     ),
   APP_VERSION: z.string().default('dev'),
+  /** Supabase project URL; the JWKS and token issuer are derived from it. */
+  SUPABASE_URL: optionalUrl,
+  /** Postgres connection string for the `nagaw_api` role (secret). */
+  DATABASE_URL: optionalUrl,
+  /**
+   * disable: local only. require: encrypted, certificate not verified (libpq
+   * semantics). verify-full: encrypted and verified against DATABASE_CA_CERT.
+   */
+  DATABASE_SSL: z
+    .enum(['disable', 'require', 'verify-full'])
+    .default('require'),
+  DATABASE_CA_CERT: z.string().optional(),
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(20).default(3),
 });
 
 export type Env = z.infer<typeof envSchema>;
