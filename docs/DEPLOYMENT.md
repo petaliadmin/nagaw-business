@@ -30,11 +30,11 @@ Commande de build des deux projets : `pnpm --filter @nagaw/shared build && pnpm 
 
 ## Environnements
 
-| Environnement | Web                                | API                                | Base                             |
-| ------------- | ---------------------------------- | ---------------------------------- | -------------------------------- |
-| Local         | `pnpm dev` (port 3000)             | `pnpm dev` (port 3001)             | Supabase CLI (Docker), Phase 2   |
-| Préproduction | Déploiements _preview_ `nagaw-web` | Déploiements _preview_ `nagaw-api` | Projet Supabase `nagaw-business` | `zvswytzuukogmdqyhufn` (organisation `petaliadmin`) | `eu-west-3` (Paris), URL `https://zvswytzuukogmdqyhufn.supabase.co` | Créé ; schéma vide (Phase 2) |
-| Production    | `nagaw-web` production             | `nagaw-api` production             | Projet Supabase `nagaw-business` | `zvswytzuukogmdqyhufn` (organisation `petaliadmin`) | `eu-west-3` (Paris), URL `https://zvswytzuukogmdqyhufn.supabase.co` | Créé ; schéma vide (Phase 2) |
+| Environnement | Web                                | API                                | Base                                                                                        |
+| ------------- | ---------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| Local         | `pnpm dev` (port 3000)             | `pnpm dev` (port 3001)             | Supabase CLI (Docker), Phase 2                                                              |
+| Préproduction | Déploiements _preview_ `nagaw-web` | Déploiements _preview_ `nagaw-api` | Projet Supabase `nagaw-business` (unique pour l'instant)                                    |
+| Production    | `nagaw-web` production             | `nagaw-api` production             | Projet Supabase dédié à créer avant le lancement (Phase 15), **sur autorisation explicite** |
 
 ## Variables d'environnement
 
