@@ -32,7 +32,19 @@ export async function fetchApiHealth(
     return { state: 'down', reason: `HTTP ${response.status}` };
   }
 
-  const parsed = healthResponseSchema.safeParse(await response.json());
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    // A 2xx HTML body typically means an access-protection or login page
+    // answered instead of the API.
+    return {
+      state: 'down',
+      reason: 'Réponse non JSON (protection d’accès ou mauvaise URL ?)',
+    };
+  }
+
+  const parsed = healthResponseSchema.safeParse(body);
   if (!parsed.success) {
     return { state: 'down', reason: 'Réponse de santé invalide' };
   }

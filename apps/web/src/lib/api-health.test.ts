@@ -44,6 +44,23 @@ describe('fetchApiHealth', () => {
     expect(result.state).toBe('down');
   });
 
+  it('returns down when a 2xx response is not JSON (e.g. a login page)', async () => {
+    const result = await fetchApiHealth(
+      'http://api.test',
+      stubFetch(
+        async () =>
+          new Response('<!DOCTYPE html><html></html>', {
+            status: 200,
+            headers: { 'content-type': 'text/html' },
+          }),
+      ),
+    );
+    expect(result).toEqual({
+      state: 'down',
+      reason: 'Réponse non JSON (protection d’accès ou mauvaise URL ?)',
+    });
+  });
+
   it('returns down when the network call fails', async () => {
     const result = await fetchApiHealth(
       'http://api.test',

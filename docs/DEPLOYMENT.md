@@ -10,6 +10,10 @@ Cible : ADR-010 (tout sur Vercel) et ADR-006 (traitement asynchrone compatible V
 | Projet Vercel `nagaw-api` | `prj_0lolA8mrzpJIs1I01ZApAchYhqhh` (équipe `Petalia`) | racine `apps/api`, NestJS, Node 24, région `cdg1`  | Créé, relié à GitHub                                                                   |
 | Projet Supabase           | —                                                     | prévu : `nagaw-business`, `eu-west-3`              | **Non créé** : limite de 2 projets gratuits atteinte dans l'organisation `petaliadmin` |
 
+Domaines de production : `nagaw-web.vercel.app` / `nagaw-web-petalia.vercel.app` et `nagaw-api-petalia.vercel.app`.
+
+Vercel ignore automatiquement le build d'un projet qu'un commit ne touche pas (monorepo) : un déploiement « CANCELED » peut donc être normal.
+
 Commande de build des deux projets : `pnpm --filter @nagaw/shared build && pnpm build`. L'installation se fait depuis la racine du monorepo (`pnpm install --frozen-lockfile`).
 
 **Protection** : Vercel Authentication est active sur toutes les URL `*.vercel.app` (réglage par défaut de l'équipe). Les déploiements ne sont donc accessibles qu'aux membres connectés de l'équipe. Pour que `nagaw-web` puisse appeler `nagaw-api` côté serveur, il faudra, au choix :

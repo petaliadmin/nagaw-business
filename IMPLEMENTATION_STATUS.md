@@ -46,7 +46,10 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - la branche de production Vercel est la branche par défaut GitHub, aujourd'hui `claude/beautiful-cerf-cbbkzm` ;
   - Node local 22.22.0 : `@nestjs/schematics` déclare `^22.22.3`. Ce n'est qu'un avertissement, la CI et Vercel utilisant Node 24.
 - **Configuration encore nécessaire** : choix pour Supabase (voir le rapport), création et protection de `main`, choix de la protection de l'API.
-- **Critères d'acceptation restants** : vérification d'un premier déploiement Vercel réussi.
+- **Déploiements Vercel (2026-10-20)** :
+  - `nagaw-web` : build READY, page servie en 200 (vérifié via l'outil de fetch Vercel). Le bloc « État des services » plantait côté serveur, car l'API protégée renvoyait une page HTML : bug corrigé et couvert par un test de régression.
+  - `nagaw-api` : build READY après correctif. Le vérificateur TypeScript de Vercel résout l'import par défaut de `helmet` différemment ; le problème a été reproduit localement et corrigé par `interopDefault`. **Réponse en exécution non vérifiée** : les appels via l'outil de fetch Vercel ont expiré, aucune invocation n'apparaît dans les logs, et l'URL est protégée par Vercel Authentication.
+- **Critères d'acceptation restants** : vérifier que `GET https://nagaw-api-petalia.vercel.app/api/v1/health` répond 200 une fois la protection de l'API réglée.
 - **Prochaine action recommandée** : Phase 2 (base de données, Auth, multi-tenant), une fois le projet Supabase disponible.
 
 ## Phases 2 à 15
