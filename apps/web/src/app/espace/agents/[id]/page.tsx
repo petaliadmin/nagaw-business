@@ -6,6 +6,7 @@ import {
   type AgentDto,
   type AgentLimitsCaps,
   type AgentVersionDto,
+  type ResponsibilityDto,
 } from '@nagaw/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -19,6 +20,7 @@ import { apiAsUser } from '@/lib/api/server';
 import { formatDateTime } from '@/lib/format';
 import { AGENT_STATUS_LABELS } from '@/lib/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { ResponsibilityList } from '../../responsabilites/responsibility-list';
 import {
   ConfigurationForm,
   IdentityForm,
@@ -62,7 +64,11 @@ async function Agent({ params }: PageProps<'/espace/agents/[id]'>) {
   const canManage = roleHasPermission(organization.role, 'agents.manage');
   const path = `/agents/${encodeURIComponent(id)}`;
 
-  const [agent, versions, limits] = await Promise.all([
+  const canManageResponsibilities = roleHasPermission(
+    organization.role,
+    'responsibilities.manage',
+  );
+  const [agent, versions, limits, responsibilities] = await Promise.all([
     apiAsUser<AgentDto>(accessToken, { path, organizationId: organization.id }),
     apiAsUser<AgentVersionDto[]>(accessToken, {
       path: `${path}/versions`,
@@ -70,6 +76,10 @@ async function Agent({ params }: PageProps<'/espace/agents/[id]'>) {
     }),
     apiAsUser<AgentLimitsCaps>(accessToken, {
       path: '/agents/limits',
+      organizationId: organization.id,
+    }),
+    apiAsUser<ResponsibilityDto[]>(accessToken, {
+      path: `/responsibilities?agentId=${encodeURIComponent(id)}`,
       organizationId: organization.id,
     }),
   ]);
@@ -114,6 +124,31 @@ async function Agent({ params }: PageProps<'/espace/agents/[id]'>) {
           <div className="mt-4">
             <StatusActions organizationId={organization.id} agent={data} />
           </div>
+        )}
+      </Card>
+
+      <Card title="Responsabilités" titleId="agent-responsibilities">
+        {!responsibilities.ok ? (
+          <Alert tone="error">
+            Responsabilités indisponibles : {responsibilities.message}
+          </Alert>
+        ) : responsibilities.data.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Aucune responsabilité n’est confiée à cet agent.
+          </p>
+        ) : (
+          <ResponsibilityList
+            responsibilities={responsibilities.data}
+            label={`Responsabilités de ${data.name}`}
+          />
+        )}
+        {canManageResponsibilities && data.status !== 'archived' && (
+          <Link
+            href={`/espace/responsabilites/nouvelle?agent=${data.id}`}
+            className="mt-3 inline-block text-sm underline"
+          >
+            Confier une responsabilité à cet agent
+          </Link>
         )}
       </Card>
 

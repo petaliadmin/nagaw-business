@@ -4,6 +4,7 @@ import {
   type AuditLogDto,
   type MemberDto,
   type Paginated,
+  type ResponsibilityDto,
 } from '@nagaw/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -21,11 +22,7 @@ import { requireReadyWorkspace } from '@/lib/workspace/load';
 export const metadata: Metadata = { title: 'Vue d’ensemble — Nagaw Business' };
 
 /** Modules announced honestly, without links, until their phase ships. */
-const UPCOMING = [
-  'Responsabilités déléguées',
-  'Tâches et exécutions',
-  'Centre de validation',
-];
+const UPCOMING = ['Tâches et exécutions', 'Centre de validation'];
 
 async function Overview() {
   const workspace = await requireReadyWorkspace();
@@ -33,13 +30,17 @@ async function Overview() {
   const { organization, accessToken } = workspace;
   const canReadAudit = roleHasPermission(organization.role, 'audit.read');
 
-  const [members, agents, audit] = await Promise.all([
+  const [members, agents, responsibilities, audit] = await Promise.all([
     apiAsUser<MemberDto[]>(accessToken, {
       path: '/organizations/current/members',
       organizationId: organization.id,
     }),
     apiAsUser<AgentDto[]>(accessToken, {
       path: '/agents',
+      organizationId: organization.id,
+    }),
+    apiAsUser<ResponsibilityDto[]>(accessToken, {
+      path: '/responsibilities',
       organizationId: organization.id,
     }),
     canReadAudit
@@ -66,13 +67,22 @@ async function Overview() {
 
       <Card title="Votre organisation" titleId="org-summary">
         {members.ok ? (
-          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Stat label="Membres actifs" value={activeMembers.length} />
             <Stat
               label="Agents actifs"
               value={
                 agents.ok
                   ? agents.data.filter((agent) => agent.status === 'active')
+                      .length
+                  : 'indisponible'
+              }
+            />
+            <Stat
+              label="Responsabilités actives"
+              value={
+                responsibilities.ok
+                  ? responsibilities.data.filter((r) => r.status === 'active')
                       .length
                   : 'indisponible'
               }

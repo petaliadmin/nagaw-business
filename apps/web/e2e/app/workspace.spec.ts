@@ -46,7 +46,7 @@ test('overview shows only real data for the active organization', async ({
   );
   // Upcoming modules are announced without links.
   const upcoming = main.getByRole('region', { name: 'Prochainement' });
-  await expect(upcoming.getByText('Responsabilités déléguées')).toBeVisible();
+  await expect(upcoming.getByText('Tâches et exécutions')).toBeVisible();
   await expect(upcoming.getByRole('link')).toHaveCount(0);
 });
 
@@ -255,6 +255,7 @@ test('pages never overflow horizontally', async ({
     '/espace/journal',
     '/espace/parametres',
     '/espace/agents',
+    '/espace/responsabilites',
   ]) {
     await page.goto(path);
     await expect(

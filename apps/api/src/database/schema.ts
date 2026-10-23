@@ -1,4 +1,9 @@
-import type { AgentRoleKey, AgentStatus, ErrorPolicy } from '@nagaw/shared';
+import type {
+  AgentRoleKey,
+  AgentStatus,
+  ErrorPolicy,
+  ResponsibilityStatus,
+} from '@nagaw/shared';
 import type { ColumnType, Generated } from 'kysely';
 
 /**
@@ -34,6 +39,8 @@ export interface OrganizationsTable {
   max_agents: Generated<number>;
   agent_max_steps: Generated<number>;
   agent_max_duration_seconds: Generated<number>;
+  max_responsibilities: Generated<number>;
+  responsibility_max_runs_per_day: Generated<number>;
   created_by: string;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -94,6 +101,26 @@ export interface AgentVersionsTable {
   created_at: ColumnType<Date, never, never>;
 }
 
+export interface ResponsibilitiesTable {
+  id: Generated<string>;
+  organization_id: string;
+  agent_id: string;
+  title: string;
+  objective: Generated<string>;
+  scope: Generated<string>;
+  rules: Generated<string>;
+  success_criteria: Generated<string>;
+  max_runs_per_day: number;
+  escalation_user_id: string | null;
+  // Dates are read back as text (see ResponsibilitiesService).
+  starts_on: string | null;
+  ends_on: string | null;
+  status: Generated<ResponsibilityStatus>;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 export interface AuditLogsTable {
   // bigint comes back from pg as a string.
   id: ColumnType<string, never, never>;
@@ -115,5 +142,6 @@ export interface Database {
   'app.organization_invitations': OrganizationInvitationsTable;
   'app.agents': AgentsTable;
   'app.agent_versions': AgentVersionsTable;
+  'app.responsibilities': ResponsibilitiesTable;
   'app.audit_logs': AuditLogsTable;
 }

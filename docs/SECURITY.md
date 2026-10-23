@@ -68,6 +68,15 @@
 | Outils non disponibles et limites au-delà des plafonds refusés à l'enregistrement                              | `AgentsService.assertSavable`         | refuses tools that are not available yet ; applies the caps                         |
 | Aucun champ serveur (statut, organisation, modèle) accepté à la création                                       | schémas `.strict()`                   | validates input and refuses server-owned fields                                     |
 
+## Contrôles implémentés (Phase 6)
+
+| Contrôle                                                                                   | Où                               | Preuve (test)                                                                         |
+| ------------------------------------------------------------------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------- |
+| Responsabilités toujours lues dans l'organisation de l'appelant ; 404 sinon                | `ResponsibilitiesService.select` | `responsibilities.integration-spec.ts` › isolation (mutation : échoue sans le filtre) |
+| Une responsabilité ne peut être confiée qu'à un agent de la même organisation, même en SQL | clé étrangère composite          | cannot link a responsibility to another organization’s agent, even in SQL             |
+| La personne à prévenir doit être un membre actif de l'organisation                         | `assertEscalation`               | checks the agent, the escalation contact and the caps                                 |
+| Aucune planification ni champ serveur (statut, organisation) accepté                       | schémas `.strict()`              | validates the period, refuses schedules and server-owned fields                       |
+
 ## Risques encore ouverts
 
 - **Limitation de débit** : absente côté API. Supabase Auth limite déjà ses propres routes ; un mécanisme pour l'API (Vercel Firewall ou compteur Postgres) reste à mettre en place.

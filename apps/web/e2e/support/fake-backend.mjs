@@ -11,7 +11,10 @@ import {
   buildAgentBrief,
   canTransition,
   checkAgentConfiguration,
+  canTransitionResponsibility,
   createAgentSchema,
+  createResponsibilitySchema,
+  responsibilityActivationBlockers,
   updateAgentSchema,
 } from '@nagaw/shared';
 import {
@@ -158,6 +161,7 @@ function makeState() {
     invitations: [],
     // { id, organizationId, name, description, roleKey, status, versions }
     agents: [],
+    responsibilities: [],
   };
 }
 let state = makeState();
@@ -278,6 +282,31 @@ function memberChangeRefusal(actor, target, change) {
   if (target.role === 'owner') return 'OWNER_PROTECTED';
   if (change.role === 'owner') return 'OWNER_PROMOTION_FORBIDDEN';
   return null;
+}
+
+const RESPONSIBILITY_CAPS = { maxResponsibilities: 50, maxRunsPerDay: 24 };
+
+function responsibilityDto(r) {
+  const agent = state.agents.find((a) => a.id === r.agentId);
+  const escalation = r.escalationUserId ? userById(r.escalationUserId) : null;
+  return {
+    id: r.id,
+    agent: { id: agent.id, name: agent.name, status: agent.status },
+    title: r.title,
+    objective: r.objective,
+    scope: r.scope,
+    rules: r.rules,
+    successCriteria: r.successCriteria,
+    maxRunsPerDay: r.maxRunsPerDay,
+    escalation: escalation
+      ? { userId: escalation.id, email: escalation.email }
+      : null,
+    startsOn: r.startsOn,
+    endsOn: r.endsOn,
+    status: r.status,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  };
 }
 
 const AGENT_CAPS = { maxAgents: 10, maxSteps: 20, maxDurationSeconds: 300 };
@@ -747,6 +776,137 @@ const server = createServer(async (req, res) => {
       });
       agent.status = body.status;
       return send(res, 200, agentDto(agent));
+    }
+  }
+  if (path === '/api/v1/responsibilities/limits')
+    return send(res, 200, RESPONSIBILITY_CAPS);
+  if (path === '/api/v1/responsibilities' && req.method === 'GET') {
+    const archived = url.searchParams.get('archives') === 'true';
+    const agentId = url.searchParams.get('agentId');
+    return send(
+      res,
+      200,
+      state.responsibilities
+        .filter(
+          (r) =>
+            r.organizationId === orgId &&
+            (!agentId || r.agentId === agentId) &&
+            (archived || r.status !== 'archived'),
+        )
+        .map(responsibilityDto),
+    );
+  }
+  const respRoute =
+    /^\/api\/v1\/responsibilities(?:\/([^/]+)(\/(status|history))?)?$/.exec(
+      path,
+    );
+  if (respRoute) {
+    const existing = respRoute[1]
+      ? state.responsibilities.find(
+          (r) => r.id === respRoute[1] && r.organizationId === orgId,
+        )
+      : null;
+    if (respRoute[1] && !existing)
+      return apiError(
+        res,
+        404,
+        'RESPONSIBILITY_NOT_FOUND',
+        'Responsabilité introuvable.',
+      );
+    const sub = respRoute[3];
+    if (existing && !sub && req.method === 'GET')
+      return send(res, 200, responsibilityDto(existing));
+    if (existing && sub === 'history')
+      return send(
+        res,
+        200,
+        state.audit
+          .filter(
+            (e) =>
+              e.targetType === 'responsibility' && e.targetId === existing.id,
+          )
+          .sort((a, b) => Number(b.id) - Number(a.id))
+          .map((e) => ({
+            id: e.id,
+            action: e.action,
+            actor: { userId: e.actorId, email: userById(e.actorId).email },
+            metadata: e.metadata,
+            createdAt: e.createdAt,
+          })),
+      );
+    if (!canManage) return forbidden(res);
+    const body = await readJson(req);
+    if (sub === 'status') {
+      if (!canTransitionResponsibility(existing.status, body.status))
+        return apiError(
+          res,
+          409,
+          'INVALID_STATUS_TRANSITION',
+          'Ce changement de statut n’est pas possible.',
+        );
+      if (body.status === 'active') {
+        const agent = state.agents.find((a) => a.id === existing.agentId);
+        const blockers = responsibilityActivationBlockers(
+          existing,
+          agent.status,
+          RESPONSIBILITY_CAPS,
+          new Date().toISOString().slice(0, 10),
+        );
+        if (blockers.length)
+          return send(res, 409, {
+            error: {
+              code: 'RESPONSIBILITY_NOT_READY',
+              message: 'La responsabilité ne peut pas être active en l’état.',
+              details: blockers.map((c) => ({
+                path: c.code,
+                message: c.message,
+              })),
+            },
+          });
+      }
+      recordAudit(
+        orgId,
+        user.id,
+        'responsibility.status_changed',
+        existing.id,
+        {
+          from: existing.status,
+          to: body.status,
+        },
+      );
+      existing.status = body.status;
+      return send(res, 200, responsibilityDto(existing));
+    }
+    const parsed = createResponsibilitySchema.safeParse(body);
+    if (!parsed.success) return validation(res, parsed.error.issues);
+    const agent = state.agents.find(
+      (a) => a.id === parsed.data.agentId && a.organizationId === orgId,
+    );
+    if (!agent || agent.status === 'archived')
+      return validation(res, [
+        { path: ['agentId'], message: 'Agent introuvable.' },
+      ]);
+    const data = parsed.data;
+    const now = new Date().toISOString();
+    if (existing && req.method === 'PUT') {
+      Object.assign(existing, data, { updatedAt: now });
+      recordAudit(orgId, user.id, 'responsibility.updated', existing.id, {
+        changes: { title: {} },
+      });
+      return send(res, 200, responsibilityDto(existing));
+    }
+    if (!existing && req.method === 'POST') {
+      const created = {
+        id: randomUUID(),
+        organizationId: orgId,
+        ...data,
+        status: 'draft',
+        createdAt: now,
+        updatedAt: now,
+      };
+      state.responsibilities.push(created);
+      recordAudit(orgId, user.id, 'responsibility.created', created.id, {});
+      return send(res, 201, responsibilityDto(created));
     }
   }
   if (path === '/api/v1/audit-logs') {

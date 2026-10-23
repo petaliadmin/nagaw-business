@@ -225,6 +225,33 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - les plafonds ne sont modifiables que par SQL (quotas par offre en Phase 12).
 - **Prochaine action recommandée** : Phase 6 (responsabilités), autorisée par le propriétaire le 2026-10-23.
 
-## Phases 6 à 15
+## Phase 6 — Responsabilités
 
-Non commencées.
+- **Objectif** : définir des délégations durables confiées à un agent, identifiables, configurables, activables et historisées.
+- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration non appliquée sur Supabase.
+- **Décision du propriétaire en cours de phase (ADR-017)** : l'application reste **100 % manuelle**, sans automatisation ni IA. La planification (fréquence, heure) développée au départ a été **retirée** avant livraison : une responsabilité ne se déclenche qu'à la main.
+- **Fonctionnalités terminées** :
+  - migration `20261023200000_responsibilities.sql` :
+    - `responsibilities` : objectif, périmètre, règles métier, critères de réussite, limite d'exécutions par jour, personne à prévenir, période facultative, statut ;
+    - clé étrangère composite : une responsabilité n'est confiée qu'à un agent de la même organisation ;
+    - plafonds configurables en base : `max_responsibilities` (50), `responsibility_max_runs_per_day` (24) ;
+  - API : liste (filtrable par agent), création, lecture, modification, changement de statut, historique (entrées d'audit), plafonds ;
+  - activation possible seulement avec un agent actif, un objectif, des critères de réussite, une limite sous le plafond et une période non terminée ; une responsabilité active ne peut pas devenir incomplète ;
+  - web : page Responsabilités (liste, archivées à la demande), création (agent présélectionné depuis sa fiche), fiche (résumé, statut, modification, historique lisible), section « Responsabilités » sur la fiche agent, statistique « Responsabilités actives », entrée de navigation.
+- **Défaut trouvé et corrigé pendant la phase** : le formulaire de modification se réinitialisait après l'enregistrement (clé liée à la date de mise à jour), ce qui effaçait le message de confirmation.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                      |
+  | ------------------------------ | --------------------------------------------------------------------------------------------- |
+  | `pnpm test`                    | 92 tests OK (shared 32, api 25, web 35)                                                       |
+  | `pnpm test:integration`        | 73 tests OK, dont 12 nouveaux sur les responsabilités (dont l'isolation inter-organisations)  |
+  | Playwright                     | 75 tests OK, 1 ignoré volontairement (test du menu mobile, sur bureau)                        |
+  | Test de mutation               | Filtre d'organisation retiré dans la lecture des responsabilités : le test d'isolation échoue |
+  | lint, typecheck, build, format | OK                                                                                            |
+
+- **Limites** : rien n'est exécuté (ADR-017) ; les plafonds ne sont modifiables que par SQL.
+- **Prochaine action recommandée** : tester la prévisualisation et valider la Phase 6 ; redéfinir avec le propriétaire le contenu des Phases 7 et suivantes à la lumière d'ADR-017.
+
+## Phases 7 à 15
+
+Non commencées. Les Phases 7 (moteur d'exécution) et 11 (planification) sont à redéfinir (ADR-017).

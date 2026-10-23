@@ -131,3 +131,14 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - les outils sont déclarés dans un registre en code (`packages/shared/src/agents.ts`) ; un outil n'est autorisable que lorsqu'il est implémenté et testé (`available: true`). `email.send` est annoncé, non disponible (Phase 9) ;
   - les plafonds (nombre d'agents, étapes et durée par exécution) sont des colonnes de `organizations`, non modifiables par l'organisation elle-même (préparation des quotas de la Phase 12).
 - **Conséquence** : aucune configuration de modèle n'existe tant qu'un fournisseur n'est pas choisi ; les colonnes `provider`/`model` seront ajoutées à ce moment.
+
+## ADR-017 — Application 100 % manuelle pour l'instant
+
+- **Statut** : Acceptée (décision du propriétaire, 2026-10-23)
+- **Décision** : « pour l'instant l'application doit être 100 % manuelle : pas d'automatisation, ni agent IA ».
+  - Aucune planification, aucun déclenchement automatique, aucune tâche de fond : une personne lance toujours le travail.
+  - Aucun modèle d'IA n'est intégré ni appelé (complète ADR-007).
+  - Les « agents » restent des fiches de configuration (instructions, objectifs, limites) et les responsabilités des délégations décrites et suivies par des personnes.
+- **Conséquences** :
+  - Phase 6 : la planification prévue (fréquence, heure) est retirée ; une responsabilité se déclenche uniquement à la main.
+  - Phase 7 (moteur d'exécution, Vercel Cron) et Phase 11 (tâches planifiées) sont à redéfinir avec le propriétaire avant tout développement ; ADR-006 (traitement asynchrone) est suspendue.
