@@ -228,10 +228,10 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 6 — Responsabilités
 
 - **Objectif** : définir des délégations durables confiées à un agent, identifiables, configurables, activables et historisées.
-- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration non appliquée sur Supabase.
+- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration appliquée sur Supabase le 2026-10-23 (version `20261023210320`, avec l'autorisation du propriétaire).
 - **Décision du propriétaire en cours de phase (ADR-017)** : l'application reste **100 % manuelle**, sans automatisation ni IA. La planification (fréquence, heure) développée au départ a été **retirée** avant livraison : une responsabilité ne se déclenche qu'à la main.
 - **Fonctionnalités terminées** :
-  - migration `20261023200000_responsibilities.sql` :
+  - migration `20261023210320_responsibilities.sql` :
     - `responsibilities` : objectif, périmètre, règles métier, critères de réussite, limite d'exécutions par jour, personne à prévenir, période facultative, statut ;
     - clé étrangère composite : une responsabilité n'est confiée qu'à un agent de la même organisation ;
     - plafonds configurables en base : `max_responsibilities` (50), `responsibility_max_runs_per_day` (24) ;
@@ -250,8 +250,8 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   | lint, typecheck, build, format | OK                                                                                            |
 
 - **Limites** : rien n'est exécuté (ADR-017) ; les plafonds ne sont modifiables que par SQL.
-- **Prochaine action recommandée** : tester la prévisualisation et valider la Phase 6 ; redéfinir avec le propriétaire le contenu des Phases 7 et suivantes à la lumière d'ADR-017.
+- **Prochaine action recommandée** : tester la prévisualisation et valider la Phase 6. Le propriétaire a retenu pour la Phase 7 un **suivi manuel des tâches** ; les fiches agents restent en l'état (2026-10-23).
 
 ## Phases 7 à 15
 
-Non commencées. Les Phases 7 (moteur d'exécution) et 11 (planification) sont à redéfinir (ADR-017).
+Non commencées. Phase 7 redéfinie : suivi manuel des tâches (ADR-017) ; Phase 11 (planification) reportée.

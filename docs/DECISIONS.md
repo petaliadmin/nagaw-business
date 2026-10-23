@@ -141,4 +141,5 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - Les « agents » restent des fiches de configuration (instructions, objectifs, limites) et les responsabilités des délégations décrites et suivies par des personnes.
 - **Conséquences** :
   - Phase 6 : la planification prévue (fréquence, heure) est retirée ; une responsabilité se déclenche uniquement à la main.
-  - Phase 7 (moteur d'exécution, Vercel Cron) et Phase 11 (tâches planifiées) sont à redéfinir avec le propriétaire avant tout développement ; ADR-006 (traitement asynchrone) est suspendue.
+  - Phase 7 redéfinie par le propriétaire : **suivi manuel des tâches** (une personne lance, renseigne et clôt chaque tâche) ; Phase 11 (tâches planifiées) reportée ; ADR-006 (traitement asynchrone) suspendue.
+  - Les fiches agents restent en l'état (configuration sans IA).
