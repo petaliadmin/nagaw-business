@@ -43,12 +43,12 @@ export default function Home() {
           Nagaw Business
         </h1>
         <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-          Des collaborateurs numériques autonomes, auxquels le dirigeant peut
-          déléguer des responsabilités.
+          Organisez votre équipe, confiez des responsabilités et suivez-les,
+          simplement et manuellement.
         </p>
         <p className="text-zinc-600 dark:text-zinc-400">
-          La plateforme est en cours de construction. Seuls la création de
-          compte et d&apos;organisation sont disponibles.
+          La plateforme est en cours de construction : comptes, organisations,
+          équipe et responsabilités sont disponibles.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link

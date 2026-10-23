@@ -1,7 +1,7 @@
 import type {
-  AgentStatus,
   InvitationStatus,
   MemberStatus,
+  ResponsibilityStatus,
   Role,
 } from '@nagaw/shared';
 
@@ -25,6 +25,9 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   'agent.updated': 'Agent renommé ou décrit',
   'agent.configured': 'Configuration d’un agent modifiée',
   'agent.status_changed': 'Statut d’un agent modifié',
+  'responsibility.created': 'Responsabilité créée',
+  'responsibility.updated': 'Responsabilité modifiée',
+  'responsibility.status_changed': 'Statut d’une responsabilité modifié',
 };
 
 /** Human label for an audit action; unknown actions show their raw key. */
@@ -44,9 +47,12 @@ export const INVITATION_STATUS_LABELS: Record<InvitationStatus, string> = {
   expired: 'Expirée',
 };
 
-export const AGENT_STATUS_LABELS: Record<AgentStatus, string> = {
+export const RESPONSIBILITY_STATUS_LABELS: Record<
+  ResponsibilityStatus,
+  string
+> = {
   draft: 'Brouillon',
-  active: 'Actif',
-  suspended: 'Suspendu',
-  archived: 'Archivé',
+  active: 'Active',
+  suspended: 'Suspendue',
+  archived: 'Archivée',
 };

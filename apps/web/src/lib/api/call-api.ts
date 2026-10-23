@@ -14,7 +14,7 @@ export type ApiResult<T> =
 export interface CallApiOptions {
   baseUrl: string | undefined;
   token: string;
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   body?: unknown;
   organizationId?: string;

@@ -5,14 +5,9 @@
 import { createServer } from 'node:http';
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
-  AGENT_ROLE_LABELS,
-  ERROR_POLICY_LABELS,
-  agentConfigurationSchema,
-  buildAgentBrief,
-  canTransition,
-  checkAgentConfiguration,
-  createAgentSchema,
-  updateAgentSchema,
+  canTransitionResponsibility,
+  createResponsibilitySchema,
+  responsibilityActivationBlockers,
 } from '@nagaw/shared';
 import {
   SignJWT,
@@ -157,7 +152,7 @@ function makeState() {
     // { id, organizationId, email, role, status, token, expiresAt, ... }
     invitations: [],
     // { id, organizationId, name, description, roleKey, status, versions }
-    agents: [],
+    responsibilities: [],
   };
 }
 let state = makeState();
@@ -280,29 +275,37 @@ function memberChangeRefusal(actor, target, change) {
   return null;
 }
 
-const AGENT_CAPS = { maxAgents: 10, maxSteps: 20, maxDurationSeconds: 300 };
+const RESPONSIBILITY_CAPS = { maxResponsibilities: 50, maxRunsPerDay: 24 };
 
-function agentDto(agent) {
-  const current = agent.versions.at(-1);
+function responsibilityDto(r) {
+  const assignee = userById(r.assigneeUserId);
+  const membership = state.memberships.find(
+    (m) =>
+      m.organizationId === r.organizationId && m.userId === r.assigneeUserId,
+  );
+  const escalation = r.escalationUserId ? userById(r.escalationUserId) : null;
   return {
-    id: agent.id,
-    name: agent.name,
-    description: agent.description,
-    roleKey: agent.roleKey,
-    status: agent.status,
-    createdAt: agent.createdAt,
-    updatedAt: agent.updatedAt,
-    currentVersion: current,
-  };
-}
-
-function newVersion(agent, configuration, user) {
-  return {
-    id: randomUUID(),
-    version: agent.versions.length + 1,
-    ...configuration,
-    createdAt: new Date().toISOString(),
-    createdBy: { userId: user.id, email: user.email },
+    id: r.id,
+    assignee: {
+      userId: assignee.id,
+      email: assignee.email,
+      displayName: null,
+      status: membership.status,
+    },
+    title: r.title,
+    objective: r.objective,
+    scope: r.scope,
+    rules: r.rules,
+    successCriteria: r.successCriteria,
+    maxRunsPerDay: r.maxRunsPerDay,
+    escalation: escalation
+      ? { userId: escalation.id, email: escalation.email }
+      : null,
+    startsOn: r.startsOn,
+    endsOn: r.endsOn,
+    status: r.status,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
   };
 }
 
@@ -636,87 +639,66 @@ const server = createServer(async (req, res) => {
       joinedAt: target.joinedAt,
     });
   }
-  if (path === '/api/v1/agents/limits') return send(res, 200, AGENT_CAPS);
-  if (path === '/api/v1/agents' && req.method === 'GET') {
+  if (path === '/api/v1/responsibilities/limits')
+    return send(res, 200, RESPONSIBILITY_CAPS);
+  if (path === '/api/v1/responsibilities' && req.method === 'GET') {
     const archived = url.searchParams.get('archives') === 'true';
+    const assigneeUserId = url.searchParams.get('assigneeUserId');
     return send(
       res,
       200,
-      state.agents
+      state.responsibilities
         .filter(
-          (a) =>
-            a.organizationId === orgId && (archived || a.status !== 'archived'),
+          (r) =>
+            r.organizationId === orgId &&
+            (!assigneeUserId || r.assigneeUserId === assigneeUserId) &&
+            (archived || r.status !== 'archived'),
         )
-        .map(agentDto),
+        .map(responsibilityDto),
     );
   }
-  if (path === '/api/v1/agents' && req.method === 'POST') {
-    if (!canManage) return forbidden(res);
-    const parsed = createAgentSchema.safeParse(await readJson(req));
-    if (!parsed.success) return validation(res, parsed.error.issues);
-    const { configuration, ...identity } = parsed.data;
-    const now = new Date().toISOString();
-    const agent = {
-      id: randomUUID(),
-      organizationId: orgId,
-      ...identity,
-      status: 'draft',
-      createdAt: now,
-      updatedAt: now,
-      versions: [],
-    };
-    agent.versions.push(newVersion(agent, configuration, user));
-    state.agents.push(agent);
-    recordAudit(orgId, user.id, 'agent.created', agent.id, {});
-    return send(res, 201, agentDto(agent));
-  }
-  const agentRoute =
-    /^\/api\/v1\/agents\/([^/]+)(\/(versions|status|test))?$/.exec(path);
-  if (agentRoute) {
-    const agent = state.agents.find(
-      (a) => a.id === agentRoute[1] && a.organizationId === orgId,
+  const respRoute =
+    /^\/api\/v1\/responsibilities(?:\/([^/]+)(\/(status|history))?)?$/.exec(
+      path,
     );
-    if (!agent)
-      return apiError(res, 404, 'AGENT_NOT_FOUND', 'Agent introuvable.');
-    const sub = agentRoute[3];
-    if (!sub && req.method === 'GET') return send(res, 200, agentDto(agent));
-    if (sub === 'versions' && req.method === 'GET')
-      return send(res, 200, [...agent.versions].reverse());
-    if (sub === 'test') {
-      const current = agent.versions.at(-1);
-      const checks = checkAgentConfiguration(agent, current, AGENT_CAPS);
-      return send(res, 200, {
-        ready: checks.every((c) => c.severity !== 'error'),
-        checks,
-        brief: buildAgentBrief(agent, current, {
-          role: AGENT_ROLE_LABELS,
-          errorPolicy: ERROR_POLICY_LABELS,
-        }),
-        testedVersion: current.version,
-      });
-    }
+  if (respRoute) {
+    const existing = respRoute[1]
+      ? state.responsibilities.find(
+          (r) => r.id === respRoute[1] && r.organizationId === orgId,
+        )
+      : null;
+    if (respRoute[1] && !existing)
+      return apiError(
+        res,
+        404,
+        'RESPONSIBILITY_NOT_FOUND',
+        'Responsabilité introuvable.',
+      );
+    const sub = respRoute[3];
+    if (existing && !sub && req.method === 'GET')
+      return send(res, 200, responsibilityDto(existing));
+    if (existing && sub === 'history')
+      return send(
+        res,
+        200,
+        state.audit
+          .filter(
+            (e) =>
+              e.targetType === 'responsibility' && e.targetId === existing.id,
+          )
+          .sort((a, b) => Number(b.id) - Number(a.id))
+          .map((e) => ({
+            id: e.id,
+            action: e.action,
+            actor: { userId: e.actorId, email: userById(e.actorId).email },
+            metadata: e.metadata,
+            createdAt: e.createdAt,
+          })),
+      );
     if (!canManage) return forbidden(res);
-    if (agent.status === 'archived' && sub !== 'status')
-      return apiError(res, 409, 'AGENT_ARCHIVED', 'Cet agent est archivé.');
     const body = await readJson(req);
-    if (!sub && req.method === 'PATCH') {
-      const parsed = updateAgentSchema.safeParse(body);
-      if (!parsed.success) return validation(res, parsed.error.issues);
-      Object.assign(agent, parsed.data, {
-        updatedAt: new Date().toISOString(),
-      });
-      recordAudit(orgId, user.id, 'agent.updated', agent.id, {});
-      return send(res, 200, agentDto(agent));
-    }
-    if (sub === 'versions' && req.method === 'POST') {
-      const parsed = agentConfigurationSchema.safeParse(body);
-      if (!parsed.success) return validation(res, parsed.error.issues);
-      agent.versions.push(newVersion(agent, parsed.data, user));
-      recordAudit(orgId, user.id, 'agent.configured', agent.id, {});
-      return send(res, 201, agentDto(agent));
-    }
-    if (sub === 'status' && req.method === 'POST') {
-      if (!canTransition(agent.status, body.status))
+    if (sub === 'status') {
+      if (!canTransitionResponsibility(existing.status, body.status))
         return apiError(
           res,
           409,
@@ -724,29 +706,77 @@ const server = createServer(async (req, res) => {
           'Ce changement de statut n’est pas possible.',
         );
       if (body.status === 'active') {
-        const errors = checkAgentConfiguration(
-          agent,
-          agent.versions.at(-1),
-          AGENT_CAPS,
-        ).filter((c) => c.severity === 'error');
-        if (errors.length)
+        const assignee = state.memberships.find(
+          (m) =>
+            m.organizationId === orgId && m.userId === existing.assigneeUserId,
+        );
+        const blockers = responsibilityActivationBlockers(
+          existing,
+          assignee.status,
+          RESPONSIBILITY_CAPS,
+          new Date().toISOString().slice(0, 10),
+        );
+        if (blockers.length)
           return send(res, 409, {
             error: {
-              code: 'AGENT_NOT_READY',
-              message: 'La configuration de l’agent est incomplète.',
-              details: errors.map((c) => ({
+              code: 'RESPONSIBILITY_NOT_READY',
+              message: 'La responsabilité ne peut pas être active en l’état.',
+              details: blockers.map((c) => ({
                 path: c.code,
                 message: c.message,
               })),
             },
           });
       }
-      recordAudit(orgId, user.id, 'agent.status_changed', agent.id, {
-        from: agent.status,
-        to: body.status,
+      recordAudit(
+        orgId,
+        user.id,
+        'responsibility.status_changed',
+        existing.id,
+        {
+          from: existing.status,
+          to: body.status,
+        },
+      );
+      existing.status = body.status;
+      return send(res, 200, responsibilityDto(existing));
+    }
+    const parsed = createResponsibilitySchema.safeParse(body);
+    if (!parsed.success) return validation(res, parsed.error.issues);
+    const assignee = state.memberships.find(
+      (m) =>
+        m.organizationId === orgId &&
+        m.userId === parsed.data.assigneeUserId &&
+        m.status === 'active',
+    );
+    if (!assignee)
+      return validation(res, [
+        {
+          path: ['assigneeUserId'],
+          message: 'La personne responsable doit être un membre actif.',
+        },
+      ]);
+    const data = parsed.data;
+    const now = new Date().toISOString();
+    if (existing && req.method === 'PUT') {
+      Object.assign(existing, data, { updatedAt: now });
+      recordAudit(orgId, user.id, 'responsibility.updated', existing.id, {
+        changes: { title: {} },
       });
-      agent.status = body.status;
-      return send(res, 200, agentDto(agent));
+      return send(res, 200, responsibilityDto(existing));
+    }
+    if (!existing && req.method === 'POST') {
+      const created = {
+        id: randomUUID(),
+        organizationId: orgId,
+        ...data,
+        status: 'draft',
+        createdAt: now,
+        updatedAt: now,
+      };
+      state.responsibilities.push(created);
+      recordAudit(orgId, user.id, 'responsibility.created', created.id, {});
+      return send(res, 201, responsibilityDto(created));
     }
   }
   if (path === '/api/v1/audit-logs') {
