@@ -29,6 +29,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "jose": "^6.2.13",
     "tailwindcss": "^4",
     "typescript": "~6.0.3",
     "vitest": "^4.1.2"

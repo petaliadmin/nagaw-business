@@ -11,9 +11,18 @@
 
 Les jetons sont signés par une vraie paire de clés ES256 locale, qui remplace le JWKS du projet.
 
-## Limites des tests end-to-end
+## Tests end-to-end (Playwright)
 
-Les tests Playwright tournent sur le build de production **sans Supabase ni API configurés**. Ils couvrent le rendu, la validation côté serveur, les états « non configuré » et la protection contre les redirections externes. Le parcours complet (inscription, confirmation par e-mail, connexion, création d'organisation) dépend d'un vrai projet Supabase et d'une boîte e-mail : il se vérifie manuellement sur le déploiement Vercel (voir `IMPLEMENTATION_STATUS.md`).
+Ils tournent sur le build de production, servi par deux serveurs (`apps/web/playwright.config.ts`) :
+
+| Serveur   | Configuration                                                                 | Projets                          | Couvre                                                                                            |
+| --------- | ----------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| port 3100 | ni Supabase ni API                                                            | `chromium`, `mobile`             | pages publiques, validation côté serveur, états « non configuré », redirections externes refusées |
+| port 3101 | faux Supabase Auth et fausse API (`e2e/support/fake-backend.mjs`, port 54400) | `app-desktop`, puis `app-mobile` | espace connecté complet, sur ordinateur et sur mobile                                             |
+
+Le faux backend remplace uniquement les deux frontières externes : il publie un JWKS et émet de **vrais jetons ES256**, que le web vérifie exactement comme en production. Il applique aussi les mêmes règles d'appartenance que le `TenantGuard`. Le code applicatif ne contient **aucun contournement** d'authentification.
+
+Le parcours réel (e-mail de confirmation compris) dépend d'un vrai projet Supabase et d'une boîte e-mail. Il a été vérifié manuellement en production le 2026-10-20.
 
 ## Niveaux
 

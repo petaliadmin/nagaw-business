@@ -1,108 +1,141 @@
-import type { MeDto } from '@nagaw/shared';
+import {
+  roleHasPermission,
+  type AuditLogDto,
+  type MemberDto,
+  type Paginated,
+} from '@nagaw/shared';
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { connection } from 'next/server';
+import Link from 'next/link';
 import { Suspense } from 'react';
-import { apiAsUser, getSession } from '@/lib/api/server';
-import { signOut } from '../(auth)/actions';
-import { CreateOrganizationForm } from './create-organization-form';
+import { Alert } from '@/components/ui/alert';
+import { Card, Stat } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageFallback } from '@/components/ui/page-fallback';
+import { PageHeader } from '@/components/ui/page-header';
+import { apiAsUser } from '@/lib/api/server';
+import { formatDate, formatDateTime } from '@/lib/format';
+import { ROLE_LABELS, auditActionLabel } from '@/lib/labels';
+import { requireReadyWorkspace } from '@/lib/workspace/load';
 
-export const metadata: Metadata = { title: 'Mon espace — Nagaw Business' };
+export const metadata: Metadata = { title: 'Vue d’ensemble — Nagaw Business' };
 
-const ROLE_LABELS: Record<string, string> = {
-  owner: 'Propriétaire',
-  admin: 'Administrateur',
-  member: 'Membre',
-  viewer: 'Lecteur',
-};
+/** Modules announced honestly, without links, until their phase ships. */
+const UPCOMING = [
+  'Agents numériques',
+  'Responsabilités déléguées',
+  'Tâches et exécutions',
+  'Centre de validation',
+];
 
-async function Workspace() {
-  // Always per request, even when Supabase is not configured at build time.
-  await connection();
-  const session = await getSession();
-  if (session.status === 'not-configured') {
-    return (
-      <p role="alert">
-        L’authentification n’est pas encore configurée sur cet environnement.
-      </p>
-    );
-  }
-  if (session.status === 'signed-out') redirect('/connexion');
+async function Overview() {
+  const workspace = await requireReadyWorkspace();
+  if (!workspace) return null;
+  const { organization, accessToken } = workspace;
+  const canReadAudit = roleHasPermission(organization.role, 'audit.read');
 
-  const me = await apiAsUser<MeDto>(session.accessToken, { path: '/me' });
-  if (!me.ok) {
-    return (
-      <p role="alert" className="text-red-700 dark:text-red-400">
-        Impossible de charger votre espace : {me.message}
-      </p>
-    );
-  }
+  const [members, audit] = await Promise.all([
+    apiAsUser<MemberDto[]>(accessToken, {
+      path: '/organizations/current/members',
+      organizationId: organization.id,
+    }),
+    canReadAudit
+      ? apiAsUser<Paginated<AuditLogDto>>(accessToken, {
+          path: '/audit-logs?limit=5',
+          organizationId: organization.id,
+        })
+      : null,
+  ]);
+
+  const activeMembers = members.ok
+    ? members.data.filter((member) => member.status === 'active')
+    : [];
+  const emailById = new Map(
+    members.ok ? members.data.map((m) => [m.userId, m.email]) : [],
+  );
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Connecté en tant que{' '}
-          <strong className="text-zinc-900 dark:text-zinc-100">
-            {me.data.email}
-          </strong>
-        </p>
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
-          >
-            Se déconnecter
-          </button>
-        </form>
-      </div>
+    <>
+      <PageHeader
+        title={organization.name}
+        description={`Créée le ${formatDate(organization.createdAt, organization.timezone)}`}
+      />
 
-      {me.data.organizations.length === 0 ? (
-        <section aria-labelledby="first-org" className="flex flex-col gap-4">
-          <h2 id="first-org" className="text-xl font-semibold">
-            Créez votre organisation
-          </h2>
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Votre organisation regroupe votre équipe, vos données et, plus tard,
-            vos collaborateurs numériques.
-          </p>
-          <CreateOrganizationForm />
-        </section>
-      ) : (
-        <section aria-labelledby="orgs" className="flex flex-col gap-4">
-          <h2 id="orgs" className="text-xl font-semibold">
-            Vos organisations
-          </h2>
-          <ul className="flex flex-col gap-2">
-            {me.data.organizations.map((org) => (
-              <li
-                key={org.id}
-                className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
-              >
-                <span className="font-medium">{org.name}</span>
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {ROLE_LABELS[org.role] ?? org.role}
-                </span>
-              </li>
-            ))}
-          </ul>
+      <Card title="Votre organisation" titleId="org-summary">
+        {members.ok ? (
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Stat label="Membres actifs" value={activeMembers.length} />
+            <Stat label="Votre rôle" value={ROLE_LABELS[organization.role]} />
+            <Stat
+              label="Fuseau horaire · devise"
+              value={`${organization.timezone} · ${organization.defaultCurrency}`}
+            />
+          </dl>
+        ) : (
+          <Alert tone="error">Membres indisponibles : {members.message}</Alert>
+        )}
+      </Card>
+
+      <Card title="Activité récente" titleId="recent-activity">
+        {!audit ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            La gestion de l’équipe et les modules métier arriveront dans les
-            prochaines phases.
+            Votre rôle ne donne pas accès au journal d’audit.
           </p>
-        </section>
-      )}
-    </div>
+        ) : !audit.ok ? (
+          <Alert tone="error">Activité indisponible : {audit.message}</Alert>
+        ) : audit.data.data.length === 0 ? (
+          <EmptyState title="Aucune activité pour le moment" />
+        ) : (
+          <div className="flex flex-col gap-3">
+            <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
+              {audit.data.data.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="flex flex-wrap justify-between gap-2 py-2 text-sm"
+                >
+                  <span>
+                    {auditActionLabel(entry.action)}
+                    {entry.actorId && emailById.has(entry.actorId) && (
+                      <span className="text-zinc-600 dark:text-zinc-400">
+                        {' '}
+                        — {emailById.get(entry.actorId)}
+                      </span>
+                    )}
+                  </span>
+                  <time
+                    dateTime={entry.createdAt}
+                    className="text-zinc-600 dark:text-zinc-400"
+                  >
+                    {formatDateTime(entry.createdAt, organization.timezone)}
+                  </time>
+                </li>
+              ))}
+            </ul>
+            <Link href="/espace/journal" className="text-sm underline">
+              Voir tout le journal
+            </Link>
+          </div>
+        )}
+      </Card>
+
+      <Card title="Prochainement" titleId="upcoming">
+        <p className="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
+          Ces modules ne sont pas encore disponibles. Ils apparaîtront dans le
+          menu dès leur mise en service.
+        </p>
+        <ul className="list-inside list-disc text-sm text-zinc-700 dark:text-zinc-300">
+          {UPCOMING.map((label) => (
+            <li key={label}>{label}</li>
+          ))}
+        </ul>
+      </Card>
+    </>
   );
 }
 
-export default function WorkspacePage() {
+export default function OverviewPage() {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-12">
-      <h1 className="text-2xl font-semibold">Mon espace</h1>
-      <Suspense fallback={<p role="status">Chargement de votre espace…</p>}>
-        <Workspace />
-      </Suspense>
-    </main>
+    <Suspense fallback={<PageFallback />}>
+      <Overview />
+    </Suspense>
   );
 }
