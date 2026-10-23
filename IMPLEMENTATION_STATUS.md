@@ -230,11 +230,11 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 6 — Responsabilités
 
 - **Objectif** : définir des délégations durables confiées à un **membre de l'équipe**, identifiables, configurables, activables et historisées.
-- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration `20261023210320` appliquée sur Supabase le 2026-10-23 ; migration `20261023220000_responsibility_assignee.sql` **à appliquer** (autorisation du propriétaire requise).
+- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration `20261023210320` appliquée sur Supabase le 2026-10-23 ; migration `20261023211917` appliquée le 2026-10-23 avec l'autorisation du propriétaire.
 - **Décisions du propriétaire en cours de phase (ADR-017)** : l'application reste **100 % manuelle**, sans automatisation, sans IA et sans agent. La planification a été retirée, puis les agents : une responsabilité est confiée à une personne et ne se déclenche qu'à la main.
 - **Fonctionnalités terminées** :
   - migration `20261023210320_responsibilities.sql` : objectif, périmètre, règles métier, critères de réussite, limite de tâches par jour, personne à prévenir, période facultative, statut ; plafonds configurables en base `max_responsibilities` (50) et `responsibility_max_runs_per_day` (24) ;
-  - migration `20261023220000_responsibility_assignee.sql` (non destructive) : colonne `assignee_user_id` avec clé étrangère composite vers les appartenances de la même organisation ; responsabilités existantes confiées à leur auteur ; `agent_id` devient facultatif et obsolète ;
+  - migration `20261023211917_responsibility_assignee.sql` (non destructive) : colonne `assignee_user_id` avec clé étrangère composite vers les appartenances de la même organisation ; responsabilités existantes confiées à leur auteur ; `agent_id` devient facultatif et obsolète ;
   - API : liste (filtrable par personne responsable), création, lecture, modification, changement de statut, historique (entrées d'audit), plafonds ;
   - création et activation possibles seulement avec un membre actif comme responsable ; activation exigeant aussi un objectif, des critères de réussite, une limite sous le plafond et une période non terminée ; une responsabilité active ne peut pas devenir incomplète ;
   - web : page Responsabilités (liste « Confiée à … », archivées à la demande), création (responsable présélectionnable par `?responsable=`), fiche (résumé, statut, modification, historique lisible), statistique « Responsabilités actives », entrée de navigation ; plus aucune mention d'agent ni d'IA dans l'interface.
@@ -250,7 +250,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   | lint, typecheck, build, format | OK                                                                                            |
 
 - **Limites** : rien n'est exécuté (ADR-017) ; les plafonds ne sont modifiables que par SQL ; la production affiche encore la section Agents jusqu'à la prochaine fusion dans `main`.
-- **Prochaine action recommandée** : appliquer la migration `20261023220000`, tester la prévisualisation et valider la Phase 6. Phase 7 retenue : **suivi manuel des tâches**.
+- **Prochaine action recommandée** : tester la prévisualisation et valider la Phase 6. Phase 7 retenue : **suivi manuel des tâches**.
 
 ## Phases 7 à 15
 

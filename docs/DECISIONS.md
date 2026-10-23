@@ -138,7 +138,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 - **Décision** : « pour l'instant l'application doit être 100 % manuelle : pas d'automatisation, ni agent IA ».
   - Aucune planification, aucun déclenchement automatique, aucune tâche de fond : une personne lance toujours le travail.
   - Aucun modèle d'IA n'est intégré ni appelé (complète ADR-007).
-  - **Aucun agent** : la section Agents est retirée de l'application, de l'API et des contrats partagés (décision du propriétaire, 2026-10-23). Les responsabilités sont confiées à un membre de l'équipe (migration `20261023220000_responsibility_assignee`). Les tables `agents` et `agent_versions` sont conservées en base, inutilisées : aucune donnée n'est supprimée sans accord explicite.
+  - **Aucun agent** : la section Agents est retirée de l'application, de l'API et des contrats partagés (décision du propriétaire, 2026-10-23). Les responsabilités sont confiées à un membre de l'équipe (migration `20261023211917_responsibility_assignee`). Les tables `agents` et `agent_versions` sont conservées en base, inutilisées : aucune donnée n'est supprimée sans accord explicite.
 - **Conséquences** :
   - Phase 6 : la planification prévue (fréquence, heure) est retirée ; une responsabilité se déclenche uniquement à la main.
   - Phase 7 redéfinie par le propriétaire : **suivi manuel des tâches** (une personne lance, renseigne et clôt chaque tâche) ; Phase 11 (tâches planifiées) reportée ; ADR-006 (traitement asynchrone) suspendue.
