@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { authErrorMessage } from './messages';
 import { safeNextPath } from './redirect';
+import { createOrganizationSchema } from '@nagaw/shared';
 import { parseForm, signUpSchema } from './schemas';
 
 function form(values: Record<string, string>): FormData {
@@ -72,5 +73,28 @@ describe('authErrorMessage', () => {
     expect(authErrorMessage(undefined)).toBe(
       'Une erreur est survenue. Réessayez.',
     );
+  });
+});
+
+describe('parseForm with strict schemas', () => {
+  it('ignores the hidden $ACTION_* fields React adds to forms', () => {
+    const data = form({
+      $ACTION_REF_3: '',
+      '$ACTION_3:0': '{}',
+      $ACTION_KEY: 'k',
+      name: 'Acme Dakar',
+    });
+    expect(parseForm(createOrganizationSchema, data)).toEqual({
+      ok: true,
+      data: { name: 'Acme Dakar' },
+    });
+  });
+
+  it('still rejects unknown user-supplied fields', () => {
+    const result = parseForm(
+      createOrganizationSchema,
+      form({ name: 'Acme', status: 'suspended' }),
+    );
+    expect(result.ok).toBe(false);
   });
 });

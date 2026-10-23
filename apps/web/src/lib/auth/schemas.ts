@@ -39,12 +39,24 @@ export type FormState = {
 
 export const initialFormState: FormState = { status: 'idle' };
 
+/**
+ * Form fields as a plain object, without the hidden `$ACTION_*` fields React
+ * adds for progressive enhancement (strict schemas would reject them).
+ */
+export function formFields(
+  formData: FormData,
+): Record<string, FormDataEntryValue> {
+  return Object.fromEntries(
+    [...formData.entries()].filter(([key]) => !key.startsWith('$ACTION')),
+  );
+}
+
 /** Converts form data to a plain object and validates it. */
 export function parseForm<S extends z.ZodType>(
   schema: S,
   formData: FormData,
 ): { ok: true; data: z.infer<S> } | { ok: false; state: FormState } {
-  const parsed = schema.safeParse(Object.fromEntries(formData));
+  const parsed = schema.safeParse(formFields(formData));
   if (parsed.success) return { ok: true, data: parsed.data };
   const fieldErrors: Record<string, string> = {};
   for (const issue of parsed.error.issues) {

@@ -60,7 +60,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 2 — Base de données, authentification et multi-tenant
 
 - **Objectif** : un utilisateur authentifié n'accède qu'aux ressources autorisées.
-- **Statut** : code livré et testé. **En attente des actions manuelles** (`docs/DEPLOYMENT.md` § Actions manuelles) pour vérifier le parcours réel en production, puis de la validation du propriétaire.
+- **Statut** : **validée** par le propriétaire le 2026-10-23, après vérification de bout en bout en production.
 - **Fonctionnalités terminées** :
   - Migration `20261020194209_tenancy_foundation`, **appliquée** au projet Supabase `nagaw-business` (analyse de sécurité Supabase : 0 alerte) :
     - schéma privé `app` : `user_profiles`, synchronisé depuis `auth.users` par trigger ; `organizations` ; `organization_memberships` ; `audit_logs`, en ajout seul ;
@@ -90,12 +90,71 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Vérifié en production** (2026-10-20) :
   - pages d'authentification servies ;
   - `GET /api/v1/health/ready` répond **200** avec `{ "status": "ready", "database": "ok", "auth": "ok" }` : l'API se connecte à Postgres avec le rôle `nagaw_api` via le pooler, et le projet publie des clés asymétriques.
-- **Non vérifié** :
-  - le parcours réel Supabase (e-mail de confirmation, connexion, appel de l'API avec un vrai jeton), qui dépend encore de l'action manuelle 4 (URL de redirection Auth), non réalisable par les connecteurs ;
+- **Parcours réel vérifié en production** (2026-10-20, par le propriétaire et contrôlé en base) :
+  - inscription, puis confirmation de l'adresse e-mail ;
+  - connexion par mot de passe : session ouverte ;
+  - création de l'organisation via l'API : le créateur en est `owner` actif ;
+  - entrée `organization.created` dans le journal d'audit, avec l'acteur et l'identifiant de requête.
+- **Incident constaté puis corrigé** : un lien de confirmation ouvert dans un autre navigateur confirme bien l'adresse, mais ne peut pas ouvrir de session (cookie PKCE absent). La page affichait alors « lien invalide ». Le callback journalise désormais la raison de l'échec, et la page invite à se connecter (commit `2d32acc`).
 - **Problèmes connus** : pas de limitation de débit côté API ; SMTP Supabase par défaut ; TLS Postgres non vérifié (`require`).
 - **Correctif après fusion** : les logs HTTP enregistraient tous les en-têtes, y compris le jeton OIDC Vercel (`x-vercel-oidc-token`) et la signature du proxy. Ils ne gardent plus que l'identifiant, la méthode et le chemin (liste blanche testée dans `apps/api/src/common/logging.spec.ts`).
 - **Reste à faire, phases suivantes** : invitations et gestion des membres (Phase 4) ; navigation et tableau de bord (Phase 3).
 
-## Phases 3 à 15
+## Phase 3 — Interface générale et navigation
+
+- **Objectif** : un cadre applicatif navigable, sans lien mort ni donnée fictive.
+- **Statut** : **validée** par le propriétaire le 2026-10-23, après test de la prévisualisation ; fusionnée dans `main` et déployée en production avec son autorisation.
+- **Fonctionnalités terminées** :
+  - mise en page connectée (`/espace`) :
+    - barre latérale sur ordinateur ;
+    - barre supérieure et menu sur mobile (dialogue accessible, fermeture par Échap, gestion du focus, fermeture à la navigation) ;
+    - lien d'évitement « Aller au contenu » ;
+  - navigation limitée aux pages existantes (Vue d'ensemble, Équipe, Journal d'audit, Paramètres), avec `aria-current` sur la page courante ;
+  - sélecteur d'organisation active :
+    - préférence enregistrée dans un cookie `httpOnly` ;
+    - organisation revérifiée contre la liste renvoyée par l'API à chaque rendu (un cookie forgé retombe sur une organisation de l'utilisateur), l'API restant l'autorité ;
+    - création d'une organisation supplémentaire possible ;
+  - vue d'ensemble alimentée uniquement par des données réelles :
+    - membres actifs, rôle, fuseau horaire et devise, 5 dernières entrées d'audit avec leur auteur ;
+    - modules à venir annoncés sans lien ;
+  - Équipe : tableau des membres (rôle, statut, date d'arrivée dans le fuseau de l'organisation) ;
+  - Journal d'audit : pagination par curseur ; accès refusé proprement aux rôles sans `audit.read` ;
+  - Paramètres :
+    - formulaire organisation (nom, fuseau IANA, devise) réservé à `owner`/`admin`, affiché en lecture seule pour les autres rôles ;
+    - section profil ;
+    - la vue est rafraîchie après l'enregistrement ;
+  - états de chargement (Suspense), d'erreur (`error.tsx`, API indisponible) et d'absence d'organisation (création guidée) ;
+  - composants réutilisables : `PageHeader`, `Card`/`Stat`, `EmptyState`, `Alert`, `Badge`, `Table` (défilement horizontal sur petit écran), `ButtonLink`, `PageFallback`.
+- **Défauts trouvés et corrigés pendant la phase** :
+  1. `loadWorkspace` lisait l'heure courante pendant le pré-rendu partiel, ce qui faisait échouer les pages : le rendu à la requête est désormais explicite (`connection()`) ;
+  2. React ajoute aux formulaires des champs cachés `$ACTION_*`, que les schémas stricts rejetaient, ce qui empêchait d'enregistrer les paramètres : `parseForm` les ignore désormais, avec un test de régression ; les champs inconnus envoyés par l'utilisateur restent refusés.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                               |
+  | ------------------------------ | ---------------------------------------------------------------------- |
+  | `pnpm test`                    | 62 tests OK (shared 8, api 23, web 31)                                 |
+  | `pnpm test:integration`        | 29 tests OK                                                            |
+  | Playwright                     | 33 tests OK, 1 ignoré volontairement (test du menu mobile, sur bureau) |
+  | lint, typecheck, build, format | OK                                                                     |
+
+  Les tests end-to-end de l'espace connecté tournent sur ordinateur et sur mobile, contre un faux Supabase Auth et une fausse API (`apps/web/e2e/support/fake-backend.mjs`) qui émettent de vrais jetons ES256. Le code applicatif ne contient aucun contournement d'authentification. Ils couvrent :
+  - la redirection sans session ;
+  - les données réelles de la vue d'ensemble ;
+  - la navigation complète ;
+  - la pagination du journal ;
+  - la modification des paramètres par le propriétaire et la validation du formulaire ;
+  - le changement d'organisation avec les permissions associées ;
+  - le cookie d'organisation forgé ;
+  - l'utilisateur sans organisation ;
+  - l'erreur d'API affichée ;
+  - le menu mobile au clavier ;
+  - l'absence de débordement horizontal.
+
+- **Limites** :
+  - pas de thème sombre spécifique au-delà des préférences système ;
+  - la sélection du fuseau horaire est une liste IANA brute (environ 400 entrées).
+- **Prochaine action recommandée** : Phase 4 (organisations, équipe et permissions : invitations, rôles, désactivation des membres).
+
+## Phases 4 à 15
 
 Non commencées.
