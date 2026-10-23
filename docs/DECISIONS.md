@@ -112,7 +112,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-015 — Invitations par lien, sans fournisseur d'e-mail pour l'instant
 
-- **Statut** : Proposée (Phase 4), à valider par le propriétaire
+- **Statut** : Acceptée pour l'instant (Phase 4, 2026-10-23), à revoir lors du choix d'un fournisseur d'e-mail
 - **Contexte** : la roadmap prévoyait d'envoyer les invitations par e-mail. Aucun fournisseur d'e-mail transactionnel n'a encore été choisi ni configuré, et une intégration non vérifiée ne doit pas être présentée comme opérationnelle.
 - **Décision** :
   - l'API crée l'invitation et renvoie le jeton **une seule fois** ; le web affiche le lien `/invitation?jeton=…` à l'administrateur, qui le transmet lui-même ;
