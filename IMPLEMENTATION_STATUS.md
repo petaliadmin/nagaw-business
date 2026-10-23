@@ -255,10 +255,10 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 7 — Suivi manuel des tâches
 
 - **Objectif** : suivre le travail concret de l'équipe ; une personne lance chaque tâche, la renseigne et la clôt, sans aucune automatisation (ADR-017).
-- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration `20261024090000_tasks.sql` **à appliquer** sur Supabase (autorisation du propriétaire requise).
+- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration appliquée sur Supabase le 2026-10-23 (version `20261023214116`, avec l'autorisation du propriétaire).
 - **Choix appliqués** (recommandations, faute de réponse explicite sur ces deux points) : les tâches ponctuelles, sans responsabilité, sont autorisées ; un membre peut lancer lui-même une tâche pour lui, sur une responsabilité qui lui est confiée. Décision : ADR-018.
 - **Fonctionnalités terminées** :
-  - migration `20261024090000_tasks.sql` :
+  - migration `20261023214116_tasks.sql` :
     - `tasks` : responsabilité facultative, titre, description, personne en charge, échéance, statut, résultat, compte rendu, motif de blocage, dates de démarrage et de clôture ;
     - clés étrangères composites vers la responsabilité et l'appartenance de la même organisation ; contraintes SQL sur la clôture (résultat et compte rendu) et le blocage (motif) ;
     - `task_notes` : journal de la tâche, en ajout seul (trigger) ;
@@ -285,7 +285,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - aucune notification : la personne à prévenir est affichée, pas avertie (pas de fournisseur d'e-mail, ADR-015) ;
   - la liste affiche 200 tâches au plus, sans pagination ;
   - les plafonds ne sont modifiables que par SQL.
-- **Prochaine action recommandée** : appliquer la migration, tester la prévisualisation et valider la Phase 7.
+- **Prochaine action recommandée** : tester la prévisualisation et valider la Phase 7.
 
 ## Phases 8 à 15
 
