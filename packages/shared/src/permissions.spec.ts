@@ -21,3 +21,16 @@ describe('roleHasPermission', () => {
     }
   });
 });
+
+describe('member management permissions', () => {
+  it('lets only owners and admins invite and manage members', () => {
+    for (const role of ['owner', 'admin'] as const) {
+      expect(roleHasPermission(role, 'members.invite')).toBe(true);
+      expect(roleHasPermission(role, 'members.manage')).toBe(true);
+    }
+    for (const role of ['member', 'viewer'] as const) {
+      expect(roleHasPermission(role, 'members.invite')).toBe(false);
+      expect(roleHasPermission(role, 'members.manage')).toBe(false);
+    }
+  });
+});

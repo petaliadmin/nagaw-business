@@ -46,7 +46,11 @@ export async function signUp(
   const { error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
-    options: { emailRedirectTo: `${siteUrl()}/auth/callback?next=/espace` },
+    options: {
+      emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(
+        safeNextPath(formData.get('next')?.toString()),
+      )}`,
+    },
   });
   if (error) return { status: 'error', message: authErrorMessage(error.code) };
   return {
@@ -106,11 +110,17 @@ export async function updatePassword(
   redirect('/espace');
 }
 
-export async function signOut(): Promise<void> {
+/** Signs out; an optional `next` path is kept for the following sign-in. */
+export async function signOut(formData?: FormData): Promise<void> {
   const supabase = await createSupabaseServerClient();
   if (supabase) {
     const { error } = await supabase.auth.signOut();
     if (error) throw new Error(`Déconnexion impossible : ${error.message}`);
   }
-  redirect('/connexion');
+  const next = formData?.get('next')?.toString();
+  redirect(
+    next
+      ? `/connexion?next=${encodeURIComponent(safeNextPath(next))}`
+      : '/connexion',
+  );
 }

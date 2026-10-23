@@ -1,6 +1,6 @@
 'use client';
 
-import type { OrganizationDto } from '@nagaw/shared';
+import { INVITATION_TTL_HOURS, type OrganizationDto } from '@nagaw/shared';
 import { useActionState } from 'react';
 import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
@@ -82,6 +82,18 @@ export function OrganizationSettingsForm({
         defaultValue={organization.defaultCurrency}
         options={currencies}
         error={state.fieldErrors?.defaultCurrency}
+      />
+      <FormField
+        label="Durée de validité des invitations (heures)"
+        name="invitationTtlHours"
+        type="number"
+        inputMode="numeric"
+        min={INVITATION_TTL_HOURS.min}
+        max={INVITATION_TTL_HOURS.max}
+        step={1}
+        defaultValue={organization.invitationTtlHours}
+        required
+        error={state.fieldErrors?.invitationTtlHours}
       />
       <div>
         <SubmitButton pendingLabel="Enregistrement…">Enregistrer</SubmitButton>

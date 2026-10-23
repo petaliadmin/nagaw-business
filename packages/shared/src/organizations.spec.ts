@@ -39,3 +39,17 @@ describe('updateOrganizationSchema', () => {
     expect(updateOrganizationSchema.safeParse({}).success).toBe(false);
   });
 });
+
+describe('updateOrganizationSchema — invitation lifetime', () => {
+  it('accepts whole hours within the database bounds', () => {
+    expect(
+      updateOrganizationSchema.parse({ invitationTtlHours: '72' }),
+    ).toEqual({ invitationTtlHours: 72 });
+    for (const value of [0, 721, 1.5]) {
+      expect(
+        updateOrganizationSchema.safeParse({ invitationTtlHours: value })
+          .success,
+      ).toBe(false);
+    }
+  });
+});

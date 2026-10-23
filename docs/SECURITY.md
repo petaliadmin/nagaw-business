@@ -44,6 +44,19 @@
 | Logs HTTP en liste blanche (identifiant, méthode, chemin) : ni en-têtes ni paramètres de requête, donc ni jetons ni cookies                    | `apps/api/src/common/logging.ts`                     | `logging.spec.ts`                                                                                                    |
 | Aucune clé privilégiée côté web : seule la clé publishable est utilisée                                                                        | `apps/web/src/lib/env.ts`                            | revue                                                                                                                |
 
+## Contrôles implémentés (Phase 4)
+
+| Contrôle                                                                                                                | Où                                                    | Preuve (test)                                                   |
+| ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
+| Jeton d'invitation de 256 bits, stocké uniquement sous forme de hash SHA-256, renvoyé une seule fois, absent de l'audit | `apps/api/src/members/invitation-token.ts`, migration | `invitation-token.spec.ts`, `members.integration-spec.ts`       |
+| Invitation à usage unique, expirante (durée configurable en base), annulable, liée à l'adresse invitée                  | `InvitationsService`                                  | accepting invitations                                           |
+| Une invitation ne donne jamais le rôle `owner`                                                                          | `createInvitationSchema`, contrainte SQL              | refuses duplicates, existing members and the owner role         |
+| Changements de rôle : personne ne modifie sa propre appartenance, seul un `owner` touche un `owner` ou nomme un `owner` | `memberChangeRefusal` (shared) + `MembersService`     | `members.spec.ts`, protects owners from admins                  |
+| Au moins un `owner` actif par organisation, garanti par un trigger qui verrouille l'organisation                        | migration Phase 4                                     | keeps at least one active owner, even outside the API           |
+| Désactivation d'un membre : accès coupé immédiatement (`TenantGuard`, `/me`)                                            | `TenantGuard`                                         | lets an admin disable and reactivate a member                   |
+| Isolation : invitations et membres d'une autre organisation répondent 404, en lecture comme en écriture                 | `InvitationsService`, `MembersService`                | isolation between organizations                                 |
+| Nombre d'invitations en attente plafonné par organisation (`max_pending_invitations`)                                   | `InvitationsService`                                  | uses the lifetime and the limit configured for the organization |
+
 ## Risques encore ouverts
 
 - **Limitation de débit** : absente côté API. Supabase Auth limite déjà ses propres routes ; un mécanisme pour l'API (Vercel Firewall ou compteur Postgres) reste à mettre en place.

@@ -1,4 +1,5 @@
 import 'server-only';
+import { resolveSiteUrl } from './site-url';
 
 export interface SupabasePublicConfig {
   url: string;
@@ -20,7 +21,16 @@ export function apiBaseUrl(): string | undefined {
   return process.env.API_URL || undefined;
 }
 
-/** Public URL of this site, used in links sent by e-mail. */
+/** Public URL of this site, used in e-mail and invitation links. */
 export function siteUrl(): string {
-  return (process.env.SITE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+  return resolveSiteUrl(process.env);
+}
+
+/**
+ * Vercel "Protection Bypass for Automation" secret of the API project, set
+ * only on previews, whose API deployments are behind Vercel Authentication.
+ * Server-side only; never in NEXT_PUBLIC_*.
+ */
+export function apiProtectionBypass(): string | undefined {
+  return process.env.API_PROTECTION_BYPASS || undefined;
 }

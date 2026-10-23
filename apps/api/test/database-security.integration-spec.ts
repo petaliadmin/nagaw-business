@@ -55,4 +55,26 @@ describe('database privileges', () => {
       /permission denied/,
     );
   });
+
+  it('applies the same rules to every table of the app schema', async () => {
+    const { rows } = await admin.query<{ name: string; rls: boolean }>(
+      `select c.relname as name, c.relrowsecurity as rls
+       from pg_class c join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'app' and c.relkind = 'r' order by 1`,
+    );
+    expect(rows.map((row) => row.name)).toContain('organization_invitations');
+    for (const { name, rls } of rows) {
+      expect(rls, `${name} has RLS enabled`).toBe(true);
+      await expect(api.query(`delete from app.${name}`)).rejects.toThrow(
+        /permission denied/,
+      );
+      const { rows: grants } = await admin.query(
+        `select grantee from information_schema.role_table_grants
+         where table_schema = 'app' and table_name = $1
+           and grantee in ('anon', 'authenticated', 'PUBLIC')`,
+        [name],
+      );
+      expect(grants, `${name} grants to anon/authenticated`).toEqual([]);
+    }
+  });
 });

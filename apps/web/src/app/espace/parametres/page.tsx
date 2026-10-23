@@ -40,10 +40,14 @@ async function Settings() {
           />
         ) : (
           <div className="flex flex-col gap-4">
-            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Stat label="Nom" value={organization.data.name} />
               <Stat label="Fuseau horaire" value={organization.data.timezone} />
               <Stat label="Devise" value={organization.data.defaultCurrency} />
+              <Stat
+                label="Validité des invitations"
+                value={`${organization.data.invitationTtlHours} h`}
+              />
             </dl>
             <Alert>
               Seuls les propriétaires et administrateurs peuvent modifier ces

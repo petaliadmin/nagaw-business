@@ -119,6 +119,9 @@ export class OrganizationsService {
           ...(input.defaultCurrency !== undefined && {
             default_currency: input.defaultCurrency,
           }),
+          ...(input.invitationTtlHours !== undefined && {
+            invitation_ttl_hours: input.invitationTtlHours,
+          }),
         })
         .where('id', '=', organizationId)
         .returningAll()
@@ -135,6 +138,12 @@ export class OrganizationsService {
         changes.defaultCurrency = {
           from: before.default_currency,
           to: updated.default_currency,
+        };
+      }
+      if (before.invitation_ttl_hours !== updated.invitation_ttl_hours) {
+        changes.invitationTtlHours = {
+          from: before.invitation_ttl_hours,
+          to: updated.invitation_ttl_hours,
         };
       }
 
@@ -204,6 +213,7 @@ function toOrganizationDto(
     status: row.status,
     timezone: row.timezone,
     defaultCurrency: row.default_currency,
+    invitationTtlHours: row.invitation_ttl_hours,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };

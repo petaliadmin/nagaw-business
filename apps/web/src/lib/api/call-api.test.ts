@@ -38,6 +38,29 @@ describe('callApi', () => {
     expect(calls[0]?.init.body).toBe('{"name":"Acme"}');
   });
 
+  it('adds the Vercel protection bypass header only when configured', async () => {
+    const { fetchImpl, calls } = stub(() => Response.json({}));
+    await callApi({
+      baseUrl: 'https://api.test',
+      token: 't',
+      path: '/me',
+      fetchImpl,
+    });
+    expect(calls[0]?.init.headers).not.toHaveProperty(
+      'x-vercel-protection-bypass',
+    );
+    await callApi({
+      baseUrl: 'https://api.test',
+      token: 't',
+      path: '/me',
+      protectionBypass: 'secret',
+      fetchImpl,
+    });
+    expect(calls[1]?.init.headers).toMatchObject({
+      'x-vercel-protection-bypass': 'secret',
+    });
+  });
+
   it('surfaces the documented error envelope', async () => {
     const { fetchImpl } = stub(() =>
       Response.json(

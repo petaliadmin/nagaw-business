@@ -2,6 +2,7 @@
 
 import {
   createOrganizationSchema,
+  invitationTokenSchema,
   updateOrganizationSchema,
   type MeDto,
   type OrganizationDto,
@@ -88,4 +89,24 @@ export async function updateOrganization(
   // Re-render the shell too (organization name in the sidebar).
   refresh();
   return { status: 'success', message: 'Paramètres enregistrés.' };
+}
+
+/** Joins the organization of an invitation, then opens it. */
+export async function acceptInvitation(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await requireSession();
+  const token = invitationTokenSchema.safeParse(formData.get('token'));
+  if (!token.success)
+    return { status: 'error', message: 'Lien d’invitation invalide.' };
+
+  const result = await apiAsUser<OrganizationWithRoleDto>(session.accessToken, {
+    method: 'POST',
+    path: '/invitations/accept',
+    body: { token: token.data },
+  });
+  if (!result.ok) return { status: 'error', message: result.message };
+  await rememberOrganization(result.data.id);
+  redirect('/espace');
 }

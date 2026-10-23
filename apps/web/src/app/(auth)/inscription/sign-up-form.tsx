@@ -1,8 +1,9 @@
 'use client';
 
-import { useActionState } from 'react';
+import { Suspense, useActionState } from 'react';
 import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
+import { NextField } from '@/components/next-field';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/auth/schemas';
 import { signUp } from '../actions';
@@ -13,6 +14,9 @@ export function SignUpForm() {
   return (
     <form action={action} className="flex flex-col gap-4" noValidate>
       <FormMessage state={state} />
+      <Suspense fallback={null}>
+        <NextField />
+      </Suspense>
       <FormField
         label="Adresse e-mail"
         name="email"

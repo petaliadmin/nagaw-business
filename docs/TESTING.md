@@ -20,6 +20,10 @@ Ils tournent sur le build de production, servi par deux serveurs (`apps/web/play
 | port 3100 | ni Supabase ni API                                                            | `chromium`, `mobile`             | pages publiques, validation côté serveur, états « non configuré », redirections externes refusées |
 | port 3101 | faux Supabase Auth et fausse API (`e2e/support/fake-backend.mjs`, port 54400) | `app-desktop`, puis `app-mobile` | espace connecté complet, sur ordinateur et sur mobile                                             |
 
+Les fichiers de l'espace connecté (`e2e/app/workspace.spec.ts`, `e2e/app/team.spec.ts`) partagent ce faux backend et le réinitialisent : Playwright tourne donc avec un seul worker (`workers: 1`), pour qu'aucun fichier ne voie les modifications d'un autre.
+
+Le contrôle de débordement horizontal compare `scrollWidth` à `clientWidth` (et non à `innerWidth`, qui grandit avec le contenu sur mobile et masquait le problème).
+
 Le faux backend remplace uniquement les deux frontières externes : il publie un JWKS et émet de **vrais jetons ES256**, que le web vérifie exactement comme en production. Il applique aussi les mêmes règles d'appartenance que le `TenantGuard`. Le code applicatif ne contient **aucun contournement** d'authentification.
 
 Le parcours réel (e-mail de confirmation compris) dépend d'un vrai projet Supabase et d'une boîte e-mail. Il a été vérifié manuellement en production le 2026-10-20.
@@ -58,7 +62,7 @@ pnpm build
 | --- | ------------------------------------ | ------------------- |
 | 1   | Inscription et connexion             | 2–3                 |
 | 2   | Création d'une organisation          | 2–4                 |
-| 3   | Invitation d'un collaborateur        | 4                   |
+| 3   | Invitation d'un collaborateur        | 4 (livré)           |
 | 4   | Création d'un agent                  | 5                   |
 | 5   | Définition d'une responsabilité      | 6                   |
 | 6   | Lancement d'une tâche                | 7                   |

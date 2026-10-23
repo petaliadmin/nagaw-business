@@ -2,10 +2,16 @@ import Link from 'next/link';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { fetchApiHealth } from '@/lib/api-health';
+import { apiBaseUrl, apiProtectionBypass } from '@/lib/env';
 
 async function ApiStatus() {
   await connection();
-  const health = await fetchApiHealth(process.env.API_URL);
+  const health = await fetchApiHealth(
+    apiBaseUrl(),
+    fetch,
+    3000,
+    apiProtectionBypass(),
+  );
 
   if (health.state === 'not_configured') {
     return (

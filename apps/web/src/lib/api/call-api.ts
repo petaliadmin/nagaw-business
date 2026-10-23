@@ -11,6 +11,8 @@ export interface CallApiOptions {
   path: string;
   body?: unknown;
   organizationId?: string;
+  /** Vercel deployment-protection bypass secret (previews only). */
+  protectionBypass?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }
@@ -42,6 +44,9 @@ export async function callApi<T>(
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (organizationId) headers['X-Organization-Id'] = organizationId;
+  if (options.protectionBypass) {
+    headers['x-vercel-protection-bypass'] = options.protectionBypass;
+  }
 
   let response: Response;
   try {

@@ -259,8 +259,12 @@ test('pages never overflow horizontally', async ({
     await expect(
       page.getByRole('main').getByRole('heading', { level: 1 }),
     ).toBeVisible();
+    // clientWidth, not innerWidth: on mobile the layout viewport grows with
+    // overflowing content, which would hide the problem.
     const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - window.innerWidth,
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
     );
     expect(overflow, path).toBeLessThanOrEqual(0);
   }
