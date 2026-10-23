@@ -67,6 +67,17 @@
 | La personne à prévenir doit être un membre actif de l'organisation                   | `assertEscalation`                                   | checks the person in charge, the escalation contact and the caps                                                             |
 | Aucune planification ni champ serveur (statut, organisation) accepté                 | schémas `.strict()`                                  | validates the period, refuses schedules, agents and server-owned fields                                                      |
 
+## Contrôles implémentés (Phase 7)
+
+| Contrôle                                                                                                                            | Où                                               | Preuve (test)                                                                          |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Tâches, notes et historique toujours lus dans l'organisation de l'appelant ; 404 sinon                                              | `TasksService.select`                            | `tasks.integration-spec.ts` › isolation (mutation : échoue sans le filtre)             |
+| Responsabilité, personne en charge et notes rattachées à la même organisation, même en SQL                                          | clés étrangères composites                       | keeps tasks and notes inside one organization, even in SQL                             |
+| Un membre ne lance une tâche que pour lui-même, ponctuelle ou sur une responsabilité qui lui est confiée ; un lecteur ne lance rien | `canLaunchTask` (shared) + `TasksService.create` | lets a member launch tasks only for themself                                           |
+| Seule la personne en charge (ou un propriétaire / administrateur) fait avancer ou annote une tâche                                  | `canWorkOnTask` (shared)                         | keeps other people’s tasks out of a member’s hands                                     |
+| Limite quotidienne par responsabilité et plafond de tâches ouvertes, configurables en base, vérifiés sous verrou                    | `TasksService.create`                            | applies the daily limit ; checks the person in charge, the input and the open-task cap |
+| Tâche clôturée non modifiable ; journal de notes en ajout seul                                                                      | `TasksService`, trigger                          | keeps a closed task closed ; keeps an append-only journal of notes                     |
+
 ## Risques encore ouverts
 
 - **Limitation de débit** : absente côté API. Supabase Auth limite déjà ses propres routes ; un mécanisme pour l'API (Vercel Firewall ou compteur Postgres) reste à mettre en place.

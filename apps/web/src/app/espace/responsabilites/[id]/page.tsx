@@ -1,20 +1,25 @@
 import {
+  canLaunchTask,
   roleHasPermission,
   type ResponsibilityDto,
   type ResponsibilityHistoryEntryDto,
+  type TaskDto,
 } from '@nagaw/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { ButtonLink } from '@/components/ui/button-link';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
-import { formatDate, formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime, todayIn } from '@/lib/format';
 import { auditActionLabel, RESPONSIBILITY_STATUS_LABELS } from '@/lib/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { TaskList } from '../../taches/task-list';
 import { loadFormData } from '../form-data';
 import {
   ResponsibilityForm,
@@ -66,20 +71,24 @@ async function Responsibility({
 }: PageProps<'/espace/responsabilites/[id]'>) {
   const workspace = await requireReadyWorkspace();
   if (!workspace) return null;
-  const { organization, accessToken } = workspace;
+  const { organization, accessToken, me } = workspace;
   const { id } = await params;
   const canManage = roleHasPermission(
     organization.role,
     'responsibilities.manage',
   );
   const path = `/responsibilities/${encodeURIComponent(id)}`;
-  const [responsibility, history] = await Promise.all([
+  const [responsibility, history, tasks] = await Promise.all([
     apiAsUser<ResponsibilityDto>(accessToken, {
       path,
       organizationId: organization.id,
     }),
     apiAsUser<ResponsibilityHistoryEntryDto[]>(accessToken, {
       path: `${path}/history`,
+      organizationId: organization.id,
+    }),
+    apiAsUser<TaskDto[]>(accessToken, {
+      path: `/tasks?responsibilityId=${encodeURIComponent(id)}`,
       organizationId: organization.id,
     }),
   ]);
@@ -102,6 +111,23 @@ async function Responsibility({
   const data = responsibility.data;
   const tz = organization.timezone;
   const editable = canManage && data.status !== 'archived';
+  const today = todayIn(tz);
+  // Tasks launched today count against the daily limit (organization time).
+  const launchedToday = tasks.ok
+    ? tasks.data.filter(
+        (task) =>
+          new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(
+            new Date(task.createdAt),
+          ) === today,
+      ).length
+    : null;
+  const canLaunch =
+    data.status === 'active' &&
+    canLaunchTask(
+      { userId: me.id, role: organization.role },
+      { assigneeUserId: me.id },
+      data.assignee.userId,
+    );
   const formData = editable
     ? await loadFormData(accessToken, organization.id)
     : null;
@@ -157,6 +183,41 @@ async function Responsibility({
             />
           </div>
         )}
+      </Card>
+
+      <Card title="Tâches" titleId="responsibility-tasks">
+        <div className="flex flex-col gap-3">
+          {launchedToday !== null && (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {launchedToday} / {data.maxRunsPerDay} tâches lancées aujourd’hui.
+            </p>
+          )}
+          {canLaunch && (
+            <div>
+              <ButtonLink
+                href={`/espace/taches/nouvelle?responsabilite=${data.id}`}
+              >
+                Lancer une tâche
+              </ButtonLink>
+            </div>
+          )}
+          {data.status !== 'active' && (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Activez la responsabilité pour y lancer des tâches.
+            </p>
+          )}
+          {!tasks.ok ? (
+            <Alert tone="error">Tâches indisponibles : {tasks.message}</Alert>
+          ) : tasks.data.length === 0 ? (
+            <EmptyState title="Aucune tâche lancée pour le moment" />
+          ) : (
+            <TaskList
+              tasks={tasks.data}
+              label="Tâches de la responsabilité"
+              today={today}
+            />
+          )}
+        </div>
       </Card>
 
       {editable && formData && (

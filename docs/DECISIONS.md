@@ -143,3 +143,15 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - Phase 6 : la planification prévue (fréquence, heure) est retirée ; une responsabilité se déclenche uniquement à la main.
   - Phase 7 redéfinie par le propriétaire : **suivi manuel des tâches** (une personne lance, renseigne et clôt chaque tâche) ; Phase 11 (tâches planifiées) reportée ; ADR-006 (traitement asynchrone) suspendue.
   - Phases 8 (approbations d'actions) et 9 (outils et intégrations) à redéfinir, faute d'actions automatiques.
+
+## ADR-018 — Suivi manuel des tâches
+
+- **Statut** : Proposée en Phase 7 (2026-10-23), en attente de validation du propriétaire.
+- **Contexte** : la Phase 7 est redéfinie par ADR-017 : une personne lance, renseigne et clôt chaque tâche ; rien ne s'exécute automatiquement.
+- **Décision** :
+  - une tâche est ponctuelle ou rattachée à une responsabilité **active et dans sa période** ; elle est confiée à un membre actif (clé étrangère composite vers les appartenances) ;
+  - cycle de vie : à faire → en cours ↔ bloquée → terminée ou annulée ; terminée et annulée sont définitives ; un blocage exige un motif, une clôture exige un résultat (atteint, partiel, non atteint) et un compte rendu ; ces règles sont aussi des contraintes SQL ;
+  - droits (choix recommandés, appliqués faute de réponse explicite) : propriétaires et administrateurs lancent et modifient toutes les tâches ; un membre lance des tâches **pour lui-même**, ponctuelles ou sur les responsabilités qui lui sont confiées, et fait avancer les siennes ; un lecteur consulte ;
+  - la limite « tâches par jour » d'une responsabilité compte les tâches lancées le jour même dans le fuseau de l'organisation ; le plafond `max_open_tasks` (défaut 500) borne les tâches ouvertes ; les deux sont vérifiés sous verrou de l'organisation ;
+  - le journal d'une tâche est fait de **notes en ajout seul** (`task_notes`) ; les changements de statut et les modifications sont dans `audit_logs`. Les tables `task_steps` et `task_events`, prévues pour l'exécution automatique, ne sont pas créées ;
+  - un blocage affiche la personne à prévenir définie sur la responsabilité ; **aucune notification n'est envoyée** (pas de fournisseur d'e-mail, ADR-015).

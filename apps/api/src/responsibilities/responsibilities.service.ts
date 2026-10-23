@@ -13,6 +13,7 @@ import { sql, type Kysely, type Transaction } from 'kysely';
 import { AuditService } from '../audit/audit.service.js';
 import { ApiException } from '../common/api-exception.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
+import { today } from '../common/today.js';
 import { DatabaseService } from '../database/database.service.js';
 import type { Database } from '../database/schema.js';
 
@@ -37,11 +38,6 @@ function invalid(path: string, message: string): ApiException {
     'Données invalides.',
     [{ path, message }],
   );
-}
-
-/** Today in the organization's time zone, as YYYY-MM-DD. */
-function today(timeZone: string): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone }).format(new Date());
 }
 
 /** Fields compared for the audit trail of an update. */

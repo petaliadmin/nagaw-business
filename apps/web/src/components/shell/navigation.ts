@@ -4,6 +4,7 @@
  */
 export const NAV_ITEMS = [
   { href: '/espace', label: 'Vue d’ensemble' },
+  { href: '/espace/taches', label: 'Tâches' },
   { href: '/espace/responsabilites', label: 'Responsabilités' },
   { href: '/espace/equipe', label: 'Équipe' },
   { href: '/espace/journal', label: 'Journal d’audit' },
