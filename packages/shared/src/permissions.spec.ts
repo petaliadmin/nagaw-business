@@ -21,3 +21,28 @@ describe('roleHasPermission', () => {
     }
   });
 });
+
+describe('member management permissions', () => {
+  it('lets only owners and admins invite and manage members', () => {
+    for (const role of ['owner', 'admin'] as const) {
+      expect(roleHasPermission(role, 'members.invite')).toBe(true);
+      expect(roleHasPermission(role, 'members.manage')).toBe(true);
+    }
+    for (const role of ['member', 'viewer'] as const) {
+      expect(roleHasPermission(role, 'members.invite')).toBe(false);
+      expect(roleHasPermission(role, 'members.manage')).toBe(false);
+    }
+  });
+});
+
+describe('agent permissions', () => {
+  it('lets every role read agents but only owners and admins manage them', () => {
+    for (const role of ROLES) {
+      expect(roleHasPermission(role, 'agents.read')).toBe(true);
+    }
+    expect(roleHasPermission('owner', 'agents.manage')).toBe(true);
+    expect(roleHasPermission('admin', 'agents.manage')).toBe(true);
+    expect(roleHasPermission('member', 'agents.manage')).toBe(false);
+    expect(roleHasPermission('viewer', 'agents.manage')).toBe(false);
+  });
+});

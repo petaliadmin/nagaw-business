@@ -20,6 +20,9 @@ export default defineConfig({
   testDir: './e2e',
   forbidOnly: !!process.env.CI,
   retries: 0,
+  // The signed-in specs share one fake backend and reset it: run files one
+  // at a time so that they never see each other's changes.
+  workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
   use: { trace: 'retain-on-failure' },
   projects: [

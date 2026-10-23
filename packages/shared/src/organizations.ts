@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { MemberStatus } from './members.js';
 import { roleSchema } from './permissions.js';
 
 const timezoneSchema = z
@@ -35,6 +36,9 @@ export const createOrganizationSchema = z
   .strict();
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 
+/** Bounds mirror the database check constraint. */
+export const INVITATION_TTL_HOURS = { min: 1, max: 720 } as const;
+
 export const updateOrganizationSchema = z
   .object({
     name: nameSchema.optional(),
@@ -42,6 +46,12 @@ export const updateOrganizationSchema = z
     defaultCurrency: z
       .string()
       .regex(/^[A-Z]{3}$/, 'Code devise ISO 4217 attendu')
+      .optional(),
+    invitationTtlHours: z.coerce
+      .number()
+      .int('Nombre d’heures entier attendu')
+      .min(INVITATION_TTL_HOURS.min, 'Au moins 1 heure')
+      .max(INVITATION_TTL_HOURS.max, 'Au plus 720 heures (30 jours)')
       .optional(),
   })
   .strict()
@@ -57,6 +67,8 @@ export interface OrganizationDto {
   status: 'active' | 'suspended';
   timezone: string;
   defaultCurrency: string;
+  /** Lifetime of new invitations. */
+  invitationTtlHours: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -70,7 +82,7 @@ export interface MemberDto {
   email: string;
   displayName: string | null;
   role: z.infer<typeof roleSchema>;
-  status: 'active' | 'disabled';
+  status: MemberStatus;
   joinedAt: string;
 }
 

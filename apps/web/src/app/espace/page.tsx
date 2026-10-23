@@ -1,5 +1,6 @@
 import {
   roleHasPermission,
+  type AgentDto,
   type AuditLogDto,
   type MemberDto,
   type Paginated,
@@ -21,7 +22,6 @@ export const metadata: Metadata = { title: 'Vue d’ensemble — Nagaw Business'
 
 /** Modules announced honestly, without links, until their phase ships. */
 const UPCOMING = [
-  'Agents numériques',
   'Responsabilités déléguées',
   'Tâches et exécutions',
   'Centre de validation',
@@ -33,9 +33,13 @@ async function Overview() {
   const { organization, accessToken } = workspace;
   const canReadAudit = roleHasPermission(organization.role, 'audit.read');
 
-  const [members, audit] = await Promise.all([
+  const [members, agents, audit] = await Promise.all([
     apiAsUser<MemberDto[]>(accessToken, {
       path: '/organizations/current/members',
+      organizationId: organization.id,
+    }),
+    apiAsUser<AgentDto[]>(accessToken, {
+      path: '/agents',
       organizationId: organization.id,
     }),
     canReadAudit
@@ -62,8 +66,17 @@ async function Overview() {
 
       <Card title="Votre organisation" titleId="org-summary">
         {members.ok ? (
-          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Membres actifs" value={activeMembers.length} />
+            <Stat
+              label="Agents actifs"
+              value={
+                agents.ok
+                  ? agents.data.filter((agent) => agent.status === 'active')
+                      .length
+                  : 'indisponible'
+              }
+            />
             <Stat label="Votre rôle" value={ROLE_LABELS[organization.role]} />
             <Stat
               label="Fuseau horaire · devise"

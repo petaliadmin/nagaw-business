@@ -21,7 +21,7 @@ export function Table<T>({
   rowKey: (row: T) => string;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+    <div className="relative overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
       <table className="w-full min-w-[32rem] text-left text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead className="bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">

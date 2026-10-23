@@ -1,5 +1,5 @@
 import 'server-only';
-import { apiBaseUrl } from '../env';
+import { apiBaseUrl, apiProtectionBypass } from '../env';
 import { createSupabaseServerClient } from '../supabase/server';
 import { callApi, type ApiResult, type CallApiOptions } from './call-api';
 
@@ -33,7 +33,12 @@ export async function getSession(): Promise<Session> {
 /** Calls the API on behalf of the signed-in user. */
 export async function apiAsUser<T>(
   accessToken: string,
-  options: Omit<CallApiOptions, 'baseUrl' | 'token'>,
+  options: Omit<CallApiOptions, 'baseUrl' | 'token' | 'protectionBypass'>,
 ): Promise<ApiResult<T>> {
-  return callApi<T>({ ...options, baseUrl: apiBaseUrl(), token: accessToken });
+  return callApi<T>({
+    ...options,
+    baseUrl: apiBaseUrl(),
+    token: accessToken,
+    protectionBypass: apiProtectionBypass(),
+  });
 }

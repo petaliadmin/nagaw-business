@@ -38,6 +38,59 @@ describe('callApi', () => {
     expect(calls[0]?.init.body).toBe('{"name":"Acme"}');
   });
 
+  it('adds the Vercel protection bypass header only when configured', async () => {
+    const { fetchImpl, calls } = stub(() => Response.json({}));
+    await callApi({
+      baseUrl: 'https://api.test',
+      token: 't',
+      path: '/me',
+      fetchImpl,
+    });
+    expect(calls[0]?.init.headers).not.toHaveProperty(
+      'x-vercel-protection-bypass',
+    );
+    await callApi({
+      baseUrl: 'https://api.test',
+      token: 't',
+      path: '/me',
+      protectionBypass: 'secret',
+      fetchImpl,
+    });
+    expect(calls[1]?.init.headers).toMatchObject({
+      'x-vercel-protection-bypass': 'secret',
+    });
+  });
+
+  it('keeps well-formed field details and drops the rest', async () => {
+    const { fetchImpl } = stub(() =>
+      Response.json(
+        {
+          error: {
+            code: 'VALIDATION_FAILED',
+            message: 'Configuration invalide.',
+            details: [
+              { path: 'maxSteps', message: 'Au plus 5 étapes.' },
+              'not a detail',
+              { path: 3, message: 'bad path' },
+            ],
+          },
+        },
+        { status: 400 },
+      ),
+    );
+    const result = await callApi({
+      baseUrl: 'https://api.test',
+      token: 't',
+      path: '/agents',
+      fetchImpl,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'VALIDATION_FAILED',
+      details: [{ path: 'maxSteps', message: 'Au plus 5 étapes.' }],
+    });
+  });
+
   it('surfaces the documented error envelope', async () => {
     const { fetchImpl } = stub(() =>
       Response.json(

@@ -14,6 +14,7 @@ export async function fetchApiHealth(
   baseUrl: string | undefined,
   fetchImpl: typeof fetch = fetch,
   timeoutMs = 3000,
+  protectionBypass?: string,
 ): Promise<ApiHealth> {
   if (!baseUrl) return { state: 'not_configured' };
 
@@ -22,6 +23,9 @@ export async function fetchApiHealth(
     response = await fetchImpl(new URL('/api/v1/health', baseUrl), {
       cache: 'no-store',
       signal: AbortSignal.timeout(timeoutMs),
+      headers: protectionBypass
+        ? { 'x-vercel-protection-bypass': protectionBypass }
+        : undefined,
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);

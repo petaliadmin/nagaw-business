@@ -12,6 +12,7 @@ function org(id: string): OrganizationWithRoleDto {
     status: 'active',
     timezone: 'UTC',
     defaultCurrency: 'XOF',
+    invitationTtlHours: 168,
     createdAt: '2026-10-20T10:00:00.000Z',
     updatedAt: '2026-10-20T10:00:00.000Z',
     role: 'owner',
@@ -47,5 +48,7 @@ describe('formatting', () => {
   it('labels known audit actions and shows unknown ones raw', () => {
     expect(auditActionLabel('organization.created')).toBe('Organisation créée');
     expect(auditActionLabel('agent.activated')).toBe('agent.activated');
+    expect(auditActionLabel('member.disabled')).toBe('Membre désactivé');
+    expect(auditActionLabel('invitation.accepted')).toBe('Invitation acceptée');
   });
 });

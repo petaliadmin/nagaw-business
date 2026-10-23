@@ -98,7 +98,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Incident constaté puis corrigé** : un lien de confirmation ouvert dans un autre navigateur confirme bien l'adresse, mais ne peut pas ouvrir de session (cookie PKCE absent). La page affichait alors « lien invalide ». Le callback journalise désormais la raison de l'échec, et la page invite à se connecter (commit `2d32acc`).
 - **Problèmes connus** : pas de limitation de débit côté API ; SMTP Supabase par défaut ; TLS Postgres non vérifié (`require`).
 - **Correctif après fusion** : les logs HTTP enregistraient tous les en-têtes, y compris le jeton OIDC Vercel (`x-vercel-oidc-token`) et la signature du proxy. Ils ne gardent plus que l'identifiant, la méthode et le chemin (liste blanche testée dans `apps/api/src/common/logging.spec.ts`).
-- **Reste à faire, phases suivantes** : invitations et gestion des membres (Phase 4) ; navigation et tableau de bord (Phase 3).
+- **Reste à faire, phases suivantes** : navigation et tableau de bord (Phase 3, livrée) ; invitations et gestion des membres (Phase 4).
 
 ## Phase 3 — Interface générale et navigation
 
@@ -153,8 +153,78 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Limites** :
   - pas de thème sombre spécifique au-delà des préférences système ;
   - la sélection du fuseau horaire est une liste IANA brute (environ 400 entrées).
-- **Prochaine action recommandée** : Phase 4 (organisations, équipe et permissions : invitations, rôles, désactivation des membres).
+- **Suite** : Phase 4 autorisée par le propriétaire le 2026-10-23.
 
-## Phases 4 à 15
+## Phase 4 — Organisations, équipe et permissions
+
+- **Objectif** : inviter des collaborateurs, gérer les rôles et désactiver des membres, avec les mêmes garanties d'isolation et d'audit que la Phase 2.
+- **Statut** : **validée** par le propriétaire le 2026-10-23, après test de la prévisualisation. Migration appliquée sur Supabase le 2026-10-23 (version `20261023191420`, avec l'autorisation du propriétaire) ; prévisualisation configurée pour appeler l'API de la même branche. Rien n'est en production.
+- **Fonctionnalités terminées** :
+  - migration `20261023191420_members_invitations.sql` :
+    - table `organization_invitations` (jeton stocké en SHA-256, une seule invitation en attente par adresse) ;
+    - seuils configurables en base : `invitation_ttl_hours` (défaut 168 h) et `max_pending_invitations` (défaut 50) ;
+    - trigger garantissant au moins un propriétaire actif par organisation ;
+  - API :
+    - création, liste et annulation d'invitations (`members.invite`) ;
+    - aperçu et acceptation par l'invité, liée à son adresse e-mail, à usage unique, avec expiration ;
+    - changement de rôle, désactivation et réactivation d'un membre (`members.manage`) ;
+    - règles partagées (`memberChangeRefusal`) : personne ne modifie sa propre appartenance, seul un propriétaire modifie un propriétaire ou en nomme un ;
+    - chaque action est auditée dans la même transaction (`invitation.created`, `invitation.revoked`, `invitation.accepted`, `member.role_changed`, `member.disabled`, `member.reactivated`) ;
+  - web :
+    - page Équipe : actions par membre pour les propriétaires et administrateurs, formulaire d'invitation, liste des invitations en attente avec annulation ;
+    - lien d'invitation affiché une seule fois, avec un bouton de copie ;
+    - page `/invitation` : invité non connecté renvoyé vers la connexion ou l'inscription puis ramené au lien, adresse différente signalée, acceptation puis ouverture de l'organisation ;
+    - paramètre « Durée de validité des invitations » ;
+    - libellés français des nouvelles actions dans le journal.
+- **Décision à valider** : ADR-015. Aucun fournisseur d'e-mail n'est configuré : l'administrateur transmet lui-même le lien, et l'interface l'indique.
+- **Défauts trouvés et corrigés pendant la phase** :
+  1. Sur mobile, les libellés masqués (`sr-only`) des tableaux étaient positionnés par rapport à la page et l'élargissaient. Le test de débordement ne le voyait pas, car il comparait à `innerWidth`, qui grandit avec le contenu sur mobile. Le tableau est maintenant un conteneur positionné, et les deux tests comparent à `clientWidth`.
+  2. Les invitations en attente s'affichent en liste plutôt qu'en tableau à six colonnes, plus lisible sur mobile.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                                                       |
+  | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+  | `pnpm test`                    | 76 tests OK (shared 17, api 25, web 34)                                                                                        |
+  | `pnpm test:integration`        | 45 tests OK, dont 16 nouveaux (invitations, membres, isolation, privilèges de toutes les tables `app`)                         |
+  | Playwright                     | 49 tests OK, 1 ignoré volontairement (test du menu mobile, sur bureau)                                                         |
+  | Tests de mutation              | Filtre d'organisation retiré dans l'annulation d'invitation et dans la modification de membre : les tests d'isolation échouent |
+  | lint, typecheck, build, format | OK                                                                                                                             |
+
+- **Limites** :
+  - pas d'envoi d'e-mail (ADR-015) ;
+  - pas de transfert de propriété en une seule action : un propriétaire en nomme un autre, qui peut ensuite le rétrograder ;
+  - toujours pas de limitation de débit côté API.
+- **Suite** : fusion dans `main` avec la Phase 5, autorisée le 2026-10-23. ADR-015 (invitations par lien) est conservée telle quelle pour l'instant, sur décision du propriétaire.
+
+## Phase 5 — Agents numériques
+
+- **Objectif** : créer et administrer des agents dont la configuration est persistée, versionnée, validée et réellement exploitable par le futur moteur (Phase 7).
+- **Statut** : **validée** par le propriétaire le 2026-10-23 ; fusion dans `main` avec la Phase 4 autorisée. Migration appliquée sur Supabase le 2026-10-23 (version `20261023193645`, avec l'autorisation du propriétaire). ADR-016 validée.
+- **Fonctionnalités terminées** :
+  - migration `20261023193645_agents.sql` :
+    - `agents` (identité, domaine, statut) et `agent_versions` (configuration immuable, ajout seul) ;
+    - clés étrangères composites : une version appartient à un agent de la même organisation, et la version actuelle est une version de l'agent ;
+    - plafonds configurables en base sur `organizations` : `max_agents` (10), `agent_max_steps` (20), `agent_max_duration_seconds` (300) ;
+  - API : liste, création, lecture, modification de l'identité, nouvelle version de configuration, historique, changement de statut, test contrôlé, plafonds ;
+  - règles partagées (`packages/shared/src/agents.ts`) : cycle de vie, vérifications de préparation, consignes assemblées, registre d'outils ;
+  - web : page Agents (liste, archivés à la demande, usage du plafond), création, fiche agent (résumé, statut, test contrôlé, configuration, identité, historique des versions dépliable), statistique « Agents actifs » sur la vue d'ensemble, lien « Agents » dans la navigation ;
+  - modèle d'IA affiché « non configuré » partout ; `email.send` affiché « bientôt disponible » et refusé par l'API.
+- **Décision** : ADR-016, validée par le propriétaire le 2026-10-23.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                                       |
+  | ------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+  | `pnpm test`                    | 86 tests OK (shared 26, api 25, web 35)                                                                        |
+  | `pnpm test:integration`        | 61 tests OK, dont 16 nouveaux sur les agents (cycle de vie, versions, plafonds, isolation inter-organisations) |
+  | Playwright                     | 61 tests OK, 1 ignoré volontairement (test du menu mobile, sur bureau)                                         |
+  | Test de mutation               | Filtre d'organisation retiré dans la recherche d'agent : le test d'isolation échoue                            |
+  | lint, typecheck, build, format | OK                                                                                                             |
+
+- **Limites** :
+  - aucun agent n'exécute encore de tâche : le moteur arrive en Phase 7, les outils réels en Phase 9, le modèle d'IA est reporté ;
+  - les plafonds ne sont modifiables que par SQL (quotas par offre en Phase 12).
+- **Prochaine action recommandée** : Phase 6 (responsabilités), autorisée par le propriétaire le 2026-10-23.
+
+## Phases 6 à 15
 
 Non commencées.

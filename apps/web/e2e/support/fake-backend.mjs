@@ -3,7 +3,17 @@
 // key generated at startup, so the web app verifies them exactly as in
 // production. Started by Playwright; never used outside end-to-end tests.
 import { createServer } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
+import {
+  AGENT_ROLE_LABELS,
+  ERROR_POLICY_LABELS,
+  agentConfigurationSchema,
+  buildAgentBrief,
+  canTransition,
+  checkAgentConfiguration,
+  createAgentSchema,
+  updateAgentSchema,
+} from '@nagaw/shared';
 import {
   SignJWT,
   exportJWK,
@@ -50,6 +60,7 @@ function makeState() {
       status: 'active',
       timezone: 'Africa/Dakar',
       defaultCurrency: 'XOF',
+      invitationTtlHours: 168,
       createdAt: created,
       updatedAt: created,
     },
@@ -60,6 +71,7 @@ function makeState() {
       status: 'active',
       timezone: 'UTC',
       defaultCurrency: 'EUR',
+      invitationTtlHours: 168,
       createdAt: created,
       updatedAt: created,
     },
@@ -137,7 +149,16 @@ function makeState() {
     requestId: 'req-globex',
     createdAt: created,
   });
-  return { organizations, memberships, audit, nextAuditId: id };
+  return {
+    organizations,
+    memberships,
+    audit,
+    nextAuditId: id,
+    // { id, organizationId, email, role, status, token, expiresAt, ... }
+    invitations: [],
+    // { id, organizationId, name, description, roleKey, status, versions }
+    agents: [],
+  };
 }
 let state = makeState();
 
@@ -205,6 +226,97 @@ async function authenticate(req) {
   } catch {
     return null;
   }
+}
+
+const forbidden = (res) =>
+  apiError(
+    res,
+    403,
+    'PERMISSION_DENIED',
+    'Votre rôle ne permet pas cette action.',
+  );
+
+function recordAudit(organizationId, actorId, action, targetId, metadata) {
+  state.audit.push({
+    id: String(state.nextAuditId++),
+    organizationId,
+    actorType: 'user',
+    actorId,
+    action,
+    targetType: action.split('.')[0],
+    targetId,
+    metadata,
+    requestId: `req-${state.nextAuditId}`,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+const userById = (id) => Object.values(USERS).find((u) => u.id === id);
+
+function invitationDto(invitation) {
+  const expired =
+    invitation.status === 'pending' &&
+    Date.parse(invitation.expiresAt) <= Date.now();
+  return {
+    id: invitation.id,
+    email: invitation.email,
+    role: invitation.role,
+    status: expired ? 'expired' : invitation.status,
+    expiresAt: invitation.expiresAt,
+    createdAt: invitation.createdAt,
+    invitedBy: {
+      userId: invitation.invitedBy,
+      email: userById(invitation.invitedBy).email,
+    },
+  };
+}
+
+// Same rule as memberChangeRefusal in @nagaw/shared.
+function memberChangeRefusal(actor, target, change) {
+  if (actor.userId === target.userId) return 'SELF_CHANGE_FORBIDDEN';
+  if (actor.role === 'owner') return null;
+  if (target.role === 'owner') return 'OWNER_PROTECTED';
+  if (change.role === 'owner') return 'OWNER_PROMOTION_FORBIDDEN';
+  return null;
+}
+
+const AGENT_CAPS = { maxAgents: 10, maxSteps: 20, maxDurationSeconds: 300 };
+
+function agentDto(agent) {
+  const current = agent.versions.at(-1);
+  return {
+    id: agent.id,
+    name: agent.name,
+    description: agent.description,
+    roleKey: agent.roleKey,
+    status: agent.status,
+    createdAt: agent.createdAt,
+    updatedAt: agent.updatedAt,
+    currentVersion: current,
+  };
+}
+
+function newVersion(agent, configuration, user) {
+  return {
+    id: randomUUID(),
+    version: agent.versions.length + 1,
+    ...configuration,
+    createdAt: new Date().toISOString(),
+    createdBy: { userId: user.id, email: user.email },
+  };
+}
+
+function validation(res, issues) {
+  return send(res, 400, {
+    error: {
+      code: 'VALIDATION_FAILED',
+      message: 'Données invalides.',
+      details: issues.map((i) => ({
+        path: i.path.join('.'),
+        message: i.message,
+      })),
+    },
+  });
 }
 
 const orgsOf = (userId) =>
@@ -279,6 +391,61 @@ const server = createServer(async (req, res) => {
     return send(res, 201, { ...state.organizations[id], role: 'owner' });
   }
 
+  if (
+    (path === '/api/v1/invitations/preview' ||
+      path === '/api/v1/invitations/accept') &&
+    req.method === 'POST'
+  ) {
+    const { token } = await readJson(req);
+    const invitation = state.invitations.find((i) => i.token === token);
+    if (!invitation)
+      return apiError(
+        res,
+        404,
+        'INVITATION_NOT_FOUND',
+        'Invitation introuvable.',
+      );
+    const dto = invitationDto(invitation);
+    if (path.endsWith('/preview')) {
+      return send(res, 200, {
+        organizationName: state.organizations[invitation.organizationId].name,
+        email: invitation.email,
+        role: invitation.role,
+        status: dto.status,
+        expiresAt: invitation.expiresAt,
+        emailMatches: invitation.email === user.email,
+      });
+    }
+    if (dto.status !== 'pending')
+      return apiError(res, 410, 'INVITATION_EXPIRED', 'Invitation expirée.');
+    if (invitation.email !== user.email)
+      return apiError(
+        res,
+        403,
+        'INVITATION_EMAIL_MISMATCH',
+        'Cette invitation est destinée à une autre adresse e-mail.',
+      );
+    invitation.status = 'accepted';
+    state.memberships.push({
+      organizationId: invitation.organizationId,
+      userId: user.id,
+      role: invitation.role,
+      status: 'active',
+      joinedAt: new Date().toISOString(),
+    });
+    recordAudit(
+      invitation.organizationId,
+      user.id,
+      'invitation.accepted',
+      invitation.id,
+      { email: invitation.email, role: invitation.role },
+    );
+    return send(res, 201, {
+      ...state.organizations[invitation.organizationId],
+      role: invitation.role,
+    });
+  }
+
   // Tenant-scoped routes: same rules as the real TenantGuard.
   const orgId = req.headers['x-organization-id'];
   const membership = state.memberships.find(
@@ -341,6 +508,246 @@ const server = createServer(async (req, res) => {
           };
         }),
     );
+  }
+  if (path === '/api/v1/organizations/current/invitations') {
+    if (!canManage) return forbidden(res);
+    if (req.method === 'GET')
+      return send(
+        res,
+        200,
+        state.invitations
+          .filter((i) => i.organizationId === orgId && i.status === 'pending')
+          .map(invitationDto),
+      );
+    const body = await readJson(req);
+    const email = String(body.email).trim().toLowerCase();
+    const alreadyMember = state.memberships.some(
+      (m) => m.organizationId === orgId && userById(m.userId)?.email === email,
+    );
+    if (alreadyMember)
+      return apiError(
+        res,
+        409,
+        'ALREADY_MEMBER',
+        'Cette personne est déjà membre de l’organisation.',
+      );
+    if (
+      state.invitations.some(
+        (i) =>
+          i.organizationId === orgId &&
+          i.email === email &&
+          i.status === 'pending',
+      )
+    )
+      return apiError(
+        res,
+        409,
+        'INVITATION_PENDING',
+        'Une invitation est déjà en attente pour cette adresse.',
+      );
+    const now = Date.now();
+    const invitation = {
+      id: randomUUID(),
+      organizationId: orgId,
+      email,
+      role: body.role,
+      status: 'pending',
+      token: randomBytes(32).toString('base64url'),
+      invitedBy: user.id,
+      createdAt: new Date(now).toISOString(),
+      expiresAt: new Date(
+        now + state.organizations[orgId].invitationTtlHours * 3600_000,
+      ).toISOString(),
+    };
+    state.invitations.push(invitation);
+    recordAudit(orgId, user.id, 'invitation.created', invitation.id, {
+      email,
+      role: body.role,
+    });
+    return send(res, 201, {
+      invitation: invitationDto(invitation),
+      token: invitation.token,
+    });
+  }
+  const revoke =
+    /^\/api\/v1\/organizations\/current\/invitations\/([^/]+)\/revoke$/.exec(
+      path,
+    );
+  if (revoke && req.method === 'POST') {
+    if (!canManage) return forbidden(res);
+    const invitation = state.invitations.find(
+      (i) => i.id === revoke[1] && i.organizationId === orgId,
+    );
+    if (!invitation)
+      return apiError(
+        res,
+        404,
+        'INVITATION_NOT_FOUND',
+        'Invitation introuvable.',
+      );
+    invitation.status = 'revoked';
+    recordAudit(orgId, user.id, 'invitation.revoked', invitation.id, {
+      email: invitation.email,
+    });
+    return send(res, 200, invitationDto(invitation));
+  }
+  const member = /^\/api\/v1\/organizations\/current\/members\/([^/]+)$/.exec(
+    path,
+  );
+  if (member && req.method === 'PATCH') {
+    if (!canManage) return forbidden(res);
+    const target = state.memberships.find(
+      (m) => m.organizationId === orgId && m.userId === member[1],
+    );
+    if (!target)
+      return apiError(res, 404, 'MEMBER_NOT_FOUND', 'Membre introuvable.');
+    const body = await readJson(req);
+    const refusal = memberChangeRefusal(
+      { userId: user.id, role: membership.role },
+      target,
+      body,
+    );
+    if (refusal)
+      return apiError(res, 403, refusal, 'Modification non autorisée.');
+    if (body.role && body.role !== target.role) {
+      recordAudit(orgId, user.id, 'member.role_changed', target.userId, {
+        from: target.role,
+        to: body.role,
+      });
+      target.role = body.role;
+    }
+    if (body.status && body.status !== target.status) {
+      recordAudit(
+        orgId,
+        user.id,
+        body.status === 'disabled' ? 'member.disabled' : 'member.reactivated',
+        target.userId,
+        {},
+      );
+      target.status = body.status;
+    }
+    const profile = userById(target.userId);
+    return send(res, 200, {
+      userId: target.userId,
+      email: profile.email,
+      displayName: null,
+      role: target.role,
+      status: target.status,
+      joinedAt: target.joinedAt,
+    });
+  }
+  if (path === '/api/v1/agents/limits') return send(res, 200, AGENT_CAPS);
+  if (path === '/api/v1/agents' && req.method === 'GET') {
+    const archived = url.searchParams.get('archives') === 'true';
+    return send(
+      res,
+      200,
+      state.agents
+        .filter(
+          (a) =>
+            a.organizationId === orgId && (archived || a.status !== 'archived'),
+        )
+        .map(agentDto),
+    );
+  }
+  if (path === '/api/v1/agents' && req.method === 'POST') {
+    if (!canManage) return forbidden(res);
+    const parsed = createAgentSchema.safeParse(await readJson(req));
+    if (!parsed.success) return validation(res, parsed.error.issues);
+    const { configuration, ...identity } = parsed.data;
+    const now = new Date().toISOString();
+    const agent = {
+      id: randomUUID(),
+      organizationId: orgId,
+      ...identity,
+      status: 'draft',
+      createdAt: now,
+      updatedAt: now,
+      versions: [],
+    };
+    agent.versions.push(newVersion(agent, configuration, user));
+    state.agents.push(agent);
+    recordAudit(orgId, user.id, 'agent.created', agent.id, {});
+    return send(res, 201, agentDto(agent));
+  }
+  const agentRoute =
+    /^\/api\/v1\/agents\/([^/]+)(\/(versions|status|test))?$/.exec(path);
+  if (agentRoute) {
+    const agent = state.agents.find(
+      (a) => a.id === agentRoute[1] && a.organizationId === orgId,
+    );
+    if (!agent)
+      return apiError(res, 404, 'AGENT_NOT_FOUND', 'Agent introuvable.');
+    const sub = agentRoute[3];
+    if (!sub && req.method === 'GET') return send(res, 200, agentDto(agent));
+    if (sub === 'versions' && req.method === 'GET')
+      return send(res, 200, [...agent.versions].reverse());
+    if (sub === 'test') {
+      const current = agent.versions.at(-1);
+      const checks = checkAgentConfiguration(agent, current, AGENT_CAPS);
+      return send(res, 200, {
+        ready: checks.every((c) => c.severity !== 'error'),
+        checks,
+        brief: buildAgentBrief(agent, current, {
+          role: AGENT_ROLE_LABELS,
+          errorPolicy: ERROR_POLICY_LABELS,
+        }),
+        testedVersion: current.version,
+      });
+    }
+    if (!canManage) return forbidden(res);
+    if (agent.status === 'archived' && sub !== 'status')
+      return apiError(res, 409, 'AGENT_ARCHIVED', 'Cet agent est archivé.');
+    const body = await readJson(req);
+    if (!sub && req.method === 'PATCH') {
+      const parsed = updateAgentSchema.safeParse(body);
+      if (!parsed.success) return validation(res, parsed.error.issues);
+      Object.assign(agent, parsed.data, {
+        updatedAt: new Date().toISOString(),
+      });
+      recordAudit(orgId, user.id, 'agent.updated', agent.id, {});
+      return send(res, 200, agentDto(agent));
+    }
+    if (sub === 'versions' && req.method === 'POST') {
+      const parsed = agentConfigurationSchema.safeParse(body);
+      if (!parsed.success) return validation(res, parsed.error.issues);
+      agent.versions.push(newVersion(agent, parsed.data, user));
+      recordAudit(orgId, user.id, 'agent.configured', agent.id, {});
+      return send(res, 201, agentDto(agent));
+    }
+    if (sub === 'status' && req.method === 'POST') {
+      if (!canTransition(agent.status, body.status))
+        return apiError(
+          res,
+          409,
+          'INVALID_STATUS_TRANSITION',
+          'Ce changement de statut n’est pas possible.',
+        );
+      if (body.status === 'active') {
+        const errors = checkAgentConfiguration(
+          agent,
+          agent.versions.at(-1),
+          AGENT_CAPS,
+        ).filter((c) => c.severity === 'error');
+        if (errors.length)
+          return send(res, 409, {
+            error: {
+              code: 'AGENT_NOT_READY',
+              message: 'La configuration de l’agent est incomplète.',
+              details: errors.map((c) => ({
+                path: c.code,
+                message: c.message,
+              })),
+            },
+          });
+      }
+      recordAudit(orgId, user.id, 'agent.status_changed', agent.id, {
+        from: agent.status,
+        to: body.status,
+      });
+      agent.status = body.status;
+      return send(res, 200, agentDto(agent));
+    }
   }
   if (path === '/api/v1/audit-logs') {
     if (!canManage)
