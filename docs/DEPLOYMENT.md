@@ -72,4 +72,13 @@ Elles ne peuvent pas être réalisées par les connecteurs, ou ne doivent pas l'
 
 ## Migrations
 
-La migration `20261020194209_tenancy_foundation` a été appliquée au projet `nagaw-business` le 2026-10-20 via le connecteur Supabase. Le nom du fichier reprend la version enregistrée par Supabase, pour garder l'historique aligné. Les suivantes seront appliquées via la Supabase CLI depuis la CI, sur la préproduction d'abord, puis sur la production après validation. Toute migration doit rester rétrocompatible avec la version précédente de l'API (déploiement en deux temps).
+La migration `20261020194209_tenancy_foundation` a été appliquée au projet `nagaw-business` le 2026-10-20 via le connecteur Supabase. La migration `20261023191420_members_invitations` (Phase 4, uniquement additive) a été appliquée le 2026-10-23, avec l'autorisation du propriétaire, avant la fusion, pour tester la prévisualisation. Le nom du fichier reprend la version enregistrée par Supabase, pour garder l'historique aligné. Les suivantes seront appliquées via la Supabase CLI depuis la CI, sur la préproduction d'abord, puis sur la production après validation. Toute migration doit rester rétrocompatible avec la version précédente de l'API (déploiement en deux temps).
+
+## Prévisualisation de la branche de travail
+
+Pour que le web de prévisualisation appelle l'API de prévisualisation de la même branche (et non l'API de production), deux variables sont définies sur `nagaw-web`, en cible _Preview_, limitées à la branche `claude/beautiful-cerf-cbbkzm` :
+
+- `API_URL` = `https://nagaw-api-git-claude-beautiful-cerf-cbbkzm-petalia.vercel.app` ;
+- `API_PROTECTION_BYPASS` (_Sensitive_) : secret « Protection Bypass for Automation » du projet `nagaw-api`, envoyé dans l'en-tête `x-vercel-protection-bypass` par le serveur web uniquement. La protection Vercel des prévisualisations de l'API reste active pour tout le reste.
+
+Pour révoquer l'accès : _nagaw-api → Settings → Deployment Protection → Protection Bypass for Automation_, puis supprimer la variable.

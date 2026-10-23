@@ -160,7 +160,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Objectif** : inviter des collaborateurs, gérer les rôles et désactiver des membres, avec les mêmes garanties d'isolation et d'audit que la Phase 2.
 - **Statut** : livrée sur la branche de travail, **en attente de validation**. La migration n'est pas encore appliquée sur Supabase, et rien n'est en production.
 - **Fonctionnalités terminées** :
-  - migration `20261023184500_members_invitations.sql` :
+  - migration `20261023191420_members_invitations.sql` :
     - table `organization_invitations` (jeton stocké en SHA-256, une seule invitation en attente par adresse) ;
     - seuils configurables en base : `invitation_ttl_hours` (défaut 168 h) et `max_pending_invitations` (défaut 50) ;
     - trigger garantissant au moins un propriétaire actif par organisation ;
