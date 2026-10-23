@@ -158,7 +158,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 4 — Organisations, équipe et permissions
 
 - **Objectif** : inviter des collaborateurs, gérer les rôles et désactiver des membres, avec les mêmes garanties d'isolation et d'audit que la Phase 2.
-- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration appliquée sur Supabase le 2026-10-23 (version `20261023191420`, avec l'autorisation du propriétaire) ; prévisualisation configurée pour appeler l'API de la même branche. Rien n'est en production.
+- **Statut** : **validée** par le propriétaire le 2026-10-23, après test de la prévisualisation. Migration appliquée sur Supabase le 2026-10-23 (version `20261023191420`, avec l'autorisation du propriétaire) ; prévisualisation configurée pour appeler l'API de la même branche. Rien n'est en production.
 - **Fonctionnalités terminées** :
   - migration `20261023191420_members_invitations.sql` :
     - table `organization_invitations` (jeton stocké en SHA-256, une seule invitation en attente par adresse) ;
@@ -194,7 +194,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - pas d'envoi d'e-mail (ADR-015) ;
   - pas de transfert de propriété en une seule action : un propriétaire en nomme un autre, qui peut ensuite le rétrograder ;
   - toujours pas de limitation de débit côté API.
-- **Prochaine action recommandée** : tester la prévisualisation, puis valider la Phase 4. ADR-015 (invitations par lien) est conservée telle quelle pour l'instant, sur décision du propriétaire.
+- **Prochaine action recommandée** : fusion dans `main` (sur autorisation), puis Phase 5 (agents). ADR-015 (invitations par lien) est conservée telle quelle pour l'instant, sur décision du propriétaire.
 
 ## Phases 5 à 15
 
