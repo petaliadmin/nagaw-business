@@ -103,7 +103,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 3 — Interface générale et navigation
 
 - **Objectif** : un cadre applicatif navigable, sans lien mort ni donnée fictive.
-- **Statut** : livrée sur la branche de travail, **en attente de validation**. Pas encore en production.
+- **Statut** : **validée** par le propriétaire le 2026-10-23, après test de la prévisualisation ; fusionnée dans `main` et déployée en production avec son autorisation.
 - **Fonctionnalités terminées** :
   - mise en page connectée (`/espace`) :
     - barre latérale sur ordinateur ;
