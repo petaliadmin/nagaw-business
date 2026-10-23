@@ -199,9 +199,9 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 5 — Agents numériques
 
 - **Objectif** : créer et administrer des agents dont la configuration est persistée, versionnée, validée et réellement exploitable par le futur moteur (Phase 7).
-- **Statut** : développée le 2026-10-23 sur la branche de travail, **en attente de validation**. Non poussée tant que la PR de la Phase 4 n'est pas fusionnée (pour ne pas mélanger les deux phases). Migration non appliquée sur Supabase.
+- **Statut** : livrée sur la branche de travail (PR commune avec la Phase 4), **en attente de validation**. Migration appliquée sur Supabase le 2026-10-23 (version `20261023193645`, avec l'autorisation du propriétaire). ADR-016 validée.
 - **Fonctionnalités terminées** :
-  - migration `20261023200000_agents.sql` :
+  - migration `20261023193645_agents.sql` :
     - `agents` (identité, domaine, statut) et `agent_versions` (configuration immuable, ajout seul) ;
     - clés étrangères composites : une version appartient à un agent de la même organisation, et la version actuelle est une version de l'agent ;
     - plafonds configurables en base sur `organizations` : `max_agents` (10), `agent_max_steps` (20), `agent_max_duration_seconds` (300) ;
@@ -209,7 +209,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - règles partagées (`packages/shared/src/agents.ts`) : cycle de vie, vérifications de préparation, consignes assemblées, registre d'outils ;
   - web : page Agents (liste, archivés à la demande, usage du plafond), création, fiche agent (résumé, statut, test contrôlé, configuration, identité, historique des versions dépliable), statistique « Agents actifs » sur la vue d'ensemble, lien « Agents » dans la navigation ;
   - modèle d'IA affiché « non configuré » partout ; `email.send` affiché « bientôt disponible » et refusé par l'API.
-- **Décision à valider** : ADR-016.
+- **Décision** : ADR-016, validée par le propriétaire le 2026-10-23.
 - **Tests exécutés** :
 
   | Commande                       | Résultat                                                                                                       |
@@ -223,7 +223,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Limites** :
   - aucun agent n'exécute encore de tâche : le moteur arrive en Phase 7, les outils réels en Phase 9, le modèle d'IA est reporté ;
   - les plafonds ne sont modifiables que par SQL (quotas par offre en Phase 12).
-- **Prochaine action recommandée** : fusion de la Phase 4, puis push de la Phase 5, application de la migration (sur autorisation) et test de la prévisualisation.
+- **Prochaine action recommandée** : tester la prévisualisation, valider la Phase 5, puis fusionner la PR (Phases 4 et 5) sur autorisation.
 
 ## Phases 6 à 15
 

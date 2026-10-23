@@ -123,7 +123,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-016 — Agents : configuration versionnée, test contrôlé déterministe, registre d'outils en code
 
-- **Statut** : Proposée (Phase 5), à valider par le propriétaire
+- **Statut** : Acceptée (Phase 5, validée par le propriétaire le 2026-10-23)
 - **Décision** :
   - l'identité d'un agent (nom, domaine, statut) est modifiable ; tout ce qui pilote son comportement est dans des **versions immuables** (`agent_versions`, ajout seul) : chaque modification crée une version, l'historique n'est jamais réécrit ;
   - le cycle de vie est brouillon → actif ↔ suspendu → archivé ; l'archivage est définitif ; l'activation (et toute nouvelle version d'un agent actif) exige une configuration complète ;

@@ -1,6 +1,6 @@
 # Modèle de données
 
-> **État** : les tables `user_profiles`, `organizations`, `organization_memberships` et `audit_logs` sont **implémentées** (migration `20261020194209_tenancy_foundation.sql`, Phase 2), ainsi que `organization_invitations` et les seuils d'invitation de `organizations` (migration `20261023191420_members_invitations.sql`, Phase 4), puis `agents`, `agent_versions` et les plafonds d'agents (migration `20261023200000_agents.sql`, Phase 5). Les autres restent **proposées** et seront créées dans la phase indiquée.
+> **État** : les tables `user_profiles`, `organizations`, `organization_memberships` et `audit_logs` sont **implémentées** (migration `20261020194209_tenancy_foundation.sql`, Phase 2), ainsi que `organization_invitations` et les seuils d'invitation de `organizations` (migration `20261023191420_members_invitations.sql`, Phase 4), puis `agents`, `agent_versions` et les plafonds d'agents (migration `20261023193645_agents.sql`, Phase 5). Les autres restent **proposées** et seront créées dans la phase indiquée.
 
 ## Conventions
 

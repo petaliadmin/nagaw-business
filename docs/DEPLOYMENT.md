@@ -72,7 +72,7 @@ Elles ne peuvent pas être réalisées par les connecteurs, ou ne doivent pas l'
 
 ## Migrations
 
-La migration `20261020194209_tenancy_foundation` a été appliquée au projet `nagaw-business` le 2026-10-20 via le connecteur Supabase. La migration `20261023191420_members_invitations` (Phase 4, uniquement additive) a été appliquée le 2026-10-23, avec l'autorisation du propriétaire, avant la fusion, pour tester la prévisualisation. Le nom du fichier reprend la version enregistrée par Supabase, pour garder l'historique aligné. Les suivantes seront appliquées via la Supabase CLI depuis la CI, sur la préproduction d'abord, puis sur la production après validation. Toute migration doit rester rétrocompatible avec la version précédente de l'API (déploiement en deux temps).
+La migration `20261020194209_tenancy_foundation` a été appliquée au projet `nagaw-business` le 2026-10-20 via le connecteur Supabase. La migration `20261023191420_members_invitations` (Phase 4, uniquement additive) a été appliquée le 2026-10-23, avec l'autorisation du propriétaire, avant la fusion, pour tester la prévisualisation. La migration `20261023193645_agents` (Phase 5, uniquement additive) a été appliquée le même jour, dans les mêmes conditions. Le nom du fichier reprend la version enregistrée par Supabase, pour garder l'historique aligné. Les suivantes seront appliquées via la Supabase CLI depuis la CI, sur la préproduction d'abord, puis sur la production après validation. Toute migration doit rester rétrocompatible avec la version précédente de l'API (déploiement en deux temps).
 
 ## Prévisualisation de la branche de travail
 
