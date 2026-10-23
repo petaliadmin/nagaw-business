@@ -230,7 +230,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 6 — Responsabilités
 
 - **Objectif** : définir des délégations durables confiées à un **membre de l'équipe**, identifiables, configurables, activables et historisées.
-- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration `20261023210320` appliquée sur Supabase le 2026-10-23 ; migration `20261023211917` appliquée le 2026-10-23 avec l'autorisation du propriétaire.
+- **Statut** : **validée** par le propriétaire le 2026-10-23. Migration `20261023210320` appliquée sur Supabase le 2026-10-23 ; migration `20261023211917` appliquée le 2026-10-23 avec l'autorisation du propriétaire.
 - **Décisions du propriétaire en cours de phase (ADR-017)** : l'application reste **100 % manuelle**, sans automatisation, sans IA et sans agent. La planification a été retirée, puis les agents : une responsabilité est confiée à une personne et ne se déclenche qu'à la main.
 - **Fonctionnalités terminées** :
   - migration `20261023210320_responsibilities.sql` : objectif, périmètre, règles métier, critères de réussite, limite de tâches par jour, personne à prévenir, période facultative, statut ; plafonds configurables en base `max_responsibilities` (50) et `responsibility_max_runs_per_day` (24) ;
@@ -250,7 +250,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   | lint, typecheck, build, format | OK                                                                                            |
 
 - **Limites** : rien n'est exécuté (ADR-017) ; les plafonds ne sont modifiables que par SQL ; la production affiche encore la section Agents jusqu'à la prochaine fusion dans `main`.
-- **Prochaine action recommandée** : tester la prévisualisation et valider la Phase 6. Phase 7 retenue : **suivi manuel des tâches**.
+- **Prochaine action recommandée** : fusion dans `main` (sur autorisation explicite), puis plan détaillé de la Phase 7 (**suivi manuel des tâches**) à valider avant de coder.
 
 ## Phases 7 à 15
 
