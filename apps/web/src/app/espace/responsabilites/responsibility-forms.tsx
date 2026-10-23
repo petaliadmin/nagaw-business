@@ -21,17 +21,15 @@ export interface Option {
 export function ResponsibilityForm({
   organizationId,
   caps,
-  agents,
   members,
   responsibility,
-  defaultAgentId,
+  defaultAssigneeId,
 }: {
   organizationId: string;
   caps: ResponsibilityLimitsCaps;
-  agents: Option[];
   members: Option[];
   responsibility?: ResponsibilityDto;
-  defaultAgentId?: string;
+  defaultAssigneeId?: string;
 }) {
   const [state, action] = useActionState(saveResponsibility, initialFormState);
   const errors = state.fieldErrors;
@@ -56,13 +54,16 @@ export function ResponsibilityForm({
         error={errors?.title}
       />
       <SelectField
-        label="Agent responsable"
-        name="agentId"
+        label="Personne responsable"
+        name="assigneeUserId"
         defaultValue={
-          responsibility?.agent.id ?? defaultAgentId ?? agents[0]?.value ?? ''
+          responsibility?.assignee.userId ??
+          defaultAssigneeId ??
+          members[0]?.value ??
+          ''
         }
-        options={agents}
-        error={errors?.agentId}
+        options={members}
+        error={errors?.assigneeUserId}
       />
       <TextareaField
         label="Objectif"
@@ -99,7 +100,7 @@ export function ResponsibilityForm({
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField
-          label={`Exécutions maximum par jour (≤ ${caps.maxRunsPerDay})`}
+          label={`Tâches maximum par jour (≤ ${caps.maxRunsPerDay})`}
           name="maxRunsPerDay"
           type="number"
           inputMode="numeric"

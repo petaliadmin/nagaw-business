@@ -1,5 +1,4 @@
 import type {
-  AgentStatus,
   InvitationStatus,
   MemberStatus,
   ResponsibilityStatus,
@@ -46,13 +45,6 @@ export const INVITATION_STATUS_LABELS: Record<InvitationStatus, string> = {
   accepted: 'Acceptée',
   revoked: 'Annulée',
   expired: 'Expirée',
-};
-
-export const AGENT_STATUS_LABELS: Record<AgentStatus, string> = {
-  draft: 'Brouillon',
-  active: 'Actif',
-  suspended: 'Suspendu',
-  archived: 'Archivé',
 };
 
 export const RESPONSIBILITY_STATUS_LABELS: Record<

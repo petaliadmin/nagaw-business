@@ -37,7 +37,7 @@ async function Responsibilities({
     <>
       <PageHeader
         title="Responsabilités"
-        description="Délégations durables confiées aux agents : objectif, règles, déclenchement et critères de réussite."
+        description="Délégations durables confiées aux membres de l’équipe : objectif, règles et critères de réussite."
         actions={
           canManage ? (
             <ButtonLink href="/espace/responsabilites/nouvelle">
@@ -57,7 +57,7 @@ async function Responsibilities({
       ) : responsibilities.data.length === 0 ? (
         <EmptyState title="Aucune responsabilité pour le moment">
           {canManage
-            ? 'Confiez une première responsabilité à un agent.'
+            ? 'Confiez une première responsabilité à un membre de l’équipe.'
             : 'Les propriétaires et administrateurs définissent les responsabilités.'}
         </EmptyState>
       ) : (

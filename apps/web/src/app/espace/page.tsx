@@ -1,6 +1,5 @@
 import {
   roleHasPermission,
-  type AgentDto,
   type AuditLogDto,
   type MemberDto,
   type Paginated,
@@ -30,13 +29,9 @@ async function Overview() {
   const { organization, accessToken } = workspace;
   const canReadAudit = roleHasPermission(organization.role, 'audit.read');
 
-  const [members, agents, responsibilities, audit] = await Promise.all([
+  const [members, responsibilities, audit] = await Promise.all([
     apiAsUser<MemberDto[]>(accessToken, {
       path: '/organizations/current/members',
-      organizationId: organization.id,
-    }),
-    apiAsUser<AgentDto[]>(accessToken, {
-      path: '/agents',
       organizationId: organization.id,
     }),
     apiAsUser<ResponsibilityDto[]>(accessToken, {
@@ -69,15 +64,6 @@ async function Overview() {
         {members.ok ? (
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Stat label="Membres actifs" value={activeMembers.length} />
-            <Stat
-              label="Agents actifs"
-              value={
-                agents.ok
-                  ? agents.data.filter((agent) => agent.status === 'active')
-                      .length
-                  : 'indisponible'
-              }
-            />
             <Stat
               label="Responsabilités actives"
               value={

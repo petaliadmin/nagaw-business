@@ -57,25 +57,15 @@
 | Isolation : invitations et membres d'une autre organisation répondent 404, en lecture comme en écriture                 | `InvitationsService`, `MembersService`                | isolation between organizations                                 |
 | Nombre d'invitations en attente plafonné par organisation (`max_pending_invitations`)                                   | `InvitationsService`                                  | uses the lifetime and the limit configured for the organization |
 
-## Contrôles implémentés (Phase 5)
-
-| Contrôle                                                                                                       | Où                                    | Preuve (test)                                                                       |
-| -------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------- |
-| Agents et versions toujours lus dans l'organisation de l'appelant ; 404 pour un agent d'une autre organisation | `AgentsService.findAgent`             | `agents.integration-spec.ts` › isolation (test de mutation : échoue sans le filtre) |
-| Une version ne peut appartenir qu'à un agent de la même organisation (clé étrangère composite)                 | migration Phase 5                     | cannot attach a version to an agent of another organization                         |
-| Versions immuables, même pour le propriétaire des tables                                                       | trigger `reject_append_only_mutation` | appends a version for each configuration change                                     |
-| Création et configuration réservées à `owner`/`admin` ; lecture et test pour tous les membres                  | permissions `agents.*`                | lets members read but not create or change agents                                   |
-| Outils non disponibles et limites au-delà des plafonds refusés à l'enregistrement                              | `AgentsService.assertSavable`         | refuses tools that are not available yet ; applies the caps                         |
-| Aucun champ serveur (statut, organisation, modèle) accepté à la création                                       | schémas `.strict()`                   | validates input and refuses server-owned fields                                     |
-
 ## Contrôles implémentés (Phase 6)
 
-| Contrôle                                                                                   | Où                               | Preuve (test)                                                                         |
-| ------------------------------------------------------------------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------- |
-| Responsabilités toujours lues dans l'organisation de l'appelant ; 404 sinon                | `ResponsibilitiesService.select` | `responsibilities.integration-spec.ts` › isolation (mutation : échoue sans le filtre) |
-| Une responsabilité ne peut être confiée qu'à un agent de la même organisation, même en SQL | clé étrangère composite          | cannot link a responsibility to another organization’s agent, even in SQL             |
-| La personne à prévenir doit être un membre actif de l'organisation                         | `assertEscalation`               | checks the agent, the escalation contact and the caps                                 |
-| Aucune planification ni champ serveur (statut, organisation) accepté                       | schémas `.strict()`              | validates the period, refuses schedules and server-owned fields                       |
+| Contrôle                                                                             | Où                                                   | Preuve (test)                                                                                                                |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Responsabilités toujours lues dans l'organisation de l'appelant ; 404 sinon          | `ResponsibilitiesService.select`                     | `responsibilities.integration-spec.ts` › isolation (mutation : échoue sans le filtre)                                        |
+| Une responsabilité n'est confiée qu'à un membre de la même organisation, même en SQL | clé étrangère composite                              | cannot entrust a responsibility to a non-member, even in SQL                                                                 |
+| La personne responsable doit être un membre actif pour créer ou activer              | `assigneeStatus`, `responsibilityActivationBlockers` | checks the person in charge, the escalation contact and the caps ; blocks reactivation once the person in charge is disabled |
+| La personne à prévenir doit être un membre actif de l'organisation                   | `assertEscalation`                                   | checks the person in charge, the escalation contact and the caps                                                             |
+| Aucune planification ni champ serveur (statut, organisation) accepté                 | schémas `.strict()`                                  | validates the period, refuses schedules, agents and server-owned fields                                                      |
 
 ## Risques encore ouverts
 

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Nagaw Business',
   description:
-    'Des collaborateurs numériques autonomes, auxquels le dirigeant peut déléguer des responsabilités.',
+    'Organisez votre équipe, confiez des responsabilités et suivez-les, simplement et manuellement.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

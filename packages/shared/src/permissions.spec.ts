@@ -34,15 +34,3 @@ describe('member management permissions', () => {
     }
   });
 });
-
-describe('agent permissions', () => {
-  it('lets every role read agents but only owners and admins manage them', () => {
-    for (const role of ROLES) {
-      expect(roleHasPermission(role, 'agents.read')).toBe(true);
-    }
-    expect(roleHasPermission('owner', 'agents.manage')).toBe(true);
-    expect(roleHasPermission('admin', 'agents.manage')).toBe(true);
-    expect(roleHasPermission('member', 'agents.manage')).toBe(false);
-    expect(roleHasPermission('viewer', 'agents.manage')).toBe(false);
-  });
-});

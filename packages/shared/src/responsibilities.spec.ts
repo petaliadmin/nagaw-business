@@ -6,9 +6,9 @@ import {
   responsibilityActivationBlockers,
 } from './responsibilities.js';
 
-const AGENT_ID = '0b9a6f3e-3f0d-4c62-9f2a-1d2b3c4d5e6f';
+const MEMBER_ID = '0b9a6f3e-3f0d-4c62-9f2a-1d2b3c4d5e6f';
 const base = {
-  agentId: AGENT_ID,
+  assigneeUserId: MEMBER_ID,
   title: 'Relance des devis',
   objective: 'Aucun devis sans suivi.',
   scope: '',
@@ -46,7 +46,7 @@ describe('createResponsibilitySchema', () => {
     expect(
       createResponsibilitySchema.safeParse({
         ...base,
-        organizationId: AGENT_ID,
+        organizationId: MEMBER_ID,
       }).success,
     ).toBe(false);
   });
@@ -60,7 +60,7 @@ describe('responsibilityActivationBlockers', () => {
     endsOn: null,
   };
 
-  it('allows an active agent with objective and criteria', () => {
+  it('allows an active member with objective and criteria', () => {
     expect(
       responsibilityActivationBlockers(
         ready,
@@ -80,12 +80,12 @@ describe('responsibilityActivationBlockers', () => {
           maxRunsPerDay: 50,
           endsOn: '2026-10-01',
         },
-        'suspended',
+        'disabled',
         { maxRunsPerDay: 24 },
         '2026-10-23',
       ).map((check) => check.code),
     ).toEqual([
-      'AGENT_NOT_ACTIVE',
+      'ASSIGNEE_NOT_ACTIVE',
       'OBJECTIVE_MISSING',
       'SUCCESS_CRITERIA_MISSING',
       'RUNS_ABOVE_CAP',

@@ -3,53 +3,48 @@ import { resetBackend, signInAs } from '../support/session';
 
 test.describe.configure({ mode: 'serial' });
 
-let agentPath: string;
+const MOUSSA = 'aaaaaaaa-0000-4000-8000-000000000002';
 let responsibilityPath: string;
 
 test.beforeAll(async () => {
   await resetBackend();
 });
 
-test('an active agent is prepared', async ({ page, context, baseURL }) => {
+test('the application offers no agents and no automation', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/agents/nouveau');
-  await page.getByLabel('Nom', { exact: true }).fill('Agent commercial');
-  await page
-    .getByLabel('Objectifs', { exact: true })
-    .fill('Aucun devis sans suivi.');
-  await page
-    .getByLabel('Instructions', { exact: true })
-    .fill('Relancer chaque devis resté sans réponse depuis sept jours.');
-  await page.getByRole('button', { name: 'Créer l’agent (brouillon)' }).click();
-  await page.getByRole('button', { name: 'Activer' }).click();
-  await expect(
-    page.getByRole('main').getByText('Actif', { exact: true }),
-  ).toBeVisible();
-  agentPath = new URL(page.url()).pathname;
+  await page.goto('/espace');
+  if (isMobile) await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(page.getByRole('link', { name: 'Agents' })).toHaveCount(0);
+  await expect(page.getByText(/agent|intelligence artificielle/i)).toHaveCount(
+    0,
+  );
+  const response = await page.goto('/espace/agents');
+  expect(response?.status()).toBe(404);
 });
 
-test('owner entrusts a responsibility to the agent', async ({
+test('owner entrusts a responsibility to a team member', async ({
   page,
   context,
   baseURL,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto(agentPath);
-  await page
-    .getByRole('link', { name: 'Confier une responsabilité à cet agent' })
-    .click();
-  await expect(page.getByLabel('Agent responsable')).toHaveValue(
-    agentPath.split('/').at(-1)!,
-  );
+  await page.goto('/espace/responsabilites/nouvelle');
+  await expect(page.getByText('Déclenchement manuel uniquement')).toBeVisible();
   await page.getByLabel('Titre', { exact: true }).fill('Relance des devis');
+  await page
+    .getByLabel('Personne responsable')
+    .selectOption({ label: 'moussa@acme.test' });
   await page
     .getByLabel('Objectif', { exact: true })
     .fill('Aucun devis sans suivi.');
   await page
     .getByLabel('Critères de réussite')
     .fill('Chaque devis relancé sous sept jours.');
-  await expect(page.getByText('Déclenchement manuel uniquement')).toBeVisible();
-  await expect(page.getByLabel('Planifié')).toHaveCount(0);
   await page
     .getByRole('button', { name: 'Créer la responsabilité (brouillon)' })
     .click();
@@ -60,11 +55,22 @@ test('owner entrusts a responsibility to the agent', async ({
   ).toBeVisible();
   responsibilityPath = new URL(page.url()).pathname;
   const summary = page.getByRole('region', { name: 'Résumé' });
+  await expect(summary).toContainText('Responsablemoussa@acme.test');
   await expect(summary).toContainText('DéclenchementManuel');
   await expect(main.getByText('Brouillon', { exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Historique' })).toContainText(
     'Responsabilité créée — awa@acme.test',
   );
+});
+
+test('the person in charge can be preselected from a link', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto(`/espace/responsabilites/nouvelle?responsable=${MOUSSA}`);
+  await expect(page.getByLabel('Personne responsable')).toHaveValue(MOUSSA);
 });
 
 test('the responsibility is activated, edited and its history kept', async ({
@@ -89,15 +95,10 @@ test('the responsibility is activated, edited and its history kept', async ({
   await expect(history).toContainText('Brouillon → Active');
   await expect(history).toContainText('Responsabilité modifiée');
 
-  await page.goto(agentPath);
-  await expect(
-    page.getByRole('list', { name: 'Responsabilités de Agent commercial' }),
-  ).toContainText('Relance des devis clients');
-
   await page.goto('/espace');
   const overview = page.getByRole('region', { name: 'Votre organisation' });
   await expect(overview.getByText('Responsabilités actives')).toBeVisible();
-  await expect(overview.locator('dd').nth(2)).toHaveText('1');
+  await expect(overview.locator('dd').nth(1)).toHaveText('1');
 });
 
 test('activation is refused without success criteria', async ({

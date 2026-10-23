@@ -123,7 +123,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-016 — Agents : configuration versionnée, test contrôlé déterministe, registre d'outils en code
 
-- **Statut** : Acceptée (Phase 5, validée par le propriétaire le 2026-10-23)
+- **Statut** : **Remplacée par ADR-017** (les agents ont été retirés le 2026-10-23). Acceptée initialement en Phase 5.
 - **Décision** :
   - l'identité d'un agent (nom, domaine, statut) est modifiable ; tout ce qui pilote son comportement est dans des **versions immuables** (`agent_versions`, ajout seul) : chaque modification crée une version, l'historique n'est jamais réécrit ;
   - le cycle de vie est brouillon → actif ↔ suspendu → archivé ; l'archivage est définitif ; l'activation (et toute nouvelle version d'un agent actif) exige une configuration complète ;
@@ -138,8 +138,8 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 - **Décision** : « pour l'instant l'application doit être 100 % manuelle : pas d'automatisation, ni agent IA ».
   - Aucune planification, aucun déclenchement automatique, aucune tâche de fond : une personne lance toujours le travail.
   - Aucun modèle d'IA n'est intégré ni appelé (complète ADR-007).
-  - Les « agents » restent des fiches de configuration (instructions, objectifs, limites) et les responsabilités des délégations décrites et suivies par des personnes.
+  - **Aucun agent** : la section Agents est retirée de l'application, de l'API et des contrats partagés (décision du propriétaire, 2026-10-23). Les responsabilités sont confiées à un membre de l'équipe (migration `20261023220000_responsibility_assignee`). Les tables `agents` et `agent_versions` sont conservées en base, inutilisées : aucune donnée n'est supprimée sans accord explicite.
 - **Conséquences** :
   - Phase 6 : la planification prévue (fréquence, heure) est retirée ; une responsabilité se déclenche uniquement à la main.
   - Phase 7 redéfinie par le propriétaire : **suivi manuel des tâches** (une personne lance, renseigne et clôt chaque tâche) ; Phase 11 (tâches planifiées) reportée ; ADR-006 (traitement asynchrone) suspendue.
-  - Les fiches agents restent en l'état (configuration sans IA).
+  - Phases 8 (approbations d'actions) et 9 (outils et intégrations) à redéfinir, faute d'actions automatiques.

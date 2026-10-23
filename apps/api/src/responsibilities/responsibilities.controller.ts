@@ -37,11 +37,11 @@ export class ResponsibilitiesController {
   @RequirePermission('responsibilities.read')
   list(
     @CurrentTenant() tenant: TenantContext,
-    @Query('agentId') agentId?: string,
+    @Query('assigneeUserId') assigneeUserId?: string,
     @Query('archives') archives?: string,
   ): Promise<ResponsibilityDto[]> {
     return this.responsibilities.list(tenant.organizationId, {
-      agentId,
+      assigneeUserId,
       includeArchived: archives === 'true',
     });
   }

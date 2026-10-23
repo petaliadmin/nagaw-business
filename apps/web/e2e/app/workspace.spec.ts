@@ -254,7 +254,6 @@ test('pages never overflow horizontally', async ({
     '/espace/equipe',
     '/espace/journal',
     '/espace/parametres',
-    '/espace/agents',
     '/espace/responsabilites',
   ]) {
     await page.goto(path);

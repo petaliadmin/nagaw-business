@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { RESPONSIBILITY_STATUS_LABELS } from '@/lib/labels';
 
-/** Shared by the responsibilities page and the agent page. */
+/** List of responsibilities with their person in charge. */
 export function ResponsibilityList({
   responsibilities,
   label,
@@ -28,7 +28,9 @@ export function ResponsibilityList({
             <Badge>{RESPONSIBILITY_STATUS_LABELS[responsibility.status]}</Badge>
           </span>
           <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            Confiée à {responsibility.agent.name}
+            Confiée à{' '}
+            {responsibility.assignee.displayName ??
+              responsibility.assignee.email}
           </span>
         </li>
       ))}

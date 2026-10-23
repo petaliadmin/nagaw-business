@@ -1,28 +1,18 @@
 import 'server-only';
-import type {
-  AgentDto,
-  MemberDto,
-  ResponsibilityLimitsCaps,
-} from '@nagaw/shared';
+import type { MemberDto, ResponsibilityLimitsCaps } from '@nagaw/shared';
 import { apiAsUser } from '@/lib/api/server';
 import type { Option } from './responsibility-forms';
 
 export type ResponsibilityFormData =
-  | {
-      ok: true;
-      agents: Option[];
-      members: Option[];
-      caps: ResponsibilityLimitsCaps;
-    }
+  | { ok: true; members: Option[]; caps: ResponsibilityLimitsCaps }
   | { ok: false; message: string };
 
-/** Choices offered by the responsibility form: real agents and members. */
+/** Choices offered by the responsibility form: the active members. */
 export async function loadFormData(
   accessToken: string,
   organizationId: string,
 ): Promise<ResponsibilityFormData> {
-  const [agents, members, caps] = await Promise.all([
-    apiAsUser<AgentDto[]>(accessToken, { path: '/agents', organizationId }),
+  const [members, caps] = await Promise.all([
     apiAsUser<MemberDto[]>(accessToken, {
       path: '/organizations/current/members',
       organizationId,
@@ -32,18 +22,10 @@ export async function loadFormData(
       organizationId,
     }),
   ]);
-  for (const result of [agents, members, caps]) {
-    if (!result.ok) return { ok: false, message: result.message };
-  }
-  if (!agents.ok || !members.ok || !caps.ok) {
-    return { ok: false, message: 'Données indisponibles.' };
-  }
+  if (!members.ok) return { ok: false, message: members.message };
+  if (!caps.ok) return { ok: false, message: caps.message };
   return {
     ok: true,
-    agents: agents.data.map((agent) => ({
-      value: agent.id,
-      label: agent.name,
-    })),
     members: members.data
       .filter((member) => member.status === 'active')
       .map((member) => ({

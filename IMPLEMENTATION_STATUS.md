@@ -196,7 +196,9 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - toujours pas de limitation de débit côté API.
 - **Suite** : fusion dans `main` avec la Phase 5, autorisée le 2026-10-23. ADR-015 (invitations par lien) est conservée telle quelle pour l'instant, sur décision du propriétaire.
 
-## Phase 5 — Agents numériques
+## Phase 5 — Agents numériques (retirée)
+
+- **Retrait (ADR-017, décision du propriétaire du 2026-10-23)** : l'application est 100 % manuelle, sans agent. La section Agents (API, interface, règles partagées, tests) a été **supprimée du code**. Les tables `agents` et `agent_versions` restent en base, inutilisées : aucune donnée n'est supprimée et la migration fusionnée n'est pas modifiée. L'historique ci-dessous décrit ce qui avait été livré.
 
 - **Objectif** : créer et administrer des agents dont la configuration est persistée, versionnée, validée et réellement exploitable par le futur moteur (Phase 7).
 - **Statut** : **validée** par le propriétaire le 2026-10-23 ; fusion dans `main` avec la Phase 4 autorisée. Migration appliquée sur Supabase le 2026-10-23 (version `20261023193645`, avec l'autorisation du propriétaire). ADR-016 validée.
@@ -227,30 +229,28 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
 ## Phase 6 — Responsabilités
 
-- **Objectif** : définir des délégations durables confiées à un agent, identifiables, configurables, activables et historisées.
-- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration appliquée sur Supabase le 2026-10-23 (version `20261023210320`, avec l'autorisation du propriétaire).
-- **Décision du propriétaire en cours de phase (ADR-017)** : l'application reste **100 % manuelle**, sans automatisation ni IA. La planification (fréquence, heure) développée au départ a été **retirée** avant livraison : une responsabilité ne se déclenche qu'à la main.
+- **Objectif** : définir des délégations durables confiées à un **membre de l'équipe**, identifiables, configurables, activables et historisées.
+- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration `20261023210320` appliquée sur Supabase le 2026-10-23 ; migration `20261023220000_responsibility_assignee.sql` **à appliquer** (autorisation du propriétaire requise).
+- **Décisions du propriétaire en cours de phase (ADR-017)** : l'application reste **100 % manuelle**, sans automatisation, sans IA et sans agent. La planification a été retirée, puis les agents : une responsabilité est confiée à une personne et ne se déclenche qu'à la main.
 - **Fonctionnalités terminées** :
-  - migration `20261023210320_responsibilities.sql` :
-    - `responsibilities` : objectif, périmètre, règles métier, critères de réussite, limite d'exécutions par jour, personne à prévenir, période facultative, statut ;
-    - clé étrangère composite : une responsabilité n'est confiée qu'à un agent de la même organisation ;
-    - plafonds configurables en base : `max_responsibilities` (50), `responsibility_max_runs_per_day` (24) ;
-  - API : liste (filtrable par agent), création, lecture, modification, changement de statut, historique (entrées d'audit), plafonds ;
-  - activation possible seulement avec un agent actif, un objectif, des critères de réussite, une limite sous le plafond et une période non terminée ; une responsabilité active ne peut pas devenir incomplète ;
-  - web : page Responsabilités (liste, archivées à la demande), création (agent présélectionné depuis sa fiche), fiche (résumé, statut, modification, historique lisible), section « Responsabilités » sur la fiche agent, statistique « Responsabilités actives », entrée de navigation.
+  - migration `20261023210320_responsibilities.sql` : objectif, périmètre, règles métier, critères de réussite, limite de tâches par jour, personne à prévenir, période facultative, statut ; plafonds configurables en base `max_responsibilities` (50) et `responsibility_max_runs_per_day` (24) ;
+  - migration `20261023220000_responsibility_assignee.sql` (non destructive) : colonne `assignee_user_id` avec clé étrangère composite vers les appartenances de la même organisation ; responsabilités existantes confiées à leur auteur ; `agent_id` devient facultatif et obsolète ;
+  - API : liste (filtrable par personne responsable), création, lecture, modification, changement de statut, historique (entrées d'audit), plafonds ;
+  - création et activation possibles seulement avec un membre actif comme responsable ; activation exigeant aussi un objectif, des critères de réussite, une limite sous le plafond et une période non terminée ; une responsabilité active ne peut pas devenir incomplète ;
+  - web : page Responsabilités (liste « Confiée à … », archivées à la demande), création (responsable présélectionnable par `?responsable=`), fiche (résumé, statut, modification, historique lisible), statistique « Responsabilités actives », entrée de navigation ; plus aucune mention d'agent ni d'IA dans l'interface.
 - **Défaut trouvé et corrigé pendant la phase** : le formulaire de modification se réinitialisait après l'enregistrement (clé liée à la date de mise à jour), ce qui effaçait le message de confirmation.
 - **Tests exécutés** :
 
   | Commande                       | Résultat                                                                                      |
   | ------------------------------ | --------------------------------------------------------------------------------------------- |
-  | `pnpm test`                    | 92 tests OK (shared 32, api 25, web 35)                                                       |
-  | `pnpm test:integration`        | 73 tests OK, dont 12 nouveaux sur les responsabilités (dont l'isolation inter-organisations)  |
-  | Playwright                     | 75 tests OK, 1 ignoré volontairement (test du menu mobile, sur bureau)                        |
+  | `pnpm test`                    | 83 tests OK (shared 23, api 25, web 35)                                                       |
+  | `pnpm test:integration`        | 57 tests OK, dont ceux des responsabilités (isolation inter-organisations, clé étrangère SQL) |
+  | Playwright                     | 65 tests OK, 1 ignoré volontairement (test du menu mobile, sur bureau)                        |
   | Test de mutation               | Filtre d'organisation retiré dans la lecture des responsabilités : le test d'isolation échoue |
   | lint, typecheck, build, format | OK                                                                                            |
 
-- **Limites** : rien n'est exécuté (ADR-017) ; les plafonds ne sont modifiables que par SQL.
-- **Prochaine action recommandée** : tester la prévisualisation et valider la Phase 6. Le propriétaire a retenu pour la Phase 7 un **suivi manuel des tâches** ; les fiches agents restent en l'état (2026-10-23).
+- **Limites** : rien n'est exécuté (ADR-017) ; les plafonds ne sont modifiables que par SQL ; la production affiche encore la section Agents jusqu'à la prochaine fusion dans `main`.
+- **Prochaine action recommandée** : appliquer la migration `20261023220000`, tester la prévisualisation et valider la Phase 6. Phase 7 retenue : **suivi manuel des tâches**.
 
 ## Phases 7 à 15
 

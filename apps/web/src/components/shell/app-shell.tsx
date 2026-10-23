@@ -114,8 +114,8 @@ export async function AppShell({ children }: { children: ReactNode }) {
         <h1 className="text-2xl font-semibold">Créez votre organisation</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Connecté en tant que <strong>{workspace.me.email}</strong>. Votre
-          organisation regroupe votre équipe, vos données et, plus tard, vos
-          collaborateurs numériques.
+          organisation regroupe votre équipe et les responsabilités que vous lui
+          confiez.
         </p>
         <Card>
           <CreateOrganizationForm />

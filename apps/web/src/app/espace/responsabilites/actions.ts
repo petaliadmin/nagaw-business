@@ -24,7 +24,7 @@ function text(formData: FormData, name: string): string {
 /** Form fields as the shared schema expects them. */
 function values(formData: FormData) {
   return {
-    agentId: text(formData, 'agentId'),
+    assigneeUserId: text(formData, 'assigneeUserId'),
     title: text(formData, 'title'),
     objective: text(formData, 'objective'),
     scope: text(formData, 'scope'),

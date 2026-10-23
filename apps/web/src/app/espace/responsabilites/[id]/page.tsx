@@ -13,11 +13,7 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { formatDate, formatDateTime } from '@/lib/format';
-import {
-  AGENT_STATUS_LABELS,
-  auditActionLabel,
-  RESPONSIBILITY_STATUS_LABELS,
-} from '@/lib/labels';
+import { auditActionLabel, RESPONSIBILITY_STATUS_LABELS } from '@/lib/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { loadFormData } from '../form-data';
 import {
@@ -30,13 +26,13 @@ export const metadata: Metadata = {
 };
 
 const FIELD_LABELS: Record<string, string> = {
-  agentId: 'agent',
+  assigneeUserId: 'personne responsable',
   title: 'titre',
   objective: 'objectif',
   scope: 'périmètre',
   rules: 'règles',
   successCriteria: 'critères de réussite',
-  maxRunsPerDay: 'exécutions par jour',
+  maxRunsPerDay: 'tâches par jour',
   escalationUserId: 'personne à prévenir',
   startsOn: 'début',
   endsOn: 'fin',
@@ -122,15 +118,10 @@ async function Responsibility({
 
       <Card title="Résumé" titleId="responsibility-summary">
         <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
-          <dt className="text-zinc-600 dark:text-zinc-400">Agent</dt>
+          <dt className="text-zinc-600 dark:text-zinc-400">Responsable</dt>
           <dd>
-            <Link
-              href={`/espace/agents/${data.agent.id}`}
-              className="underline"
-            >
-              {data.agent.name}
-            </Link>{' '}
-            ({AGENT_STATUS_LABELS[data.agent.status]})
+            {data.assignee.displayName ?? data.assignee.email}
+            {data.assignee.status !== 'active' && ' (désactivé)'}
           </dd>
           <dt className="text-zinc-600 dark:text-zinc-400">Objectif</dt>
           <Text value={data.objective} />
@@ -145,7 +136,7 @@ async function Responsibility({
           <dt className="text-zinc-600 dark:text-zinc-400">Déclenchement</dt>
           <dd>Manuel</dd>
           <dt className="text-zinc-600 dark:text-zinc-400">Limite</dt>
-          <dd>{data.maxRunsPerDay} exécutions par jour</dd>
+          <dd>{data.maxRunsPerDay} tâches par jour</dd>
           <dt className="text-zinc-600 dark:text-zinc-400">Escalade</dt>
           <dd>{data.escalation?.email ?? 'Personne'}</dd>
           <dt className="text-zinc-600 dark:text-zinc-400">Période</dt>
@@ -175,7 +166,6 @@ async function Responsibility({
               key={data.id}
               organizationId={organization.id}
               caps={formData.caps}
-              agents={formData.agents}
               members={formData.members}
               responsibility={data}
             />

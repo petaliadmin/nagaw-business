@@ -4,7 +4,6 @@
  */
 export const NAV_ITEMS = [
   { href: '/espace', label: 'Vue d’ensemble' },
-  { href: '/espace/agents', label: 'Agents' },
   { href: '/espace/responsabilites', label: 'Responsabilités' },
   { href: '/espace/equipe', label: 'Équipe' },
   { href: '/espace/journal', label: 'Journal d’audit' },

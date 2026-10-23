@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AgentStatus } from './agents.js';
+import type { MemberStatus } from './members.js';
 
 export const RESPONSIBILITY_STATUSES = [
   'draft',
@@ -58,14 +58,17 @@ function checkPeriod(
 }
 
 export const createResponsibilitySchema = z
-  .object({ agentId: z.uuid('Agent inconnu'), ...responsibilityFields })
+  .object({
+    assigneeUserId: z.uuid('Membre inconnu'),
+    ...responsibilityFields,
+  })
   .strict()
   .superRefine(checkPeriod);
 export type CreateResponsibilityInput = z.infer<
   typeof createResponsibilitySchema
 >;
 
-/** Full replacement of the editable fields (the agent can be changed). */
+/** Full replacement of the editable fields (the assignee can change). */
 export const updateResponsibilitySchema = createResponsibilitySchema;
 export type UpdateResponsibilityInput = CreateResponsibilityInput;
 
@@ -80,7 +83,13 @@ export interface ResponsibilityLimitsCaps {
 
 export interface ResponsibilityDto {
   id: string;
-  agent: { id: string; name: string; status: AgentStatus };
+  /** The member the responsibility is entrusted to. */
+  assignee: {
+    userId: string;
+    email: string;
+    displayName: string | null;
+    status: MemberStatus;
+  };
   title: string;
   objective: string;
   scope: string;
@@ -121,7 +130,7 @@ export function canTransitionResponsibility(
 }
 
 export type ResponsibilityCheckCode =
-  | 'AGENT_NOT_ACTIVE'
+  | 'ASSIGNEE_NOT_ACTIVE'
   | 'OBJECTIVE_MISSING'
   | 'SUCCESS_CRITERIA_MISSING'
   | 'RUNS_ABOVE_CAP'
@@ -133,23 +142,23 @@ export interface ResponsibilityCheck {
 }
 
 /**
- * What blocks activation: a responsibility only runs through an active
- * agent, with a stated objective and a way to tell success.
+ * What blocks activation: an active member in charge, a stated objective
+ * and a way to tell success.
  */
 export function responsibilityActivationBlockers(
   responsibility: Pick<
     CreateResponsibilityInput,
     'objective' | 'successCriteria' | 'maxRunsPerDay' | 'endsOn'
   >,
-  agentStatus: AgentStatus,
+  assigneeStatus: MemberStatus,
   caps: Pick<ResponsibilityLimitsCaps, 'maxRunsPerDay'>,
   today: string,
 ): ResponsibilityCheck[] {
   const blockers: ResponsibilityCheck[] = [];
-  if (agentStatus !== 'active') {
+  if (assigneeStatus !== 'active') {
     blockers.push({
-      code: 'AGENT_NOT_ACTIVE',
-      message: 'L’agent responsable doit être actif.',
+      code: 'ASSIGNEE_NOT_ACTIVE',
+      message: 'La personne responsable doit être un membre actif.',
     });
   }
   if (responsibility.objective.trim() === '') {
@@ -167,7 +176,7 @@ export function responsibilityActivationBlockers(
   if (responsibility.maxRunsPerDay > caps.maxRunsPerDay) {
     blockers.push({
       code: 'RUNS_ABOVE_CAP',
-      message: `Au plus ${caps.maxRunsPerDay} exécutions par jour dans cette organisation.`,
+      message: `Au plus ${caps.maxRunsPerDay} tâches par jour dans cette organisation.`,
     });
   }
   if (responsibility.endsOn && responsibility.endsOn < today) {

@@ -2,9 +2,7 @@ import { roleHasPermission } from '@nagaw/shared';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
-import { ButtonLink } from '@/components/ui/button-link';
 import { Card } from '@/components/ui/card';
-import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
@@ -24,7 +22,7 @@ async function NewResponsibility({
   const header = (
     <PageHeader
       title="Nouvelle responsabilité"
-      description="Créée en brouillon ; elle pourra être activée quand son agent sera actif."
+      description="Créée en brouillon, puis activée une fois complète."
     />
   );
   if (!roleHasPermission(organization.role, 'responsibilities.manage')) {
@@ -47,23 +45,10 @@ async function NewResponsibility({
       </>
     );
   }
-  if (data.agents.length === 0) {
-    return (
-      <>
-        {header}
-        <EmptyState title="Aucun agent disponible">
-          Une responsabilité est confiée à un agent : créez d’abord un agent.
-        </EmptyState>
-        <div>
-          <ButtonLink href="/espace/agents/nouveau">Créer un agent</ButtonLink>
-        </div>
-      </>
-    );
-  }
-  const requested = (await searchParams).agent;
-  const defaultAgentId =
+  const requested = (await searchParams).responsable;
+  const defaultAssigneeId =
     typeof requested === 'string' &&
-    data.agents.some((agent) => agent.value === requested)
+    data.members.some((member) => member.value === requested)
       ? requested
       : undefined;
   return (
@@ -73,9 +58,8 @@ async function NewResponsibility({
         <ResponsibilityForm
           organizationId={organization.id}
           caps={data.caps}
-          agents={data.agents}
           members={data.members}
-          defaultAgentId={defaultAgentId}
+          defaultAssigneeId={defaultAssigneeId}
         />
       </Card>
     </>

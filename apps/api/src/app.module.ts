@@ -4,7 +4,6 @@ import { LoggerModule } from 'nestjs-pino';
 import { buildHttpLoggerOptions } from './common/logging.js';
 import { ConfigModule } from './config/config.module.js';
 import { ENV, type Env } from './config/env.js';
-import { AgentsModule } from './agents/agents.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthGuard } from './auth/auth.guard.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -32,7 +31,6 @@ import { TenantGuard } from './tenancy/tenant.guard.js';
     OrganizationsModule,
     MeModule,
     MembersModule,
-    AgentsModule,
     ResponsibilitiesModule,
   ],
   providers: [

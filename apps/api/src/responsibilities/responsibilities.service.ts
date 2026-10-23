@@ -2,7 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   canTransitionResponsibility,
   responsibilityActivationBlockers,
-  type AgentStatus,
+  type MemberStatus,
   type CreateResponsibilityInput,
   type ResponsibilityDto,
   type ResponsibilityHistoryEntryDto,
@@ -46,7 +46,7 @@ function today(timeZone: string): string {
 
 /** Fields compared for the audit trail of an update. */
 const AUDITED_FIELDS = [
-  'agentId',
+  'assigneeUserId',
   'title',
   'objective',
   'scope',
@@ -85,16 +85,17 @@ export class ResponsibilitiesService {
     };
   }
 
-  /** Responsibilities with their agent and escalation contact. */
+  /** Responsibilities with the member in charge and the escalation contact. */
   private select(executor: Executor, organizationId: string) {
     return (
       executor
         .selectFrom('app.responsibilities as r')
-        .innerJoin('app.agents as a', (join) =>
+        .innerJoin('app.organization_memberships as m', (join) =>
           join
-            .onRef('a.id', '=', 'r.agent_id')
-            .onRef('a.organization_id', '=', 'r.organization_id'),
+            .onRef('m.user_id', '=', 'r.assignee_user_id')
+            .onRef('m.organization_id', '=', 'r.organization_id'),
         )
+        .innerJoin('app.user_profiles as a', 'a.id', 'r.assignee_user_id')
         .leftJoin('app.user_profiles as e', 'e.id', 'r.escalation_user_id')
         .select([
           'r.id',
@@ -109,9 +110,10 @@ export class ResponsibilitiesService {
           'r.status',
           'r.created_at',
           'r.updated_at',
-          'a.id as agent_id',
-          'a.name as agent_name',
-          'a.status as agent_status',
+          'r.assignee_user_id',
+          'a.email as assignee_email',
+          'a.display_name as assignee_display_name',
+          'm.status as assignee_status',
         ])
         // Read back as text: no time-zone shift on calendar dates.
         .select([
@@ -129,10 +131,11 @@ export class ResponsibilitiesService {
   ): ResponsibilityDto {
     return {
       id: row.id,
-      agent: {
-        id: row.agent_id,
-        name: row.agent_name,
-        status: row.agent_status,
+      assignee: {
+        userId: row.assignee_user_id,
+        email: row.assignee_email,
+        displayName: row.assignee_display_name,
+        status: row.assignee_status,
       },
       title: row.title,
       objective: row.objective,
@@ -154,17 +157,20 @@ export class ResponsibilitiesService {
 
   async list(
     organizationId: string,
-    options: { agentId?: string; includeArchived: boolean },
+    options: { assigneeUserId?: string; includeArchived: boolean },
   ): Promise<ResponsibilityDto[]> {
-    if (options.agentId !== undefined && !UUID_RE.test(options.agentId)) {
+    if (
+      options.assigneeUserId !== undefined &&
+      !UUID_RE.test(options.assigneeUserId)
+    ) {
       return [];
     }
     let query = this.select(this.database.db, organizationId).orderBy(
       'r.created_at',
       'asc',
     );
-    if (options.agentId)
-      query = query.where('r.agent_id', '=', options.agentId);
+    if (options.assigneeUserId)
+      query = query.where('r.assignee_user_id', '=', options.assigneeUserId);
     if (!options.includeArchived)
       query = query.where('r.status', '<>', 'archived');
     return (await query.execute()).map((row) => this.toDto(row));
@@ -187,23 +193,25 @@ export class ResponsibilitiesService {
     return this.find(this.database.db, organizationId, id);
   }
 
-  /** The agent must exist in the organization and not be archived. */
-  private async agentStatus(
+  /** The person in charge must be a member of the organization. */
+  private async assigneeStatus(
     executor: Executor,
     organizationId: string,
-    agentId: string,
-  ): Promise<AgentStatus> {
-    const agent = await executor
-      .selectFrom('app.agents')
+    userId: string,
+  ): Promise<MemberStatus> {
+    const member = await executor
+      .selectFrom('app.organization_memberships')
       .select('status')
       .where('organization_id', '=', organizationId)
-      .where('id', '=', agentId)
+      .where('user_id', '=', userId)
       .executeTakeFirst();
-    if (!agent) throw invalid('agentId', 'Agent introuvable.');
-    if (agent.status === 'archived') {
-      throw invalid('agentId', 'Cet agent est archivé.');
+    if (!member) {
+      throw invalid(
+        'assigneeUserId',
+        'La personne responsable doit être membre de l’organisation.',
+      );
     }
-    return agent.status;
+    return member.status;
   }
 
   /** The escalation contact must be an active member of the organization. */
@@ -235,19 +243,19 @@ export class ResponsibilitiesService {
     if (input.maxRunsPerDay > caps.maxRunsPerDay) {
       throw invalid(
         'maxRunsPerDay',
-        `Au plus ${caps.maxRunsPerDay} exécutions par jour dans cette organisation.`,
+        `Au plus ${caps.maxRunsPerDay} tâches par jour dans cette organisation.`,
       );
     }
   }
 
   private assertActivatable(
     input: CreateResponsibilityInput,
-    agentStatus: AgentStatus,
+    assigneeStatus: MemberStatus,
     caps: ResponsibilityLimitsCaps & { timezone: string },
   ): void {
     const blockers = responsibilityActivationBlockers(
       input,
-      agentStatus,
+      assigneeStatus,
       caps,
       today(caps.timezone),
     );
@@ -263,7 +271,7 @@ export class ResponsibilitiesService {
 
   private columns(input: CreateResponsibilityInput) {
     return {
-      agent_id: input.agentId,
+      assignee_user_id: input.assigneeUserId,
       title: input.title,
       objective: input.objective,
       scope: input.scope,
@@ -291,7 +299,17 @@ export class ResponsibilitiesService {
         .forUpdate()
         .executeTakeFirstOrThrow();
       const caps = await this.caps(tenant.organizationId, trx);
-      await this.agentStatus(trx, tenant.organizationId, input.agentId);
+      const assigneeStatus = await this.assigneeStatus(
+        trx,
+        tenant.organizationId,
+        input.assigneeUserId,
+      );
+      if (assigneeStatus !== 'active') {
+        throw invalid(
+          'assigneeUserId',
+          'La personne responsable doit être un membre actif.',
+        );
+      }
       await this.assertEscalation(
         trx,
         tenant.organizationId,
@@ -329,7 +347,7 @@ export class ResponsibilitiesService {
         action: 'responsibility.created',
         targetType: 'responsibility',
         targetId: id,
-        metadata: { title: input.title, agentId: input.agentId },
+        metadata: { title: input.title, assigneeUserId: input.assigneeUserId },
         requestId,
       });
       return this.find(trx, tenant.organizationId, id);
@@ -362,11 +380,20 @@ export class ResponsibilitiesService {
         );
       }
       const caps = await this.caps(tenant.organizationId, trx);
-      const agentStatus = await this.agentStatus(
+      const assigneeStatus = await this.assigneeStatus(
         trx,
         tenant.organizationId,
-        input.agentId,
+        input.assigneeUserId,
       );
+      if (
+        input.assigneeUserId !== before.assignee.userId &&
+        assigneeStatus !== 'active'
+      ) {
+        throw invalid(
+          'assigneeUserId',
+          'La personne responsable doit être un membre actif.',
+        );
+      }
       await this.assertEscalation(
         trx,
         tenant.organizationId,
@@ -375,7 +402,7 @@ export class ResponsibilitiesService {
       this.assertRunsCap(input, caps);
       if (before.status === 'active') {
         // An active responsibility never runs on an incomplete definition.
-        this.assertActivatable(input, agentStatus, caps);
+        this.assertActivatable(input, assigneeStatus, caps);
       }
 
       await trx
@@ -387,12 +414,12 @@ export class ResponsibilitiesService {
 
       const previous = {
         ...before,
-        agentId: before.agent.id,
+        assigneeUserId: before.assignee.userId,
         escalationUserId: before.escalation?.userId ?? null,
       };
       const next = {
         ...after,
-        agentId: after.agent.id,
+        assigneeUserId: after.assignee.userId,
         escalationUserId: after.escalation?.userId ?? null,
       };
       const changes: Record<string, { from: unknown; to: unknown }> = {};
@@ -446,10 +473,10 @@ export class ResponsibilitiesService {
         this.assertActivatable(
           {
             ...current,
-            agentId: current.agent.id,
+            assigneeUserId: current.assignee.userId,
             escalationUserId: current.escalation?.userId ?? null,
           },
-          current.agent.status,
+          current.assignee.status,
           await this.caps(tenant.organizationId, trx),
         );
       }

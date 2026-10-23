@@ -2,7 +2,7 @@
 
 > « Nagaw fournit des collaborateurs numériques autonomes, auxquels le dirigeant peut déléguer des responsabilités. »
 
-Plateforme SaaS multi-entreprises pour centraliser les informations d'une entreprise, piloter ses activités et déléguer des responsabilités à des agents numériques supervisés.
+Plateforme SaaS multi-entreprises pour centraliser les informations d'une entreprise, piloter ses activités et organiser son équipe et lui confier des responsabilités, suivies manuellement (aucune automatisation ni IA pour l'instant, ADR-017).
 
 ## État du projet
 
