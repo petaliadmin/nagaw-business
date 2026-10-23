@@ -5,9 +5,18 @@
 import { createServer } from 'node:http';
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
+  addTaskNoteSchema,
+  canLaunchTask,
   canTransitionResponsibility,
+  canTransitionTask,
+  canWorkOnTask,
+  changeTaskStatusSchema,
   createResponsibilitySchema,
+  createTaskSchema,
+  isTaskOpen,
+  isTaskOverdue,
   responsibilityActivationBlockers,
+  updateTaskSchema,
 } from '@nagaw/shared';
 import {
   SignJWT,
@@ -153,6 +162,10 @@ function makeState() {
     invitations: [],
     // { id, organizationId, name, description, roleKey, status, versions }
     responsibilities: [],
+    // { id, organizationId, responsibilityId, title, ..., createdAt }
+    tasks: [],
+    // { id, taskId, authorId, body, createdAt }
+    taskNotes: [],
   };
 }
 let state = makeState();
@@ -308,6 +321,61 @@ function responsibilityDto(r) {
     updatedAt: r.updatedAt,
   };
 }
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+function taskDto(t) {
+  const assignee = userById(t.assigneeUserId);
+  const membership = state.memberships.find(
+    (m) =>
+      m.organizationId === t.organizationId && m.userId === t.assigneeUserId,
+  );
+  const responsibility = t.responsibilityId
+    ? state.responsibilities.find((r) => r.id === t.responsibilityId)
+    : null;
+  const escalation = responsibility?.escalationUserId
+    ? userById(responsibility.escalationUserId)
+    : null;
+  return {
+    id: t.id,
+    responsibility: responsibility
+      ? { id: responsibility.id, title: responsibility.title }
+      : null,
+    title: t.title,
+    description: t.description,
+    assignee: {
+      userId: assignee.id,
+      email: assignee.email,
+      displayName: null,
+      status: membership.status,
+    },
+    dueOn: t.dueOn,
+    status: t.status,
+    outcome: t.outcome,
+    report: t.report,
+    blockedReason: t.blockedReason,
+    escalation: escalation
+      ? { userId: escalation.id, email: escalation.email }
+      : null,
+    createdBy: { userId: t.createdBy, email: userById(t.createdBy).email },
+    startedAt: t.startedAt,
+    completedAt: t.completedAt,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+  };
+}
+
+const historyOf = (targetType, targetId) =>
+  state.audit
+    .filter((e) => e.targetType === targetType && e.targetId === targetId)
+    .sort((a, b) => Number(b.id) - Number(a.id))
+    .map((e) => ({
+      id: e.id,
+      action: e.action,
+      actor: { userId: e.actorId, email: userById(e.actorId).email },
+      metadata: e.metadata,
+      createdAt: e.createdAt,
+    }));
 
 function validation(res, issues) {
   return send(res, 400, {
@@ -777,6 +845,199 @@ const server = createServer(async (req, res) => {
       state.responsibilities.push(created);
       recordAudit(orgId, user.id, 'responsibility.created', created.id, {});
       return send(res, 201, responsibilityDto(created));
+    }
+  }
+  if (path === '/api/v1/tasks/summary') {
+    const tasks = state.tasks.filter((t) => t.organizationId === orgId);
+    const count = (predicate) => tasks.filter(predicate).length;
+    return send(res, 200, {
+      todo: count((t) => t.status === 'todo'),
+      inProgress: count((t) => t.status === 'in_progress'),
+      blocked: count((t) => t.status === 'blocked'),
+      overdue: count((t) => isTaskOverdue(t, today())),
+      mine: count((t) => isTaskOpen(t.status) && t.assigneeUserId === user.id),
+    });
+  }
+  if (path === '/api/v1/tasks' && req.method === 'GET') {
+    const status = url.searchParams.get('status');
+    const assigneeUserId = url.searchParams.get('assigneeUserId');
+    const responsibilityId = url.searchParams.get('responsibilityId');
+    return send(
+      res,
+      200,
+      state.tasks
+        .filter(
+          (t) =>
+            t.organizationId === orgId &&
+            (!assigneeUserId || t.assigneeUserId === assigneeUserId) &&
+            (!responsibilityId || t.responsibilityId === responsibilityId) &&
+            (!status ||
+              (status === 'open'
+                ? isTaskOpen(t.status)
+                : status === 'closed'
+                  ? !isTaskOpen(t.status)
+                  : t.status === status)),
+        )
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map(taskDto),
+    );
+  }
+  const actor = { userId: user.id, role: membership.role };
+  if (path === '/api/v1/tasks' && req.method === 'POST') {
+    if (membership.role === 'viewer') return forbidden(res);
+    const parsed = createTaskSchema.safeParse(await readJson(req));
+    if (!parsed.success) return validation(res, parsed.error.issues);
+    const data = parsed.data;
+    const responsibility = data.responsibilityId
+      ? state.responsibilities.find(
+          (r) => r.id === data.responsibilityId && r.organizationId === orgId,
+        )
+      : null;
+    if (data.responsibilityId && !responsibility)
+      return validation(res, [
+        { path: ['responsibilityId'], message: 'Responsabilité inconnue.' },
+      ]);
+    if (!canLaunchTask(actor, data, responsibility?.assigneeUserId ?? null))
+      return forbidden(res);
+    const assignee = state.memberships.find(
+      (m) =>
+        m.organizationId === orgId &&
+        m.userId === data.assigneeUserId &&
+        m.status === 'active',
+    );
+    if (!assignee)
+      return validation(res, [
+        {
+          path: ['assigneeUserId'],
+          message:
+            'La personne en charge doit être un membre actif de l’organisation.',
+        },
+      ]);
+    if (responsibility) {
+      if (responsibility.status !== 'active')
+        return apiError(
+          res,
+          409,
+          'RESPONSIBILITY_NOT_ACTIVE',
+          'La responsabilité doit être active pour lancer une tâche.',
+        );
+      const launched = state.tasks.filter(
+        (t) =>
+          t.responsibilityId === responsibility.id &&
+          t.createdAt.slice(0, 10) === today(),
+      ).length;
+      if (launched >= responsibility.maxRunsPerDay)
+        return apiError(
+          res,
+          409,
+          'TASK_DAILY_LIMIT_REACHED',
+          `Limite de ${responsibility.maxRunsPerDay} tâches par jour atteinte pour cette responsabilité.`,
+        );
+    }
+    const now = new Date().toISOString();
+    const created = {
+      id: randomUUID(),
+      organizationId: orgId,
+      ...data,
+      status: 'todo',
+      outcome: null,
+      report: '',
+      blockedReason: null,
+      createdBy: user.id,
+      startedAt: null,
+      completedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    state.tasks.push(created);
+    recordAudit(orgId, user.id, 'task.created', created.id, {});
+    return send(res, 201, taskDto(created));
+  }
+  const taskRoute =
+    /^\/api\/v1\/tasks\/([^/]+)(?:\/(status|notes|history))?$/.exec(path);
+  if (taskRoute) {
+    const task = state.tasks.find(
+      (t) => t.id === taskRoute[1] && t.organizationId === orgId,
+    );
+    if (!task)
+      return apiError(res, 404, 'TASK_NOT_FOUND', 'Tâche introuvable.');
+    const sub = taskRoute[2];
+    if (req.method === 'GET') {
+      if (!sub) return send(res, 200, taskDto(task));
+      if (sub === 'history') return send(res, 200, historyOf('task', task.id));
+      return send(
+        res,
+        200,
+        state.taskNotes
+          .filter((n) => n.taskId === task.id)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .map((n) => ({
+            id: n.id,
+            author: { userId: n.authorId, email: userById(n.authorId).email },
+            body: n.body,
+            createdAt: n.createdAt,
+          })),
+      );
+    }
+    const body = await readJson(req);
+    const now = new Date().toISOString();
+    if (!sub && req.method === 'PUT') {
+      if (!canManage) return forbidden(res);
+      const parsed = updateTaskSchema.safeParse(body);
+      if (!parsed.success) return validation(res, parsed.error.issues);
+      Object.assign(task, parsed.data, { updatedAt: now });
+      recordAudit(orgId, user.id, 'task.updated', task.id, {
+        changes: { title: {} },
+      });
+      return send(res, 200, taskDto(task));
+    }
+    if (!canWorkOnTask(actor, task)) return forbidden(res);
+    if (sub === 'notes') {
+      const parsed = addTaskNoteSchema.safeParse(body);
+      if (!parsed.success) return validation(res, parsed.error.issues);
+      const note = {
+        id: randomUUID(),
+        taskId: task.id,
+        authorId: user.id,
+        body: parsed.data.body,
+        createdAt: now,
+      };
+      state.taskNotes.push(note);
+      recordAudit(orgId, user.id, 'task.note_added', task.id, {});
+      return send(res, 201, {
+        id: note.id,
+        author: { userId: user.id, email: user.email },
+        body: note.body,
+        createdAt: now,
+      });
+    }
+    if (sub === 'status') {
+      const parsed = changeTaskStatusSchema.safeParse(body);
+      if (!parsed.success) return validation(res, parsed.error.issues);
+      const next = parsed.data;
+      if (!canTransitionTask(task.status, next.status))
+        return apiError(
+          res,
+          409,
+          'INVALID_STATUS_TRANSITION',
+          'Ce changement de statut n’est pas possible.',
+        );
+      recordAudit(orgId, user.id, 'task.status_changed', task.id, {
+        from: task.status,
+        to: next.status,
+        ...(next.reason ? { reason: next.reason } : {}),
+      });
+      task.status = next.status;
+      task.updatedAt = now;
+      task.blockedReason = next.status === 'blocked' ? next.reason : null;
+      if (next.status === 'in_progress') task.startedAt ??= now;
+      if (next.status === 'done') {
+        task.outcome = next.outcome;
+        task.report = next.report;
+      }
+      if (next.status === 'done' || next.status === 'cancelled')
+        task.completedAt = now;
+      return send(res, 200, taskDto(task));
     }
   }
   if (path === '/api/v1/audit-logs') {

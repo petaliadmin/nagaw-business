@@ -3,6 +3,8 @@ import type {
   MemberStatus,
   ResponsibilityStatus,
   Role,
+  TaskOutcome,
+  TaskStatus,
 } from '@nagaw/shared';
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -28,6 +30,10 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   'responsibility.created': 'Responsabilité créée',
   'responsibility.updated': 'Responsabilité modifiée',
   'responsibility.status_changed': 'Statut d’une responsabilité modifié',
+  'task.created': 'Tâche lancée',
+  'task.updated': 'Tâche modifiée',
+  'task.status_changed': 'Statut d’une tâche modifié',
+  'task.note_added': 'Note ajoutée à une tâche',
 };
 
 /** Human label for an audit action; unknown actions show their raw key. */
@@ -55,4 +61,18 @@ export const RESPONSIBILITY_STATUS_LABELS: Record<
   active: 'Active',
   suspended: 'Suspendue',
   archived: 'Archivée',
+};
+
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  todo: 'À faire',
+  in_progress: 'En cours',
+  blocked: 'Bloquée',
+  done: 'Terminée',
+  cancelled: 'Annulée',
+};
+
+export const TASK_OUTCOME_LABELS: Record<TaskOutcome, string> = {
+  achieved: 'Objectif atteint',
+  partial: 'Partiellement atteint',
+  not_achieved: 'Non atteint',
 };

@@ -252,6 +252,41 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Limites** : rien n'est exécuté (ADR-017) ; les plafonds ne sont modifiables que par SQL ; la production affiche encore la section Agents jusqu'à la prochaine fusion dans `main`.
 - **Prochaine action recommandée** : fusion dans `main` (sur autorisation explicite), puis plan détaillé de la Phase 7 (**suivi manuel des tâches**) à valider avant de coder.
 
-## Phases 7 à 15
+## Phase 7 — Suivi manuel des tâches
 
-Non commencées. Phase 7 redéfinie : suivi manuel des tâches (ADR-017) ; Phase 11 (planification) reportée.
+- **Objectif** : suivre le travail concret de l'équipe ; une personne lance chaque tâche, la renseigne et la clôt, sans aucune automatisation (ADR-017).
+- **Statut** : livrée sur la branche de travail, **en attente de validation**. Migration appliquée sur Supabase le 2026-10-23 (version `20261023214116`, avec l'autorisation du propriétaire).
+- **Choix appliqués** (recommandations, faute de réponse explicite sur ces deux points) : les tâches ponctuelles, sans responsabilité, sont autorisées ; un membre peut lancer lui-même une tâche pour lui, sur une responsabilité qui lui est confiée. Décision : ADR-018.
+- **Fonctionnalités terminées** :
+  - migration `20261023214116_tasks.sql` :
+    - `tasks` : responsabilité facultative, titre, description, personne en charge, échéance, statut, résultat, compte rendu, motif de blocage, dates de démarrage et de clôture ;
+    - clés étrangères composites vers la responsabilité et l'appartenance de la même organisation ; contraintes SQL sur la clôture (résultat et compte rendu) et le blocage (motif) ;
+    - `task_notes` : journal de la tâche, en ajout seul (trigger) ;
+    - plafond configurable en base `max_open_tasks` (500) ;
+  - API : liste filtrable (personne, responsabilité, statut, ouvertes ou clôturées), compteurs, lancement, lecture, modification, changement de statut, notes, historique ;
+  - règles : responsabilité active et dans sa période, limite de tâches par jour de la responsabilité (fuseau de l'organisation), droits du membre limités à ses propres tâches, tâche clôturée non modifiable ;
+  - web :
+    - page **Tâches** (« Mes tâches » / « Toute l'équipe », « À traiter » / « Clôturées », badge « En retard »), entrée de navigation ;
+    - page **Lancer une tâche** (responsabilité présélectionnable par `?responsabilite=`) ;
+    - fiche tâche : résumé, avancement (Démarrer, Signaler un blocage, Reprendre, Terminer avec résultat et compte rendu, Annuler avec confirmation), notes, modification (propriétaires et administrateurs), historique ;
+    - section « Tâches » sur la fiche d'une responsabilité (tâches lancées aujourd'hui / limite, bouton « Lancer une tâche ») ;
+    - vue d'ensemble : mes tâches à traiter, en cours, bloquées, en retard ; la carte « Prochainement » est retirée.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                     |
+  | ------------------------------ | -------------------------------------------------------------------------------------------- |
+  | `pnpm test`                    | 92 tests OK (shared 32, api 25, web 35)                                                      |
+  | `pnpm test:integration`        | 73 tests OK, dont 16 nouveaux sur les tâches (droits, limites, cycle de vie, isolation, SQL) |
+  | Playwright                     | 75 tests OK, 1 ignoré volontairement (test du menu mobile, sur bureau)                       |
+  | Test de mutation               | Filtre d'organisation retiré dans la lecture des tâches : le test d'isolation échoue         |
+  | lint, typecheck, build, format | OK                                                                                           |
+
+- **Limites** :
+  - aucune notification : la personne à prévenir est affichée, pas avertie (pas de fournisseur d'e-mail, ADR-015) ;
+  - la liste affiche 200 tâches au plus, sans pagination ;
+  - les plafonds ne sont modifiables que par SQL.
+- **Prochaine action recommandée** : tester la prévisualisation et valider la Phase 7.
+
+## Phases 8 à 15
+
+Non commencées. Phase 8 (approbations) à redéfinir et Phase 9 (outils) suspendue (ADR-017) ; Phase 11 (planification) reportée.

@@ -7,7 +7,7 @@ import {
 } from '@nagaw/shared';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { ApiResult } from '@/lib/api/call-api';
+import { apiErrorState } from '@/lib/api/form-error';
 import { apiAsUser, getSession } from '@/lib/api/server';
 import { parseValues, type FormState } from '@/lib/auth/schemas';
 
@@ -37,22 +37,6 @@ function values(formData: FormData) {
   };
 }
 
-/** API error as form state, with field details mapped to their inputs. */
-function apiError(
-  result: Extract<ApiResult<unknown>, { ok: false }>,
-): FormState {
-  if (!result.details) return { status: 'error', message: result.message };
-  const fieldErrors: Record<string, string> = {};
-  for (const detail of result.details) {
-    fieldErrors[detail.path] ??= detail.message;
-  }
-  return {
-    status: 'error',
-    message: `${result.message} ${result.details.map((d) => d.message).join(' ')}`,
-    fieldErrors,
-  };
-}
-
 export async function saveResponsibility(
   _prev: FormState,
   formData: FormData,
@@ -71,7 +55,7 @@ export async function saveResponsibility(
     organizationId,
     body: parsed.data,
   });
-  if (!result.ok) return apiError(result);
+  if (!result.ok) return apiErrorState(result);
   if (!responsibilityId) redirect(`/espace/responsabilites/${result.data.id}`);
   refresh();
   return { status: 'success', message: 'Responsabilité enregistrée.' };
@@ -93,7 +77,7 @@ export async function changeResponsibilityStatus(
     organizationId: text(formData, 'organizationId'),
     body: parsed.data,
   });
-  if (!result.ok) return apiError(result);
+  if (!result.ok) return apiErrorState(result);
   refresh();
   return { status: 'success', message: 'Statut mis à jour.' };
 }

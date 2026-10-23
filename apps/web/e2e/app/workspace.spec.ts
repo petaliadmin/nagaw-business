@@ -44,10 +44,13 @@ test('overview shows only real data for the active organization', async ({
   await expect(activity.getByRole('listitem').first()).toContainText(
     'Paramètres de l’organisation modifiés — awa@acme.test',
   );
-  // Upcoming modules are announced without links.
-  const upcoming = main.getByRole('region', { name: 'Prochainement' });
-  await expect(upcoming.getByText('Tâches et exécutions')).toBeVisible();
-  await expect(upcoming.getByRole('link')).toHaveCount(0);
+  // Task figures come from the API: no task has been launched yet.
+  const tasks = main.getByRole('region', { name: 'Tâches' });
+  await expect(tasks.getByText('Bloquées')).toBeVisible();
+  await expect(tasks.locator('dd')).toHaveText(['0', '0', '0', '0']);
+  await expect(main.getByRole('region', { name: 'Prochainement' })).toHaveCount(
+    0,
+  );
 });
 
 test('navigation reaches every section and marks the current page', async ({
@@ -58,6 +61,10 @@ test('navigation reaches every section and marks the current page', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace');
+
+  await navigate(page, isMobile, 'Tâches');
+  await expect(page).toHaveURL(/\/espace\/taches$/);
+  await expect(page.getByText('Aucune tâche à traiter')).toBeVisible();
 
   await navigate(page, isMobile, 'Équipe');
   await expect(page).toHaveURL(/\/espace\/equipe$/);
@@ -255,6 +262,7 @@ test('pages never overflow horizontally', async ({
     '/espace/journal',
     '/espace/parametres',
     '/espace/responsabilites',
+    '/espace/taches',
   ]) {
     await page.goto(path);
     await expect(

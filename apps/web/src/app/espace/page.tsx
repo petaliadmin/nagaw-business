@@ -4,6 +4,7 @@ import {
   type MemberDto,
   type Paginated,
   type ResponsibilityDto,
+  type TaskSummaryDto,
 } from '@nagaw/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -20,22 +21,23 @@ import { requireReadyWorkspace } from '@/lib/workspace/load';
 
 export const metadata: Metadata = { title: 'Vue d’ensemble — Nagaw Business' };
 
-/** Modules announced honestly, without links, until their phase ships. */
-const UPCOMING = ['Tâches et exécutions', 'Centre de validation'];
-
 async function Overview() {
   const workspace = await requireReadyWorkspace();
   if (!workspace) return null;
   const { organization, accessToken } = workspace;
   const canReadAudit = roleHasPermission(organization.role, 'audit.read');
 
-  const [members, responsibilities, audit] = await Promise.all([
+  const [members, responsibilities, tasks, audit] = await Promise.all([
     apiAsUser<MemberDto[]>(accessToken, {
       path: '/organizations/current/members',
       organizationId: organization.id,
     }),
     apiAsUser<ResponsibilityDto[]>(accessToken, {
       path: '/responsibilities',
+      organizationId: organization.id,
+    }),
+    apiAsUser<TaskSummaryDto>(accessToken, {
+      path: '/tasks/summary',
       organizationId: organization.id,
     }),
     canReadAudit
@@ -84,6 +86,24 @@ async function Overview() {
         )}
       </Card>
 
+      <Card title="Tâches" titleId="task-summary">
+        {tasks.ok ? (
+          <div className="flex flex-col gap-3">
+            <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <Stat label="Mes tâches à traiter" value={tasks.data.mine} />
+              <Stat label="En cours" value={tasks.data.inProgress} />
+              <Stat label="Bloquées" value={tasks.data.blocked} />
+              <Stat label="En retard" value={tasks.data.overdue} />
+            </dl>
+            <Link href="/espace/taches" className="text-sm underline">
+              Voir les tâches
+            </Link>
+          </div>
+        ) : (
+          <Alert tone="error">Tâches indisponibles : {tasks.message}</Alert>
+        )}
+      </Card>
+
       <Card title="Activité récente" titleId="recent-activity">
         {!audit ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -124,18 +144,6 @@ async function Overview() {
             </Link>
           </div>
         )}
-      </Card>
-
-      <Card title="Prochainement" titleId="upcoming">
-        <p className="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
-          Ces modules ne sont pas encore disponibles. Ils apparaîtront dans le
-          menu dès leur mise en service.
-        </p>
-        <ul className="list-inside list-disc text-sm text-zinc-700 dark:text-zinc-300">
-          {UPCOMING.map((label) => (
-            <li key={label}>{label}</li>
-          ))}
-        </ul>
       </Card>
     </>
   );
