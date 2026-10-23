@@ -56,11 +56,26 @@ export function parseForm<S extends z.ZodType>(
   schema: S,
   formData: FormData,
 ): { ok: true; data: z.infer<S> } | { ok: false; state: FormState } {
-  const parsed = schema.safeParse(formFields(formData));
+  return parseValues(schema, formFields(formData));
+}
+
+/**
+ * Validates already-assembled values (for forms with repeated or nested
+ * fields). `stripPrefix` maps nested error paths back to field names.
+ */
+export function parseValues<S extends z.ZodType>(
+  schema: S,
+  values: unknown,
+  stripPrefix?: string,
+): { ok: true; data: z.infer<S> } | { ok: false; state: FormState } {
+  const parsed = schema.safeParse(values);
   if (parsed.success) return { ok: true, data: parsed.data };
   const fieldErrors: Record<string, string> = {};
   for (const issue of parsed.error.issues) {
-    const key = issue.path.join('.') || 'form';
+    let key = issue.path.join('.') || 'form';
+    if (stripPrefix && key.startsWith(stripPrefix)) {
+      key = key.slice(stripPrefix.length);
+    }
     fieldErrors[key] ??= issue.message;
   }
   return {

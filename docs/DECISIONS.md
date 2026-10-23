@@ -120,3 +120,14 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - le jeton fait 256 bits ; seul son hash SHA-256 est stocké ; il expire selon `organizations.invitation_ttl_hours`, sert une seule fois et n'est accepté que par l'utilisateur dont l'adresse de profil est l'adresse invitée ;
   - le jeton circule dans le corps des requêtes vers l'API (jamais dans son URL, donc jamais dans ses logs) ; la page d'invitation n'envoie pas de `Referer`.
 - **Suite** : quand le propriétaire aura choisi un fournisseur (par exemple Resend ou Brevo), l'API enverra le même lien par e-mail. L'affichage du lien restera disponible en secours.
+
+## ADR-016 — Agents : configuration versionnée, test contrôlé déterministe, registre d'outils en code
+
+- **Statut** : Proposée (Phase 5), à valider par le propriétaire
+- **Décision** :
+  - l'identité d'un agent (nom, domaine, statut) est modifiable ; tout ce qui pilote son comportement est dans des **versions immuables** (`agent_versions`, ajout seul) : chaque modification crée une version, l'historique n'est jamais réécrit ;
+  - le cycle de vie est brouillon → actif ↔ suspendu → archivé ; l'archivage est définitif ; l'activation (et toute nouvelle version d'un agent actif) exige une configuration complète ;
+  - le « test contrôlé » est **déterministe** : vérifications de la configuration et consignes assemblées, sans appel de modèle ni action (ADR-007) ;
+  - les outils sont déclarés dans un registre en code (`packages/shared/src/agents.ts`) ; un outil n'est autorisable que lorsqu'il est implémenté et testé (`available: true`). `email.send` est annoncé, non disponible (Phase 9) ;
+  - les plafonds (nombre d'agents, étapes et durée par exécution) sont des colonnes de `organizations`, non modifiables par l'organisation elle-même (préparation des quotas de la Phase 12).
+- **Conséquence** : aucune configuration de modèle n'existe tant qu'un fournisseur n'est pas choisi ; les colonnes `provider`/`model` seront ajoutées à ce moment.

@@ -196,6 +196,35 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - toujours pas de limitation de débit côté API.
 - **Prochaine action recommandée** : fusion dans `main` (sur autorisation), puis Phase 5 (agents). ADR-015 (invitations par lien) est conservée telle quelle pour l'instant, sur décision du propriétaire.
 
-## Phases 5 à 15
+## Phase 5 — Agents numériques
+
+- **Objectif** : créer et administrer des agents dont la configuration est persistée, versionnée, validée et réellement exploitable par le futur moteur (Phase 7).
+- **Statut** : développée le 2026-10-23 sur la branche de travail, **en attente de validation**. Non poussée tant que la PR de la Phase 4 n'est pas fusionnée (pour ne pas mélanger les deux phases). Migration non appliquée sur Supabase.
+- **Fonctionnalités terminées** :
+  - migration `20261023200000_agents.sql` :
+    - `agents` (identité, domaine, statut) et `agent_versions` (configuration immuable, ajout seul) ;
+    - clés étrangères composites : une version appartient à un agent de la même organisation, et la version actuelle est une version de l'agent ;
+    - plafonds configurables en base sur `organizations` : `max_agents` (10), `agent_max_steps` (20), `agent_max_duration_seconds` (300) ;
+  - API : liste, création, lecture, modification de l'identité, nouvelle version de configuration, historique, changement de statut, test contrôlé, plafonds ;
+  - règles partagées (`packages/shared/src/agents.ts`) : cycle de vie, vérifications de préparation, consignes assemblées, registre d'outils ;
+  - web : page Agents (liste, archivés à la demande, usage du plafond), création, fiche agent (résumé, statut, test contrôlé, configuration, identité, historique des versions dépliable), statistique « Agents actifs » sur la vue d'ensemble, lien « Agents » dans la navigation ;
+  - modèle d'IA affiché « non configuré » partout ; `email.send` affiché « bientôt disponible » et refusé par l'API.
+- **Décision à valider** : ADR-016.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                                       |
+  | ------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+  | `pnpm test`                    | 86 tests OK (shared 26, api 25, web 35)                                                                        |
+  | `pnpm test:integration`        | 61 tests OK, dont 16 nouveaux sur les agents (cycle de vie, versions, plafonds, isolation inter-organisations) |
+  | Playwright                     | 61 tests OK, 1 ignoré volontairement (test du menu mobile, sur bureau)                                         |
+  | Test de mutation               | Filtre d'organisation retiré dans la recherche d'agent : le test d'isolation échoue                            |
+  | lint, typecheck, build, format | OK                                                                                                             |
+
+- **Limites** :
+  - aucun agent n'exécute encore de tâche : le moteur arrive en Phase 7, les outils réels en Phase 9, le modèle d'IA est reporté ;
+  - les plafonds ne sont modifiables que par SQL (quotas par offre en Phase 12).
+- **Prochaine action recommandée** : fusion de la Phase 4, puis push de la Phase 5, application de la migration (sur autorisation) et test de la prévisualisation.
+
+## Phases 6 à 15
 
 Non commencées.

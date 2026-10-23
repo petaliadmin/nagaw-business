@@ -61,6 +61,36 @@ describe('callApi', () => {
     });
   });
 
+  it('keeps well-formed field details and drops the rest', async () => {
+    const { fetchImpl } = stub(() =>
+      Response.json(
+        {
+          error: {
+            code: 'VALIDATION_FAILED',
+            message: 'Configuration invalide.',
+            details: [
+              { path: 'maxSteps', message: 'Au plus 5 étapes.' },
+              'not a detail',
+              { path: 3, message: 'bad path' },
+            ],
+          },
+        },
+        { status: 400 },
+      ),
+    );
+    const result = await callApi({
+      baseUrl: 'https://api.test',
+      token: 't',
+      path: '/agents',
+      fetchImpl,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'VALIDATION_FAILED',
+      details: [{ path: 'maxSteps', message: 'Au plus 5 étapes.' }],
+    });
+  });
+
   it('surfaces the documented error envelope', async () => {
     const { fetchImpl } = stub(() =>
       Response.json(

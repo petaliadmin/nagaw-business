@@ -1,3 +1,4 @@
+import type { AgentRoleKey, AgentStatus, ErrorPolicy } from '@nagaw/shared';
 import type { ColumnType, Generated } from 'kysely';
 
 /**
@@ -30,6 +31,9 @@ export interface OrganizationsTable {
   default_currency: Generated<string>;
   invitation_ttl_hours: Generated<number>;
   max_pending_invitations: Generated<number>;
+  max_agents: Generated<number>;
+  agent_max_steps: Generated<number>;
+  agent_max_duration_seconds: Generated<number>;
   created_by: string;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -62,6 +66,34 @@ export interface OrganizationInvitationsTable {
   updated_at: Timestamp;
 }
 
+export interface AgentsTable {
+  id: Generated<string>;
+  organization_id: string;
+  name: string;
+  description: Generated<string>;
+  role_key: AgentRoleKey;
+  status: Generated<AgentStatus>;
+  current_version_id: string;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface AgentVersionsTable {
+  id: Generated<string>;
+  organization_id: string;
+  agent_id: string;
+  version: number;
+  instructions: string;
+  objectives: string;
+  max_steps: number;
+  max_duration_seconds: number;
+  error_policy: ErrorPolicy;
+  tools: Generated<string[]>;
+  created_by: string;
+  created_at: ColumnType<Date, never, never>;
+}
+
 export interface AuditLogsTable {
   // bigint comes back from pg as a string.
   id: ColumnType<string, never, never>;
@@ -81,5 +113,7 @@ export interface Database {
   'app.organizations': OrganizationsTable;
   'app.organization_memberships': OrganizationMembershipsTable;
   'app.organization_invitations': OrganizationInvitationsTable;
+  'app.agents': AgentsTable;
+  'app.agent_versions': AgentVersionsTable;
   'app.audit_logs': AuditLogsTable;
 }

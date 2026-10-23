@@ -5,6 +5,16 @@
 import { createServer } from 'node:http';
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
+  AGENT_ROLE_LABELS,
+  ERROR_POLICY_LABELS,
+  agentConfigurationSchema,
+  buildAgentBrief,
+  canTransition,
+  checkAgentConfiguration,
+  createAgentSchema,
+  updateAgentSchema,
+} from '@nagaw/shared';
+import {
   SignJWT,
   exportJWK,
   generateKeyPair,
@@ -146,6 +156,8 @@ function makeState() {
     nextAuditId: id,
     // { id, organizationId, email, role, status, token, expiresAt, ... }
     invitations: [],
+    // { id, organizationId, name, description, roleKey, status, versions }
+    agents: [],
   };
 }
 let state = makeState();
@@ -266,6 +278,45 @@ function memberChangeRefusal(actor, target, change) {
   if (target.role === 'owner') return 'OWNER_PROTECTED';
   if (change.role === 'owner') return 'OWNER_PROMOTION_FORBIDDEN';
   return null;
+}
+
+const AGENT_CAPS = { maxAgents: 10, maxSteps: 20, maxDurationSeconds: 300 };
+
+function agentDto(agent) {
+  const current = agent.versions.at(-1);
+  return {
+    id: agent.id,
+    name: agent.name,
+    description: agent.description,
+    roleKey: agent.roleKey,
+    status: agent.status,
+    createdAt: agent.createdAt,
+    updatedAt: agent.updatedAt,
+    currentVersion: current,
+  };
+}
+
+function newVersion(agent, configuration, user) {
+  return {
+    id: randomUUID(),
+    version: agent.versions.length + 1,
+    ...configuration,
+    createdAt: new Date().toISOString(),
+    createdBy: { userId: user.id, email: user.email },
+  };
+}
+
+function validation(res, issues) {
+  return send(res, 400, {
+    error: {
+      code: 'VALIDATION_FAILED',
+      message: 'Données invalides.',
+      details: issues.map((i) => ({
+        path: i.path.join('.'),
+        message: i.message,
+      })),
+    },
+  });
 }
 
 const orgsOf = (userId) =>
@@ -584,6 +635,119 @@ const server = createServer(async (req, res) => {
       status: target.status,
       joinedAt: target.joinedAt,
     });
+  }
+  if (path === '/api/v1/agents/limits') return send(res, 200, AGENT_CAPS);
+  if (path === '/api/v1/agents' && req.method === 'GET') {
+    const archived = url.searchParams.get('archives') === 'true';
+    return send(
+      res,
+      200,
+      state.agents
+        .filter(
+          (a) =>
+            a.organizationId === orgId && (archived || a.status !== 'archived'),
+        )
+        .map(agentDto),
+    );
+  }
+  if (path === '/api/v1/agents' && req.method === 'POST') {
+    if (!canManage) return forbidden(res);
+    const parsed = createAgentSchema.safeParse(await readJson(req));
+    if (!parsed.success) return validation(res, parsed.error.issues);
+    const { configuration, ...identity } = parsed.data;
+    const now = new Date().toISOString();
+    const agent = {
+      id: randomUUID(),
+      organizationId: orgId,
+      ...identity,
+      status: 'draft',
+      createdAt: now,
+      updatedAt: now,
+      versions: [],
+    };
+    agent.versions.push(newVersion(agent, configuration, user));
+    state.agents.push(agent);
+    recordAudit(orgId, user.id, 'agent.created', agent.id, {});
+    return send(res, 201, agentDto(agent));
+  }
+  const agentRoute =
+    /^\/api\/v1\/agents\/([^/]+)(\/(versions|status|test))?$/.exec(path);
+  if (agentRoute) {
+    const agent = state.agents.find(
+      (a) => a.id === agentRoute[1] && a.organizationId === orgId,
+    );
+    if (!agent)
+      return apiError(res, 404, 'AGENT_NOT_FOUND', 'Agent introuvable.');
+    const sub = agentRoute[3];
+    if (!sub && req.method === 'GET') return send(res, 200, agentDto(agent));
+    if (sub === 'versions' && req.method === 'GET')
+      return send(res, 200, [...agent.versions].reverse());
+    if (sub === 'test') {
+      const current = agent.versions.at(-1);
+      const checks = checkAgentConfiguration(agent, current, AGENT_CAPS);
+      return send(res, 200, {
+        ready: checks.every((c) => c.severity !== 'error'),
+        checks,
+        brief: buildAgentBrief(agent, current, {
+          role: AGENT_ROLE_LABELS,
+          errorPolicy: ERROR_POLICY_LABELS,
+        }),
+        testedVersion: current.version,
+      });
+    }
+    if (!canManage) return forbidden(res);
+    if (agent.status === 'archived' && sub !== 'status')
+      return apiError(res, 409, 'AGENT_ARCHIVED', 'Cet agent est archivé.');
+    const body = await readJson(req);
+    if (!sub && req.method === 'PATCH') {
+      const parsed = updateAgentSchema.safeParse(body);
+      if (!parsed.success) return validation(res, parsed.error.issues);
+      Object.assign(agent, parsed.data, {
+        updatedAt: new Date().toISOString(),
+      });
+      recordAudit(orgId, user.id, 'agent.updated', agent.id, {});
+      return send(res, 200, agentDto(agent));
+    }
+    if (sub === 'versions' && req.method === 'POST') {
+      const parsed = agentConfigurationSchema.safeParse(body);
+      if (!parsed.success) return validation(res, parsed.error.issues);
+      agent.versions.push(newVersion(agent, parsed.data, user));
+      recordAudit(orgId, user.id, 'agent.configured', agent.id, {});
+      return send(res, 201, agentDto(agent));
+    }
+    if (sub === 'status' && req.method === 'POST') {
+      if (!canTransition(agent.status, body.status))
+        return apiError(
+          res,
+          409,
+          'INVALID_STATUS_TRANSITION',
+          'Ce changement de statut n’est pas possible.',
+        );
+      if (body.status === 'active') {
+        const errors = checkAgentConfiguration(
+          agent,
+          agent.versions.at(-1),
+          AGENT_CAPS,
+        ).filter((c) => c.severity === 'error');
+        if (errors.length)
+          return send(res, 409, {
+            error: {
+              code: 'AGENT_NOT_READY',
+              message: 'La configuration de l’agent est incomplète.',
+              details: errors.map((c) => ({
+                path: c.code,
+                message: c.message,
+              })),
+            },
+          });
+      }
+      recordAudit(orgId, user.id, 'agent.status_changed', agent.id, {
+        from: agent.status,
+        to: body.status,
+      });
+      agent.status = body.status;
+      return send(res, 200, agentDto(agent));
+    }
   }
   if (path === '/api/v1/audit-logs') {
     if (!canManage)

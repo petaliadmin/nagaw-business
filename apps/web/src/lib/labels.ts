@@ -1,4 +1,9 @@
-import type { InvitationStatus, MemberStatus, Role } from '@nagaw/shared';
+import type {
+  AgentStatus,
+  InvitationStatus,
+  MemberStatus,
+  Role,
+} from '@nagaw/shared';
 
 export const ROLE_LABELS: Record<Role, string> = {
   owner: 'Propriétaire',
@@ -16,6 +21,10 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   'member.role_changed': 'Rôle d’un membre modifié',
   'member.disabled': 'Membre désactivé',
   'member.reactivated': 'Membre réactivé',
+  'agent.created': 'Agent créé',
+  'agent.updated': 'Agent renommé ou décrit',
+  'agent.configured': 'Configuration d’un agent modifiée',
+  'agent.status_changed': 'Statut d’un agent modifié',
 };
 
 /** Human label for an audit action; unknown actions show their raw key. */
@@ -33,4 +42,11 @@ export const INVITATION_STATUS_LABELS: Record<InvitationStatus, string> = {
   accepted: 'Acceptée',
   revoked: 'Annulée',
   expired: 'Expirée',
+};
+
+export const AGENT_STATUS_LABELS: Record<AgentStatus, string> = {
+  draft: 'Brouillon',
+  active: 'Actif',
+  suspended: 'Suspendu',
+  archived: 'Archivé',
 };

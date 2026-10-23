@@ -2,7 +2,14 @@ import { apiErrorSchema } from '@nagaw/shared';
 
 export type ApiResult<T> =
   | { ok: true; status: number; data: T }
-  | { ok: false; status: number; code: string; message: string };
+  | {
+      ok: false;
+      status: number;
+      code: string;
+      message: string;
+      /** Field-level details (`path`, `message`), when the API sends them. */
+      details?: { path: string; message: string }[];
+    };
 
 export interface CallApiOptions {
   baseUrl: string | undefined;
@@ -92,6 +99,7 @@ export async function callApi<T>(
         status: response.status,
         code: parsed.data.error.code,
         message: parsed.data.error.message,
+        details: fieldDetails(parsed.data.error.details),
       }
     : {
         ok: false,
@@ -99,4 +107,17 @@ export async function callApi<T>(
         code: `HTTP_${response.status}`,
         message: 'Erreur de l’API.',
       };
+}
+
+function fieldDetails(
+  details: unknown[] | undefined,
+): { path: string; message: string }[] | undefined {
+  const fields = (details ?? []).filter(
+    (detail): detail is { path: string; message: string } =>
+      typeof detail === 'object' &&
+      detail !== null &&
+      typeof (detail as { path?: unknown }).path === 'string' &&
+      typeof (detail as { message?: unknown }).message === 'string',
+  );
+  return fields.length > 0 ? fields : undefined;
 }

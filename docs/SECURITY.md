@@ -57,6 +57,17 @@
 | Isolation : invitations et membres d'une autre organisation répondent 404, en lecture comme en écriture                 | `InvitationsService`, `MembersService`                | isolation between organizations                                 |
 | Nombre d'invitations en attente plafonné par organisation (`max_pending_invitations`)                                   | `InvitationsService`                                  | uses the lifetime and the limit configured for the organization |
 
+## Contrôles implémentés (Phase 5)
+
+| Contrôle                                                                                                       | Où                                    | Preuve (test)                                                                       |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------- |
+| Agents et versions toujours lus dans l'organisation de l'appelant ; 404 pour un agent d'une autre organisation | `AgentsService.findAgent`             | `agents.integration-spec.ts` › isolation (test de mutation : échoue sans le filtre) |
+| Une version ne peut appartenir qu'à un agent de la même organisation (clé étrangère composite)                 | migration Phase 5                     | cannot attach a version to an agent of another organization                         |
+| Versions immuables, même pour le propriétaire des tables                                                       | trigger `reject_append_only_mutation` | appends a version for each configuration change                                     |
+| Création et configuration réservées à `owner`/`admin` ; lecture et test pour tous les membres                  | permissions `agents.*`                | lets members read but not create or change agents                                   |
+| Outils non disponibles et limites au-delà des plafonds refusés à l'enregistrement                              | `AgentsService.assertSavable`         | refuses tools that are not available yet ; applies the caps                         |
+| Aucun champ serveur (statut, organisation, modèle) accepté à la création                                       | schémas `.strict()`                   | validates input and refuses server-owned fields                                     |
+
 ## Risques encore ouverts
 
 - **Limitation de débit** : absente côté API. Supabase Auth limite déjà ses propres routes ; un mécanisme pour l'API (Vercel Firewall ou compteur Postgres) reste à mettre en place.
