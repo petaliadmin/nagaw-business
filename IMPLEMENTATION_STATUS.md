@@ -194,12 +194,12 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - pas d'envoi d'e-mail (ADR-015) ;
   - pas de transfert de propriété en une seule action : un propriétaire en nomme un autre, qui peut ensuite le rétrograder ;
   - toujours pas de limitation de débit côté API.
-- **Prochaine action recommandée** : fusion dans `main` (sur autorisation), puis Phase 5 (agents). ADR-015 (invitations par lien) est conservée telle quelle pour l'instant, sur décision du propriétaire.
+- **Suite** : fusion dans `main` avec la Phase 5, autorisée le 2026-10-23. ADR-015 (invitations par lien) est conservée telle quelle pour l'instant, sur décision du propriétaire.
 
 ## Phase 5 — Agents numériques
 
 - **Objectif** : créer et administrer des agents dont la configuration est persistée, versionnée, validée et réellement exploitable par le futur moteur (Phase 7).
-- **Statut** : livrée sur la branche de travail (PR commune avec la Phase 4), **en attente de validation**. Migration appliquée sur Supabase le 2026-10-23 (version `20261023193645`, avec l'autorisation du propriétaire). ADR-016 validée.
+- **Statut** : **validée** par le propriétaire le 2026-10-23 ; fusion dans `main` avec la Phase 4 autorisée. Migration appliquée sur Supabase le 2026-10-23 (version `20261023193645`, avec l'autorisation du propriétaire). ADR-016 validée.
 - **Fonctionnalités terminées** :
   - migration `20261023193645_agents.sql` :
     - `agents` (identité, domaine, statut) et `agent_versions` (configuration immuable, ajout seul) ;
@@ -223,7 +223,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Limites** :
   - aucun agent n'exécute encore de tâche : le moteur arrive en Phase 7, les outils réels en Phase 9, le modèle d'IA est reporté ;
   - les plafonds ne sont modifiables que par SQL (quotas par offre en Phase 12).
-- **Prochaine action recommandée** : tester la prévisualisation, valider la Phase 5, puis fusionner la PR (Phases 4 et 5) sur autorisation.
+- **Prochaine action recommandée** : Phase 6 (responsabilités), autorisée par le propriétaire le 2026-10-23.
 
 ## Phases 6 à 15
 
