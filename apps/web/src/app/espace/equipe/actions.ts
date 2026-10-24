@@ -42,7 +42,7 @@ export async function inviteMember(
   const parsed = parseForm(createInvitationSchema, formData);
   if (!parsed.ok) return parsed.state;
   if (!organizationId)
-    return { status: 'error', message: 'Organisation inconnue.' };
+    return { status: 'error', message: 'Boutique inconnue.' };
 
   const result = await apiAsUser<CreatedInvitationDto>(accessToken, {
     method: 'POST',
@@ -102,5 +102,5 @@ export async function updateMember(
   });
   if (!result.ok) return { status: 'error', message: result.message };
   refresh();
-  return { status: 'success', message: 'Membre mis à jour.' };
+  return { status: 'success', message: 'Modification enregistrée.' };
 }

@@ -28,6 +28,20 @@
 | Explosion des coûts IA               | Quotas par organisation, `max_steps` et `max_tokens` par exécution                                      | 7     |
 | Admin plateforme trop puissant       | Pas d'accès au contenu métier, actions auditées                                                         | 13    |
 
+## Menaces propres à la boutique et au hors ligne (proposé, ADR-019, ADR-020)
+
+| Menace                                                       | Contrôle prévu                                                                                                                                   | Phase |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----- |
+| Prix, remise ou total falsifié dans une opération hors ligne | Le serveur recalcule les totaux avec `packages/shared`, vérifie le prix du catalogue et le seuil de remise du rôle ; écart → opération refusée   | 10–11 |
+| Rejeu ou doublon de synchronisation                          | `UNIQUE (organization_id, client_operation_id)`, réponse identique pour une opération déjà reçue, test de rejeu                                  | 11    |
+| Opération envoyée pour une autre boutique                    | Chaque lot est rattaché à l'organisation vérifiée par `TenantGuard` et à un appareil de cette organisation ; opération étrangère → refus         | 11    |
+| Téléphone perdu, volé ou partagé                             | Révocation de l'appareil par le gérant (`devices.revoked_at`) ; base locale effacée à la déconnexion ; durée hors ligne maximale configurable    | 11    |
+| Données sensibles stockées sur l'appareil                    | Base locale limitée au nécessaire pour vendre (catalogue, clients récents, opérations en attente) ; aucune donnée comptable ni d'équipe en cache | 11    |
+| Vendeur qui annule ou supprime des ventes                    | Ventes et paiements en ajout seul ; annulation réservée au gérant, motif obligatoire, auditée                                                    | 10    |
+| Facture modifiée après émission, trou de numérotation        | Trigger interdisant la modification d'une facture émise ; séquence verrouillée par boutique et par année ; correction par avoir                  | 12    |
+| Écritures comptables déséquilibrées ou sur exercice clos     | Contrainte différée débit = crédit ; refus sur `fiscal_years.status = closed`                                                                    | 14    |
+| Photos et justificatifs                                      | Liste blanche MIME + vérification de signature, taille maximale, compression côté appareil, URL signées courtes                                  | 9, 13 |
+
 ## Contrôles implémentés (Phase 2)
 
 | Contrôle                                                                                                                                       | Où                                                   | Preuve (test)                                                                                                        |
@@ -57,7 +71,15 @@
 | Isolation : invitations et membres d'une autre organisation répondent 404, en lecture comme en écriture                 | `InvitationsService`, `MembersService`                | isolation between organizations                                 |
 | Nombre d'invitations en attente plafonné par organisation (`max_pending_invitations`)                                   | `InvitationsService`                                  | uses the lifetime and the limit configured for the organization |
 
-## Contrôles implémentés (Phase 6)
+## Contrôles implémentés (Phase 8)
+
+| Contrôle                                                                                                                                                                                    | Où                                              | Preuve (test)                                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Le service worker ne met en cache aucune donnée d'utilisateur : ni pages, ni réponses d'API, ni Server Actions ; seulement la page hors ligne et les fichiers immuables de `/_next/static/` | `apps/web/src/lib/pwa/service-worker-source.ts` | `service-worker-source.test.ts` › never intercepts API calls, Server Actions or other origins |
+| `/sw.js` servi sans cache et avec une politique de sécurité de contenu stricte ; caches des versions précédentes supprimés                                                                  | `next.config.ts`, route `/sw.js`                | `pwa.spec.ts`, drops the caches of previous versions                                          |
+| Modules Responsabilités et Tâches retirés : leurs routes répondent 404 dans le web et l'API                                                                                                 | —                                               | `workspace.spec.ts` › withdrawn modules are gone                                              |
+
+## Contrôles implémentés (Phase 6, module retiré en Phase 8)
 
 | Contrôle                                                                             | Où                                                   | Preuve (test)                                                                                                                |
 | ------------------------------------------------------------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -67,7 +89,7 @@
 | La personne à prévenir doit être un membre actif de l'organisation                   | `assertEscalation`                                   | checks the person in charge, the escalation contact and the caps                                                             |
 | Aucune planification ni champ serveur (statut, organisation) accepté                 | schémas `.strict()`                                  | validates the period, refuses schedules, agents and server-owned fields                                                      |
 
-## Contrôles implémentés (Phase 7)
+## Contrôles implémentés (Phase 7, module retiré en Phase 8)
 
 | Contrôle                                                                                                                            | Où                                               | Preuve (test)                                                                          |
 | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- |

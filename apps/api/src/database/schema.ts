@@ -1,8 +1,3 @@
-import type {
-  ResponsibilityStatus,
-  TaskOutcome,
-  TaskStatus,
-} from '@nagaw/shared';
 import type { ColumnType, Generated } from 'kysely';
 
 /**
@@ -35,9 +30,6 @@ export interface OrganizationsTable {
   default_currency: Generated<string>;
   invitation_ttl_hours: Generated<number>;
   max_pending_invitations: Generated<number>;
-  max_responsibilities: Generated<number>;
-  responsibility_max_runs_per_day: Generated<number>;
-  max_open_tasks: Generated<number>;
   created_by: string;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -70,57 +62,6 @@ export interface OrganizationInvitationsTable {
   updated_at: Timestamp;
 }
 
-export interface ResponsibilitiesTable {
-  id: Generated<string>;
-  organization_id: string;
-  /** Obsolete (ADR-017): no longer written. */
-  agent_id: string | null;
-  assignee_user_id: string;
-  title: string;
-  objective: Generated<string>;
-  scope: Generated<string>;
-  rules: Generated<string>;
-  success_criteria: Generated<string>;
-  max_runs_per_day: number;
-  escalation_user_id: string | null;
-  // Dates are read back as text (see ResponsibilitiesService).
-  starts_on: string | null;
-  ends_on: string | null;
-  status: Generated<ResponsibilityStatus>;
-  created_by: string;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-}
-
-export interface TasksTable {
-  id: Generated<string>;
-  organization_id: string;
-  responsibility_id: string | null;
-  title: string;
-  description: Generated<string>;
-  assignee_user_id: string;
-  // Read back as text (see TasksService).
-  due_on: string | null;
-  status: Generated<TaskStatus>;
-  outcome: TaskOutcome | null;
-  report: Generated<string>;
-  blocked_reason: string | null;
-  started_at: NullableTimestamp;
-  completed_at: NullableTimestamp;
-  created_by: string;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-}
-
-export interface TaskNotesTable {
-  id: Generated<string>;
-  organization_id: string;
-  task_id: string;
-  author_id: string;
-  body: string;
-  created_at: ColumnType<Date, never, never>;
-}
-
 export interface AuditLogsTable {
   // bigint comes back from pg as a string.
   id: ColumnType<string, never, never>;
@@ -140,8 +81,5 @@ export interface Database {
   'app.organizations': OrganizationsTable;
   'app.organization_memberships': OrganizationMembershipsTable;
   'app.organization_invitations': OrganizationInvitationsTable;
-  'app.responsibilities': ResponsibilitiesTable;
-  'app.tasks': TasksTable;
-  'app.task_notes': TaskNotesTable;
   'app.audit_logs': AuditLogsTable;
 }

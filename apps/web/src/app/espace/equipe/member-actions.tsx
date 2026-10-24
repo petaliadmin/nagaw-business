@@ -2,6 +2,7 @@
 
 import { ROLES, type MemberDto, type Role } from '@nagaw/shared';
 import { useActionState } from 'react';
+import { CONTROL } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/auth/schemas';
@@ -45,7 +46,7 @@ export function MemberActions({
             id={selectId}
             name="role"
             defaultValue={member.role}
-            className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className={CONTROL}
           >
             {ROLES.filter(
               (role) => role === member.role || assignableRoles.includes(role),

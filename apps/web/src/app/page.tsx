@@ -1,6 +1,14 @@
-import Link from 'next/link';
+import {
+  ChartColumn,
+  FileText,
+  Package,
+  ShoppingCart,
+  WifiOff,
+  type LucideIcon,
+} from 'lucide-react';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
+import { ButtonLink } from '@/components/ui/button-link';
 import { fetchApiHealth } from '@/lib/api-health';
 import { apiBaseUrl, apiProtectionBypass } from '@/lib/env';
 
@@ -15,61 +23,100 @@ async function ApiStatus() {
 
   if (health.state === 'not_configured') {
     return (
-      <p role="status" className="text-amber-700 dark:text-amber-400">
+      <p role="status" className="font-semibold text-warning-ink">
         API non configurée : la variable <code>API_URL</code> est absente.
       </p>
     );
   }
   if (health.state === 'down') {
     return (
-      <p role="status" className="text-red-700 dark:text-red-400">
+      <p role="status" className="font-semibold text-danger-ink">
         API indisponible — {health.reason}
       </p>
     );
   }
   return (
-    <p role="status" className="text-emerald-700 dark:text-emerald-400">
+    <p role="status" className="font-semibold text-sales-ink">
       API opérationnelle — version {health.data.version}, environnement{' '}
       {health.data.environment}
     </p>
   );
 }
 
+// What the product is for. Shown as upcoming: none of these modules exists
+// yet, and the page says so (no feature presented as available).
+const MODULES: { label: string; icon: LucideIcon; className: string }[] = [
+  {
+    label: 'Produits et stock',
+    icon: Package,
+    className: 'bg-stock-soft text-stock-ink',
+  },
+  {
+    label: 'Ventes',
+    icon: ShoppingCart,
+    className: 'bg-sales-soft text-sales-ink',
+  },
+  {
+    label: 'Factures et devis',
+    icon: FileText,
+    className: 'bg-invoices-soft text-invoices-ink',
+  },
+  {
+    label: 'Chiffre d’affaires et trésorerie',
+    icon: ChartColumn,
+    className: 'bg-stats-soft text-stats-ink',
+  },
+];
+
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-8 px-6 py-16">
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-4 py-12">
       <div className="flex flex-col gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="text-4xl font-extrabold tracking-tight text-brand-ink md:text-5xl">
           Nagaw Business
         </h1>
-        <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-          Organisez votre équipe, confiez des responsabilités et suivez-les,
-          simplement et manuellement.
+        <p className="text-xl font-semibold">
+          Gérez votre boutique depuis votre téléphone, même sans connexion.
         </p>
-        <p className="text-zinc-600 dark:text-zinc-400">
-          La plateforme est en cours de construction : comptes, organisations,
-          équipe et responsabilités sont disponibles.
+        <p className="text-ink-muted">
+          Nagaw Business est en construction. Aujourd’hui : votre compte, vos
+          boutiques et votre équipe. Les modules ci-dessous arrivent dans les
+          prochaines versions.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Link
-            href="/inscription"
-            className="rounded-md bg-emerald-700 px-4 py-2 font-medium text-white hover:bg-emerald-800"
-          >
-            Créer un compte
-          </Link>
-          <Link
-            href="/connexion"
-            className="rounded-md border border-zinc-300 px-4 py-2 font-medium dark:border-zinc-700"
-          >
+          <ButtonLink href="/inscription">Créer un compte</ButtonLink>
+          <ButtonLink href="/connexion" variant="secondary">
             Se connecter
-          </Link>
+          </ButtonLink>
         </div>
       </div>
+
+      <section aria-labelledby="modules-title" className="flex flex-col gap-3">
+        <h2 id="modules-title" className="text-xl font-bold">
+          Bientôt disponible
+        </h2>
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {MODULES.map(({ label, icon: Icon, className }) => (
+            <li
+              key={label}
+              className={`flex min-h-16 items-center gap-3 rounded-2xl px-4 py-3 text-lg font-bold ${className}`}
+            >
+              <Icon aria-hidden className="size-7 shrink-0" />
+              {label}
+            </li>
+          ))}
+          <li className="flex min-h-16 items-center gap-3 rounded-2xl bg-brand-soft px-4 py-3 text-lg font-bold text-brand-ink sm:col-span-2">
+            <WifiOff aria-hidden className="size-7 shrink-0" />
+            Vente sans connexion, envoyée dès le retour du réseau
+          </li>
+        </ul>
+      </section>
+
       <section
         aria-labelledby="status-title"
-        className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+        className="rounded-2xl border border-line bg-surface p-4"
       >
-        <h2 id="status-title" className="mb-2 font-medium">
+        <h2 id="status-title" className="mb-2 text-lg font-bold">
           État des services
         </h2>
         <Suspense fallback={<p role="status">Vérification de l&apos;API…</p>}>

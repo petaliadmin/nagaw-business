@@ -1,16 +1,19 @@
 'use client';
 
+import { Ellipsis, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 /**
- * Menu button + panel for small screens. Closes on Escape, on navigation
- * and on backdrop click; focus moves into the panel when it opens and back
- * to the button when it closes.
+ * « Plus » entry of the phone bottom bar: opens a bottom sheet with the
+ * remaining navigation, the shop switcher and the account. Closes on
+ * Escape, on navigation and on backdrop click; focus moves into the sheet
+ * when it opens and back to the button when it closes.
  */
-export function MobileNav({ children }: { children: ReactNode }) {
+export function MoreMenu({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
+  const titleId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -34,8 +37,13 @@ export function MobileNav({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [open]);
 
+  const close = () => {
+    setOpen(false);
+    buttonRef.current?.focus();
+  };
+
   return (
-    <>
+    <li className="flex-1">
       <button
         ref={buttonRef}
         type="button"
@@ -45,31 +53,53 @@ export function MobileNav({ children }: { children: ReactNode }) {
           setOpenedAt(pathname);
           setOpen((value) => !value);
         }}
-        className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium dark:border-zinc-700"
+        className={`flex min-h-16 w-full flex-col items-center justify-center gap-0.5 rounded-xl text-base font-bold ${
+          open ? 'text-brand-ink' : 'text-ink-muted'
+        }`}
       >
-        {open ? 'Fermer le menu' : 'Menu'}
+        <span
+          className={`flex h-8 w-14 items-center justify-center rounded-full ${
+            open ? 'bg-brand-soft' : ''
+          }`}
+        >
+          <Ellipsis aria-hidden className="size-6" />
+        </span>
+        Plus
       </button>
       {open && (
-        <div className="fixed inset-0 top-14 z-40 flex">
+        <div className="fixed inset-0 z-40 flex flex-col justify-end">
+          <button
+            type="button"
+            aria-label="Fermer le menu"
+            tabIndex={-1}
+            onClick={close}
+            className="flex-1 bg-black/40"
+          />
           <div
             ref={panelRef}
             id={panelId}
             role="dialog"
             aria-modal="true"
-            aria-label="Menu principal"
-            className="flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto border-r border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+            aria-labelledby={titleId}
+            className="flex max-h-[85vh] flex-col gap-6 overflow-y-auto rounded-t-3xl bg-surface p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl"
           >
+            <div className="flex items-center justify-between gap-2">
+              <h2 id={titleId} className="text-xl font-extrabold">
+                Plus
+              </h2>
+              <button
+                type="button"
+                onClick={close}
+                className="flex min-h-12 items-center gap-2 rounded-xl px-3 text-base font-bold text-ink hover:bg-surface-muted"
+              >
+                <X aria-hidden className="size-6" />
+                Fermer
+              </button>
+            </div>
             {children}
           </div>
-          <button
-            type="button"
-            aria-label="Fermer le menu"
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="flex-1 bg-black/30"
-          />
         </div>
       )}
-    </>
+    </li>
   );
 }

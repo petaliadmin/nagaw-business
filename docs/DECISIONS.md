@@ -134,7 +134,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-017 — Application 100 % manuelle pour l'instant
 
-- **Statut** : Acceptée (décision du propriétaire, 2026-10-23)
+- **Statut** : Acceptée (décision du propriétaire, 2026-10-23) ; contexte produit remplacé par ADR-019 (proposée), principe « 100 % manuel » maintenu
 - **Décision** : « pour l'instant l'application doit être 100 % manuelle : pas d'automatisation, ni agent IA ».
   - Aucune planification, aucun déclenchement automatique, aucune tâche de fond : une personne lance toujours le travail.
   - Aucun modèle d'IA n'est intégré ni appelé (complète ADR-007).
@@ -146,7 +146,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-018 — Suivi manuel des tâches
 
-- **Statut** : Proposée en Phase 7 (2026-10-23), en attente de validation du propriétaire.
+- **Statut** : Remplacée par ADR-019 : le module Tâches est retiré sur décision du propriétaire (2026-10-24), sans avoir été validé. Les tables restent en base, inutilisées.
 - **Contexte** : la Phase 7 est redéfinie par ADR-017 : une personne lance, renseigne et clôt chaque tâche ; rien ne s'exécute automatiquement.
 - **Décision** :
   - une tâche est ponctuelle ou rattachée à une responsabilité **active et dans sa période** ; elle est confiée à un membre actif (clé étrangère composite vers les appartenances) ;
@@ -155,3 +155,64 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - la limite « tâches par jour » d'une responsabilité compte les tâches lancées le jour même dans le fuseau de l'organisation ; le plafond `max_open_tasks` (défaut 500) borne les tâches ouvertes ; les deux sont vérifiés sous verrou de l'organisation ;
   - le journal d'une tâche est fait de **notes en ajout seul** (`task_notes`) ; les changements de statut et les modifications sont dans `audit_logs`. Les tables `task_steps` et `task_events`, prévues pour l'exécution automatique, ne sont pas créées ;
   - un blocage affiche la personne à prévenir définie sur la responsabilité ; **aucune notification n'est envoyée** (pas de fournisseur d'e-mail, ADR-015).
+
+## ADR-019 — Repositionnement : application de gestion de boutique
+
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-24, questions tranchées : voir **Décisions du propriétaire**). Retrait de Responsabilités et Tâches fait en Phase 8.
+- **Contexte** : le propriétaire redéfinit le produit : « une application SaaS moderne, mobile first, responsive desktop, hors ligne, de gestion de boutique », avec produits et stock, ventes, statistiques (chiffre d'affaires, trésorerie), comptabilité, factures et devis. Elle doit être jolie, colorée, accessible, et facile pour les personnes peu à l'aise avec le numérique.
+- **Décision proposée** :
+  - le socle livré est conservé tel quel : authentification (ADR-014), multi-tenant (ADR-005, ADR-013), équipe et invitations (ADR-015), journal d'audit. Une **organisation** devient une **boutique** dans l'interface ; le schéma garde le nom `organizations` ;
+  - les rôles restent `owner`, `admin`, `member`, `viewer`, présentés comme propriétaire, gérant, vendeur et lecteur (comptable) ; les permissions boutique sont ajoutées dans `packages/shared/src/permissions.ts` ;
+  - les modules **Responsabilités** et **Tâches** (Phases 6 et 7, ADR-018) sont **retirés** de la navigation, de l'API et des contrats partagés, comme les agents (ADR-017) ; leurs tables sont conservées, inutilisées : aucune donnée n'est supprimée sans accord explicite ;
+  - ADR-017 reste en vigueur : pas d'IA, pas d'agent, pas de tâche planifiée. Un calcul déterministe déclenché par une saisie (stock, écriture comptable, numéro de facture) fait partie de l'opération et n'est pas une automatisation ;
+  - les phases 8 (approbations), 9 (outils et intégrations), 10 (documents) et 11 (notifications, planification) sont **remplacées** par les phases boutique de `ROADMAP.md` ;
+  - devise par défaut `XOF` (sans décimales, montants en `bigint`), comptabilité selon le SYSCOHADA révisé, en commençant par le système minimal de trésorerie ;
+  - les paiements Mobile Money sont **saisis à la main** ; aucune intégration de paiement n'est présentée comme opérationnelle tant qu'elle n'est pas choisie et vérifiée.
+- **Décisions du propriétaire (2026-10-24)** :
+  1. Responsabilités et Tâches : **retirées** (en Phase 8) ;
+  2. comptabilité au MVP : **système minimal de trésorerie** SYSCOHADA ; la partie double vient plus tard ;
+  3. impression de tickets sur imprimante Bluetooth : **au MVP** (ADR-022) ;
+  4. police : **Nunito** (ADR-021).
+
+## ADR-020 — Mode hors ligne : PWA, base locale et synchronisation par opérations idempotentes
+
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-24). Socle livré en Phase 8 (voir **Mise en œuvre**) ; base locale et synchronisation en Phase 11.
+- **Contexte** : la connexion est intermittente chez les commerçants visés. Un vendeur ne doit jamais être empêché d'encaisser. L'architecture actuelle (toutes les données passent par l'API, ADR-002) suppose une connexion permanente. Vercel n'héberge pas de processus permanent (ADR-010), ce qui n'est pas un obstacle : la synchronisation est initiée par l'appareil.
+- **Décision proposée** :
+  - le web devient une **PWA installable** (manifeste, service worker) : l'application s'ouvre sans réseau ; l'outil de service worker est choisi en Phase 8 après lecture du guide PWA de la version installée de Next.js ;
+  - une **base locale IndexedDB** (bibliothèque type Dexie) contient, par boutique : le catalogue, les stocks connus, les clients, les ventes et opérations en attente ;
+  - toute écriture hors ligne est une **opération** avec un identifiant UUID généré sur l'appareil, envoyée par lot à `POST /api/v1/sync` quand le réseau revient. L'identifiant sert de clé d'idempotence (`UNIQUE (organization_id, client_operation_id)`) : un renvoi ne crée jamais de doublon ;
+  - **le serveur reste l'autorité** : il revérifie l'appartenance, le rôle et les règles métier de chaque opération (prix, remises autorisées, produit existant). Une opération refusée est renvoyée avec son motif et affichée sur l'appareil, jamais ignorée en silence ;
+  - les ventes et mouvements de stock sont en **ajout seul** : ils ne créent pas de conflit. Le stock est la somme des mouvements ; deux ventes hors ligne du même dernier article donnent un stock négatif **signalé** au gérant, plutôt qu'une vente refusée après coup ;
+  - les données modifiables (produit, client) portent un numéro de version : une modification faite sur une version dépassée est présentée comme un conflit à résoudre, pas écrasée ;
+  - hors ligne, un appareil émet des **tickets de caisse** numérotés avec son préfixe (`A3-000127`). Les **numéros de facture** légaux, séquentiels sans trou, ne sont attribués que par le serveur ; une facture créée hors ligne est un brouillon jusqu'à la synchronisation ;
+  - quotas et durée de vie : un appareil garde au plus N jours d'opérations non synchronisées (valeur configurable en base) et alerte avant ;
+  - la déconnexion efface la base locale de l'appareil ; une opération non synchronisée bloque la déconnexion avec un avertissement explicite.
+- **Conséquences** : chaque module de vente et de stock est conçu dès sa phase pour l'écriture hors ligne (identifiant client, opération rejouable) ; les lectures analytiques (statistiques, comptabilité) restent en ligne, avec la dernière version consultée en cache. Le jeton Supabase expire : l'appareil continue de travailler hors ligne avec l'identité connue, et la synchronisation exige une session rafraîchie.
+- **Mise en œuvre (Phase 8)** :
+  - service worker écrit à la main (`apps/web/src/lib/pwa/service-worker-source.ts`, servi sur `/sw.js`), plutôt qu'une bibliothèque (Serwist) : une soixantaine de lignes, testées unitairement, sans dépendance ni étape de build supplémentaire ;
+  - il ne met en cache **aucune donnée d'utilisateur** : seulement la page `/hors-ligne`, ses fichiers et les fichiers immuables de `/_next/static/`. Les pages et les réponses de l'API passent toujours par le réseau ; une navigation impossible affiche la page hors ligne ;
+  - le cache est versionné par build (`NAGAW_BUILD_ID`) et les anciens caches sont supprimés à l'activation ;
+  - `experimental.useOffline` de Next.js met en attente navigations et Server Actions pendant la coupure et les relance au retour du réseau ; le hook `useOffline` alimente le bandeau « Pas de connexion internet ».
+- **Alternatives écartées** : PowerSync, ElectricSQL ou réplication Postgres directe vers le client, qui contourneraient l'API et donc les contrôles d'ADR-005 et ADR-013 ; application native, plus coûteuse à distribuer et à maintenir pour un premier produit.
+
+## ADR-021 — Design system coloré et accessible, mobile first
+
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-24), livrée en Phase 8.
+- **Décision proposée** : palette vive avec une couleur par module, jetons sémantiques Tailwind 4, police **Nunito** (choix du propriétaire, 2026-10-24), typographie de 16 px minimum, cibles tactiles de 48 px, WCAG 2.2 AA vérifié automatiquement (axe-core) et tests sur mobile (360 px) et ordinateur. Détail et contrastes calculés : [`DESIGN.md`](./DESIGN.md).
+- **Conséquence** : l'interface livrée en Phases 3 à 7 est reprise en Phase 8 avec ces jetons et la nouvelle navigation (barre inférieure sur mobile, barre latérale sur ordinateur).
+
+## ADR-022 — Impression des tickets sur imprimante thermique Bluetooth, dès le MVP
+
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-24, inclusion au MVP). Mise en œuvre en Phase 10.
+- **Contexte** : les boutiques utilisent des imprimantes thermiques portables (papier de 58 ou 80 mm, commandes ESC/POS). L'application est une PWA (ADR-020), et non une application native.
+- **Décision proposée** :
+  - impression via **Web Bluetooth** (Bluetooth basse consommation, profil GATT), depuis le navigateur, **sans réseau** : le ticket est généré sur l'appareil à partir de la vente locale ;
+  - un encodeur ESC/POS dans `apps/web/src/lib/printing/` (texte, montants alignés, accents, coupe du papier), testé unitairement ;
+  - l'imprimante choisie et la largeur du papier sont des réglages **de l'appareil** (stockés localement), pas de la boutique ;
+  - en secours, toujours disponibles : partage du ticket en image ou en PDF (WhatsApp) et impression système du navigateur.
+- **Limites connues, à vérifier sur du matériel réel avant de déclarer la fonction opérationnelle** :
+  - Web Bluetooth n'existe que sur les navigateurs Chromium (Chrome, Edge) sous Android et sur ordinateur ; il est absent de Safari sur iPhone et de Firefox : ces appareils n'ont que le secours ;
+  - beaucoup d'imprimantes d'entrée de gamme n'offrent que le Bluetooth « classique » (profil série), inaccessible à Web Bluetooth : l'application annoncera la liste des modèles **testés** ;
+  - si les modèles courants chez les boutiques pilotes ne sont pas compatibles, l'alternative est d'emballer la PWA dans une application Android (par exemple Capacitor) avec un module Bluetooth natif : cela ferait l'objet d'un nouvel ADR.
+- **Cible fixée par le propriétaire (2026-10-24)** : être compatible avec les modèles les plus répandus sur le marché, **en priorité les petites imprimantes portables 58 mm**. Conséquence : la Phase 10 commence par un banc d'essai sur plusieurs de ces modèles ; comme une grande partie d'entre eux n'offre que le Bluetooth classique, l'emballage Android (Capacitor) est probablement nécessaire pour atteindre cette cible, et fera l'objet d'un ADR au vu des résultats.

@@ -1,19 +1,20 @@
 # Nagaw Business
 
-> « Nagaw fournit des collaborateurs numériques autonomes, auxquels le dirigeant peut déléguer des responsabilités. »
+> « Gérer sa boutique aussi simplement qu'on compte sa caisse, même sans connexion. »
 
-Plateforme SaaS multi-entreprises pour centraliser les informations d'une entreprise, piloter ses activités et organiser son équipe et lui confier des responsabilités, suivies manuellement (aucune automatisation ni IA pour l'instant, ADR-017).
+Application SaaS de **gestion de boutique**, mobile first, utilisable sur ordinateur et **hors connexion** : produits et stock, ventes, statistiques et trésorerie, comptabilité (SYSCOHADA), factures et devis. Interface colorée, accessible et pensée pour les personnes peu à l'aise avec le numérique. Aucune IA ni automatisation (ADR-017). Repositionnement du 2026-10-24 : ADR-019 à ADR-021, proposés.
 
 ## État du projet
 
-**Phase 2 (base de données, authentification, multi-tenant) en cours de validation.** Disponible : création de compte, connexion et création d'organisation. Voir [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md).
+**Socle livré** : comptes, boutiques (organisations) multi-tenant, équipe et rôles, historique (journal d'audit), design coloré et accessible, application installable avec page hors ligne (Phase 8, en attente de validation). **Modules boutique : pas encore développés** (Phases 9 à 14). Voir [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) et [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Documentation
 
 | Document                                       | Contenu                                         |
 | ---------------------------------------------- | ----------------------------------------------- |
 | [docs/AUDIT_PHASE_0.md](docs/AUDIT_PHASE_0.md) | Audit initial, risques, MVP, questions ouvertes |
-| [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)   | Vision et concepts                              |
+| [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)   | Vision, personas, modules                       |
+| [docs/DESIGN.md](docs/DESIGN.md)               | Design, palette, accessibilité                  |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)   | Architecture cible                              |
 | [docs/DATA_MODEL.md](docs/DATA_MODEL.md)       | Modèle de données                               |
 | [docs/API.md](docs/API.md)                     | Conventions d'API                               |

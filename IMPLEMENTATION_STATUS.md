@@ -138,6 +138,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   | lint, typecheck, build, format | OK                                                                     |
 
   Les tests end-to-end de l'espace connecté tournent sur ordinateur et sur mobile, contre un faux Supabase Auth et une fausse API (`apps/web/e2e/support/fake-backend.mjs`) qui émettent de vrais jetons ES256. Le code applicatif ne contient aucun contournement d'authentification. Ils couvrent :
+
   - la redirection sans session ;
   - les données réelles de la vue d'ensemble ;
   - la navigation complète ;
@@ -287,6 +288,44 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - les plafonds ne sont modifiables que par SQL.
 - **Prochaine action recommandée** : tester la prévisualisation et valider la Phase 7.
 
-## Phases 8 à 15
+## Repositionnement en application de gestion de boutique (2026-10-24)
 
-Non commencées. Phase 8 (approbations) à redéfinir et Phase 9 (outils) suspendue (ADR-017) ; Phase 11 (planification) reportée.
+- **Demande du propriétaire** : application SaaS moderne, mobile first, responsive ordinateur, hors ligne, de gestion de boutique (produits et stock, ventes, statistiques et trésorerie, comptabilité, factures et devis), jolie, colorée, accessible et facile pour les personnes peu à l'aise avec le numérique.
+- **Statut** : **validé** par le propriétaire le 2026-10-24 (ADR-019 à ADR-022 acceptés). Documentation seulement ; la mise en œuvre commence en Phase 8.
+- **Documents mis à jour** : `docs/PRODUCT_SPEC.md` (vision, personas, modules), `docs/DESIGN.md` (nouveau : palette aux contrastes calculés, typographie, accessibilité), `docs/DECISIONS.md` (ADR-019 repositionnement, ADR-020 hors ligne, ADR-021 design, tous proposés), `docs/ROADMAP.md` (phases 8 à 18), `docs/DATA_MODEL.md` (tables boutique proposées), `docs/ARCHITECTURE.md` (PWA, synchronisation, permissions boutique), `docs/SECURITY.md`, `docs/TESTING.md`, `docs/OPERATIONS.md`, `README.md`, `CLAUDE.md`.
+- **Décisions du propriétaire (2026-10-24)** : Responsabilités et Tâches retirées (en Phase 8, tables conservées) ; comptabilité au MVP limitée au système minimal de trésorerie ; impression de tickets Bluetooth au MVP (ADR-022, proposé) ; police Nunito.
+- **Imprimantes** : compatibilité visée avec les modèles les plus répandus, en priorité les petites imprimantes portables 58 mm (ADR-022).
+
+## Phase 8 — Design system, application installable (PWA), retrait de Responsabilités et Tâches
+
+- **Objectif** : donner à l'application son visage de boutique (coloré, accessible, mobile d'abord), la rendre installable et utilisable sans réseau au niveau de la coquille, et retirer les modules hors périmètre (ADR-019 à ADR-021, validés le 2026-10-24).
+- **Statut** : livrée sur la branche `claude/phase-8-design-pwa`, **en attente de validation**. Aucune migration : les tables `responsibilities`, `tasks` et `task_notes` restent en base, inutilisées, sans suppression de données.
+- **Fonctionnalités terminées** :
+  - retrait de Responsabilités et Tâches : pages web, endpoints et modules de l'API, contrats et permissions partagés, types Kysely, faux backend et tests correspondants. Les libellés des anciennes entrées du journal restent lisibles ;
+  - jetons de design (`apps/web/src/app/globals.css`) : palette de `DESIGN.md` (vive, foncée, claire, encre par module), mode sombre aux contrastes vérifiés, focus visible de 3 px, mouvements réduits respectés ; aucune couleur en dur dans les composants ;
+  - police **Nunito** (`next/font`), texte de 16 px minimum (18 px sur mobile), chiffres tabulaires ;
+  - composants repris : boutons et champs de 48 px, alertes avec icône, badges, cartes avec pictogramme, états vides, tableaux défilables au clavier ; icônes Lucide (`lucide-react`) toujours accompagnées d'un libellé ;
+  - navigation : barre latérale violette sur tablette et ordinateur ; sur téléphone, barre en bas (Accueil, Équipe, Historique) et panneau « Plus » (Paramètres, choix de la boutique, création d'une boutique, compte, déconnexion), fermable au clavier ;
+  - vocabulaire boutique : « boutique » au lieu d'« organisation », rôles affichés Propriétaire, Gérant, Vendeur, Lecteur, « Historique » pour le journal d'audit ; route `/espace/nouvelle-boutique` ;
+  - page d'accueil publique : présente le produit et annonce honnêtement les modules à venir comme « Bientôt disponible » ;
+  - PWA : manifeste (`/manifest.webmanifest`), icônes 192, 512 (dont masquable), Apple et SVG générées par `apps/web/scripts/generate-icons.mjs`, service worker `/sw.js` (ADR-020, mise en œuvre), page `/hors-ligne`, bandeau « Pas de connexion internet », `experimental.useOffline`.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                                                                                                                               |
+  | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | `pnpm test`                    | 84 tests OK (shared 17, api 25, web 42, dont 6 nouveaux sur le service worker exécuté dans un bac à sable)                                                                                             |
+  | `pnpm test:integration`        | 45 tests OK (les 28 tests de Responsabilités et Tâches sont retirés avec ces modules)                                                                                                                  |
+  | Playwright                     | 65 tests OK, 1 ignoré volontairement (test réservé au mobile, sur ordinateur) : navigation mobile et ordinateur, hors ligne, manifeste, accessibilité axe-core, cibles de 48 px, pages retirées en 404 |
+  | lint, typecheck, build, format | OK                                                                                                                                                                                                     |
+
+- **Limites** :
+  - hors ligne, seules les pages déjà affichées restent visibles ; une page non chargée affiche « Pas de connexion ». Les données hors ligne (catalogue, ventes) arrivent en Phase 11 ;
+  - la page hors ligne est mise en cache à l'installation du service worker, donc après une première visite en ligne ;
+  - l'installation sur iPhone passe par « Partager → Sur l'écran d'accueil » : aucune invite d'installation n'est encore affichée dans l'application ;
+  - le mode sombre suit le réglage du téléphone ; il n'est pas réglable dans l'application.
+- **Point d'attention (environnement local)** : un fichier `apps/web/.env.local` pointant vers un vrai projet Supabase est apparu pendant la phase. `next build` fige les variables `NEXT_PUBLIC_*` : un build fait avec ce fichier ne convient pas aux tests end-to-end, qui supposent un build sans configuration (comme en CI). Lors d'un premier lancement, des inscriptions de test (`awa@example.sn`) ont ainsi été envoyées à ce projet, jusqu'à sa limite d'envoi d'e-mails. Les tests ont ensuite été lancés sur un build fait sans ce fichier, mis de côté puis restauré à l'identique.
+- **Prochaine action recommandée** : tester la prévisualisation sur un téléphone (installation, mode avion), valider la Phase 8, puis lancer la Phase 9 (produits et stock).
+
+## Phases 9 à 18
+
+Non commencées. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.

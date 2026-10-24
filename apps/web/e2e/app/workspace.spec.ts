@@ -7,16 +7,34 @@ test.beforeAll(async () => {
   await resetBackend();
 });
 
-/** Navigation lives in the sidebar (desktop) or behind the menu (mobile). */
+const IN_BOTTOM_BAR = ['Accueil', 'Équipe', 'Historique'];
+
+/**
+ * Desktop: the sidebar. Phones: the bottom bar, or the « Plus » sheet for
+ * the other pages. Only one « Navigation principale » is visible at a time.
+ */
 async function navigate(page: Page, isMobile: boolean, label: string) {
-  if (isMobile) await page.getByRole('button', { name: 'Menu' }).click();
-  const scope = isMobile
-    ? page.getByRole('dialog', { name: 'Menu principal' })
-    : page.getByRole('complementary', { name: 'Barre latérale' });
-  await scope
+  if (isMobile && !IN_BOTTOM_BAR.includes(label)) {
+    await page.getByRole('button', { name: 'Plus' }).click();
+    await page
+      .getByRole('dialog', { name: 'Plus' })
+      .getByRole('navigation', { name: 'Autres pages' })
+      .getByRole('link', { name: label })
+      .click();
+    return;
+  }
+  await page
     .getByRole('navigation', { name: 'Navigation principale' })
     .getByRole('link', { name: label })
     .click();
+}
+
+/** Where the shop switcher lives: sidebar, or the « Plus » sheet. */
+async function shopSwitcher(page: Page, isMobile: boolean) {
+  if (!isMobile)
+    return page.getByRole('complementary', { name: 'Barre latérale' });
+  await page.getByRole('button', { name: 'Plus' }).click();
+  return page.getByRole('dialog', { name: 'Plus' });
 }
 
 test('redirects to sign-in without a session', async ({ page }) => {
@@ -24,7 +42,7 @@ test('redirects to sign-in without a session', async ({ page }) => {
   await expect(page).toHaveURL(/\/connexion$/);
 });
 
-test('overview shows only real data for the active organization', async ({
+test('overview shows only real data for the active shop', async ({
   page,
   context,
   baseURL,
@@ -35,22 +53,18 @@ test('overview shows only real data for the active organization', async ({
   await expect(
     main.getByRole('heading', { level: 1, name: 'Acme Dakar' }),
   ).toBeVisible();
-  await expect(main.getByText('Membres actifs')).toBeVisible();
+  await expect(main.getByText('Personnes dans l’équipe')).toBeVisible();
   await expect(main.locator('dd').first()).toHaveText('2');
   await expect(main.getByText('Propriétaire')).toBeVisible();
   // Latest of the 27 audit entries comes first, with the author's e-mail.
   const activity = main.getByRole('region', { name: 'Activité récente' });
   await expect(activity.getByRole('listitem')).toHaveCount(5);
   await expect(activity.getByRole('listitem').first()).toContainText(
-    'Paramètres de l’organisation modifiés — awa@acme.test',
+    'Paramètres de la boutique modifiés — awa@acme.test',
   );
-  // Task figures come from the API: no task has been launched yet.
-  const tasks = main.getByRole('region', { name: 'Tâches' });
-  await expect(tasks.getByText('Bloquées')).toBeVisible();
-  await expect(tasks.locator('dd')).toHaveText(['0', '0', '0', '0']);
-  await expect(main.getByRole('region', { name: 'Prochainement' })).toHaveCount(
-    0,
-  );
+  // Responsibilities and tasks are withdrawn (ADR-019).
+  await expect(main.getByRole('region', { name: 'Tâches' })).toHaveCount(0);
+  await expect(main.getByText(/responsabilit/i)).toHaveCount(0);
 });
 
 test('navigation reaches every section and marks the current page', async ({
@@ -62,43 +76,44 @@ test('navigation reaches every section and marks the current page', async ({
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace');
 
-  await navigate(page, isMobile, 'Tâches');
-  await expect(page).toHaveURL(/\/espace\/taches$/);
-  await expect(page.getByText('Aucune tâche à traiter')).toBeVisible();
-
   await navigate(page, isMobile, 'Équipe');
   await expect(page).toHaveURL(/\/espace\/equipe$/);
-  const members = page.getByRole('table', { name: 'Membres de Acme Dakar' });
+  const members = page.getByRole('table', { name: 'Équipe de Acme Dakar' });
   await expect(members.getByRole('row')).toHaveCount(3);
   await expect(members).toContainText('moussa@acme.test');
-  await expect(members).toContainText('Membre');
+  await expect(members).toContainText('Vendeur');
 
-  await navigate(page, isMobile, 'Journal d’audit');
+  await navigate(page, isMobile, 'Historique');
   await expect(page).toHaveURL(/\/espace\/journal$/);
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(26); // header + 25
   await page.getByRole('link', { name: 'Entrées plus anciennes' }).click();
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(3); // header + 2
-  await expect(page.getByRole('table')).toContainText('Organisation créée');
+  await expect(page.getByRole('table')).toContainText('Boutique créée');
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Navigation principale' })
+      .getByRole('link', { name: 'Historique' }),
+  ).toHaveAttribute('aria-current', 'page');
 
   await navigate(page, isMobile, 'Paramètres');
   await expect(page).toHaveURL(/\/espace\/parametres$/);
 
-  if (!isMobile) {
-    const current = page
-      .getByRole('navigation', { name: 'Navigation principale' })
-      .getByRole('link', { name: 'Paramètres' });
-    await expect(current).toHaveAttribute('aria-current', 'page');
+  await navigate(page, isMobile, 'Accueil');
+  await expect(page).toHaveURL(/\/espace$/);
+});
+
+test('withdrawn modules are gone', async ({ page, context, baseURL }) => {
+  await signInAs(context, 'awa', baseURL!);
+  for (const path of ['/espace/responsabilites', '/espace/taches']) {
+    const response = await page.goto(path);
+    expect(response?.status(), path).toBe(404);
   }
 });
 
-test('owner updates the organization settings', async ({
-  page,
-  context,
-  baseURL,
-}) => {
+test('owner updates the shop settings', async ({ page, context, baseURL }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/parametres');
-  await page.getByLabel('Nom de l’organisation').fill('Acme Dakar SA');
+  await page.getByLabel('Nom de la boutique').fill('Acme Dakar SA');
   await page.getByLabel('Fuseau horaire').selectOption('Africa/Abidjan');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(
@@ -126,14 +141,14 @@ test('settings validate input before calling the API', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/parametres');
-  await page.getByLabel('Nom de l’organisation').fill('A');
+  await page.getByLabel('Nom de la boutique').fill('A');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(
     page.getByText('Le nom doit contenir au moins 2 caractères'),
   ).toBeVisible();
 });
 
-test('switching organization changes data and permissions', async ({
+test('switching shop changes data and permissions', async ({
   page,
   context,
   baseURL,
@@ -141,13 +156,8 @@ test('switching organization changes data and permissions', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace');
-  if (isMobile) await page.getByRole('button', { name: 'Menu' }).click();
-  const scope = isMobile
-    ? page.getByRole('dialog', { name: 'Menu principal' })
-    : page.getByRole('complementary', { name: 'Barre latérale' });
-  await scope
-    .getByLabel('Organisation')
-    .selectOption({ label: 'Globex Sénégal' });
+  const scope = await shopSwitcher(page, isMobile);
+  await scope.getByLabel('Boutique').selectOption({ label: 'Globex Sénégal' });
 
   const main = page.getByRole('main');
   await expect(
@@ -155,7 +165,7 @@ test('switching organization changes data and permissions', async ({
   ).toBeVisible();
   // Awa is a plain member of Globex: no audit access, read-only settings.
   await expect(
-    main.getByText('Votre rôle ne donne pas accès au journal d’audit.'),
+    main.getByText('Votre rôle ne donne pas accès à l’historique.'),
   ).toBeVisible();
   await page.goto('/espace/parametres');
   await expect(page.getByRole('button', { name: 'Enregistrer' })).toHaveCount(
@@ -163,7 +173,7 @@ test('switching organization changes data and permissions', async ({
   );
   await expect(
     page.getByText(
-      'Seuls les propriétaires et administrateurs peuvent modifier ces paramètres.',
+      'Seuls le propriétaire et les gérants peuvent modifier ces paramètres.',
     ),
   ).toBeVisible();
 });
@@ -190,7 +200,7 @@ test('a forged organization cookie never opens another tenant', async ({
   ).toBeVisible();
 });
 
-test('a user without organization is guided to create one', async ({
+test('a user without a shop is guided to create one', async ({
   page,
   context,
   baseURL,
@@ -198,10 +208,10 @@ test('a user without organization is guided to create one', async ({
   await signInAs(context, 'binta', baseURL!);
   await page.goto('/espace/equipe');
   await expect(
-    page.getByRole('heading', { name: 'Créez votre organisation' }),
+    page.getByRole('heading', { name: 'Créez votre boutique' }),
   ).toBeVisible();
-  await page.getByLabel('Nom de l’entreprise').fill('Binta Conseil');
-  await page.getByRole('button', { name: 'Créer l’organisation' }).click();
+  await page.getByLabel('Nom de la boutique').fill('Binta Conseil');
+  await page.getByRole('button', { name: 'Créer la boutique' }).click();
   await expect(
     page
       .getByRole('main')
@@ -225,7 +235,7 @@ test('an API failure is reported, not hidden', async ({
   );
 });
 
-test('mobile menu is keyboard friendly', async ({
+test('phone navigation: bottom bar and a keyboard-friendly « Plus » sheet', async ({
   page,
   context,
   baseURL,
@@ -237,17 +247,61 @@ test('mobile menu is keyboard friendly', async ({
   await expect(
     page.getByRole('complementary', { name: 'Barre latérale' }),
   ).toBeHidden();
-  const button = page.getByRole('button', { name: 'Menu' });
+  const bar = page.getByRole('navigation', { name: 'Navigation principale' });
+  await expect(bar.getByRole('link')).toHaveText(IN_BOTTOM_BAR);
+  await expect(bar.getByRole('link', { name: 'Accueil' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+
+  const button = page.getByRole('button', { name: 'Plus' });
   await expect(button).toHaveAttribute('aria-expanded', 'false');
   await button.click();
-  const dialog = page.getByRole('dialog', { name: 'Menu principal' });
+  const dialog = page.getByRole('dialog', { name: 'Plus' });
   await expect(dialog).toBeVisible();
+  await expect(button).toHaveAttribute('aria-expanded', 'true');
+  await expect(dialog).toContainText('awa@acme.test');
   await expect(
-    page.getByRole('button', { name: 'Fermer le menu' }).first(),
-  ).toHaveAttribute('aria-expanded', 'true');
+    dialog.getByRole('button', { name: 'Se déconnecter' }),
+  ).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(button).toBeFocused();
+});
+
+test('touch targets are at least 48 px high', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  for (const path of ['/espace', '/espace/equipe', '/espace/parametres']) {
+    await page.goto(path);
+    await expect(
+      page.getByRole('main').getByRole('heading', { level: 1 }),
+    ).toBeVisible();
+    const small = await page.evaluate(() =>
+      [
+        ...document.querySelectorAll(
+          'a, button, select, input:not([type=hidden])',
+        ),
+      ]
+        .filter((el) => {
+          const box = el.getBoundingClientRect();
+          // Visible controls only. Exempt: links inside a sentence (WCAG
+          // 2.5.8 inline exception) and the visually hidden skip link.
+          return (
+            box.width > 0 &&
+            box.height > 0 &&
+            !el.closest('p') &&
+            !el.classList.contains('sr-only') &&
+            box.height < 48
+          );
+        })
+        .map((el) => el.outerHTML.slice(0, 120)),
+    );
+    expect(small, path).toEqual([]);
+  }
 });
 
 test('pages never overflow horizontally', async ({
@@ -261,8 +315,7 @@ test('pages never overflow horizontally', async ({
     '/espace/equipe',
     '/espace/journal',
     '/espace/parametres',
-    '/espace/responsabilites',
-    '/espace/taches',
+    '/espace/nouvelle-boutique',
   ]) {
     await page.goto(path);
     await expect(

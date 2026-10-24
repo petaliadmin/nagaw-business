@@ -59,7 +59,7 @@ export async function selectOrganization(formData: FormData): Promise<void> {
   const session = await requireSession();
   const requested = formData.get('organizationId')?.toString();
   const me = await apiAsUser<MeDto>(session.accessToken, { path: '/me' });
-  if (!me.ok) throw new Error(`Organisations indisponibles : ${me.message}`);
+  if (!me.ok) throw new Error(`Boutiques indisponibles : ${me.message}`);
   if (requested && me.data.organizations.some((org) => org.id === requested)) {
     await rememberOrganization(requested);
   }
@@ -76,7 +76,7 @@ export async function updateOrganization(
   const parsed = parseForm(updateOrganizationSchema, formData);
   if (!parsed.ok) return parsed.state;
   if (!organizationId)
-    return { status: 'error', message: 'Organisation inconnue.' };
+    return { status: 'error', message: 'Boutique inconnue.' };
 
   // The API checks membership and the organization.update permission.
   const result = await apiAsUser<OrganizationDto>(session.accessToken, {

@@ -1,4 +1,5 @@
 import { roleHasPermission, type OrganizationDto } from '@nagaw/shared';
+import { Store, UserRound } from 'lucide-react';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
@@ -27,7 +28,7 @@ async function Settings() {
   return (
     <>
       <PageHeader title="Paramètres" />
-      <Card title="Organisation" titleId="org-settings">
+      <Card title="Boutique" titleId="org-settings" icon={Store}>
         {!organization.ok ? (
           <Alert tone="error">
             Paramètres indisponibles : {organization.message}
@@ -50,13 +51,13 @@ async function Settings() {
               />
             </dl>
             <Alert>
-              Seuls les propriétaires et administrateurs peuvent modifier ces
+              Seuls le propriétaire et les gérants peuvent modifier ces
               paramètres.
             </Alert>
           </div>
         )}
       </Card>
-      <Card title="Mon profil" titleId="profile">
+      <Card title="Mon profil" titleId="profile" icon={UserRound}>
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Stat label="Adresse e-mail" value={me.email} />
           <Stat label="Langue" value="Français" />

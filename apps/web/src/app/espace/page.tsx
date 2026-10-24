@@ -3,13 +3,13 @@ import {
   type AuditLogDto,
   type MemberDto,
   type Paginated,
-  type ResponsibilityDto,
-  type TaskSummaryDto,
 } from '@nagaw/shared';
+import { History, Store, UserPlus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
+import { ButtonLink } from '@/components/ui/button-link';
 import { Card, Stat } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
@@ -19,25 +19,18 @@ import { formatDate, formatDateTime } from '@/lib/format';
 import { ROLE_LABELS, auditActionLabel } from '@/lib/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 
-export const metadata: Metadata = { title: 'Vue d’ensemble — Nagaw Business' };
+export const metadata: Metadata = { title: 'Accueil — Nagaw Business' };
 
 async function Overview() {
   const workspace = await requireReadyWorkspace();
   if (!workspace) return null;
   const { organization, accessToken } = workspace;
   const canReadAudit = roleHasPermission(organization.role, 'audit.read');
+  const canInvite = roleHasPermission(organization.role, 'members.invite');
 
-  const [members, responsibilities, tasks, audit] = await Promise.all([
+  const [members, audit] = await Promise.all([
     apiAsUser<MemberDto[]>(accessToken, {
       path: '/organizations/current/members',
-      organizationId: organization.id,
-    }),
-    apiAsUser<ResponsibilityDto[]>(accessToken, {
-      path: '/responsibilities',
-      organizationId: organization.id,
-    }),
-    apiAsUser<TaskSummaryDto>(accessToken, {
-      path: '/tasks/summary',
       organizationId: organization.id,
     }),
     canReadAudit
@@ -59,21 +52,23 @@ async function Overview() {
     <>
       <PageHeader
         title={organization.name}
-        description={`Créée le ${formatDate(organization.createdAt, organization.timezone)}`}
+        description={`Boutique créée le ${formatDate(organization.createdAt, organization.timezone)}`}
+        actions={
+          canInvite ? (
+            <ButtonLink href="/espace/equipe">
+              <UserPlus aria-hidden className="size-5" />
+              Inviter quelqu’un
+            </ButtonLink>
+          ) : undefined
+        }
       />
 
-      <Card title="Votre organisation" titleId="org-summary">
+      <Card title="Votre boutique" titleId="org-summary" icon={Store}>
         {members.ok ? (
-          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Stat label="Membres actifs" value={activeMembers.length} />
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Stat
-              label="Responsabilités actives"
-              value={
-                responsibilities.ok
-                  ? responsibilities.data.filter((r) => r.status === 'active')
-                      .length
-                  : 'indisponible'
-              }
+              label="Personnes dans l’équipe"
+              value={activeMembers.length}
             />
             <Stat label="Votre rôle" value={ROLE_LABELS[organization.role]} />
             <Stat
@@ -82,32 +77,14 @@ async function Overview() {
             />
           </dl>
         ) : (
-          <Alert tone="error">Membres indisponibles : {members.message}</Alert>
+          <Alert tone="error">Équipe indisponible : {members.message}</Alert>
         )}
       </Card>
 
-      <Card title="Tâches" titleId="task-summary">
-        {tasks.ok ? (
-          <div className="flex flex-col gap-3">
-            <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <Stat label="Mes tâches à traiter" value={tasks.data.mine} />
-              <Stat label="En cours" value={tasks.data.inProgress} />
-              <Stat label="Bloquées" value={tasks.data.blocked} />
-              <Stat label="En retard" value={tasks.data.overdue} />
-            </dl>
-            <Link href="/espace/taches" className="text-sm underline">
-              Voir les tâches
-            </Link>
-          </div>
-        ) : (
-          <Alert tone="error">Tâches indisponibles : {tasks.message}</Alert>
-        )}
-      </Card>
-
-      <Card title="Activité récente" titleId="recent-activity">
+      <Card title="Activité récente" titleId="recent-activity" icon={History}>
         {!audit ? (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Votre rôle ne donne pas accès au journal d’audit.
+          <p className="text-ink-muted">
+            Votre rôle ne donne pas accès à l’historique.
           </p>
         ) : !audit.ok ? (
           <Alert tone="error">Activité indisponible : {audit.message}</Alert>
@@ -115,16 +92,16 @@ async function Overview() {
           <EmptyState title="Aucune activité pour le moment" />
         ) : (
           <div className="flex flex-col gap-3">
-            <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
+            <ul className="flex flex-col divide-y divide-line">
               {audit.data.data.map((entry) => (
                 <li
                   key={entry.id}
-                  className="flex flex-wrap justify-between gap-2 py-2 text-sm"
+                  className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-3 first:pt-0"
                 >
-                  <span>
+                  <span className="font-semibold">
                     {auditActionLabel(entry.action)}
                     {entry.actorId && emailById.has(entry.actorId) && (
-                      <span className="text-zinc-600 dark:text-zinc-400">
+                      <span className="font-normal text-ink-muted">
                         {' '}
                         — {emailById.get(entry.actorId)}
                       </span>
@@ -132,15 +109,18 @@ async function Overview() {
                   </span>
                   <time
                     dateTime={entry.createdAt}
-                    className="text-zinc-600 dark:text-zinc-400"
+                    className="text-ink-muted tabular-nums"
                   >
                     {formatDateTime(entry.createdAt, organization.timezone)}
                   </time>
                 </li>
               ))}
             </ul>
-            <Link href="/espace/journal" className="text-sm underline">
-              Voir tout le journal
+            <Link
+              href="/espace/journal"
+              className="inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4"
+            >
+              Voir tout l’historique
             </Link>
           </div>
         )}

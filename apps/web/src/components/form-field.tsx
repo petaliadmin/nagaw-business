@@ -1,4 +1,10 @@
-import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import type { InputHTMLAttributes } from 'react';
+
+// 16 px text (no zoom on iOS focus), 48 px high, 3:1 border (DESIGN.md).
+export const CONTROL =
+  'min-h-12 w-full rounded-xl border-2 border-line-strong bg-surface px-4 py-2 text-base text-ink aria-[invalid]:border-danger';
+const LABEL = 'text-base font-semibold';
+const ERROR = 'text-base font-medium text-danger-ink';
 
 interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -9,8 +15,8 @@ interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 export function FormField({ label, name, error, ...input }: FormFieldProps) {
   const errorId = error ? `${name}-error` : undefined;
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={name} className="text-sm font-medium">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={name} className={LABEL}>
         {label}
       </label>
       <input
@@ -18,56 +24,11 @@ export function FormField({ label, name, error, ...input }: FormFieldProps) {
         name={name}
         aria-invalid={error ? true : undefined}
         aria-describedby={errorId}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 aria-[invalid]:border-red-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+        className={CONTROL}
         {...input}
       />
       {error && (
-        <p id={errorId} className="text-sm text-red-700 dark:text-red-400">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-interface TextareaFieldProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label: string;
-  name: string;
-  error?: string;
-  hint?: string;
-}
-
-export function TextareaField({
-  label,
-  name,
-  error,
-  hint,
-  ...textarea
-}: TextareaFieldProps) {
-  const errorId = error ? `${name}-error` : undefined;
-  const hintId = hint ? `${name}-hint` : undefined;
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={name} className="text-sm font-medium">
-        {label}
-      </label>
-      {hint && (
-        <p id={hintId} className="text-sm text-zinc-600 dark:text-zinc-400">
-          {hint}
-        </p>
-      )}
-      <textarea
-        id={name}
-        name={name}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={
-          [hintId, errorId].filter(Boolean).join(' ') || undefined
-        }
-        className="min-h-28 rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 aria-[invalid]:border-red-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-        {...textarea}
-      />
-      {error && (
-        <p id={errorId} className="text-sm text-red-700 dark:text-red-400">
+        <p id={errorId} className={ERROR}>
           {error}
         </p>
       )}
@@ -90,8 +51,8 @@ export function SelectField({
 }) {
   const errorId = error ? `${name}-error` : undefined;
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={name} className="text-sm font-medium">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={name} className={LABEL}>
         {label}
       </label>
       <select
@@ -100,7 +61,7 @@ export function SelectField({
         defaultValue={defaultValue}
         aria-invalid={error ? true : undefined}
         aria-describedby={errorId}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+        className={CONTROL}
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -109,7 +70,7 @@ export function SelectField({
         ))}
       </select>
       {error && (
-        <p id={errorId} className="text-sm text-red-700 dark:text-red-400">
+        <p id={errorId} className={ERROR}>
           {error}
         </p>
       )}

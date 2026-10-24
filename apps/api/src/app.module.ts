@@ -12,8 +12,6 @@ import { HealthModule } from './health/health.module.js';
 import { MeModule } from './me/me.module.js';
 import { MembersModule } from './members/members.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
-import { ResponsibilitiesModule } from './responsibilities/responsibilities.module.js';
-import { TasksModule } from './tasks/tasks.module.js';
 import { TenantGuard } from './tenancy/tenant.guard.js';
 
 @Module({
@@ -32,8 +30,6 @@ import { TenantGuard } from './tenancy/tenant.guard.js';
     OrganizationsModule,
     MeModule,
     MembersModule,
-    ResponsibilitiesModule,
-    TasksModule,
   ],
   providers: [
     // Order matters: authenticate first, then resolve the tenant.

@@ -1,15 +1,41 @@
+import {
+  House,
+  ScrollText,
+  Settings,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
+
+export interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /** Shown in the phone bottom bar; the others live under « Plus ». */
+  bottomBar: boolean;
+}
+
 /**
- * Every entry points to a page that exists. Modules from later phases are
- * added here only when their page ships (no dead links).
+ * Every entry points to a page that exists. Shop modules (sales, products,
+ * invoices…) are added here only when their page ships (no dead links).
+ * The phone bottom bar holds at most three of them next to « Plus », so
+ * that labels stay at 16 px on a 360 px screen (DESIGN.md).
  */
-export const NAV_ITEMS = [
-  { href: '/espace', label: 'Vue d’ensemble' },
-  { href: '/espace/taches', label: 'Tâches' },
-  { href: '/espace/responsabilites', label: 'Responsabilités' },
-  { href: '/espace/equipe', label: 'Équipe' },
-  { href: '/espace/journal', label: 'Journal d’audit' },
-  { href: '/espace/parametres', label: 'Paramètres' },
-] as const;
+export const NAV_ITEMS: readonly NavItem[] = [
+  { href: '/espace', label: 'Accueil', icon: House, bottomBar: true },
+  { href: '/espace/equipe', label: 'Équipe', icon: Users, bottomBar: true },
+  {
+    href: '/espace/journal',
+    label: 'Historique',
+    icon: ScrollText,
+    bottomBar: true,
+  },
+  {
+    href: '/espace/parametres',
+    label: 'Paramètres',
+    icon: Settings,
+    bottomBar: false,
+  },
+];
 
 /** Exact match for the overview, prefix match for sections. */
 export function isActive(href: string, pathname: string): boolean {
