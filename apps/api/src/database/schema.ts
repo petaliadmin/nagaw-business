@@ -1,3 +1,9 @@
+import type {
+  CategoryColor,
+  ProductPhotoType,
+  StockMovementKind,
+  Unit,
+} from '@nagaw/shared';
 import type { ColumnType, Generated } from 'kysely';
 
 /**
@@ -30,6 +36,10 @@ export interface OrganizationsTable {
   default_currency: Generated<string>;
   invitation_ttl_hours: Generated<number>;
   max_pending_invitations: Generated<number>;
+  max_products: Generated<number>;
+  max_product_categories: Generated<number>;
+  max_suppliers: Generated<number>;
+  max_tax_rates: Generated<number>;
   created_by: string;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -76,10 +86,106 @@ export interface AuditLogsTable {
   created_at: ColumnType<Date, never, never>;
 }
 
+// numeric and bigint come back from pg as strings; inserts accept numbers.
+type Numeric = ColumnType<string, number | string, number | string>;
+type NullableNumeric = ColumnType<
+  string | null,
+  number | string | null | undefined,
+  number | string | null
+>;
+type CatalogStatus = Generated<'active' | 'archived'>;
+
+export interface TaxRatesTable {
+  id: Generated<string>;
+  organization_id: string;
+  name: string;
+  rate_basis_points: number;
+  status: CatalogStatus;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface ProductCategoriesTable {
+  id: Generated<string>;
+  organization_id: string;
+  name: string;
+  color: Generated<CategoryColor>;
+  status: CatalogStatus;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface SuppliersTable {
+  id: Generated<string>;
+  organization_id: string;
+  name: string;
+  phone: Generated<string>;
+  notes: Generated<string>;
+  status: CatalogStatus;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface ProductsTable {
+  id: Generated<string>;
+  organization_id: string;
+  name: string;
+  category_id: string | null;
+  unit: Unit;
+  sale_price: Numeric;
+  purchase_price: NullableNumeric;
+  tax_rate_id: string | null;
+  barcode: string | null;
+  track_stock: Generated<boolean>;
+  low_stock_threshold: NullableNumeric;
+  status: CatalogStatus;
+  version: Generated<number>;
+  photo_sha256: string | null;
+  client_operation_id: string;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface ProductPhotosTable {
+  organization_id: string;
+  product_id: string;
+  content_type: ProductPhotoType;
+  data: Buffer;
+  sha256: string;
+  updated_by: string;
+  updated_at: Timestamp;
+}
+
+export interface StockMovementsTable {
+  id: Generated<string>;
+  organization_id: string;
+  product_id: string;
+  kind: StockMovementKind;
+  quantity: Numeric;
+  counted_quantity: NullableNumeric;
+  unit_cost: NullableNumeric;
+  supplier_id: string | null;
+  reason: string | null;
+  client_operation_id: string;
+  created_by: string;
+  occurred_at: Timestamp;
+  created_at: ColumnType<Date, never, never>;
+}
+
 export interface Database {
   'app.user_profiles': UserProfilesTable;
   'app.organizations': OrganizationsTable;
   'app.organization_memberships': OrganizationMembershipsTable;
   'app.organization_invitations': OrganizationInvitationsTable;
   'app.audit_logs': AuditLogsTable;
+  'app.tax_rates': TaxRatesTable;
+  'app.product_categories': ProductCategoriesTable;
+  'app.suppliers': SuppliersTable;
+  'app.products': ProductsTable;
+  'app.product_photos': ProductPhotosTable;
+  'app.stock_movements': StockMovementsTable;
 }

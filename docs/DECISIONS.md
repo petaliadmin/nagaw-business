@@ -216,3 +216,16 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - beaucoup d'imprimantes d'entrée de gamme n'offrent que le Bluetooth « classique » (profil série), inaccessible à Web Bluetooth : l'application annoncera la liste des modèles **testés** ;
   - si les modèles courants chez les boutiques pilotes ne sont pas compatibles, l'alternative est d'emballer la PWA dans une application Android (par exemple Capacitor) avec un module Bluetooth natif : cela ferait l'objet d'un nouvel ADR.
 - **Cible fixée par le propriétaire (2026-10-24)** : être compatible avec les modèles les plus répandus sur le marché, **en priorité les petites imprimantes portables 58 mm**. Conséquence : la Phase 10 commence par un banc d'essai sur plusieurs de ces modèles ; comme une grande partie d'entre eux n'offre que le Bluetooth classique, l'emballage Android (Capacitor) est probablement nécessaire pour atteindre cette cible, et fera l'objet d'un ADR au vu des résultats.
+
+## ADR-023 — Catalogue et stock : prix TTC, stock par mouvements, photos en base
+
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-24, Phase 9).
+- **Décision** :
+  - **prix de vente taxes comprises** : c'est le prix affiché et payé en boutique. Le taux de taxe du produit sert à retrouver le hors-taxe sur les factures (Phase 12). Les taux sont des données de la boutique (`tax_rates`), jamais codés en dur ;
+  - **montants entiers en unités mineures** de la devise de la boutique, lus et affichés par des fonctions partagées (`packages/shared/src/money.ts`) ; **quantités** en `numeric(14,3)`, entières pour les unités comptées à la pièce (pièce, carton, sac…), décimales pour le poids, le volume et la longueur ;
+  - **le stock n'est jamais écrasé** : il est la somme d'un journal de mouvements en ajout seul (stock de départ, entrée, perte, inventaire ; vente et retour en Phase 10). Un inventaire enregistre la quantité comptée et l'écart. Une perte supérieure au stock est refusée ; l'inventaire corrige un stock faux ;
+  - chaque création (produit, mouvement) porte un **identifiant d'opération** fourni par l'appareil : un renvoi répond 200 avec le résultat d'origine, sans doublon (préparation d'ADR-020) ; les modifications d'un produit exigent la **version** lue (409 `VERSION_CONFLICT` sinon) ;
+  - seuls le propriétaire et les gérants gèrent le catalogue et le stock (`catalog.manage`, `stock.move`) ; tout le monde le consulte (`catalog.read`) ;
+  - noms uniques parmi les éléments actifs (insensible à la casse) ; **archivage** au lieu de suppression ; plafonds par boutique en base (`max_products`, `max_product_categories`, `max_suppliers`, `max_tax_rates`) ;
+  - **photos dans Postgres** (`product_photos`, 512 Ko au plus), réduites à 800 px et réencodées en WebP (ou JPEG) **sur l'appareil**, vérifiées par signature côté API, servies au navigateur par une route du web qui relaie la session. Supabase Storage aurait demandé une nouvelle clé privilégiée côté API et une intégration non vérifiée ; le passage à Storage reste possible si le volume le justifie.
+- **Conséquence** : une photo retirée est masquée (`photo_sha256` à null), ses octets restent jusqu'à la prochaine photo, faute de droit `DELETE` pour l'API (ADR-013).

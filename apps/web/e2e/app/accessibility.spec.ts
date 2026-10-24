@@ -19,6 +19,11 @@ test('signed-in pages meet WCAG 2.2 AA (no serious violation)', async ({
     '/espace/journal',
     '/espace/parametres',
     '/espace/nouvelle-boutique',
+    '/espace/produits',
+    '/espace/produits/nouveau',
+    '/espace/produits/dddddddd-0000-4000-8000-000000000001',
+    '/espace/produits/categories',
+    '/espace/produits/fournisseurs',
   ]) {
     await page.goto(path);
     await expect(

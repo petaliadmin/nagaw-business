@@ -11,6 +11,7 @@ import {
   jwtVerify,
   createLocalJWKSet,
 } from 'jose';
+import { handleCatalog, resetCatalog } from './fake-catalog.mjs';
 
 const PORT = Number(process.env.FAKE_BACKEND_PORT ?? 54400);
 const ORIGIN = `http://localhost:${PORT}`;
@@ -284,6 +285,7 @@ const server = createServer(async (req, res) => {
     return send(res, 200, await sessionCookie(url.searchParams.get('user')));
   if (path === '/__test/reset') {
     state = makeState();
+    resetCatalog();
     return send(res, 200, { ok: true });
   }
 
@@ -585,6 +587,23 @@ const server = createServer(async (req, res) => {
       joinedAt: target.joinedAt,
     });
   }
+  if (
+    await handleCatalog({
+      req,
+      res,
+      path,
+      url,
+      user,
+      orgId,
+      canManage,
+      send,
+      apiError,
+      readJson,
+      forbidden,
+      userById,
+    })
+  )
+    return;
   if (path === '/api/v1/audit-logs') {
     if (!canManage)
       return apiError(

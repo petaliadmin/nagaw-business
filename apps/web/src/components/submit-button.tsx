@@ -1,6 +1,7 @@
 'use client';
 
 import { useFormStatus } from 'react-dom';
+import { useActionFormPending } from '@/components/action-form';
 import {
   buttonClasses,
   type ButtonVariant,
@@ -17,7 +18,11 @@ export function SubmitButton({
   variant?: ButtonVariant;
   'aria-label'?: string;
 }) {
-  const { pending } = useFormStatus();
+  // Native form actions report through useFormStatus, ActionForm through
+  // its context.
+  const { pending: submitting } = useFormStatus();
+  const dispatching = useActionFormPending();
+  const pending = submitting || dispatching;
   return (
     <button
       type="submit"

@@ -7,6 +7,7 @@ import { ENV, type Env } from './config/env.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthGuard } from './auth/auth.guard.js';
 import { AuthModule } from './auth/auth.module.js';
+import { CatalogModule } from './catalog/catalog.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MeModule } from './me/me.module.js';
@@ -30,6 +31,7 @@ import { TenantGuard } from './tenancy/tenant.guard.js';
     OrganizationsModule,
     MeModule,
     MembersModule,
+    CatalogModule,
   ],
   providers: [
     // Order matters: authenticate first, then resolve the tenant.

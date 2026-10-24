@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useActionState } from 'react';
+import { ActionForm } from '@/components/action-form';
 import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { NextField } from '@/components/next-field';
@@ -9,10 +10,15 @@ import { initialFormState } from '@/lib/auth/schemas';
 import { signUp } from '../actions';
 
 export function SignUpForm() {
-  const [state, action] = useActionState(signUp, initialFormState);
+  const [state, action, pending] = useActionState(signUp, initialFormState);
   if (state.status === 'success') return <FormMessage state={state} />;
   return (
-    <form action={action} className="flex flex-col gap-4" noValidate>
+    <ActionForm
+      action={action}
+      pending={pending}
+      className="flex flex-col gap-4"
+      noValidate
+    >
       <FormMessage state={state} />
       <Suspense fallback={null}>
         <NextField />
@@ -43,6 +49,6 @@ export function SignUpForm() {
         error={state.fieldErrors?.confirmation}
       />
       <SubmitButton pendingLabel="Création…">Créer mon compte</SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

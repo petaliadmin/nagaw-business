@@ -17,6 +17,8 @@ export interface CallApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   body?: unknown;
+  /** Binary body (product photo), sent as is instead of JSON. */
+  rawBody?: { data: Blob; contentType: string };
   organizationId?: string;
   /** Vercel deployment-protection bypass secret (previews only). */
   protectionBypass?: string;
@@ -37,6 +39,7 @@ export async function callApi<T>(
     method = 'GET',
     path,
     body,
+    rawBody,
     organizationId,
   } = options;
   if (!baseUrl) {
@@ -49,7 +52,8 @@ export async function callApi<T>(
   }
 
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (rawBody) headers['Content-Type'] = rawBody.contentType;
+  else if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (organizationId) headers['X-Organization-Id'] = organizationId;
   if (options.protectionBypass) {
     headers['x-vercel-protection-bypass'] = options.protectionBypass;
@@ -62,7 +66,9 @@ export async function callApi<T>(
       {
         method,
         headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body:
+          rawBody?.data ??
+          (body === undefined ? undefined : JSON.stringify(body)),
         cache: 'no-store',
         signal: AbortSignal.timeout(options.timeoutMs ?? 8000),
       },

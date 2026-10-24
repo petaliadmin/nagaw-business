@@ -2,6 +2,7 @@
 
 import { INVITATION_TTL_HOURS, type OrganizationDto } from '@nagaw/shared';
 import { useActionState } from 'react';
+import { ActionForm } from '@/components/action-form';
 import { FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
@@ -20,9 +21,17 @@ export function OrganizationSettingsForm({
   timeZones: string[];
   currencies: string[];
 }) {
-  const [state, action] = useActionState(updateOrganization, initialFormState);
+  const [state, action, pending] = useActionState(
+    updateOrganization,
+    initialFormState,
+  );
   return (
-    <form action={action} className="flex flex-col gap-4" noValidate>
+    <ActionForm
+      action={action}
+      pending={pending}
+      className="flex flex-col gap-4"
+      noValidate
+    >
       <input type="hidden" name="organizationId" value={organization.id} />
       <FormMessage state={state} />
       <FormField
@@ -63,6 +72,6 @@ export function OrganizationSettingsForm({
       <div>
         <SubmitButton pendingLabel="Enregistrement…">Enregistrer</SubmitButton>
       </div>
-    </form>
+    </ActionForm>
   );
 }
