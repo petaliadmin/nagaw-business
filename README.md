@@ -45,7 +45,7 @@ Prérequis : Node.js 24 (`.nvmrc`) et pnpm 10.
 
 ```bash
 pnpm install
-cp apps/api/.env.example apps/api/.env      # facultatif : valeurs par défaut sûres
+cp apps/api/.env.example apps/api/.env      # lu au démarrage de l'API ; sans lui, pas de base
 cp apps/web/.env.example apps/web/.env.local
 pnpm dev        # web sur http://localhost:3000, API sur http://localhost:3001
 ```
