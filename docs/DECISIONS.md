@@ -248,7 +248,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-025 — Caisse hors ligne : page statique, file d'attente et prix vu par le client
 
-- **Statut** : Proposée en Phase 11 (2026-10-24), en attente de validation du propriétaire.
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-24, Phase 11).
 - **Contexte** : ADR-020 fixe le principe ; cette décision précise la mise en œuvre de la vente sans réseau.
 - **Décision** :
   - **une seule caisse**, `/caisse`, page **statique** (aucune donnée de personne dans son code), gardée par le service worker : elle s'ouvre sans réseau. Elle lit le catalogue, les clients et l'appareil dans une base locale **IndexedDB**, rafraîchie à chaque ouverture avec réseau. L'ancienne page `/espace/vendre` redirige vers elle ;

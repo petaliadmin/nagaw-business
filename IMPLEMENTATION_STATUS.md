@@ -396,7 +396,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 11 — Vendre sans connexion
 
 - **Objectif** : qu'un vendeur ne soit jamais bloqué par le réseau (ADR-020, ADR-025).
-- **Statut** : livrée sur la branche `claude/phase-11-hors-ligne`, **en attente de validation**. La migration `20261024210000_offline_devices.sql` est **à appliquer sur Supabase** avant la fusion.
+- **Statut** : **validée** par le propriétaire le 2026-10-24 (ADR-025 acceptée). Migration `20261024210000_offline_devices.sql` appliquée sur Supabase par le propriétaire le 2026-10-24.
 - **Fonctionnalités terminées** :
   - migration : appareils de vente (préfixe de ticket, retrait), colonnes d'appareil des ventes (`device_ticket`, `price_review`, `synced_at`), ancienneté maximale et plafond d'appareils en base ;
   - API : appareils (enregistrement, liste, retrait) et `POST /sync` (lots ordonnés, idempotents, refus motivés, vente au prix payé marquée « Prix à vérifier » si le catalogue diffère) ; le cœur d'enregistrement d'une vente est commun aux ventes en ligne et aux ventes d'appareil ;
@@ -421,7 +421,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - seule la caisse fonctionne hors ligne : entrées et pertes de stock, fiches et listes demandent le réseau ;
   - une session expirée doit être renouvelée pour envoyer (les ventes attendent sans risque sur le téléphone) ;
   - le stock affiché par la caisse hors ligne est celui du dernier rafraîchissement.
-- **Prochaine action recommandée** : appliquer la migration sur Supabase, essayer la caisse en mode avion sur un téléphone, valider la Phase 11 et ADR-025, puis lancer la Phase 12 (factures et devis).
+- **Prochaine action recommandée** : Phase 12 (factures et devis).
 
 ## Phases 12 à 18
 
