@@ -176,7 +176,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-020 — Mode hors ligne : PWA, base locale et synchronisation par opérations idempotentes
 
-- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-24). Socle livré en Phase 8 (voir **Mise en œuvre**) ; base locale et synchronisation en Phase 11.
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-24). Socle livré en Phase 8 ; base locale, appareils et synchronisation livrés en Phase 11 (ADR-025).
 - **Contexte** : la connexion est intermittente chez les commerçants visés. Un vendeur ne doit jamais être empêché d'encaisser. L'architecture actuelle (toutes les données passent par l'API, ADR-002) suppose une connexion permanente. Vercel n'héberge pas de processus permanent (ADR-010), ce qui n'est pas un obstacle : la synchronisation est initiée par l'appareil.
 - **Décision proposée** :
   - le web devient une **PWA installable** (manifeste, service worker) : l'application s'ouvre sans réseau ; l'outil de service worker est choisi en Phase 8 après lecture du guide PWA de la version installée de Next.js ;
@@ -245,3 +245,18 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **une vente n'est jamais modifiée** : lignes et paiements en ajout seul ; seule l'**annulation** est possible (propriétaire ou gérant, motif obligatoire), garantie par un trigger en base ; elle remet les articles en stock par des mouvements `return` et efface le crédit correspondant ;
   - **visibilité** : un vendeur voit ses propres ventes ; propriétaire, gérants et lecteur voient toutes celles de la boutique.
 - **Reporté** : retours partiels (une partie des articles), caisses et clôture de caisse (Phase 13), impression Bluetooth (ADR-022).
+
+## ADR-025 — Caisse hors ligne : page statique, file d'attente et prix vu par le client
+
+- **Statut** : Proposée en Phase 11 (2026-10-24), en attente de validation du propriétaire.
+- **Contexte** : ADR-020 fixe le principe ; cette décision précise la mise en œuvre de la vente sans réseau.
+- **Décision** :
+  - **une seule caisse**, `/caisse`, page **statique** (aucune donnée de personne dans son code), gardée par le service worker : elle s'ouvre sans réseau. Elle lit le catalogue, les clients et l'appareil dans une base locale **IndexedDB**, rafraîchie à chaque ouverture avec réseau. L'ancienne page `/espace/vendre` redirige vers elle ;
+  - **toute vente passe par la file d'attente** du téléphone, même en ligne : elle est enregistrée localement (avec son numéro de ticket d'appareil), puis envoyée aussitôt si le réseau le permet. Il n'existe donc qu'un seul chemin, testé hors ligne comme en ligne ;
+  - **appareils** : un navigateur s'enregistre à la première ouverture de la caisse et reçoit un préfixe (`A`, `B`… `AA`) ; ses tickets hors ligne sont numérotés `B-000012`. Le serveur attribue en plus son numéro séquentiel à l'arrivée. Un gérant peut **retirer** un appareil (perdu, volé) : ses envois sont alors refusés ;
+  - **synchronisation** : `POST /api/v1/sync`, lots de 50 opérations au plus, traitées dans l'ordre et chacune dans sa transaction ; réponses `accepted`, `duplicate` (déjà reçue, sans effet) ou `rejected` (avec le motif, conservé et affiché sur le téléphone et dans le bandeau) ; un client créé hors ligne est envoyé avant la vente qui le référence ;
+  - **prix** : une vente faite hors ligne garde **le prix payé par le client** ; si ce prix diffère du catalogue au moment de l'envoi, la vente est acceptée et marquée **« Prix à vérifier »** pour le gérant, plutôt que refusée après coup. Les autres règles (remise des vendeurs, paiements, crédit, produits de la boutique) s'appliquent à l'identique ;
+  - **ancienneté** : une vente de plus de `organizations.max_offline_days` jours (7 par défaut, réglable en base) ou datée dans le futur (au-delà de 5 minutes) est refusée avec son motif ;
+  - **envoi automatique** : à l'ouverture, au retour du réseau et toutes les 30 secondes tant que des ventes attendent ; un bandeau indique en permanence ce qui attend ou a été refusé ;
+  - **déconnexion** : la base locale est effacée ; s'il reste des ventes non envoyées, la personne est prévenue qu'elles seraient perdues et peut annuler.
+- **Limites** : les entrées, pertes et inventaires de stock restent en ligne ; les fiches et listes de l'espace (hors caisse) demandent le réseau ; une session expirée doit être renouvelée pour envoyer (les ventes attendent sans risque).

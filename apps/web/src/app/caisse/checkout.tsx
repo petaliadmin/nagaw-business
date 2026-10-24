@@ -26,7 +26,6 @@ import {
   Trash2,
   type LucideIcon,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useId, useMemo, useState, useTransition } from 'react';
 import { CONTROL } from '@/components/form-field';
 import { ProductTile } from '@/components/catalog/product-tile';
@@ -34,7 +33,6 @@ import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { formatQuantity, STOCK_LEVEL_LABELS } from '@/lib/catalog/labels';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
-import { quickCreateCustomer, recordSale } from './actions';
 
 const METHOD_ICONS: Record<PaymentMethod, LucideIcon> = {
   cash: Banknote,
@@ -121,18 +119,39 @@ function ProviderPicker({
   );
 }
 
+/** What the checkout hands over once the seller confirms the sale. */
+export interface SaleDraft {
+  customer: CustomerDto | null;
+  lines: { product: ProductDto; quantity: number; lineTotal: number }[];
+  totals: ReturnType<typeof computeSaleTotals>;
+  payments: CreateSaleInput['payments'];
+  cashReceived: number | null;
+}
+
+/**
+ * The checkout screen (Phase 10). It knows nothing of the network: the
+ * offline checkout (/caisse) records the sale on the device and sends it
+ * when it can (ADR-020).
+ */
 export function Checkout({
-  organizationId,
   currency,
   products,
   customers: initialCustomers,
+  onRecord,
+  onCreateCustomer,
 }: {
-  organizationId: string;
   currency: string;
   products: ProductDto[];
   customers: CustomerDto[];
+  /** Resolves with an error message, or nothing once recorded. */
+  onRecord: (draft: SaleDraft) => Promise<string | null>;
+  onCreateCustomer: (values: {
+    name: string;
+    phone: string;
+  }) => Promise<
+    { ok: true; customer: CustomerDto } | { ok: false; message: string }
+  >;
 }) {
-  const router = useRouter();
   const ids = useId();
   const money = (value: number) => formatAmount(value, currency);
 
@@ -154,7 +173,6 @@ export function Checkout({
     name: string;
     phone: string;
   } | null>(null);
-  const [operationId] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -298,36 +316,38 @@ export function Checkout({
     if (usesCredit && !customerId)
       return setError('Choisissez le client qui paiera plus tard.');
     startTransition(async () => {
-      const result = await recordSale(organizationId, {
-        clientOperationId: operationId,
-        customerId: customerId || null,
-        lines: lines.map(({ product, quantity }) => ({
-          productId: product.id,
+      const failure = await onRecord({
+        customer: customers.find((c) => c.id === customerId) ?? null,
+        lines: lines.map(({ product, quantity }, index) => ({
+          product,
           quantity,
+          lineTotal: totals.lines[index]?.lineTotal ?? 0,
         })),
-        discount: discount ?? 0,
+        totals,
         payments: paid.payments,
         cashReceived: paid.cashReceived,
-        expectedTotal: totals.total,
       });
-      if (result.ok) {
-        router.push(`/espace/ventes/${result.saleId}?nouvelle=1`);
+      if (failure) {
+        setError(failure);
         return;
       }
-      setError(result.message);
-      if (result.pricesChanged) router.refresh();
+      // Ready for the next customer.
+      setCart([]);
+      setDiscountText('');
+      setCashText('');
+      setReference('');
+      setCustomerId('');
+      setMethod('cash');
+      setStep('cart');
     });
   }
 
   function createCustomer() {
     if (!newCustomer) return;
     startTransition(async () => {
-      const result = await quickCreateCustomer(organizationId, {
-        ...newCustomer,
-        clientOperationId: crypto.randomUUID(),
-      });
+      const result = await onCreateCustomer(newCustomer);
       if (!result.ok) {
-        setError(result.fieldErrors?.name ?? result.message);
+        setError(result.message);
         return;
       }
       setCustomers((current) => [...current, result.customer]);

@@ -393,6 +393,36 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - sur un poste chargé, les tests end-to-end parcourant plusieurs pages dépassaient 30 s : ils sont découpés par page ou ont un délai explicite.
 - **Prochaine action recommandée** : Phase 11 (hors ligne et synchronisation).
 
-## Phases 11 à 18
+## Phase 11 — Vendre sans connexion
+
+- **Objectif** : qu'un vendeur ne soit jamais bloqué par le réseau (ADR-020, ADR-025).
+- **Statut** : livrée sur la branche `claude/phase-11-hors-ligne`, **en attente de validation**. La migration `20261024210000_offline_devices.sql` est **à appliquer sur Supabase** avant la fusion.
+- **Fonctionnalités terminées** :
+  - migration : appareils de vente (préfixe de ticket, retrait), colonnes d'appareil des ventes (`device_ticket`, `price_review`, `synced_at`), ancienneté maximale et plafond d'appareils en base ;
+  - API : appareils (enregistrement, liste, retrait) et `POST /sync` (lots ordonnés, idempotents, refus motivés, vente au prix payé marquée « Prix à vérifier » si le catalogue diffère) ; le cœur d'enregistrement d'une vente est commun aux ventes en ligne et aux ventes d'appareil ;
+  - web :
+    - **caisse `/caisse`** : page statique gardée par le service worker, qui s'ouvre sans réseau ; catalogue, clients et appareil dans IndexedDB ; chaque vente est enregistrée sur le téléphone avec un ticket `B-000012`, puis envoyée aussitôt si possible ;
+    - ticket du téléphone imprimable et partageable sur WhatsApp, même hors ligne ; client créé hors ligne, envoyé avant sa vente ;
+    - **bandeau** : « 2 ventes gardées sur ce téléphone », « 1 vente en attente d'envoi… », « Une opération refusée — Voir pourquoi » ; envoi automatique à l'ouverture, au retour du réseau et toutes les 30 s ;
+    - opérations refusées listées dans la caisse avec leur motif ;
+    - **déconnexion** : efface les données du téléphone, avec un avertissement s'il reste des ventes non envoyées ;
+    - **Paramètres** : appareils de vente, dernier envoi, retrait d'un appareil perdu ;
+    - ventes : numéro d'appareil sur les tickets, badge « Prix à vérifier » ; page « Pas de connexion » avec « Ouvrir la caisse ».
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                                                                                                               |
+  | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `pnpm test`                    | 123 tests OK (shared 46, api 28, web 49)                                                                                                                                               |
+  | `pnpm test:integration`        | 92 tests OK, dont 8 nouveaux sur la synchronisation (doublons, refus motivés, prix, ancienneté, appareils, client créé hors ligne, règles des vendeurs)                                |
+  | Playwright                     | 150 tests OK, 6 ignorés volontairement ; vente hors ligne de bout en bout sur ordinateur et mobile (coupure, rechargement sans réseau, envoi automatique, effacement à la déconnexion) |
+  | lint, typecheck, build, format | OK                                                                                                                                                                                     |
+
+- **Limites** :
+  - seule la caisse fonctionne hors ligne : entrées et pertes de stock, fiches et listes demandent le réseau ;
+  - une session expirée doit être renouvelée pour envoyer (les ventes attendent sans risque sur le téléphone) ;
+  - le stock affiché par la caisse hors ligne est celui du dernier rafraîchissement.
+- **Prochaine action recommandée** : appliquer la migration sur Supabase, essayer la caisse en mode avion sur un téléphone, valider la Phase 11 et ADR-025, puis lancer la Phase 12 (factures et devis).
+
+## Phases 12 à 18
 
 Non commencées. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.

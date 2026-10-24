@@ -79,6 +79,18 @@
 | `/sw.js` servi sans cache et avec une politique de sécurité de contenu stricte ; caches des versions précédentes supprimés                                                                  | `next.config.ts`, route `/sw.js`                | `pwa.spec.ts`, drops the caches of previous versions                                          |
 | Modules Responsabilités et Tâches retirés : leurs routes répondent 404 dans le web et l'API                                                                                                 | —                                               | `workspace.spec.ts` › withdrawn modules are gone                                              |
 
+## Contrôles implémentés (Phase 11)
+
+| Contrôle                                                                                                                                                           | Où                                    | Preuve (test)                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- | ----------------------------------------------------------------------------------- |
+| Un lot n'est accepté que d'un appareil de l'appelant, dans la boutique, non retiré                                                                                 | `DevicesService.assertUsable`         | only accepts a device of the caller, in this shop, not revoked                      |
+| Chaque opération d'un lot repasse toutes les règles de vente (produits de la boutique, paiements, remise des vendeurs, crédit) ; un refus n'affecte pas les autres | `SyncService`, `SalesService.create`  | refuses one operation with its reason…, still applies seller rules to offline sales |
+| Renvoi d'un lot : aucun doublon                                                                                                                                    | `client_operation_id` uniques         | accepts offline sales once…                                                         |
+| Prix hors ligne différent du catalogue : vente marquée pour le gérant, jamais acceptée en silence                                                                  | `price_review`                        | keeps the price the customer paid and flags it…                                     |
+| Ventes trop anciennes ou datées dans le futur refusées (seuil en base)                                                                                             | `max_offline_days`                    | refuses one operation…                                                              |
+| La page de caisse gardée hors ligne ne contient aucune donnée de personne ; les données du téléphone sont effacées à la déconnexion                                | `/caisse` statique, `eraseLocalData`  | e2e : signing out erases what the phone keeps                                       |
+| Les routes de la caisse relaient la session : l'API vérifie l'appartenance à la boutique nommée par le lot                                                         | `/caisse/synchroniser`, `TenantGuard` | e2e hors ligne                                                                      |
+
 ## Contrôles implémentés (Phase 10)
 
 | Contrôle                                                                                                                               | Où                                                   | Preuve (test)                                                                                                                            |

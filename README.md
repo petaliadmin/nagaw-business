@@ -6,7 +6,7 @@ Application SaaS de **gestion de boutique**, mobile first, utilisable sur ordina
 
 ## État du projet
 
-**Socle livré** : comptes, boutiques (organisations) multi-tenant, équipe et rôles, historique (journal d'audit), design coloré et accessible, application installable avec page hors ligne (Phase 8), **produits et stock** (Phase 9), **ventes et clients** (Phase 10). Hors ligne, factures, statistiques et comptabilité : Phases 11 à 14. Voir [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) et [`docs/ROADMAP.md`](docs/ROADMAP.md).
+**Socle livré** : comptes, boutiques (organisations) multi-tenant, équipe et rôles, historique (journal d'audit), design coloré et accessible, application installable avec page hors ligne (Phase 8), **produits et stock** (Phase 9), **ventes et clients** (Phase 10), **caisse hors ligne** (Phase 11, en attente de validation). Factures, statistiques et comptabilité : Phases 12 à 14. Voir [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) et [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Documentation
 

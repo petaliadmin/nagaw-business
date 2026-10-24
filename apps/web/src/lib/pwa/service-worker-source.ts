@@ -2,22 +2,30 @@
 export const OFFLINE_PATH = '/hors-ligne';
 
 /**
- * Source of `/sw.js` (ADR-020, Phase 8 scope). It caches only what holds no
- * user data: the offline page, its assets and the hashed, immutable files
- * under `/_next/static/`. Pages and API responses are never cached here;
- * offline data (catalogue, pending sales) arrives in Phase 11, in IndexedDB.
+ * Static pages kept for offline use: they hold no user data (the checkout
+ * reads its data from the device's IndexedDB, ADR-020).
+ */
+export const OFFLINE_PAGES = [OFFLINE_PATH, '/caisse'] as const;
+
+/**
+ * Source of `/sw.js` (ADR-020). It caches only what holds no user data: the
+ * static offline pages (OFFLINE_PAGES), their assets and the hashed,
+ * immutable files under `/_next/static/`. Signed-in pages and API responses
+ * are never cached here; offline data lives in IndexedDB.
  *
- * - install: caches the offline page and every static asset it references
+ * - install: caches the offline pages and every static asset they reference
  *   (atomic: one failure aborts the install, the previous worker stays);
  * - activate: deletes the caches of previous versions;
  * - fetch: cache first for `/_next/static/`, network first for page
- *   navigations with the offline page as fallback; everything else
- *   (API, Server Actions, RSC requests) goes straight to the network.
+ *   navigations, then the cached copy of that page, then the offline page;
+ *   everything else (API, Server Actions, RSC requests) goes straight to
+ *   the network.
  */
 export function serviceWorkerSource(version: string): string {
   return String.raw`'use strict';
 const CACHE = 'nagaw-shell-' + ${JSON.stringify(version)};
 const OFFLINE_URL = ${JSON.stringify(OFFLINE_PATH)};
+const PAGES = ${JSON.stringify(OFFLINE_PAGES)};
 const STATIC_PREFIX = '/_next/static/';
 
 function referencedAssets(html) {
@@ -26,14 +34,16 @@ function referencedAssets(html) {
 }
 
 async function precache() {
-  const response = await fetch(OFFLINE_URL, { cache: 'reload' });
-  if (!response.ok) {
-    throw new Error('Page hors ligne indisponible (HTTP ' + response.status + ')');
-  }
-  const html = await response.clone().text();
   const cache = await caches.open(CACHE);
-  await cache.addAll(referencedAssets(html));
-  await cache.put(OFFLINE_URL, response);
+  for (const page of PAGES) {
+    const response = await fetch(page, { cache: 'reload' });
+    if (!response.ok) {
+      throw new Error('Page ' + page + ' indisponible (HTTP ' + response.status + ')');
+    }
+    const html = await response.clone().text();
+    await cache.addAll(referencedAssets(html));
+    await cache.put(page, response);
+  }
 }
 
 async function removeOldCaches() {
@@ -58,7 +68,9 @@ async function networkOrOfflinePage(request) {
   try {
     return await fetch(request);
   } catch (error) {
-    const offline = await caches.match(OFFLINE_URL);
+    const page = new URL(request.url).pathname;
+    const kept = PAGES.includes(page) ? await caches.match(page) : undefined;
+    const offline = kept || (await caches.match(OFFLINE_URL));
     if (offline) return offline;
     throw error;
   }

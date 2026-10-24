@@ -65,7 +65,7 @@ function TodayCard({
         <div className="flex flex-wrap gap-3">
           {canSell && (
             <ButtonLink
-              href="/espace/vendre"
+              href="/caisse"
               variant="sell"
               className="min-h-16 px-8 text-xl"
             >

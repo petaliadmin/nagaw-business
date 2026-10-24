@@ -20,7 +20,7 @@ Ils tournent sur le build de production, servi par deux serveurs (`apps/web/play
 | port 3100 | ni Supabase ni API                                                            | `chromium`, `mobile`             | pages publiques, validation côté serveur, états « non configuré », redirections externes refusées ; PWA (`e2e/pwa.spec.ts`) : manifeste, service worker, page hors ligne, bandeau de connexion |
 | port 3101 | faux Supabase Auth et fausse API (`e2e/support/fake-backend.mjs`, port 54400) | `app-desktop`, puis `app-mobile` | espace connecté complet, sur ordinateur et sur mobile                                                                                                                                          |
 
-Les fichiers de l'espace connecté (`e2e/app/workspace.spec.ts`, `e2e/app/team.spec.ts`, `e2e/app/products.spec.ts`, `e2e/app/sales.spec.ts`, `e2e/app/accessibility.spec.ts`) partagent ce faux backend et le réinitialisent : Playwright tourne donc avec un seul worker (`workers: 1`), pour qu'aucun fichier ne voie les modifications d'un autre.
+Les fichiers de l'espace connecté (`e2e/app/workspace.spec.ts`, `e2e/app/team.spec.ts`, `e2e/app/products.spec.ts`, `e2e/app/sales.spec.ts`, `e2e/app/offline.spec.ts`, `e2e/app/accessibility.spec.ts`) partagent ce faux backend et le réinitialisent : Playwright tourne donc avec un seul worker (`workers: 1`), pour qu'aucun fichier ne voie les modifications d'un autre.
 
 Le contrôle de débordement horizontal compare `scrollWidth` à `clientWidth` (et non à `innerWidth`, qui grandit avec le contenu sur mobile et masquait le problème).
 
@@ -87,3 +87,4 @@ En place depuis la Phase 8 : service worker testé unitairement dans un bac à s
 - **Impression** : tests unitaires de l'encodeur ESC/POS (largeurs 58 et 80 mm, accents, alignement des montants) ; vérification manuelle sur chaque modèle d'imprimante annoncé comme compatible, consignée dans `IMPLEMENTATION_STATUS.md` (ADR-022).
 - **Identifiants en double** : le contrôle d'accessibilité des tests (`e2e/support/a11y.ts`) refuse tout `id` en double sur une page, qui enverrait un libellé et une saisie vers le mauvais champ (défaut trouvé en Phase 9).
 - **Faux backend** : catalogue dans `e2e/support/fake-catalog.mjs`, ventes et clients dans `e2e/support/fake-sales.mjs` ; ils appliquent les mêmes schémas et calculs partagés que l'API.
+- **Vente hors ligne** (Phase 11) : `e2e/app/offline.spec.ts` coupe le réseau, vend, recharge la caisse sans réseau, rétablit le réseau et vérifie l'envoi automatique, puis l'effacement des données à la déconnexion ; `test/sync.integration-spec.ts` couvre les lots (doublons, refus, prix, ancienneté, appareils, clients créés hors ligne).

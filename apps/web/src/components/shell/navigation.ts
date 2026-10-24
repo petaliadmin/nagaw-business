@@ -27,7 +27,8 @@ export interface NavItem {
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/espace', label: 'Accueil', icon: House, bottomBar: true },
   {
-    href: '/espace/vendre',
+    // Outside /espace: the checkout also opens offline (ADR-020).
+    href: '/caisse',
     label: 'Vendre',
     icon: ShoppingCart,
     bottomBar: true,

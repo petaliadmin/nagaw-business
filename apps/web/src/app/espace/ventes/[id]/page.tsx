@@ -16,12 +16,8 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { apiAsUser } from '@/lib/api/server';
 import { formatQuantity } from '@/lib/catalog/labels';
 import { formatDateTime } from '@/lib/format';
-import {
-  PAYMENT_LABELS,
-  PROVIDER_LABELS,
-  ticketNumber,
-} from '@/lib/sales/labels';
-import { ticketText, whatsappLink } from '@/lib/sales/ticket';
+import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
+import { ticketLabel, ticketText, whatsappLink } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { CancelSaleForm, PrintButton } from './ticket-actions';
 
@@ -92,6 +88,12 @@ async function Sale({
             )}
           </Alert>
         )}
+        {s.priceReview && (
+          <Alert tone="warning">
+            Prix à vérifier : cette vente a été faite sans connexion à des prix
+            différents de ceux du catalogue au moment de son envoi.
+          </Alert>
+        )}
         {s.status === 'cancelled' && s.cancellation && (
           <Alert tone="warning">
             Vente annulée le{' '}
@@ -101,9 +103,9 @@ async function Sale({
         )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold md:text-3xl">
-            Ticket {ticketNumber(s.saleNumber)}
+            Ticket {ticketLabel(s)}
           </h1>
-          <ButtonLink href="/espace/vendre">
+          <ButtonLink href="/caisse">
             <ShoppingCart aria-hidden className="size-5" />
             Nouvelle vente
           </ButtonLink>
@@ -111,12 +113,12 @@ async function Sale({
       </div>
 
       <article
-        aria-label={`Ticket ${ticketNumber(s.saleNumber)}`}
+        aria-label={`Ticket ${ticketLabel(s)}`}
         className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-line bg-surface p-5 font-mono text-base shadow-sm print:max-w-none print:border-0 print:p-0 print:text-sm print:shadow-none"
       >
         <header className="text-center">
           <p className="text-lg font-bold">{organization.name}</p>
-          <p>Ticket {ticketNumber(s.saleNumber)}</p>
+          <p>Ticket {ticketLabel(s)}</p>
           <p>{formatDateTime(s.occurredAt, organization.timezone)}</p>
           {s.customer && <p>Client : {s.customer.name}</p>}
         </header>

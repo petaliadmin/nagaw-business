@@ -35,6 +35,7 @@ apps/
     src/lib/api/       client API typé
     src/lib/pwa/       service worker (/sw.js) — Phase 8
     src/lib/offline/   base locale IndexedDB, file d'opérations, synchronisation — Phase 11
+    src/app/caisse/    caisse hors ligne (page statique) et ses routes
   api/
     src/main.ts        point d'entrée HTTP
     src/common/        auth guard, tenant context, filtres d'erreurs, logs
@@ -60,7 +61,7 @@ Les calculs de totaux (lignes, remises, taxes, arrondis) sont dans `packages/sha
 5. Le service exécute la logique via des repositories qui imposent le filtre `organization_id`.
 6. Les actions sensibles écrivent une entrée `audit_logs` **dans la même transaction**.
 
-## 4. Hors ligne et synchronisation (proposé, ADR-020)
+## 4. Hors ligne et synchronisation (ADR-020, ADR-025, implémenté en Phase 11)
 
 ```
 appareil (hors ligne ou non)
@@ -81,6 +82,8 @@ retour du réseau (événement online, ouverture de l'application, bouton « Env
   → appareil : file purgée des opérations acceptées, refus affichés au gérant
 ```
 
+- La caisse est la page statique `/caisse`, gardée par le service worker ; ses données viennent d'IndexedDB (`apps/web/src/lib/offline`), rafraîchies par `/caisse/donnees`. Les envois passent par `/caisse/synchroniser` et l'enregistrement de l'appareil par `/caisse/appareil` : des routes du web qui relaient la session de la personne vers l'API.
+- Toute vente suit ce chemin, même en ligne (envoi immédiat).
 - Le stock affiché hors ligne est une estimation locale ; la valeur de référence est celle du serveur, recalculée depuis les mouvements.
 - Les lectures analytiques (statistiques, comptabilité) sont en ligne ; la dernière consultation reste lisible hors ligne, datée.
 - Les factures sont numérotées uniquement par le serveur (`document_sequences`).
