@@ -45,6 +45,9 @@ export interface OrganizationsTable {
   seller_max_discount_basis_points: Generated<number>;
   max_customers: Generated<number>;
   next_sale_number: Generated<number>;
+  max_offline_days: Generated<number>;
+  max_devices: Generated<number>;
+  next_device_number: Generated<number>;
   created_by: string;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -214,6 +217,23 @@ export interface SalesTable {
   cancelled_at: NullableTimestamp;
   cancelled_by: string | null;
   cancel_reason: string | null;
+  device_id: string | null;
+  device_ticket: string | null;
+  price_review: Generated<boolean>;
+  synced_at: NullableTimestamp;
+  created_at: ColumnType<Date, never, never>;
+}
+
+export interface DevicesTable {
+  id: Generated<string>;
+  organization_id: string;
+  user_id: string;
+  label: string;
+  ticket_prefix: string;
+  client_operation_id: string;
+  last_synced_at: NullableTimestamp;
+  revoked_at: NullableTimestamp;
+  revoked_by: string | null;
   created_at: ColumnType<Date, never, never>;
 }
 
@@ -272,4 +292,5 @@ export interface Database {
   'app.sale_lines': SaleLinesTable;
   'app.sale_payments': SalePaymentsTable;
   'app.customer_payments': CustomerPaymentsTable;
+  'app.devices': DevicesTable;
 }

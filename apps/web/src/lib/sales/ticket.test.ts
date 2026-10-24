@@ -1,6 +1,6 @@
 import type { SaleDto } from '@nagaw/shared';
 import { describe, expect, it } from 'vitest';
-import { ticketText, whatsappLink } from './ticket';
+import { ticketLabel, ticketText, whatsappLink } from './ticket';
 
 const sale: SaleDto = {
   id: 's1',
@@ -29,10 +29,26 @@ const sale: SaleDto = {
   cashReceived: 2000,
   changeGiven: 500,
   occurredAt: '2026-10-24T10:30:00.000Z',
+  deviceTicket: null,
+  priceReview: false,
   cancellation: null,
 };
 
 const plain = (text: string) => text.replace(/[  ]/g, ' ');
+
+describe('ticket label', () => {
+  it('shows the device ticket of a sale made offline', () => {
+    expect(ticketLabel({ saleNumber: 42, deviceTicket: null })).toBe(
+      'n° 000042',
+    );
+    expect(ticketLabel({ saleNumber: 42, deviceTicket: 'B-000012' })).toBe(
+      'n° 000042 (B-000012)',
+    );
+    expect(ticketLabel({ saleNumber: 0, deviceTicket: 'B-000012' })).toBe(
+      'B-000012',
+    );
+  });
+});
 
 describe('ticket text', () => {
   it('lists lines, total, payments and change, in the shop time zone', () => {

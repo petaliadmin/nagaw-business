@@ -20,8 +20,10 @@ describe('navigation', () => {
     expect(bottom[0]?.href).toBe('/espace');
   });
 
-  it('only links to pages under /espace', () => {
+  it('only links to pages of the space, and to the offline checkout', () => {
     for (const item of NAV_ITEMS)
-      expect(item.href.startsWith('/espace')).toBe(true);
+      expect(item.href === '/caisse' || item.href.startsWith('/espace')).toBe(
+        true,
+      );
   });
 });

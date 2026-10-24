@@ -3,6 +3,18 @@ import { formatQuantity } from '@/lib/catalog/labels';
 import { PAYMENT_LABELS, PROVIDER_LABELS, ticketNumber } from './labels';
 
 /**
+ * `n° 000042`, `n° 000042 (B-000012)` for a sale made on a device, or
+ * `B-000012` while it waits to be sent and has no server number yet.
+ */
+export function ticketLabel(
+  sale: Pick<SaleDto, 'saleNumber' | 'deviceTicket'>,
+): string {
+  if (sale.saleNumber <= 0 && sale.deviceTicket) return sale.deviceTicket;
+  const number = ticketNumber(sale.saleNumber);
+  return sale.deviceTicket ? `${number} (${sale.deviceTicket})` : number;
+}
+
+/**
  * The ticket as plain text, to share on WhatsApp or by SMS. Same content as
  * the printed ticket; amounts in the shop's currency.
  */
@@ -18,7 +30,7 @@ export function ticketText(
   }).format(new Date(sale.occurredAt));
   const lines = [
     shop.name,
-    `Ticket ${ticketNumber(sale.saleNumber)} — ${when}`,
+    `Ticket ${ticketLabel(sale)} — ${when}`,
     '',
     ...sale.lines.map(
       (line) =>

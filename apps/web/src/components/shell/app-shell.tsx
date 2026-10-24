@@ -1,13 +1,12 @@
 import type { MeDto, OrganizationWithRoleDto } from '@nagaw/shared';
-import { LogOut, Plus, Store } from 'lucide-react';
+import { Plus, Store } from 'lucide-react';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
-import { signOut } from '@/app/(auth)/actions';
 import { CreateOrganizationForm } from '@/app/espace/create-organization-form';
+import { SignOutButton } from '@/components/pwa/sign-out-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { buttonClasses } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
 import { Logo } from '@/components/ui/logo';
 import { ROLE_LABELS } from '@/lib/labels';
@@ -17,24 +16,6 @@ import { BottomNavLinks, NavLinks } from './nav-links';
 import { OrganizationSwitcher } from './organization-switcher';
 
 type Tone = 'surface' | 'sidebar';
-
-function SignOutButton({ tone = 'surface' }: { tone?: Tone }) {
-  return (
-    <form action={signOut}>
-      <button
-        type="submit"
-        className={
-          tone === 'sidebar'
-            ? 'flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-white/70 px-4 text-base font-bold text-white hover:bg-white/15 focus-visible:outline-white'
-            : buttonClasses('secondary', 'w-full')
-        }
-      >
-        <LogOut aria-hidden className="size-5" />
-        Se déconnecter
-      </button>
-    </form>
-  );
-}
 
 function NewShopLink({ tone }: { tone: Tone }) {
   return (

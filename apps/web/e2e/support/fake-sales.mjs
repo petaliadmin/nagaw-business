@@ -9,6 +9,9 @@ import {
   createCustomerSchema,
   createSaleSchema,
   customerRepaymentSchema,
+  deviceTicketPrefix,
+  registerDeviceSchema,
+  syncRequestSchema,
   paymentProblem,
   updateCustomerSchema,
 } from '@nagaw/shared';
@@ -36,6 +39,7 @@ function seed() {
       },
     ],
     repayments: [],
+    devices: [],
   };
 }
 
@@ -92,6 +96,8 @@ function saleDto(sale, userById) {
     cashReceived: sale.cashReceived,
     changeGiven: sale.changeGiven,
     occurredAt: sale.occurredAt,
+    deviceTicket: sale.deviceTicket ?? null,
+    priceReview: sale.priceReview ?? false,
     cancellation: sale.cancellation
       ? {
           ...sale.cancellation,
@@ -103,6 +109,16 @@ function saleDto(sale, userById) {
       : null,
   };
 }
+
+const deviceDto = (d, userById) => ({
+  id: d.id,
+  label: d.label,
+  ticketPrefix: d.ticketPrefix,
+  user: { userId: d.userId, email: userById(d.userId).email },
+  lastSyncedAt: d.lastSyncedAt,
+  revokedAt: d.revokedAt,
+  createdAt: d.createdAt,
+});
 
 /**
  * Handles sales and customer routes; returns false for other paths.
@@ -158,6 +174,8 @@ export async function handleSales(ctx) {
           total: s.total,
           methods: [...new Set(s.payments.map((p) => p.method))],
           occurredAt: s.occurredAt,
+          deviceTicket: s.deviceTicket ?? null,
+          priceReview: s.priceReview ?? false,
         })),
     );
   }
@@ -178,42 +196,56 @@ export async function handleSales(ctx) {
       cancelledCount: ofDay.length - done.length,
     });
   }
-  if (path === '/api/v1/sales' && req.method === 'POST') {
-    if (role === 'viewer') return deny();
-    const parsed = createSaleSchema.safeParse(await ctx.readJson(req));
-    if (!parsed.success) return invalid(parsed.error.issues);
-    const input = parsed.data;
+  // Shared by POST /sales and the device sales of POST /sync (ADR-020):
+  // online, prices come from the catalogue; from a device, the prices the
+  // customer paid are kept and flagged when they differ.
+  const refusal = (status, code, message, path) => ({
+    ok: false,
+    status,
+    code,
+    message,
+    details: path ? [{ path, message }] : undefined,
+  });
+  function record(input, device) {
     const replay = state.sales.find(
       (s) => mine(s) && s.clientOperationId === input.clientOperationId,
     );
-    if (replay) return reply(200, saleDto(replay, ctx.userById));
+    if (replay) return { ok: true, status: 200, sale: replay };
     const catalog = catalogState();
     const lines = [];
     for (const [index, line] of input.lines.entries()) {
       const product = catalog.products.find(
-        (p) => mine(p) && p.id === line.productId && p.status === 'active',
+        (p) =>
+          mine(p) &&
+          p.id === line.productId &&
+          (device || p.status === 'active'),
       );
       if (!product)
-        return invalid([
-          {
-            path: `lines.${index}.productId`,
-            message: 'Produit inconnu ou archivé.',
-          },
-        ]);
-      lines.push({ product, quantity: line.quantity });
+        return refusal(
+          400,
+          'VALIDATION_FAILED',
+          'Produit inconnu ou archivé.',
+          `lines.${index}.productId`,
+        );
+      lines.push({
+        product,
+        quantity: line.quantity,
+        unitPrice: device ? line.unitPrice : product.salePrice,
+      });
     }
+    const rate = (product) =>
+      catalog.taxRates.find((t) => t.id === product.taxRateId)
+        ?.rateBasisPoints ?? null;
     const totals = computeSaleTotals(
-      lines.map(({ product, quantity }) => ({
-        unitPrice: product.salePrice,
+      lines.map(({ product, quantity, unitPrice }) => ({
+        unitPrice,
         quantity,
-        taxRateBasisPoints:
-          catalog.taxRates.find((t) => t.id === product.taxRateId)
-            ?.rateBasisPoints ?? null,
+        taxRateBasisPoints: rate(product),
       })),
       input.discount,
     );
-    if (totals.total !== input.expectedTotal)
-      return fail(
+    if (!device && totals.total !== input.expectedTotal)
+      return refusal(
         409,
         'PRICE_CHANGED',
         'Les prix ont changé : rechargez la caisse.',
@@ -224,12 +256,13 @@ export async function handleSales(ctx) {
       cashReceived: input.cashReceived,
       customerId: input.customerId,
     });
-    if (problem) return invalid([problem]);
+    if (problem)
+      return refusal(400, 'VALIDATION_FAILED', problem.message, problem.path);
     if (
       input.customerId &&
       !state.customers.some((c) => mine(c) && c.id === input.customerId)
     )
-      return invalid([{ path: 'customerId', message: 'Client inconnu.' }]);
+      return refusal(400, 'VALIDATION_FAILED', 'Client inconnu.', 'customerId');
     const cash = input.payments
       .filter((p) => p.method === 'cash')
       .reduce((sum, p) => sum + p.amount, 0);
@@ -241,17 +274,15 @@ export async function handleSales(ctx) {
       status: 'completed',
       customerId: input.customerId,
       sellerId: user.id,
-      lines: lines.map(({ product, quantity }, index) => ({
+      lines: lines.map(({ product, quantity, unitPrice }, index) => ({
         position: index + 1,
         productId: product.id,
         label: product.name,
         unit: product.unit,
-        unitPrice: product.salePrice,
+        unitPrice,
         quantity,
         lineTotal: totals.lines[index].lineTotal,
-        taxRateBasisPoints:
-          catalog.taxRates.find((t) => t.id === product.taxRateId)
-            ?.rateBasisPoints ?? null,
+        taxRateBasisPoints: rate(product),
         taxAmount: totals.lines[index].taxAmount,
       })),
       payments: input.payments.map((p) => ({
@@ -268,7 +299,9 @@ export async function handleSales(ctx) {
       changeGiven:
         input.cashReceived === null ? null : input.cashReceived - cash,
       clientOperationId: input.clientOperationId,
-      occurredAt: new Date().toISOString(),
+      occurredAt: device?.occurredAt ?? new Date().toISOString(),
+      deviceTicket: device?.deviceTicket ?? null,
+      priceReview: lines.some((l) => l.unitPrice !== l.product.salePrice),
       cancellation: null,
     };
     state.sales.push(sale);
@@ -290,7 +323,136 @@ export async function handleSales(ctx) {
         occurredAt: sale.occurredAt,
         saleId: sale.id,
       });
-    return reply(201, saleDto(sale, ctx.userById));
+    return { ok: true, status: 201, sale };
+  }
+  const answer = (result) =>
+    result.ok
+      ? reply(result.status, saleDto(result.sale, ctx.userById))
+      : reply(result.status, {
+          error: {
+            code: result.code,
+            message: result.message,
+            details: result.details,
+          },
+        });
+
+  if (path === '/api/v1/sales' && req.method === 'POST') {
+    if (role === 'viewer') return deny();
+    const parsed = createSaleSchema.safeParse(await ctx.readJson(req));
+    if (!parsed.success) return invalid(parsed.error.issues);
+    return answer(record(parsed.data, null));
+  }
+
+  if (path === '/api/v1/devices' && req.method === 'GET')
+    return reply(
+      200,
+      state.devices
+        .filter((d) => mine(d) && (manager || d.userId === user.id))
+        .map((d) => deviceDto(d, ctx.userById)),
+    );
+  if (path === '/api/v1/devices' && req.method === 'POST') {
+    if (role === 'viewer') return deny();
+    const parsed = registerDeviceSchema.safeParse(await ctx.readJson(req));
+    if (!parsed.success) return invalid(parsed.error.issues);
+    const replay = state.devices.find(
+      (d) => mine(d) && d.clientOperationId === parsed.data.clientOperationId,
+    );
+    if (replay) return reply(200, deviceDto(replay, ctx.userById));
+    const count = state.devices.filter(mine).length;
+    const device = {
+      id: randomUUID(),
+      organizationId: orgId,
+      userId: user.id,
+      label: parsed.data.label,
+      ticketPrefix: deviceTicketPrefix(count + 1),
+      clientOperationId: parsed.data.clientOperationId,
+      lastSyncedAt: null,
+      revokedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    state.devices.push(device);
+    return reply(201, deviceDto(device, ctx.userById));
+  }
+  const revoke = /^\/api\/v1\/devices\/([^/]+)\/revoke$/.exec(path);
+  if (revoke && req.method === 'POST') {
+    if (!manager) return deny();
+    const device = state.devices.find((d) => mine(d) && d.id === revoke[1]);
+    if (!device) return fail(404, 'DEVICE_NOT_FOUND', 'Appareil introuvable.');
+    device.revokedAt ??= new Date().toISOString();
+    return reply(200, deviceDto(device, ctx.userById));
+  }
+  if (path === '/api/v1/sync' && req.method === 'POST') {
+    if (role === 'viewer') return deny();
+    const parsed = syncRequestSchema.safeParse(await ctx.readJson(req));
+    if (!parsed.success) return invalid(parsed.error.issues);
+    const device = state.devices.find(
+      (d) => mine(d) && d.id === parsed.data.deviceId && d.userId === user.id,
+    );
+    if (!device) return fail(404, 'DEVICE_NOT_FOUND', 'Appareil introuvable.');
+    if (device.revokedAt)
+      return fail(403, 'DEVICE_REVOKED', 'Cet appareil a été retiré.');
+    const results = [];
+    for (const op of parsed.data.operations) {
+      if (op.type === 'customer') {
+        let customer = state.customers.find(
+          (c) => mine(c) && c.clientOperationId === op.clientOperationId,
+        );
+        const duplicate = Boolean(customer);
+        if (!customer) {
+          customer = {
+            id: randomUUID(),
+            organizationId: orgId,
+            status: 'active',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            createdBy: user.id,
+            clientOperationId: op.clientOperationId,
+            ...op.data,
+          };
+          state.customers.push(customer);
+        }
+        results.push({
+          clientOperationId: op.clientOperationId,
+          status: duplicate ? 'duplicate' : 'accepted',
+          customerId: customer.id,
+        });
+        continue;
+      }
+      const data = op.data;
+      const customerId = data.customerOperationId
+        ? (state.customers.find(
+            (c) => mine(c) && c.clientOperationId === data.customerOperationId,
+          )?.id ?? null)
+        : data.customerId;
+      const result = record(
+        {
+          clientOperationId: op.clientOperationId,
+          customerId,
+          lines: data.lines,
+          discount: data.discount,
+          payments: data.payments,
+          cashReceived: data.cashReceived,
+        },
+        { occurredAt: data.occurredAt, deviceTicket: data.deviceTicket },
+      );
+      results.push(
+        result.ok
+          ? {
+              clientOperationId: op.clientOperationId,
+              status: result.status === 200 ? 'duplicate' : 'accepted',
+              saleId: result.sale.id,
+              saleNumber: result.sale.saleNumber,
+              priceReview: result.sale.priceReview,
+            }
+          : {
+              clientOperationId: op.clientOperationId,
+              status: 'rejected',
+              error: { code: result.code, message: result.message },
+            },
+      );
+    }
+    device.lastSyncedAt = new Date().toISOString();
+    return reply(200, { results });
   }
   const saleMatch = /^\/api\/v1\/sales\/([^/]+)(\/cancel)?$/.exec(path);
   if (saleMatch) {

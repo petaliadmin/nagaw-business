@@ -99,23 +99,29 @@ const OFFLINE_HTML =
   '<script src="/_next/static/chunks/main.js"></script>' +
   '<script>self.__next_f.push([1,"\\"/_next/static/chunks/page.js\\""])</script></html>';
 
+const CAISSE_HTML =
+  '<html><script src="/_next/static/chunks/caisse.js"></script></html>';
+
 function site(path: string): Response | Error {
   if (path === OFFLINE_PATH) return new Response(OFFLINE_HTML);
+  if (path === '/caisse') return new Response(CAISSE_HTML);
   if (path.startsWith('/_next/static/')) return new Response(`asset ${path}`);
   return new Response(`page ${path}`);
 }
 
 describe('service worker', () => {
-  it('caches the offline page and every static asset it references', async () => {
+  it('caches the offline pages and every static asset they reference', async () => {
     const sw = boot('v1', site);
     await sw.dispatch('install');
     const cache = sw.caches.get('nagaw-shell-v1')!;
     expect(
       [...cache.keys()].map((url) => new URL(url).pathname).sort(),
     ).toEqual([
+      '/_next/static/chunks/caisse.js',
       '/_next/static/chunks/main.js',
       '/_next/static/chunks/page.js',
       '/_next/static/css/app.css',
+      '/caisse',
       OFFLINE_PATH,
     ]);
   });
@@ -142,6 +148,10 @@ describe('service worker', () => {
     online = false;
     expect(await (await sw.get('/espace', 'navigate'))!.text()).toBe(
       OFFLINE_HTML,
+    );
+    // The offline checkout opens from its own cached copy.
+    expect(await (await sw.get('/caisse', 'navigate'))!.text()).toBe(
+      CAISSE_HTML,
     );
   });
 

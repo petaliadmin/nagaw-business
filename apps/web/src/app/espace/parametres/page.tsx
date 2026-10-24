@@ -1,10 +1,11 @@
 import {
   formatRate,
   roleHasPermission,
+  type DeviceDto,
   type OrganizationDto,
   type TaxRateDto,
 } from '@nagaw/shared';
-import { Store, UserRound } from 'lucide-react';
+import { Smartphone, Store, UserRound } from 'lucide-react';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
@@ -14,6 +15,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { ReferenceList } from '../produits/reference-page';
+import { RevokeDeviceButton } from './device-actions';
 import { currencyOptions, timeZoneOptions } from './options';
 import { OrganizationSettingsForm } from './organization-settings-form';
 
@@ -25,7 +27,8 @@ async function Settings() {
   const { organization: active, accessToken, me } = workspace;
 
   // Fresh read, so the form never starts from stale values.
-  const [organization, taxRates] = await Promise.all([
+  const canManageDevices = roleHasPermission(active.role, 'devices.manage');
+  const [organization, taxRates, devices] = await Promise.all([
     apiAsUser<OrganizationDto>(accessToken, {
       path: '/organizations/current',
       organizationId: active.id,
@@ -34,8 +37,20 @@ async function Settings() {
       path: '/tax-rates',
       organizationId: active.id,
     }),
+    canManageDevices
+      ? apiAsUser<DeviceDto[]>(accessToken, {
+          path: '/devices',
+          organizationId: active.id,
+        })
+      : null,
   ]);
   const canUpdate = roleHasPermission(active.role, 'organization.update');
+  const when = (iso: string) =>
+    new Intl.DateTimeFormat('fr', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZone: active.timezone,
+    }).format(new Date(iso));
 
   return (
     <>
@@ -69,6 +84,52 @@ async function Settings() {
           </div>
         )}
       </Card>
+      {devices && (
+        <Card title="Appareils de vente" titleId="devices" icon={Smartphone}>
+          {!devices.ok ? (
+            <Alert tone="error">
+              Appareils indisponibles : {devices.message}
+            </Alert>
+          ) : devices.data.length === 0 ? (
+            <p className="text-ink-muted">
+              Un appareil apparaît ici dès qu’il ouvre la caisse.
+            </p>
+          ) : (
+            <ul
+              aria-label="Appareils de vente"
+              className="flex flex-col divide-y divide-line"
+            >
+              {devices.data.map((device) => (
+                <li
+                  key={device.id}
+                  className="flex flex-col gap-2 py-3 first:pt-0"
+                >
+                  <span className="font-semibold">
+                    {device.label} — tickets {device.ticketPrefix}-…
+                  </span>
+                  <span className="text-ink-muted">
+                    {device.user.email}
+                    {device.lastSyncedAt
+                      ? ` · dernier envoi le ${when(device.lastSyncedAt)}`
+                      : ' · aucun envoi'}
+                  </span>
+                  {device.revokedAt ? (
+                    <span className="font-semibold text-danger-ink">
+                      Retiré le {when(device.revokedAt)}
+                    </span>
+                  ) : (
+                    <RevokeDeviceButton
+                      organizationId={active.id}
+                      deviceId={device.id}
+                      label={device.label}
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
       <section aria-labelledby="taxes-title" className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <h2 id="taxes-title" className="text-xl font-bold">

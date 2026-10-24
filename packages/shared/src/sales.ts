@@ -227,6 +227,10 @@ export interface SaleDto {
   cashReceived: number | null;
   changeGiven: number | null;
   occurredAt: string;
+  /** Ticket number printed offline by a device (B-000012), if any. */
+  deviceTicket: string | null;
+  /** Made offline at prices that differed from the catalogue. */
+  priceReview: boolean;
   cancellation: {
     at: string;
     by: { userId: string; email: string };
@@ -244,6 +248,8 @@ export interface SaleListItemDto {
   total: number;
   methods: PaymentMethod[];
   occurredAt: string;
+  deviceTicket: string | null;
+  priceReview: boolean;
 }
 
 export interface SalesDaySummaryDto {

@@ -20,7 +20,8 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { formatCalendarDate, todayIn } from '@/lib/format';
-import { PAYMENT_LABELS, ticketNumber } from '@/lib/sales/labels';
+import { PAYMENT_LABELS } from '@/lib/sales/labels';
+import { ticketLabel } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 
 export const metadata: Metadata = { title: 'Ventes — Nagaw Business' };
@@ -70,7 +71,7 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
         description={allSales ? 'Les ventes de la boutique.' : 'Vos ventes.'}
         actions={
           roleHasPermission(organization.role, 'sales.create') ? (
-            <ButtonLink href="/espace/vendre">
+            <ButtonLink href="/caisse">
               <ShoppingCart aria-hidden className="size-5" />
               Vendre
             </ButtonLink>
@@ -155,7 +156,7 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
               >
                 <span className="flex min-w-0 flex-col">
                   <span className="font-bold">
-                    Ticket {ticketNumber(sale.saleNumber)}
+                    Ticket {ticketLabel(sale)}
                     {sale.customerName ? ` — ${sale.customerName}` : ''}
                   </span>
                   <span className="text-ink-muted">
@@ -169,6 +170,9 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
                   </span>
                 </span>
                 <span className="flex items-center gap-2">
+                  {sale.priceReview && (
+                    <Badge tone="warning">Prix à vérifier</Badge>
+                  )}
                   {sale.status === 'cancelled' && (
                     <Badge tone="danger">Annulée</Badge>
                   )}

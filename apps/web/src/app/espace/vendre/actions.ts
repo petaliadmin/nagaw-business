@@ -3,11 +3,10 @@
 import {
   cancelSaleSchema,
   createCustomerSchema,
-  createSaleSchema,
   customerRepaymentSchema,
   updateCustomerSchema,
-  type CreateSaleInput,
   type CustomerDto,
+  type DeviceDto,
   type SaleDto,
 } from '@nagaw/shared';
 import { refresh } from 'next/cache';
@@ -36,77 +35,6 @@ async function shopOf(organizationId: string | undefined) {
 
 const SHOP_CHANGED =
   'La boutique active a changé dans un autre onglet. Rechargez la page.';
-
-export type SaleResult =
-  | { ok: true; saleId: string }
-  | {
-      ok: false;
-      message: string;
-      fieldErrors?: Record<string, string>;
-      /** Prices changed since the page was loaded: reload them. */
-      pricesChanged?: boolean;
-    };
-
-/** Called by the checkout with the cart (not a form: lines are dynamic). */
-export async function recordSale(
-  organizationId: string,
-  input: CreateSaleInput,
-): Promise<SaleResult> {
-  const shop = await shopOf(organizationId);
-  if (!shop) return { ok: false, message: SHOP_CHANGED };
-  const parsed = parseValues(createSaleSchema, input);
-  if (!parsed.ok)
-    return {
-      ok: false,
-      message: parsed.state.message ?? 'Vérifiez la vente.',
-      fieldErrors: parsed.state.fieldErrors,
-    };
-  const result = await apiAsUser<SaleDto>(shop.token, {
-    method: 'POST',
-    path: '/sales',
-    organizationId: shop.organizationId,
-    body: parsed.data,
-  });
-  if (!result.ok) {
-    const state = apiErrorState(result);
-    return {
-      ok: false,
-      message: result.message,
-      fieldErrors: state.fieldErrors,
-      pricesChanged: result.code === 'PRICE_CHANGED',
-    };
-  }
-  refresh();
-  return { ok: true, saleId: result.data.id };
-}
-
-export type CustomerResult =
-  | { ok: true; customer: CustomerDto }
-  | { ok: false; message: string; fieldErrors?: Record<string, string> };
-
-/** Quick creation from the checkout (name and phone). */
-export async function quickCreateCustomer(
-  organizationId: string,
-  values: { name: string; phone: string; clientOperationId: string },
-): Promise<CustomerResult> {
-  const shop = await shopOf(organizationId);
-  if (!shop) return { ok: false, message: SHOP_CHANGED };
-  const parsed = parseValues(createCustomerSchema, values);
-  if (!parsed.ok)
-    return {
-      ok: false,
-      message: parsed.state.message ?? 'Vérifiez le client.',
-      fieldErrors: parsed.state.fieldErrors,
-    };
-  const result = await apiAsUser<CustomerDto>(shop.token, {
-    method: 'POST',
-    path: '/customers',
-    organizationId: shop.organizationId,
-    body: parsed.data,
-  });
-  if (!result.ok) return { ok: false, message: result.message };
-  return { ok: true, customer: result.data };
-}
 
 // ---------------------------------------------------------------------------
 // Forms of the sale and customer pages
@@ -212,4 +140,21 @@ export async function recordRepayment(
   if (!result.ok) return apiErrorState(result);
   refresh();
   return { status: 'success', message: 'Remboursement enregistré.' };
+}
+
+/** A manager withdraws a lost or stolen device: its sales are refused. */
+export async function revokeDevice(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const shop = await shopOf(text(formData, 'organizationId'));
+  if (!shop) return { status: 'error', message: SHOP_CHANGED };
+  const result = await apiAsUser<DeviceDto>(shop.token, {
+    method: 'POST',
+    path: `/devices/${encodeURIComponent(text(formData, 'deviceId'))}/revoke`,
+    organizationId: shop.organizationId,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return { status: 'success', message: 'Appareil retiré.' };
 }

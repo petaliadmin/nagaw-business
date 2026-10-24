@@ -32,6 +32,15 @@ import {
 } from '../catalog/catalog.errors.js';
 import { balances } from './customers.service.js';
 
+/** A sale recorded on a device, possibly offline (ADR-020, ADR-025). */
+export interface DeviceSale {
+  deviceId: string;
+  deviceTicket: string;
+  occurredAt: Date;
+  /** Prices the seller saw, line by line. */
+  unitPrices: number[];
+}
+
 function saleNotFound(): ApiException {
   return notFound('SALE_NOT_FOUND', 'Vente introuvable.');
 }
@@ -134,6 +143,8 @@ export class SalesService {
       cashReceived: toNullableNumber(sale.cash_received),
       changeGiven: toNullableNumber(sale.change_given),
       occurredAt: sale.occurred_at.toISOString(),
+      deviceTicket: sale.device_ticket,
+      priceReview: sale.price_review,
       cancellation:
         sale.cancelled_at && sale.cancelled_by && sale.cancel_reason
           ? {
@@ -188,6 +199,8 @@ export class SalesService {
         's.status',
         's.total',
         's.occurred_at',
+        's.device_ticket',
+        's.price_review',
         'u.email as seller_email',
         'c.name as customer_name',
       ])
@@ -220,6 +233,8 @@ export class SalesService {
       total: toNumber(row.total),
       methods: row.methods ?? [],
       occurredAt: row.occurred_at.toISOString(),
+      deviceTicket: row.device_ticket,
+      priceReview: row.price_review,
     }));
   }
 
@@ -290,6 +305,8 @@ export class SalesService {
     user: AuthContext,
     input: CreateSaleInput,
     requestId: string | null,
+    /** Set for a sale coming from a device: its prices, ticket and time. */
+    device?: DeviceSale,
   ): Promise<{ sale: SaleDto; replayed: boolean }> {
     try {
       return await this.database.db.transaction().execute(async (trx) => {
@@ -322,7 +339,9 @@ export class SalesService {
             replayed: true,
           };
 
-        // Prices come from the catalogue, never from the device.
+        // Online, prices come from the catalogue, never from the device. A
+        // sale made offline keeps the prices the customer paid; they are
+        // compared with the catalogue below (price review).
         const ids = [...new Set(input.lines.map((line) => line.productId))];
         const products = await trx
           .selectFrom('app.products as p')
@@ -346,7 +365,8 @@ export class SalesService {
         const byId = new Map(products.map((p) => [p.id, p]));
         const lines = input.lines.map((line, index) => {
           const product = byId.get(line.productId);
-          if (!product || product.status !== 'active')
+          // Offline, a product archived since the sale is still accepted.
+          if (!product || (!device && product.status !== 'active'))
             throw invalid(
               `lines.${index}.productId`,
               'Produit inconnu ou archivé.',
@@ -356,12 +376,19 @@ export class SalesService {
               `lines.${index}.quantity`,
               `Nombre entier attendu pour « ${product.name} » (${UNITS[product.unit].label}).`,
             );
-          return { line, product };
+          const catalogPrice = toNumber(product.sale_price);
+          return {
+            line,
+            product,
+            unitPrice: device ? device.unitPrices[index]! : catalogPrice,
+            catalogPrice,
+          };
         });
+        const priceReview = lines.some((l) => l.unitPrice !== l.catalogPrice);
 
         const totals = computeSaleTotals(
-          lines.map(({ line, product }) => ({
-            unitPrice: toNumber(product.sale_price),
+          lines.map(({ line, product, unitPrice }) => ({
+            unitPrice,
             quantity: line.quantity,
             taxRateBasisPoints: product.rate_basis_points,
           })),
@@ -372,7 +399,7 @@ export class SalesService {
             'discount',
             'La remise dépasse le montant de la vente.',
           );
-        if (totals.total !== input.expectedTotal)
+        if (!device && totals.total !== input.expectedTotal)
           throw new ApiException(
             HttpStatus.CONFLICT,
             'PRICE_CHANGED',
@@ -423,6 +450,11 @@ export class SalesService {
             change_given:
               input.cashReceived === null ? null : input.cashReceived - cash,
             client_operation_id: input.clientOperationId,
+            device_id: device?.deviceId ?? null,
+            device_ticket: device?.deviceTicket ?? null,
+            occurred_at: device?.occurredAt,
+            synced_at: device ? new Date() : null,
+            price_review: priceReview,
           })
           .returning('id')
           .executeTakeFirstOrThrow();
@@ -434,14 +466,14 @@ export class SalesService {
         await trx
           .insertInto('app.sale_lines')
           .values(
-            lines.map(({ line, product }, index) => ({
+            lines.map(({ line, product, unitPrice }, index) => ({
               organization_id: tenant.organizationId,
               sale_id: id,
               position: index + 1,
               product_id: product.id,
               label: product.name,
               unit: product.unit,
-              unit_price: toNumber(product.sale_price),
+              unit_price: unitPrice,
               quantity: line.quantity,
               line_total: totals.lines[index]!.lineTotal,
               tax_rate_basis_points: product.rate_basis_points,
@@ -492,6 +524,13 @@ export class SalesService {
             total: totals.total,
             discount: totals.discount,
             methods: [...new Set(input.payments.map((p) => p.method))],
+            ...(device
+              ? {
+                  deviceTicket: device.deviceTicket,
+                  offline: true,
+                  priceReview,
+                }
+              : {}),
           },
           requestId,
         });
