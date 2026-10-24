@@ -219,7 +219,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-023 — Catalogue et stock : prix TTC, stock par mouvements, photos en base
 
-- **Statut** : Proposée en Phase 9 (2026-10-24), en attente de validation du propriétaire.
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-24, Phase 9).
 - **Décision** :
   - **prix de vente taxes comprises** : c'est le prix affiché et payé en boutique. Le taux de taxe du produit sert à retrouver le hors-taxe sur les factures (Phase 12). Les taux sont des données de la boutique (`tax_rates`), jamais codés en dur ;
   - **montants entiers en unités mineures** de la devise de la boutique, lus et affichés par des fonctions partagées (`packages/shared/src/money.ts`) ; **quantités** en `numeric(14,3)`, entières pour les unités comptées à la pièce (pièce, carton, sac…), décimales pour le poids, le volume et la longueur ;

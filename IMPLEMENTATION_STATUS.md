@@ -329,7 +329,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 9 — Produits et stock
 
 - **Objectif** : tenir le catalogue de la boutique et savoir à tout moment ce qui reste, sans jamais écraser le stock (ADR-023).
-- **Statut** : livrée sur la branche `claude/phase-9-produits-stock`, **en attente de validation**. La migration `20261024150000_catalog_stock.sql` **n'est pas encore appliquée sur Supabase** : elle doit l'être, avec l'autorisation du propriétaire, avant le déploiement de l'API.
+- **Statut** : **validée** par le propriétaire le 2026-10-24 (ADR-023 acceptée). La migration `20261024150000_catalog_stock.sql` est **autorisée mais pas encore appliquée sur Supabase** : aucun accès propriétaire à la base n'est disponible dans la session de développement (le rôle `nagaw_api` n'a pas les droits de schéma, ADR-013). Elle doit être appliquée avant la fusion sur `main`, qui déploie l'API (voir `docs/DEPLOYMENT.md`).
 - **Fonctionnalités terminées** :
   - migration : taxes, catégories, fournisseurs, produits, photos, journal des mouvements en ajout seul ; clés étrangères composites (même boutique) ; noms et codes-barres uniques parmi les actifs ; plafonds configurables en base ; RLS et droits minimaux de `nagaw_api` ;
   - contrats partagés : montants en unités mineures (`money.ts` : lecture de « 12 500 », affichage `12 500 F CFA`), quantités à 3 décimales, unités, niveaux de stock, schémas de validation ; permissions `catalog.read`, `catalog.manage`, `stock.move` ;
@@ -358,7 +358,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - une photo retirée reste stockée (masquée) jusqu'à la photo suivante (ADR-023) ;
   - un produit dont la page est introuvable s'affiche en « Introuvable » avec un code HTTP 200 (rendu en streaming) ;
   - catalogue et stock nécessitent encore le réseau : le hors ligne arrive en Phase 11.
-- **Prochaine action recommandée** : appliquer la migration sur Supabase (autorisation du propriétaire), tester la prévisualisation sur téléphone, valider la Phase 9 et ADR-023, puis lancer la Phase 10 (ventes et impression des tickets).
+- **Prochaine action recommandée** : appliquer la migration sur Supabase, fusionner la PR, puis lancer la Phase 10 (ventes et impression des tickets).
 
 ## Phases 10 à 18
 
