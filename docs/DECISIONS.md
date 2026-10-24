@@ -233,7 +233,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-024 — Ventes au comptoir et crédit client
 
-- **Statut** : Proposée en Phase 10 (2026-10-24), en attente de validation du propriétaire.
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-24, Phase 10).
 - **Décision** :
   - **le serveur fait foi** : l'appareil n'envoie que les produits, les quantités, la remise et les paiements. Les prix sont relus dans le catalogue et les totaux recalculés avec la même fonction partagée (`computeSaleTotals`). Si le total affiché au vendeur diffère, la vente est refusée (`PRICE_CHANGED`) avec le nouveau total : jamais de surprise à la caisse ;
   - **taxes incluses** : la taxe de chaque ligne est extraite du montant payé après une remise répartie au prorata des lignes ;

@@ -329,7 +329,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 9 — Produits et stock
 
 - **Objectif** : tenir le catalogue de la boutique et savoir à tout moment ce qui reste, sans jamais écraser le stock (ADR-023).
-- **Statut** : **validée** par le propriétaire le 2026-10-24 (ADR-023 acceptée). La migration `20261024150000_catalog_stock.sql` est **autorisée mais pas encore appliquée sur Supabase** : aucun accès propriétaire à la base n'est disponible dans la session de développement (le rôle `nagaw_api` n'a pas les droits de schéma, ADR-013). Elle doit être appliquée avant la fusion sur `main`, qui déploie l'API (voir `docs/DEPLOYMENT.md`).
+- **Statut** : **validée** par le propriétaire le 2026-10-24 (ADR-023 acceptée), fusionnée sur `main` (PR #8). Migration `20261024150000_catalog_stock.sql` appliquée sur Supabase par le propriétaire le 2026-10-24.
 - **Fonctionnalités terminées** :
   - migration : taxes, catégories, fournisseurs, produits, photos, journal des mouvements en ajout seul ; clés étrangères composites (même boutique) ; noms et codes-barres uniques parmi les actifs ; plafonds configurables en base ; RLS et droits minimaux de `nagaw_api` ;
   - contrats partagés : montants en unités mineures (`money.ts` : lecture de « 12 500 », affichage `12 500 F CFA`), quantités à 3 décimales, unités, niveaux de stock, schémas de validation ; permissions `catalog.read`, `catalog.manage`, `stock.move` ;
@@ -358,12 +358,12 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - une photo retirée reste stockée (masquée) jusqu'à la photo suivante (ADR-023) ;
   - un produit dont la page est introuvable s'affiche en « Introuvable » avec un code HTTP 200 (rendu en streaming) ;
   - catalogue et stock nécessitent encore le réseau : le hors ligne arrive en Phase 11.
-- **Prochaine action recommandée** : appliquer la migration sur Supabase, fusionner la PR, puis lancer la Phase 10 (ventes et impression des tickets).
+- **Prochaine action recommandée** : Phase 10 (ventes).
 
 ## Phase 10 — Ventes
 
 - **Objectif** : encaisser vite et sans erreur au comptoir, suivre les ventes du jour et ce que doivent les clients (ADR-024).
-- **Statut** : livrée sur la branche `claude/phase-10-ventes` (partant de la Phase 9, non encore fusionnée), **en attente de validation**. Les migrations `20261024150000_catalog_stock.sql` (Phase 9) et `20261024190000_sales.sql` (Phase 10) restent **à appliquer sur Supabase**, dans cet ordre, avant la fusion.
+- **Statut** : **validée** par le propriétaire le 2026-10-24 (ADR-024 acceptée). Migration `20261024190000_sales.sql` appliquée sur Supabase par le propriétaire le 2026-10-24. Impression Bluetooth reportée à la mise à disposition d'une imprimante réelle (décision du propriétaire).
 - **Fonctionnalités terminées** :
   - migration : clients, ventes, lignes, paiements, remboursements, lien entre mouvement de stock et vente ; une vente ne peut qu'être annulée (trigger) ; remise maximale des vendeurs, plafond de clients et numéro de ticket en base ;
   - contrats partagés : calcul des totaux (taxes incluses, remise répartie) et règles de paiement utilisés à l'identique par l'appareil et le serveur ; permissions `sales.*` et `customers.*` ;
@@ -391,7 +391,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - pas encore de caisses ni de clôture de caisse (Phase 13) ;
   - la caisse a besoin du réseau : le hors ligne arrive en Phase 11 ;
   - sur un poste chargé, les tests end-to-end parcourant plusieurs pages dépassaient 30 s : ils sont découpés par page ou ont un délai explicite.
-- **Prochaine action recommandée** : appliquer les deux migrations sur Supabase, tester sur téléphone, valider la Phase 10 et ADR-024, fournir un modèle d'imprimante pour les essais Bluetooth, puis lancer la Phase 11 (hors ligne et synchronisation).
+- **Prochaine action recommandée** : Phase 11 (hors ligne et synchronisation).
 
 ## Phases 11 à 18
 
