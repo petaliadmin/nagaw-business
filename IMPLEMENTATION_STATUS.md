@@ -360,6 +360,38 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - catalogue et stock nécessitent encore le réseau : le hors ligne arrive en Phase 11.
 - **Prochaine action recommandée** : appliquer la migration sur Supabase, fusionner la PR, puis lancer la Phase 10 (ventes et impression des tickets).
 
-## Phases 10 à 18
+## Phase 10 — Ventes
+
+- **Objectif** : encaisser vite et sans erreur au comptoir, suivre les ventes du jour et ce que doivent les clients (ADR-024).
+- **Statut** : livrée sur la branche `claude/phase-10-ventes` (partant de la Phase 9, non encore fusionnée), **en attente de validation**. Les migrations `20261024150000_catalog_stock.sql` (Phase 9) et `20261024190000_sales.sql` (Phase 10) restent **à appliquer sur Supabase**, dans cet ordre, avant la fusion.
+- **Fonctionnalités terminées** :
+  - migration : clients, ventes, lignes, paiements, remboursements, lien entre mouvement de stock et vente ; une vente ne peut qu'être annulée (trigger) ; remise maximale des vendeurs, plafond de clients et numéro de ticket en base ;
+  - contrats partagés : calcul des totaux (taxes incluses, remise répartie) et règles de paiement utilisés à l'identique par l'appareil et le serveur ; permissions `sales.*` et `customers.*` ;
+  - API : 10 endpoints (ventes, résumé du jour, annulation, clients, remboursements) ; prix relus dans le catalogue, totaux recalculés, remise plafonnée, crédit dans le plafond du client, ventes et remboursements idempotents ;
+  - web :
+    - **Vendre** dans la barre du bas : grandes tuiles produits, panier (− / + / quantité), remise, total en grand ; paiement en espèces avec « À rendre », Mobile Money (opérateur, n° de transaction), carte, crédit, ou plusieurs moyens ; client choisi ou créé sur place ;
+    - **ticket** : affichage, impression au format 58 mm par l'imprimante du système, envoi sur WhatsApp (au numéro du client s'il est connu), annulation par un gérant avec motif ;
+    - **Ventes** : jour choisi (aujourd'hui, hier, une date), total par moyen de paiement, liste des tickets ; un vendeur ne voit que les siennes ;
+    - **Clients** : recherche, « Ils me doivent » avec le total à récupérer, fiche avec solde, remboursement, historique, modification ;
+    - accueil : carte **Aujourd'hui** (ventes, montant, bouton Vendre) ;
+    - nouvelle variante de bouton « vente » (vert) aux contrastes conformes.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                                                  |
+  | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+  | `pnpm test`                    | 118 tests OK (shared 42, api 28, web 48)                                                                                  |
+  | `pnpm test:integration`        | 84 tests OK, dont 13 nouveaux (prix serveur, remise, paiements, crédit, annulation, visibilité, isolation, garanties SQL) |
+  | Playwright                     | 92 tests OK, 4 ignorés volontairement (3 scénarios de vente couverts une fois sur ordinateur, 1 test réservé au mobile)   |
+  | Test de mutation               | Filtre de boutique retiré dans la lecture d'une vente : le test d'isolation échoue                                        |
+  | lint, typecheck, build, format | OK                                                                                                                        |
+
+- **Limites** :
+  - **impression Bluetooth directe non livrée** (ADR-022) : il faut au moins une imprimante réelle pour la développer et la vérifier ; en attendant, impression système et partage WhatsApp ;
+  - pas de retour partiel : une vente s'annule en entier ;
+  - pas encore de caisses ni de clôture de caisse (Phase 13) ;
+  - la caisse a besoin du réseau : le hors ligne arrive en Phase 11.
+- **Prochaine action recommandée** : appliquer les deux migrations sur Supabase, tester sur téléphone, valider la Phase 10 et ADR-024, fournir un modèle d'imprimante pour les essais Bluetooth, puis lancer la Phase 11 (hors ligne et synchronisation).
+
+## Phases 11 à 18
 
 Non commencées. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.

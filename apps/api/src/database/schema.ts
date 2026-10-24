@@ -1,5 +1,7 @@
 import type {
   CategoryColor,
+  MobileMoneyProvider,
+  PaymentMethod,
   ProductPhotoType,
   StockMovementKind,
   Unit,
@@ -40,6 +42,9 @@ export interface OrganizationsTable {
   max_product_categories: Generated<number>;
   max_suppliers: Generated<number>;
   max_tax_rates: Generated<number>;
+  seller_max_discount_basis_points: Generated<number>;
+  max_customers: Generated<number>;
+  next_sale_number: Generated<number>;
   created_by: string;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -170,9 +175,83 @@ export interface StockMovementsTable {
   unit_cost: NullableNumeric;
   supplier_id: string | null;
   reason: string | null;
+  sale_id: string | null;
   client_operation_id: string;
   created_by: string;
   occurred_at: Timestamp;
+  created_at: ColumnType<Date, never, never>;
+}
+
+export interface CustomersTable {
+  id: Generated<string>;
+  organization_id: string;
+  name: string;
+  phone: Generated<string>;
+  notes: Generated<string>;
+  credit_limit: NullableNumeric;
+  status: CatalogStatus;
+  client_operation_id: string;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface SalesTable {
+  id: Generated<string>;
+  organization_id: string;
+  sale_number: number;
+  customer_id: string | null;
+  seller_id: string;
+  status: Generated<'completed' | 'cancelled'>;
+  subtotal: Numeric;
+  discount: Numeric;
+  total: Numeric;
+  tax_total: Numeric;
+  cash_received: NullableNumeric;
+  change_given: NullableNumeric;
+  client_operation_id: string;
+  occurred_at: Timestamp;
+  cancelled_at: NullableTimestamp;
+  cancelled_by: string | null;
+  cancel_reason: string | null;
+  created_at: ColumnType<Date, never, never>;
+}
+
+export interface SaleLinesTable {
+  id: Generated<string>;
+  organization_id: string;
+  sale_id: string;
+  position: number;
+  product_id: string;
+  label: string;
+  unit: Unit;
+  unit_price: Numeric;
+  quantity: Numeric;
+  line_total: Numeric;
+  tax_rate_basis_points: number | null;
+  tax_amount: Numeric;
+}
+
+export interface SalePaymentsTable {
+  id: Generated<string>;
+  organization_id: string;
+  sale_id: string;
+  method: PaymentMethod;
+  provider: MobileMoneyProvider | null;
+  reference: string | null;
+  amount: Numeric;
+}
+
+export interface CustomerPaymentsTable {
+  id: Generated<string>;
+  organization_id: string;
+  customer_id: string;
+  method: 'cash' | 'mobile_money' | 'card';
+  provider: MobileMoneyProvider | null;
+  reference: string | null;
+  amount: Numeric;
+  client_operation_id: string;
+  created_by: string;
   created_at: ColumnType<Date, never, never>;
 }
 
@@ -188,4 +267,9 @@ export interface Database {
   'app.products': ProductsTable;
   'app.product_photos': ProductPhotosTable;
   'app.stock_movements': StockMovementsTable;
+  'app.customers': CustomersTable;
+  'app.sales': SalesTable;
+  'app.sale_lines': SaleLinesTable;
+  'app.sale_payments': SalePaymentsTable;
+  'app.customer_payments': CustomerPaymentsTable;
 }

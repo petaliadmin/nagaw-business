@@ -4,9 +4,17 @@ import {
   type AuditLogDto,
   type MemberDto,
   type Paginated,
+  type SalesDaySummaryDto,
   type StockSummaryDto,
 } from '@nagaw/shared';
-import { History, Package, Store, UserPlus } from 'lucide-react';
+import {
+  CalendarDays,
+  History,
+  Package,
+  ShoppingCart,
+  Store,
+  UserPlus,
+} from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -29,6 +37,50 @@ import { ROLE_LABELS, auditActionLabel } from '@/lib/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 
 export const metadata: Metadata = { title: 'Accueil — Nagaw Business' };
+
+/** Today's sales, with the shortcut to the checkout. */
+function TodayCard({
+  summary,
+  currency,
+  canSell,
+}: {
+  summary: ApiResult<SalesDaySummaryDto>;
+  currency: string;
+  canSell: boolean;
+}) {
+  return (
+    <Card title="Aujourd’hui" titleId="today" icon={CalendarDays}>
+      <div className="flex flex-col gap-4">
+        {!summary.ok ? (
+          <Alert tone="error">Ventes indisponibles : {summary.message}</Alert>
+        ) : (
+          <dl className="grid grid-cols-2 gap-3">
+            <Stat label="Ventes" value={summary.data.count} />
+            <Stat
+              label="Montant des ventes"
+              value={formatAmount(summary.data.total, currency)}
+            />
+          </dl>
+        )}
+        <div className="flex flex-wrap gap-3">
+          {canSell && (
+            <ButtonLink
+              href="/espace/vendre"
+              variant="sell"
+              className="min-h-16 px-8 text-xl"
+            >
+              <ShoppingCart aria-hidden className="size-6" />
+              Vendre
+            </ButtonLink>
+          )}
+          <ButtonLink href="/espace/ventes" variant="secondary">
+            Voir les ventes du jour
+          </ButtonLink>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 /** Stock at a glance: what is running out, and what the stock is worth. */
 function StockCard({
@@ -121,9 +173,13 @@ async function Overview() {
     'catalog.manage',
   );
 
-  const [members, stock, audit] = await Promise.all([
+  const [members, sales, stock, audit] = await Promise.all([
     apiAsUser<MemberDto[]>(accessToken, {
       path: '/organizations/current/members',
+      organizationId: organization.id,
+    }),
+    apiAsUser<SalesDaySummaryDto>(accessToken, {
+      path: '/sales/summary',
       organizationId: organization.id,
     }),
     apiAsUser<StockSummaryDto>(accessToken, {
@@ -158,6 +214,12 @@ async function Overview() {
             </ButtonLink>
           ) : undefined
         }
+      />
+
+      <TodayCard
+        summary={sales}
+        currency={organization.defaultCurrency}
+        canSell={roleHasPermission(organization.role, 'sales.create')}
       />
 
       <Card title="Votre boutique" titleId="org-summary" icon={Store}>

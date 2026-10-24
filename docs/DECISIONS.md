@@ -215,6 +215,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - Web Bluetooth n'existe que sur les navigateurs Chromium (Chrome, Edge) sous Android et sur ordinateur ; il est absent de Safari sur iPhone et de Firefox : ces appareils n'ont que le secours ;
   - beaucoup d'imprimantes d'entrée de gamme n'offrent que le Bluetooth « classique » (profil série), inaccessible à Web Bluetooth : l'application annoncera la liste des modèles **testés** ;
   - si les modèles courants chez les boutiques pilotes ne sont pas compatibles, l'alternative est d'emballer la PWA dans une application Android (par exemple Capacitor) avec un module Bluetooth natif : cela ferait l'objet d'un nouvel ADR.
+- **État (Phase 10)** : non livrée. La Phase 10 fournit l'impression par l'imprimante du système (mise en page 58 mm) et le partage du ticket sur WhatsApp. L'impression Bluetooth directe sera développée dès qu'au moins un modèle d'imprimante réel sera disponible pour les essais : elle ne sera pas annoncée avant d'avoir été vérifiée.
 - **Cible fixée par le propriétaire (2026-10-24)** : être compatible avec les modèles les plus répandus sur le marché, **en priorité les petites imprimantes portables 58 mm**. Conséquence : la Phase 10 commence par un banc d'essai sur plusieurs de ces modèles ; comme une grande partie d'entre eux n'offre que le Bluetooth classique, l'emballage Android (Capacitor) est probablement nécessaire pour atteindre cette cible, et fera l'objet d'un ADR au vu des résultats.
 
 ## ADR-023 — Catalogue et stock : prix TTC, stock par mouvements, photos en base
@@ -229,3 +230,18 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - noms uniques parmi les éléments actifs (insensible à la casse) ; **archivage** au lieu de suppression ; plafonds par boutique en base (`max_products`, `max_product_categories`, `max_suppliers`, `max_tax_rates`) ;
   - **photos dans Postgres** (`product_photos`, 512 Ko au plus), réduites à 800 px et réencodées en WebP (ou JPEG) **sur l'appareil**, vérifiées par signature côté API, servies au navigateur par une route du web qui relaie la session. Supabase Storage aurait demandé une nouvelle clé privilégiée côté API et une intégration non vérifiée ; le passage à Storage reste possible si le volume le justifie.
 - **Conséquence** : une photo retirée est masquée (`photo_sha256` à null), ses octets restent jusqu'à la prochaine photo, faute de droit `DELETE` pour l'API (ADR-013).
+
+## ADR-024 — Ventes au comptoir et crédit client
+
+- **Statut** : Proposée en Phase 10 (2026-10-24), en attente de validation du propriétaire.
+- **Décision** :
+  - **le serveur fait foi** : l'appareil n'envoie que les produits, les quantités, la remise et les paiements. Les prix sont relus dans le catalogue et les totaux recalculés avec la même fonction partagée (`computeSaleTotals`). Si le total affiché au vendeur diffère, la vente est refusée (`PRICE_CHANGED`) avec le nouveau total : jamais de surprise à la caisse ;
+  - **taxes incluses** : la taxe de chaque ligne est extraite du montant payé après une remise répartie au prorata des lignes ;
+  - **remise** sur la vente entière ; un vendeur est limité par `organizations.seller_max_discount_basis_points` (10 % par défaut, réglable en base), le propriétaire et les gérants non ;
+  - **paiements** : espèces (somme reçue et monnaie rendue), Mobile Money saisi à la main avec l'opérateur et le numéro de transaction facultatif (aucune intégration, ADR-019), carte, **crédit** ; plusieurs moyens par vente ; leur somme égale exactement le total ;
+  - **crédit client** : le solde dû n'est jamais stocké, il est calculé (crédits des ventes non annulées moins remboursements) ; un plafond de crédit facultatif par client est vérifié sous verrou ; un remboursement ne peut pas dépasser le solde ;
+  - **stock** : chaque vente crée des mouvements `sale` liés à la vente ; le stock peut devenir négatif plutôt que de bloquer une vente déjà faite (ADR-020) ;
+  - **numéros de ticket** séquentiels par boutique, pris sous verrou de la boutique (sans trou) ; les numéros par appareil viendront avec le hors ligne (Phase 11) ;
+  - **une vente n'est jamais modifiée** : lignes et paiements en ajout seul ; seule l'**annulation** est possible (propriétaire ou gérant, motif obligatoire), garantie par un trigger en base ; elle remet les articles en stock par des mouvements `return` et efface le crédit correspondant ;
+  - **visibilité** : un vendeur voit ses propres ventes ; propriétaire, gérants et lecteur voient toutes celles de la boutique.
+- **Reporté** : retours partiels (une partie des articles), caisses et clôture de caisse (Phase 13), impression Bluetooth (ADR-022).

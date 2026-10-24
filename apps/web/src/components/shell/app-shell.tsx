@@ -155,7 +155,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
       </a>
       <aside
         aria-label="Barre latérale"
-        className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col gap-6 overflow-y-auto bg-brand-strong p-4 text-white md:flex"
+        className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col gap-6 overflow-y-auto bg-brand-strong p-4 text-white md:flex print:hidden"
       >
         <Logo href="/espace" tone="sidebar" />
         <div className="flex flex-col gap-1">
@@ -174,7 +174,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-line bg-surface px-4 md:hidden">
+        <header className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-line bg-surface px-4 md:hidden print:hidden">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-strong text-white">
             <Store aria-hidden className="size-6" />
           </span>
@@ -184,14 +184,14 @@ export async function AppShell({ children }: { children: ReactNode }) {
         </header>
         <main
           id="contenu"
-          className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 pt-4 pb-28 md:p-8"
+          className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 pt-4 pb-28 md:p-8 print:p-0"
         >
           {children}
         </main>
       </div>
       <nav
         aria-label="Navigation principale"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgb(0_0_0/0.06)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgb(0_0_0/0.06)] md:hidden print:hidden"
       >
         <ul className="mx-auto flex max-w-xl gap-1 px-2 py-1">
           <BottomNavLinks />

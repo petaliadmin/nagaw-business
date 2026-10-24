@@ -7,6 +7,9 @@ const VARIANTS = {
   secondary:
     'border-2 border-line-strong bg-surface text-ink hover:bg-surface-muted',
   danger: 'bg-danger-strong text-white hover:bg-danger shadow-sm',
+  // Selling: green of the sales module. No lighter hover: white on the
+  // vivid green would fall under 4.5:1 (DESIGN.md).
+  sell: 'bg-sales-strong text-white shadow-sm hover:shadow-md',
 } as const;
 
 export type ButtonVariant = keyof typeof VARIANTS;

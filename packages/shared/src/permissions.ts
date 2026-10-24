@@ -18,6 +18,12 @@ export const PERMISSIONS = [
   'catalog.read',
   'catalog.manage',
   'stock.move',
+  'sales.create',
+  'sales.read',
+  'sales.read_all',
+  'sales.cancel',
+  'customers.read',
+  'customers.manage',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -32,6 +38,12 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'catalog.read',
     'catalog.manage',
     'stock.move',
+    'sales.create',
+    'sales.read',
+    'sales.read_all',
+    'sales.cancel',
+    'customers.read',
+    'customers.manage',
   ],
   admin: [
     'organization.read',
@@ -43,11 +55,34 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'catalog.read',
     'catalog.manage',
     'stock.move',
+    'sales.create',
+    'sales.read',
+    'sales.read_all',
+    'sales.cancel',
+    'customers.read',
+    'customers.manage',
   ],
-  // Sellers see the catalogue and the stock; managing them is the manager's
-  // job (docs/ARCHITECTURE.md § 5).
-  member: ['organization.read', 'members.read', 'catalog.read'],
-  viewer: ['organization.read', 'members.read', 'catalog.read'],
+  // Sellers see the catalogue and the stock (managing them is the manager's
+  // job, docs/ARCHITECTURE.md § 5), sell, see their own sales and serve
+  // customers (credit, repayments); cancelling a sale is for managers.
+  member: [
+    'organization.read',
+    'members.read',
+    'catalog.read',
+    'sales.create',
+    'sales.read',
+    'customers.read',
+    'customers.manage',
+  ],
+  // The accountant reads everything and changes nothing.
+  viewer: [
+    'organization.read',
+    'members.read',
+    'catalog.read',
+    'sales.read',
+    'sales.read_all',
+    'customers.read',
+  ],
 };
 
 export function roleHasPermission(role: Role, permission: Permission): boolean {
