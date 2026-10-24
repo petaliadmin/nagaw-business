@@ -15,6 +15,9 @@ export const PERMISSIONS = [
   'members.invite',
   'members.manage',
   'audit.read',
+  'catalog.read',
+  'catalog.manage',
+  'stock.move',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -26,6 +29,9 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'members.invite',
     'members.manage',
     'audit.read',
+    'catalog.read',
+    'catalog.manage',
+    'stock.move',
   ],
   admin: [
     'organization.read',
@@ -34,9 +40,14 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'members.invite',
     'members.manage',
     'audit.read',
+    'catalog.read',
+    'catalog.manage',
+    'stock.move',
   ],
-  member: ['organization.read', 'members.read'],
-  viewer: ['organization.read', 'members.read'],
+  // Sellers see the catalogue and the stock; managing them is the manager's
+  // job (docs/ARCHITECTURE.md § 5).
+  member: ['organization.read', 'members.read', 'catalog.read'],
+  viewer: ['organization.read', 'members.read', 'catalog.read'],
 };
 
 export function roleHasPermission(role: Role, permission: Permission): boolean {

@@ -3,6 +3,7 @@
 import { INVITABLE_ROLES } from '@nagaw/shared';
 import { CircleCheck, Copy } from 'lucide-react';
 import { useActionState, useState } from 'react';
+import { ActionForm } from '@/components/action-form';
 import { CONTROL, FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
@@ -85,10 +86,16 @@ export function InviteForm({
   organizationId: string;
   timeZone: string;
 }) {
-  const [state, action] = useActionState(inviteMember, initialState);
+  const [state, action, pending] = useActionState(inviteMember, initialState);
   return (
     <div className="flex flex-col gap-4">
-      <form action={action} className="flex flex-col gap-4" noValidate>
+      <ActionForm
+        key={state.link ?? 'form'}
+        action={action}
+        pending={pending}
+        className="flex flex-col gap-4"
+        noValidate
+      >
         <input type="hidden" name="organizationId" value={organizationId} />
         {!state.link && <FormMessage state={state} />}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
@@ -113,7 +120,7 @@ export function InviteForm({
         <div>
           <SubmitButton pendingLabel="Création…">Inviter</SubmitButton>
         </div>
-      </form>
+      </ActionForm>
       {state.link && state.email && state.expiresAt && (
         <InvitationLink
           key={state.link}

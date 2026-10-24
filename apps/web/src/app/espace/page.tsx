@@ -1,10 +1,12 @@
 import {
+  formatAmount,
   roleHasPermission,
   type AuditLogDto,
   type MemberDto,
   type Paginated,
+  type StockSummaryDto,
 } from '@nagaw/shared';
-import { History, Store, UserPlus } from 'lucide-react';
+import { History, Package, Store, UserPlus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -14,12 +16,99 @@ import { Card, Stat } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
+import { Badge } from '@/components/ui/badge';
+import type { ApiResult } from '@/lib/api/call-api';
 import { apiAsUser } from '@/lib/api/server';
+import {
+  formatQuantity,
+  STOCK_LEVEL_LABELS,
+  STOCK_LEVEL_TONES,
+} from '@/lib/catalog/labels';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { ROLE_LABELS, auditActionLabel } from '@/lib/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 
 export const metadata: Metadata = { title: 'Accueil — Nagaw Business' };
+
+/** Stock at a glance: what is running out, and what the stock is worth. */
+function StockCard({
+  summary,
+  currency,
+  canManage,
+}: {
+  summary: ApiResult<StockSummaryDto>;
+  currency: string;
+  canManage: boolean;
+}) {
+  return (
+    <Card title="Stock" titleId="stock-summary" icon={Package}>
+      {!summary.ok ? (
+        <Alert tone="error">Stock indisponible : {summary.message}</Alert>
+      ) : summary.data.trackedProducts === 0 ? (
+        <EmptyState title="Aucun produit suivi pour le moment">
+          {canManage ? (
+            <Link
+              href="/espace/produits/nouveau"
+              className="inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4"
+            >
+              Ajouter votre premier produit
+            </Link>
+          ) : (
+            'Le propriétaire ou un gérant peut ajouter les produits.'
+          )}
+        </EmptyState>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Stat label="Épuisés" value={summary.data.outOfStock} />
+            <Stat label="Bientôt épuisés" value={summary.data.lowStock} />
+            <Stat
+              label="Valeur du stock (prix d’achat)"
+              value={formatAmount(summary.data.stockValue, currency)}
+            />
+          </dl>
+          {summary.data.unvaluedProducts > 0 && (
+            <p className="text-ink-muted">
+              {summary.data.unvaluedProducts} produit
+              {summary.data.unvaluedProducts > 1 ? 's' : ''} en stock sans prix
+              d’achat ne {summary.data.unvaluedProducts > 1 ? 'sont' : 'est'}{' '}
+              pas compté{summary.data.unvaluedProducts > 1 ? 's' : ''} dans la
+              valeur.
+            </p>
+          )}
+          {summary.data.alerts.length > 0 && (
+            <ul
+              aria-label="Produits à racheter"
+              className="flex flex-col gap-2"
+            >
+              {summary.data.alerts.map((alert) => (
+                <li key={alert.id}>
+                  <Link
+                    href={`/espace/produits/${alert.id}`}
+                    className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-surface-muted px-3 py-2"
+                  >
+                    <span className="font-semibold">{alert.name}</span>
+                    <Badge tone={STOCK_LEVEL_TONES[alert.stockLevel]}>
+                      {alert.stockLevel === 'out'
+                        ? STOCK_LEVEL_LABELS.out
+                        : `Reste ${formatQuantity(alert.stockQuantity, alert.unit)}`}
+                    </Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            href="/espace/produits"
+            className="inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4"
+          >
+            Voir tous les produits
+          </Link>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 async function Overview() {
   const workspace = await requireReadyWorkspace();
@@ -27,10 +116,18 @@ async function Overview() {
   const { organization, accessToken } = workspace;
   const canReadAudit = roleHasPermission(organization.role, 'audit.read');
   const canInvite = roleHasPermission(organization.role, 'members.invite');
+  const canManageCatalog = roleHasPermission(
+    organization.role,
+    'catalog.manage',
+  );
 
-  const [members, audit] = await Promise.all([
+  const [members, stock, audit] = await Promise.all([
     apiAsUser<MemberDto[]>(accessToken, {
       path: '/organizations/current/members',
+      organizationId: organization.id,
+    }),
+    apiAsUser<StockSummaryDto>(accessToken, {
+      path: '/stock/summary',
       organizationId: organization.id,
     }),
     canReadAudit
@@ -80,6 +177,12 @@ async function Overview() {
           <Alert tone="error">Équipe indisponible : {members.message}</Alert>
         )}
       </Card>
+
+      <StockCard
+        summary={stock}
+        currency={organization.defaultCurrency}
+        canManage={canManageCatalog}
+      />
 
       <Card title="Activité récente" titleId="recent-activity" icon={History}>
         {!audit ? (

@@ -9,18 +9,26 @@ const ERROR = 'text-base font-medium text-danger-ink';
 interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   name: string;
+  /** Defaults to the name; set it when the same form repeats on a page. */
+  id?: string;
   error?: string;
 }
 
-export function FormField({ label, name, error, ...input }: FormFieldProps) {
-  const errorId = error ? `${name}-error` : undefined;
+export function FormField({
+  label,
+  name,
+  id = name,
+  error,
+  ...input
+}: FormFieldProps) {
+  const errorId = error ? `${id}-error` : undefined;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={name} className={LABEL}>
+      <label htmlFor={id} className={LABEL}>
         {label}
       </label>
       <input
-        id={name}
+        id={id}
         name={name}
         aria-invalid={error ? true : undefined}
         aria-describedby={errorId}
@@ -39,24 +47,26 @@ export function FormField({ label, name, error, ...input }: FormFieldProps) {
 export function SelectField({
   label,
   name,
+  id = name,
   defaultValue,
   options,
   error,
 }: {
   label: string;
   name: string;
+  id?: string;
   defaultValue: string;
   options: readonly { value: string; label: string }[];
   error?: string;
 }) {
-  const errorId = error ? `${name}-error` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={name} className={LABEL}>
+      <label htmlFor={id} className={LABEL}>
         {label}
       </label>
       <select
-        id={name}
+        id={id}
         name={name}
         defaultValue={defaultValue}
         aria-invalid={error ? true : undefined}

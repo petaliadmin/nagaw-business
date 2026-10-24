@@ -299,7 +299,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 8 — Design system, application installable (PWA), retrait de Responsabilités et Tâches
 
 - **Objectif** : donner à l'application son visage de boutique (coloré, accessible, mobile d'abord), la rendre installable et utilisable sans réseau au niveau de la coquille, et retirer les modules hors périmètre (ADR-019 à ADR-021, validés le 2026-10-24).
-- **Statut** : livrée sur la branche `claude/phase-8-design-pwa`, **en attente de validation**. Aucune migration : les tables `responsibilities`, `tasks` et `task_notes` restent en base, inutilisées, sans suppression de données.
+- **Statut** : **validée** par le propriétaire le 2026-10-24 (fusionnée sur `main`, PR #7). Aucune migration : les tables `responsibilities`, `tasks` et `task_notes` restent en base, inutilisées, sans suppression de données.
 - **Fonctionnalités terminées** :
   - retrait de Responsabilités et Tâches : pages web, endpoints et modules de l'API, contrats et permissions partagés, types Kysely, faux backend et tests correspondants. Les libellés des anciennes entrées du journal restent lisibles ;
   - jetons de design (`apps/web/src/app/globals.css`) : palette de `DESIGN.md` (vive, foncée, claire, encre par module), mode sombre aux contrastes vérifiés, focus visible de 3 px, mouvements réduits respectés ; aucune couleur en dur dans les composants ;
@@ -326,6 +326,40 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Point d'attention (environnement local)** : un fichier `apps/web/.env.local` pointant vers un vrai projet Supabase est apparu pendant la phase. `next build` fige les variables `NEXT_PUBLIC_*` : un build fait avec ce fichier ne convient pas aux tests end-to-end, qui supposent un build sans configuration (comme en CI). Lors d'un premier lancement, des inscriptions de test (`awa@example.sn`) ont ainsi été envoyées à ce projet, jusqu'à sa limite d'envoi d'e-mails. Les tests ont ensuite été lancés sur un build fait sans ce fichier, mis de côté puis restauré à l'identique.
 - **Prochaine action recommandée** : tester la prévisualisation sur un téléphone (installation, mode avion), valider la Phase 8, puis lancer la Phase 9 (produits et stock).
 
-## Phases 9 à 18
+## Phase 9 — Produits et stock
+
+- **Objectif** : tenir le catalogue de la boutique et savoir à tout moment ce qui reste, sans jamais écraser le stock (ADR-023).
+- **Statut** : livrée sur la branche `claude/phase-9-produits-stock`, **en attente de validation**. La migration `20261024150000_catalog_stock.sql` **n'est pas encore appliquée sur Supabase** : elle doit l'être, avec l'autorisation du propriétaire, avant le déploiement de l'API.
+- **Fonctionnalités terminées** :
+  - migration : taxes, catégories, fournisseurs, produits, photos, journal des mouvements en ajout seul ; clés étrangères composites (même boutique) ; noms et codes-barres uniques parmi les actifs ; plafonds configurables en base ; RLS et droits minimaux de `nagaw_api` ;
+  - contrats partagés : montants en unités mineures (`money.ts` : lecture de « 12 500 », affichage `12 500 F CFA`), quantités à 3 décimales, unités, niveaux de stock, schémas de validation ; permissions `catalog.read`, `catalog.manage`, `stock.move` ;
+  - API : 19 endpoints (taxes, catégories, fournisseurs, produits, photo, mouvements, résumé du stock) ; créations et mouvements idempotents (`clientOperationId`), verrou de version sur les produits, perte supérieure au stock refusée, inventaire avec écart, photo vérifiée par signature ;
+  - web :
+    - **Produits** dans la barre du bas (Historique passe dans « Plus ») : recherche par nom ou code-barres, filtres par stock et par catégorie, cartes avec photo ou initiale colorée, prix en grand ;
+    - **Ajouter / modifier un produit** : nom, prix, unité, catégorie, photo prise ou choisie (réduite sur le téléphone), stock de départ, seuil d'alerte ; prix d'achat, taxe et code-barres repliés dans « Plus de détails » ;
+    - **fiche produit** : ce qui reste en grand, « J'ai reçu de la marchandise », « Perte, casse ou produit abîmé », « J'ai compté ce qui reste (inventaire) », mouvements, gain par unité, archivage et remise en vente ;
+    - catégories, fournisseurs (appel en un geste), produits archivés ; taxes dans Paramètres ;
+    - accueil : carte **Stock** (épuisés, bientôt épuisés, valeur du stock, produits à racheter) ;
+    - pages « Introuvable » en français ;
+  - correction transversale : un formulaire **ne s'efface plus** quand le serveur signale une erreur (`ActionForm`), y compris connexion, inscription, invitation et paramètres ; les champs répétés sur une page ont des identifiants uniques.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                                                   |
+  | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+  | `pnpm test`                    | 103 tests OK (shared 32, api 25, web 46)                                                                                   |
+  | `pnpm test:integration`        | 71 tests OK, dont 26 nouveaux sur le catalogue et le stock (droits, plafonds, idempotence, version, photo, isolation, SQL) |
+  | Playwright                     | 81 tests OK, 1 ignoré volontairement (test réservé au mobile, sur ordinateur)                                              |
+  | Test de mutation               | Filtre de boutique retiré dans la lecture des produits : 2 tests d'isolation échouent                                      |
+  | lint, typecheck, build, format | OK                                                                                                                         |
+
+- **Limites** :
+  - pas encore de lecture du code-barres par la caméra : il se tape ou se recherche ;
+  - la fiche affiche les 100 derniers mouvements, la liste 500 produits au plus, sans pagination ;
+  - une photo retirée reste stockée (masquée) jusqu'à la photo suivante (ADR-023) ;
+  - un produit dont la page est introuvable s'affiche en « Introuvable » avec un code HTTP 200 (rendu en streaming) ;
+  - catalogue et stock nécessitent encore le réseau : le hors ligne arrive en Phase 11.
+- **Prochaine action recommandée** : appliquer la migration sur Supabase (autorisation du propriétaire), tester la prévisualisation sur téléphone, valider la Phase 9 et ADR-023, puis lancer la Phase 10 (ventes et impression des tickets).
+
+## Phases 10 à 18
 
 Non commencées. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.

@@ -1,5 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { PRODUCT_PHOTO_MAX_BYTES, PRODUCT_PHOTO_TYPES } from '@nagaw/shared';
 import * as helmetModule from 'helmet';
 import type { HelmetOptions } from 'helmet';
 import { Logger } from 'nestjs-pino';
@@ -40,6 +42,13 @@ export function setupApp(app: INestApplication): void {
       'X-Request-Id',
     ],
     exposedHeaders: ['X-Request-Id'],
+  });
+  // Product photos are sent as raw image bytes. The parser accepts twice the
+  // maximum so that the service answers PHOTO_TOO_LARGE in the usual
+  // envelope; the service checks the real limit and the image signature.
+  (app as NestExpressApplication).useBodyParser('raw', {
+    type: [...PRODUCT_PHOTO_TYPES],
+    limit: PRODUCT_PHOTO_MAX_BYTES * 2,
   });
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableShutdownHooks();

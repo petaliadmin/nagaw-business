@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { ActionForm } from '@/components/action-form';
 import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
@@ -8,9 +9,17 @@ import { initialFormState } from '@/lib/auth/schemas';
 import { updatePassword } from '../actions';
 
 export function NewPasswordForm() {
-  const [state, action] = useActionState(updatePassword, initialFormState);
+  const [state, action, pending] = useActionState(
+    updatePassword,
+    initialFormState,
+  );
   return (
-    <form action={action} className="flex flex-col gap-4" noValidate>
+    <ActionForm
+      action={action}
+      pending={pending}
+      className="flex flex-col gap-4"
+      noValidate
+    >
       <FormMessage state={state} />
       <FormField
         label="Nouveau mot de passe (8 caractères minimum)"
@@ -30,6 +39,6 @@ export function NewPasswordForm() {
         error={state.fieldErrors?.confirmation}
       />
       <SubmitButton pendingLabel="Enregistrement…">Enregistrer</SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

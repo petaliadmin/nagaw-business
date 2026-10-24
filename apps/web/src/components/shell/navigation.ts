@@ -1,5 +1,6 @@
 import {
   House,
+  Package,
   ScrollText,
   Settings,
   Users,
@@ -22,12 +23,18 @@ export interface NavItem {
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/espace', label: 'Accueil', icon: House, bottomBar: true },
+  {
+    href: '/espace/produits',
+    label: 'Produits',
+    icon: Package,
+    bottomBar: true,
+  },
   { href: '/espace/equipe', label: 'Équipe', icon: Users, bottomBar: true },
   {
     href: '/espace/journal',
     label: 'Historique',
     icon: ScrollText,
-    bottomBar: true,
+    bottomBar: false,
   },
   {
     href: '/espace/parametres',
