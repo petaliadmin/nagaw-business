@@ -12,6 +12,7 @@ import {
   createLocalJWKSet,
 } from 'jose';
 import { handleCatalog, resetCatalog } from './fake-catalog.mjs';
+import { handleSales, resetSales } from './fake-sales.mjs';
 
 const PORT = Number(process.env.FAKE_BACKEND_PORT ?? 54400);
 const ORIGIN = `http://localhost:${PORT}`;
@@ -286,6 +287,7 @@ const server = createServer(async (req, res) => {
   if (path === '/__test/reset') {
     state = makeState();
     resetCatalog();
+    resetSales();
     return send(res, 200, { ok: true });
   }
 
@@ -587,6 +589,24 @@ const server = createServer(async (req, res) => {
       joinedAt: target.joinedAt,
     });
   }
+  if (
+    await handleSales({
+      req,
+      res,
+      path,
+      url,
+      user,
+      orgId,
+      role: membership.role,
+      timeZone: state.organizations[orgId].timezone,
+      send,
+      apiError,
+      readJson,
+      forbidden,
+      userById,
+    })
+  )
+    return;
   if (
     await handleCatalog({
       req,

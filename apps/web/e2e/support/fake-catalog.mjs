@@ -102,6 +102,9 @@ export function resetCatalog() {
   catalog = seed();
 }
 
+/** For the sales part of the fake API (fake-sales.mjs). */
+export const catalogState = () => catalog;
+
 function validation(send, res, issues) {
   return reply(400, {
     error: {
@@ -122,7 +125,7 @@ const stockOf = (productId) =>
       .reduce((sum, m) => sum + m.quantity, 0) * 1000,
   ) / 1000;
 
-function productDto(p) {
+export function productDto(p) {
   const category = catalog.categories.find((c) => c.id === p.categoryId);
   const taxRate = catalog.taxRates.find((t) => t.id === p.taxRateId);
   const stock = {

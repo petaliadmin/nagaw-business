@@ -329,7 +329,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 9 — Produits et stock
 
 - **Objectif** : tenir le catalogue de la boutique et savoir à tout moment ce qui reste, sans jamais écraser le stock (ADR-023).
-- **Statut** : **validée** par le propriétaire le 2026-10-24 (ADR-023 acceptée). La migration `20261024150000_catalog_stock.sql` est **autorisée mais pas encore appliquée sur Supabase** : aucun accès propriétaire à la base n'est disponible dans la session de développement (le rôle `nagaw_api` n'a pas les droits de schéma, ADR-013). Elle doit être appliquée avant la fusion sur `main`, qui déploie l'API (voir `docs/DEPLOYMENT.md`).
+- **Statut** : **validée** par le propriétaire le 2026-10-24 (ADR-023 acceptée), fusionnée sur `main` (PR #8). Migration `20261024150000_catalog_stock.sql` appliquée sur Supabase par le propriétaire le 2026-10-24.
 - **Fonctionnalités terminées** :
   - migration : taxes, catégories, fournisseurs, produits, photos, journal des mouvements en ajout seul ; clés étrangères composites (même boutique) ; noms et codes-barres uniques parmi les actifs ; plafonds configurables en base ; RLS et droits minimaux de `nagaw_api` ;
   - contrats partagés : montants en unités mineures (`money.ts` : lecture de « 12 500 », affichage `12 500 F CFA`), quantités à 3 décimales, unités, niveaux de stock, schémas de validation ; permissions `catalog.read`, `catalog.manage`, `stock.move` ;
@@ -358,8 +358,41 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - une photo retirée reste stockée (masquée) jusqu'à la photo suivante (ADR-023) ;
   - un produit dont la page est introuvable s'affiche en « Introuvable » avec un code HTTP 200 (rendu en streaming) ;
   - catalogue et stock nécessitent encore le réseau : le hors ligne arrive en Phase 11.
-- **Prochaine action recommandée** : appliquer la migration sur Supabase, fusionner la PR, puis lancer la Phase 10 (ventes et impression des tickets).
+- **Prochaine action recommandée** : Phase 10 (ventes).
 
-## Phases 10 à 18
+## Phase 10 — Ventes
+
+- **Objectif** : encaisser vite et sans erreur au comptoir, suivre les ventes du jour et ce que doivent les clients (ADR-024).
+- **Statut** : **validée** par le propriétaire le 2026-10-24 (ADR-024 acceptée). Migration `20261024190000_sales.sql` appliquée sur Supabase par le propriétaire le 2026-10-24. Impression Bluetooth reportée à la mise à disposition d'une imprimante réelle (décision du propriétaire).
+- **Fonctionnalités terminées** :
+  - migration : clients, ventes, lignes, paiements, remboursements, lien entre mouvement de stock et vente ; une vente ne peut qu'être annulée (trigger) ; remise maximale des vendeurs, plafond de clients et numéro de ticket en base ;
+  - contrats partagés : calcul des totaux (taxes incluses, remise répartie) et règles de paiement utilisés à l'identique par l'appareil et le serveur ; permissions `sales.*` et `customers.*` ;
+  - API : 10 endpoints (ventes, résumé du jour, annulation, clients, remboursements) ; prix relus dans le catalogue, totaux recalculés, remise plafonnée, crédit dans le plafond du client, ventes et remboursements idempotents ;
+  - web :
+    - **Vendre** dans la barre du bas : grandes tuiles produits, panier (− / + / quantité), remise, total en grand ; paiement en espèces avec « À rendre », Mobile Money (opérateur, n° de transaction), carte, crédit, ou plusieurs moyens ; client choisi ou créé sur place ;
+    - **ticket** : affichage, impression au format 58 mm par l'imprimante du système, envoi sur WhatsApp (au numéro du client s'il est connu), annulation par un gérant avec motif ;
+    - **Ventes** : jour choisi (aujourd'hui, hier, une date), total par moyen de paiement, liste des tickets ; un vendeur ne voit que les siennes ;
+    - **Clients** : recherche, « Ils me doivent » avec le total à récupérer, fiche avec solde, remboursement, historique, modification ;
+    - accueil : carte **Aujourd'hui** (ventes, montant, bouton Vendre) ;
+    - nouvelle variante de bouton « vente » (vert) aux contrastes conformes.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                                                                               |
+  | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | `pnpm test`                    | 118 tests OK (shared 42, api 28, web 48)                                                                                                               |
+  | `pnpm test:integration`        | 84 tests OK, dont 13 nouveaux (prix serveur, remise, paiements, crédit, annulation, visibilité, isolation, garanties SQL)                              |
+  | Playwright                     | 143 tests OK, 5 ignorés volontairement (scénarios couverts une seule fois, tests réservés au mobile) ; accessibilité et débordement : un test par page |
+  | Test de mutation               | Filtre de boutique retiré dans la lecture d'une vente : le test d'isolation échoue                                                                     |
+  | lint, typecheck, build, format | OK                                                                                                                                                     |
+
+- **Limites** :
+  - **impression Bluetooth directe non livrée** (ADR-022) : il faut au moins une imprimante réelle pour la développer et la vérifier ; en attendant, impression système et partage WhatsApp ;
+  - pas de retour partiel : une vente s'annule en entier ;
+  - pas encore de caisses ni de clôture de caisse (Phase 13) ;
+  - la caisse a besoin du réseau : le hors ligne arrive en Phase 11 ;
+  - sur un poste chargé, les tests end-to-end parcourant plusieurs pages dépassaient 30 s : ils sont découpés par page ou ont un délai explicite.
+- **Prochaine action recommandée** : Phase 11 (hors ligne et synchronisation).
+
+## Phases 11 à 18
 
 Non commencées. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.

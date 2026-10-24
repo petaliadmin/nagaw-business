@@ -13,6 +13,7 @@ import { HealthModule } from './health/health.module.js';
 import { MeModule } from './me/me.module.js';
 import { MembersModule } from './members/members.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
+import { SalesModule } from './sales/sales.module.js';
 import { TenantGuard } from './tenancy/tenant.guard.js';
 
 @Module({
@@ -32,6 +33,7 @@ import { TenantGuard } from './tenancy/tenant.guard.js';
     MeModule,
     MembersModule,
     CatalogModule,
+    SalesModule,
   ],
   providers: [
     // Order matters: authenticate first, then resolve the tenant.

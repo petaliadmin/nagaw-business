@@ -1,8 +1,11 @@
 import {
+  Contact,
   House,
   Package,
+  Receipt,
   ScrollText,
   Settings,
+  ShoppingCart,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -24,12 +27,25 @@ export interface NavItem {
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/espace', label: 'Accueil', icon: House, bottomBar: true },
   {
+    href: '/espace/vendre',
+    label: 'Vendre',
+    icon: ShoppingCart,
+    bottomBar: true,
+  },
+  {
     href: '/espace/produits',
     label: 'Produits',
     icon: Package,
     bottomBar: true,
   },
-  { href: '/espace/equipe', label: 'Équipe', icon: Users, bottomBar: true },
+  { href: '/espace/ventes', label: 'Ventes', icon: Receipt, bottomBar: false },
+  {
+    href: '/espace/clients',
+    label: 'Clients',
+    icon: Contact,
+    bottomBar: false,
+  },
+  { href: '/espace/equipe', label: 'Équipe', icon: Users, bottomBar: false },
   {
     href: '/espace/journal',
     label: 'Historique',

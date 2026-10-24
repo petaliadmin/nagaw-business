@@ -7,7 +7,7 @@ test.beforeAll(async () => {
   await resetBackend();
 });
 
-const IN_BOTTOM_BAR = ['Accueil', 'Produits', 'Équipe'];
+const IN_BOTTOM_BAR = ['Accueil', 'Vendre', 'Produits'];
 
 /**
  * Desktop: the sidebar. Phones: the bottom bar, or the « Plus » sheet for
@@ -54,7 +54,9 @@ test('overview shows only real data for the active shop', async ({
     main.getByRole('heading', { level: 1, name: 'Acme Dakar' }),
   ).toBeVisible();
   await expect(main.getByText('Personnes dans l’équipe')).toBeVisible();
-  await expect(main.locator('dd').first()).toHaveText('2');
+  await expect(
+    main.getByRole('region', { name: 'Votre boutique' }).locator('dd').first(),
+  ).toHaveText('2');
   await expect(main.getByText('Propriétaire')).toBeVisible();
   // Latest of the 27 audit entries comes first, with the author's e-mail.
   const activity = main.getByRole('region', { name: 'Activité récente' });
@@ -285,6 +287,7 @@ test('touch targets are at least 48 px high', async ({
   context,
   baseURL,
 }) => {
+  test.setTimeout(90_000); // three pages, every control measured
   await signInAs(context, 'awa', baseURL!);
   for (const path of ['/espace', '/espace/equipe', '/espace/parametres']) {
     await page.goto(path);
@@ -315,23 +318,28 @@ test('touch targets are at least 48 px high', async ({
   }
 });
 
-test('pages never overflow horizontally', async ({
-  page,
-  context,
-  baseURL,
-}) => {
-  await signInAs(context, 'awa', baseURL!);
-  for (const path of [
-    '/espace',
-    '/espace/equipe',
-    '/espace/journal',
-    '/espace/parametres',
-    '/espace/nouvelle-boutique',
-    '/espace/produits',
-    '/espace/produits/nouveau',
-    '/espace/produits/categories',
-    '/espace/produits/dddddddd-0000-4000-8000-000000000001',
-  ]) {
+// One test per page: a failure names the page at once.
+for (const path of [
+  '/espace',
+  '/espace/equipe',
+  '/espace/journal',
+  '/espace/parametres',
+  '/espace/nouvelle-boutique',
+  '/espace/produits',
+  '/espace/produits/nouveau',
+  '/espace/produits/categories',
+  '/espace/produits/dddddddd-0000-4000-8000-000000000001',
+  '/espace/vendre',
+  '/espace/ventes',
+  '/espace/clients',
+  '/espace/clients/eeeeeeee-0000-4000-8000-000000000001',
+]) {
+  test(`${path} never overflows horizontally`, async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await signInAs(context, 'awa', baseURL!);
     await page.goto(path);
     await expect(
       page.getByRole('main').getByRole('heading', { level: 1 }),
@@ -344,5 +352,5 @@ test('pages never overflow horizontally', async ({
         document.documentElement.clientWidth,
     );
     expect(overflow, path).toBeLessThanOrEqual(0);
-  }
-});
+  });
+}
