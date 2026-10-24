@@ -5,6 +5,7 @@ import {
   type InvitationDto,
   type MemberDto,
 } from '@nagaw/shared';
+import { Mail, UserPlus } from 'lucide-react';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
@@ -57,17 +58,15 @@ async function Team() {
 
   const memberColumns: Column<MemberDto>[] = [
     {
-      header: 'Membre',
+      header: 'Personne',
       cell: (member) => (
         <div className="flex flex-col">
-          <span className="font-medium">
+          <span className="font-semibold">
             {member.displayName ?? member.email}
             {member.userId === me.id && ' (vous)'}
           </span>
           {member.displayName && (
-            <span className="text-zinc-600 dark:text-zinc-400">
-              {member.email}
-            </span>
+            <span className="text-ink-muted">{member.email}</span>
           )}
         </div>
       ),
@@ -81,7 +80,7 @@ async function Team() {
       cell: (member) => MEMBER_STATUS_LABELS[member.status],
     },
     {
-      header: 'Membre depuis',
+      header: 'Depuis le',
       cell: (member) => formatDate(member.joinedAt, organization.timezone),
     },
   ];
@@ -96,7 +95,7 @@ async function Team() {
             assignableRoles={assignableRoles}
           />
         ) : (
-          <span className="text-zinc-500">—</span>
+          <span className="text-ink-muted">—</span>
         ),
     });
   }
@@ -107,23 +106,23 @@ async function Team() {
         title="Équipe"
         description={
           canManage
-            ? `Membres de ${organization.name}, leurs rôles et leurs accès.`
-            : `Membres de ${organization.name}. Seuls les propriétaires et administrateurs gèrent l’équipe.`
+            ? `Les personnes qui travaillent à ${organization.name}, leur rôle et leur accès.`
+            : `Les personnes qui travaillent à ${organization.name}. Seuls le propriétaire et les gérants gèrent l’équipe.`
         }
       />
       {members.ok ? (
         <Table
-          caption={`Membres de ${organization.name}`}
+          caption={`Équipe de ${organization.name}`}
           rows={members.data}
           rowKey={(member) => member.userId}
           columns={memberColumns}
         />
       ) : (
-        <Alert tone="error">Membres indisponibles : {members.message}</Alert>
+        <Alert tone="error">Équipe indisponible : {members.message}</Alert>
       )}
 
       {canInvite && (
-        <Card title="Inviter un collaborateur" titleId="invite">
+        <Card title="Inviter un collaborateur" titleId="invite" icon={UserPlus}>
           <InviteForm
             organizationId={organization.id}
             timeZone={organization.timezone}
@@ -132,7 +131,11 @@ async function Team() {
       )}
 
       {invitations && (
-        <Card title="Invitations en attente" titleId="pending-invitations">
+        <Card
+          title="Invitations en attente"
+          titleId="pending-invitations"
+          icon={Mail}
+        >
           {!invitations.ok ? (
             <Alert tone="error">
               Invitations indisponibles : {invitations.message}
@@ -142,14 +145,14 @@ async function Team() {
           ) : (
             <ul
               aria-label="Invitations en attente"
-              className="divide-y divide-zinc-200 dark:divide-zinc-800"
+              className="divide-y divide-line"
             >
               {invitations.data.map((invitation) => (
                 <li
                   key={invitation.id}
                   className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="flex min-w-0 flex-col gap-1 text-sm">
+                  <div className="flex min-w-0 flex-col gap-1 text-base">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="font-medium break-all">
                         {invitation.email}
@@ -161,7 +164,7 @@ async function Team() {
                         </Badge>
                       )}
                     </span>
-                    <span className="text-zinc-600 dark:text-zinc-400">
+                    <span className="text-ink-muted">
                       Invité par {invitation.invitedBy.email} · expire le{' '}
                       {formatDateTime(
                         invitation.expiresAt,

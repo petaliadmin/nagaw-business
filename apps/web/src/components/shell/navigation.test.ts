@@ -14,6 +14,12 @@ describe('navigation', () => {
     expect(isActive('/espace', '/espace/equipe')).toBe(false);
   });
 
+  it('keeps at most three entries in the phone bottom bar, next to « Plus »', () => {
+    const bottom = NAV_ITEMS.filter((item) => item.bottomBar);
+    expect(bottom.length).toBeLessThanOrEqual(3);
+    expect(bottom[0]?.href).toBe('/espace');
+  });
+
   it('only links to pages under /espace', () => {
     for (const item of NAV_ITEMS)
       expect(item.href.startsWith('/espace')).toBe(true);

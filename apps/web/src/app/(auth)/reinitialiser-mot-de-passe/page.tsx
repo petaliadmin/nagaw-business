@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function NewPasswordPage() {
   return (
     <>
-      <h1 className="text-2xl font-semibold">
+      <h1 className="text-3xl font-extrabold">
         Choisir un nouveau mot de passe
       </h1>
       <NewPasswordForm />

@@ -14,11 +14,6 @@ export const PERMISSIONS = [
   'members.read',
   'members.invite',
   'members.manage',
-  'responsibilities.read',
-  'responsibilities.manage',
-  'tasks.read',
-  'tasks.work',
-  'tasks.manage',
   'audit.read',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
@@ -30,11 +25,6 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'members.read',
     'members.invite',
     'members.manage',
-    'responsibilities.read',
-    'responsibilities.manage',
-    'tasks.read',
-    'tasks.work',
-    'tasks.manage',
     'audit.read',
   ],
   admin: [
@@ -43,26 +33,10 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'members.read',
     'members.invite',
     'members.manage',
-    'responsibilities.read',
-    'responsibilities.manage',
-    'tasks.read',
-    'tasks.work',
-    'tasks.manage',
     'audit.read',
   ],
-  member: [
-    'organization.read',
-    'members.read',
-    'responsibilities.read',
-    'tasks.read',
-    'tasks.work',
-  ],
-  viewer: [
-    'organization.read',
-    'members.read',
-    'responsibilities.read',
-    'tasks.read',
-  ],
+  member: ['organization.read', 'members.read'],
+  viewer: ['organization.read', 'members.read'],
 };
 
 export function roleHasPermission(role: Role, permission: Permission): boolean {

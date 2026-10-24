@@ -21,27 +21,33 @@ export function Table<T>({
   rowKey: (row: T) => string;
 }) {
   return (
-    <div className="relative overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-      <table className="w-full min-w-[32rem] text-left text-sm">
+    // Focusable and named, so keyboard users can scroll it (WCAG 2.1.1).
+    <div
+      role="region"
+      aria-label={caption}
+      tabIndex={0}
+      className="relative overflow-x-auto rounded-2xl border border-line bg-surface"
+    >
+      <table className="w-full min-w-[32rem] text-left text-base">
         <caption className="sr-only">{caption}</caption>
-        <thead className="bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+        <thead className="bg-surface-muted text-ink-muted">
           <tr>
             {columns.map((column) => (
               <th
                 key={column.header}
                 scope="col"
-                className="px-4 py-2 font-medium"
+                className="px-4 py-3 font-semibold"
               >
                 {column.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+        <tbody className="divide-y divide-line">
           {rows.map((row) => (
             <tr key={rowKey(row)}>
               {columns.map((column) => (
-                <td key={column.header} className="px-4 py-2 align-top">
+                <td key={column.header} className="px-4 py-3 align-top">
                   {column.cell(row)}
                 </td>
               ))}

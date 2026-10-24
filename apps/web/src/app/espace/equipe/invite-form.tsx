@@ -1,10 +1,12 @@
 'use client';
 
 import { INVITABLE_ROLES } from '@nagaw/shared';
+import { CircleCheck, Copy } from 'lucide-react';
 import { useActionState, useState } from 'react';
-import { FormField } from '@/components/form-field';
+import { CONTROL, FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
+import { buttonClasses } from '@/components/ui/button-styles';
 import { formatDateTime } from '@/lib/format';
 import { ROLE_LABELS } from '@/lib/labels';
 import { inviteMember, type InviteState } from './actions';
@@ -37,13 +39,17 @@ function InvitationLink({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950">
+    <div className="flex flex-col gap-3 rounded-2xl border-l-4 border-sales bg-sales-soft p-4 text-base">
+      <p className="flex items-center gap-2 text-lg font-bold text-sales-ink">
+        <CircleCheck aria-hidden className="size-6 shrink-0" />
+        Invitation créée
+      </p>
       <p>
         L’envoi automatique par e-mail n’est pas encore configuré : transmettez
         ce lien à {email}. Il n’est affiché qu’une fois et expire le{' '}
         {formatDateTime(expiresAt, timeZone)}.
       </p>
-      <label htmlFor="invitation-link" className="font-medium">
+      <label htmlFor="invitation-link" className="font-semibold">
         Lien d’invitation
       </label>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -52,13 +58,14 @@ function InvitationLink({
           readOnly
           value={link}
           onFocus={(event) => event.currentTarget.select()}
-          className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 font-mono text-xs dark:border-zinc-700 dark:bg-zinc-900"
+          className={`${CONTROL} min-w-0 flex-1 font-mono`}
         />
         <button
           type="button"
           onClick={copyLink}
-          className="rounded-md border border-zinc-300 bg-white px-3 py-2 font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900"
+          className={buttonClasses('primary')}
         >
+          <Copy aria-hidden className="size-5" />
           Copier le lien
         </button>
       </div>
@@ -93,23 +100,15 @@ export function InviteForm({
             required
             error={state.fieldErrors?.email}
           />
-          <div className="flex flex-col gap-1">
-            <label htmlFor="invite-role" className="text-sm font-medium">
-              Rôle
-            </label>
-            <select
-              id="invite-role"
-              name="role"
-              defaultValue="member"
-              className="rounded-md border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-            >
-              {INVITABLE_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {ROLE_LABELS[role]}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SelectField
+            label="Rôle"
+            name="role"
+            defaultValue="member"
+            options={INVITABLE_ROLES.map((role) => ({
+              value: role,
+              label: ROLE_LABELS[role],
+            }))}
+          />
         </div>
         <div>
           <SubmitButton pendingLabel="Création…">Inviter</SubmitButton>

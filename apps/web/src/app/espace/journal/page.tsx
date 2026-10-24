@@ -8,6 +8,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
+import { buttonClasses } from '@/components/ui/button-styles';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
@@ -17,7 +18,7 @@ import { formatDateTime } from '@/lib/format';
 import { auditActionLabel } from '@/lib/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 
-export const metadata: Metadata = { title: 'Journal d’audit — Nagaw Business' };
+export const metadata: Metadata = { title: 'Historique — Nagaw Business' };
 
 const PAGE_SIZE = 25;
 
@@ -28,15 +29,15 @@ async function AuditLog({ searchParams }: PageProps<'/espace/journal'>) {
 
   const header = (
     <PageHeader
-      title="Journal d’audit"
-      description="Historique immuable des actions effectuées dans l’organisation."
+      title="Historique"
+      description="Tout ce qui a été fait dans la boutique, et par qui. Rien ne peut y être effacé."
     />
   );
   if (!roleHasPermission(organization.role, 'audit.read')) {
     return (
       <>
         {header}
-        <Alert>Votre rôle ne donne pas accès au journal d’audit.</Alert>
+        <Alert>Votre rôle ne donne pas accès à l’historique.</Alert>
       </>
     );
   }
@@ -67,13 +68,13 @@ async function AuditLog({ searchParams }: PageProps<'/espace/journal'>) {
     <>
       {header}
       {!audit.ok ? (
-        <Alert tone="error">Journal indisponible : {audit.message}</Alert>
+        <Alert tone="error">Historique indisponible : {audit.message}</Alert>
       ) : audit.data.data.length === 0 ? (
-        <EmptyState title="Aucune entrée dans le journal" />
+        <EmptyState title="Rien dans l’historique pour le moment" />
       ) : (
         <>
           <Table
-            caption="Entrées du journal d’audit, de la plus récente à la plus ancienne"
+            caption="Historique de la boutique, du plus récent au plus ancien"
             rows={audit.data.data}
             rowKey={(entry) => entry.id}
             columns={[
@@ -90,33 +91,36 @@ async function AuditLog({ searchParams }: PageProps<'/espace/journal'>) {
                 cell: (entry) => auditActionLabel(entry.action),
               },
               {
-                header: 'Auteur',
+                header: 'Par',
                 cell: (entry) =>
                   entry.actorType !== 'user'
                     ? 'Système'
                     : ((entry.actorId && emailById.get(entry.actorId)) ??
-                      'Ancien membre'),
+                      'Ancienne personne de l’équipe'),
               },
               {
                 header: 'Référence',
                 cell: (entry) => (
-                  <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                  <span className="font-mono text-base text-ink-muted">
                     {entry.requestId ?? '—'}
                   </span>
                 ),
               },
             ]}
           />
-          <div className="flex gap-4 text-sm">
+          <div className="flex flex-wrap gap-3">
             {cursor && (
-              <Link href="/espace/journal" className="underline">
+              <Link
+                href="/espace/journal"
+                className={buttonClasses('secondary')}
+              >
                 Revenir aux plus récentes
               </Link>
             )}
             {audit.data.nextCursor && (
               <Link
                 href={`/espace/journal?avant=${audit.data.nextCursor}`}
-                className="underline"
+                className={buttonClasses('secondary')}
               >
                 Entrées plus anciennes
               </Link>

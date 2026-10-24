@@ -46,9 +46,11 @@ describe('formatting', () => {
   });
 
   it('labels known audit actions and shows unknown ones raw', () => {
-    expect(auditActionLabel('organization.created')).toBe('Organisation créée');
+    expect(auditActionLabel('organization.created')).toBe('Boutique créée');
     expect(auditActionLabel('agent.activated')).toBe('agent.activated');
-    expect(auditActionLabel('member.disabled')).toBe('Membre désactivé');
+    expect(auditActionLabel('member.disabled')).toBe(
+      'Accès d’une personne désactivé',
+    );
     expect(auditActionLabel('invitation.accepted')).toBe('Invitation acceptée');
   });
 });

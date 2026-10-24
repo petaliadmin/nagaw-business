@@ -1,28 +1,21 @@
-import type {
-  InvitationStatus,
-  MemberStatus,
-  ResponsibilityStatus,
-  Role,
-  TaskOutcome,
-  TaskStatus,
-} from '@nagaw/shared';
+import type { InvitationStatus, MemberStatus, Role } from '@nagaw/shared';
 
 export const ROLE_LABELS: Record<Role, string> = {
   owner: 'Propriétaire',
-  admin: 'Administrateur',
-  member: 'Membre',
+  admin: 'Gérant',
+  member: 'Vendeur',
   viewer: 'Lecteur',
 };
 
 const AUDIT_ACTION_LABELS: Record<string, string> = {
-  'organization.created': 'Organisation créée',
-  'organization.updated': 'Paramètres de l’organisation modifiés',
+  'organization.created': 'Boutique créée',
+  'organization.updated': 'Paramètres de la boutique modifiés',
   'invitation.created': 'Invitation créée',
   'invitation.revoked': 'Invitation annulée',
   'invitation.accepted': 'Invitation acceptée',
-  'member.role_changed': 'Rôle d’un membre modifié',
-  'member.disabled': 'Membre désactivé',
-  'member.reactivated': 'Membre réactivé',
+  'member.role_changed': 'Rôle d’une personne modifié',
+  'member.disabled': 'Accès d’une personne désactivé',
+  'member.reactivated': 'Accès d’une personne réactivé',
   'agent.created': 'Agent créé',
   'agent.updated': 'Agent renommé ou décrit',
   'agent.configured': 'Configuration d’un agent modifiée',
@@ -51,28 +44,4 @@ export const INVITATION_STATUS_LABELS: Record<InvitationStatus, string> = {
   accepted: 'Acceptée',
   revoked: 'Annulée',
   expired: 'Expirée',
-};
-
-export const RESPONSIBILITY_STATUS_LABELS: Record<
-  ResponsibilityStatus,
-  string
-> = {
-  draft: 'Brouillon',
-  active: 'Active',
-  suspended: 'Suspendue',
-  archived: 'Archivée',
-};
-
-export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: 'À faire',
-  in_progress: 'En cours',
-  blocked: 'Bloquée',
-  done: 'Terminée',
-  cancelled: 'Annulée',
-};
-
-export const TASK_OUTCOME_LABELS: Record<TaskOutcome, string> = {
-  achieved: 'Objectif atteint',
-  partial: 'Partiellement atteint',
-  not_achieved: 'Non atteint',
 };

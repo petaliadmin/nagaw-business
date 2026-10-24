@@ -7,11 +7,14 @@ export const metadata: Metadata = { title: 'Créer un compte — Nagaw Business'
 export default function SignUpPage() {
   return (
     <>
-      <h1 className="text-2xl font-semibold">Créer un compte</h1>
+      <h1 className="text-3xl font-extrabold">Créer un compte</h1>
       <SignUpForm />
-      <p className="text-sm">
+      <p className="text-base">
         Déjà inscrit ?{' '}
-        <Link href="/connexion" className="underline">
+        <Link
+          href="/connexion"
+          className="font-bold text-brand-ink underline underline-offset-4"
+        >
           Se connecter
         </Link>
       </p>

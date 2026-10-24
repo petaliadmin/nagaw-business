@@ -4,11 +4,11 @@ export function PageFallback({ label = 'Chargement…' }: { label?: string }) {
       <span className="sr-only">{label}</span>
       <div
         aria-hidden
-        className="h-8 w-48 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800"
+        className="h-9 w-56 animate-pulse rounded-xl bg-surface-muted"
       />
       <div
         aria-hidden
-        className="h-32 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-900"
+        className="h-36 animate-pulse rounded-2xl bg-surface-muted"
       />
     </div>
   );

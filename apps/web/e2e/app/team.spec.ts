@@ -18,7 +18,7 @@ test('owner invites a collaborator and gets a one-time link', async ({
   await page.goto('/espace/equipe');
   const invite = page.getByRole('region', { name: 'Inviter un collaborateur' });
   await invite.getByLabel('Adresse e-mail').fill('Binta@New.test');
-  await invite.getByLabel('Rôle').selectOption({ label: 'Administrateur' });
+  await invite.getByLabel('Rôle').selectOption({ label: 'Gérant' });
   await invite.getByRole('button', { name: 'Inviter' }).click();
 
   const link = invite.getByLabel('Lien d’invitation');
@@ -31,7 +31,7 @@ test('owner invites a collaborator and gets a one-time link', async ({
 
   const pending = page.getByRole('list', { name: 'Invitations en attente' });
   await expect(pending).toContainText('binta@new.test');
-  await expect(pending).toContainText('Administrateur');
+  await expect(pending).toContainText('Gérant');
   await expect(pending).toContainText('awa@acme.test');
 });
 
@@ -71,7 +71,7 @@ test('the invitee accepts and lands in the organization', async ({
   await signInAs(context, 'binta', baseURL!);
   await page.goto(invitationPath);
   await expect(page.getByRole('main')).toContainText(
-    'Vous êtes invité à rejoindre Acme Dakar en tant que administrateur.',
+    'Vous êtes invité à rejoindre Acme Dakar en tant que gérant.',
   );
   await page.getByRole('button', { name: 'Accepter l’invitation' }).click();
   await expect(
@@ -96,7 +96,7 @@ test('members see the team without management controls', async ({
   await page.goto('/espace/equipe');
   // Moussa's active organization is Acme (alphabetical first).
   await expect(
-    page.getByRole('table', { name: 'Membres de Acme Dakar' }),
+    page.getByRole('table', { name: 'Équipe de Acme Dakar' }),
   ).toBeVisible();
   await expect(
     page.getByRole('region', { name: 'Inviter un collaborateur' }),
@@ -113,7 +113,7 @@ test('owner changes a role and disables then reactivates a member', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/equipe');
-  const members = page.getByRole('table', { name: 'Membres de Acme Dakar' });
+  const members = page.getByRole('table', { name: 'Équipe de Acme Dakar' });
   const moussa = members.getByRole('row', { name: /moussa@acme\.test/ });
 
   await moussa
@@ -122,7 +122,7 @@ test('owner changes a role and disables then reactivates a member', async ({
   await moussa
     .getByRole('button', { name: 'Changer le rôle de moussa@acme.test' })
     .click();
-  await expect(moussa.getByText('Membre mis à jour.')).toBeVisible();
+  await expect(moussa.getByText('Modification enregistrée.')).toBeVisible();
   await expect(moussa).toContainText('Lecteur');
 
   await moussa
@@ -139,9 +139,11 @@ test('owner changes a role and disables then reactivates a member', async ({
   await expect(self.getByRole('button')).toHaveCount(0);
 
   await page.goto('/espace/journal');
-  await expect(page.getByRole('table')).toContainText('Membre désactivé');
   await expect(page.getByRole('table')).toContainText(
-    'Rôle d’un membre modifié',
+    'Accès d’une personne désactivé',
+  );
+  await expect(page.getByRole('table')).toContainText(
+    'Rôle d’une personne modifié',
   );
 });
 

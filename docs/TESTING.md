@@ -15,12 +15,12 @@ Les jetons sont signés par une vraie paire de clés ES256 locale, qui remplace 
 
 Ils tournent sur le build de production, servi par deux serveurs (`apps/web/playwright.config.ts`) :
 
-| Serveur   | Configuration                                                                 | Projets                          | Couvre                                                                                            |
-| --------- | ----------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------- |
-| port 3100 | ni Supabase ni API                                                            | `chromium`, `mobile`             | pages publiques, validation côté serveur, états « non configuré », redirections externes refusées |
-| port 3101 | faux Supabase Auth et fausse API (`e2e/support/fake-backend.mjs`, port 54400) | `app-desktop`, puis `app-mobile` | espace connecté complet, sur ordinateur et sur mobile                                             |
+| Serveur   | Configuration                                                                 | Projets                          | Couvre                                                                                                                                                                                         |
+| --------- | ----------------------------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| port 3100 | ni Supabase ni API                                                            | `chromium`, `mobile`             | pages publiques, validation côté serveur, états « non configuré », redirections externes refusées ; PWA (`e2e/pwa.spec.ts`) : manifeste, service worker, page hors ligne, bandeau de connexion |
+| port 3101 | faux Supabase Auth et fausse API (`e2e/support/fake-backend.mjs`, port 54400) | `app-desktop`, puis `app-mobile` | espace connecté complet, sur ordinateur et sur mobile                                                                                                                                          |
 
-Les fichiers de l'espace connecté (`e2e/app/workspace.spec.ts`, `e2e/app/team.spec.ts`, `e2e/app/responsibilities.spec.ts`, `e2e/app/tasks.spec.ts`) partagent ce faux backend et le réinitialisent : Playwright tourne donc avec un seul worker (`workers: 1`), pour qu'aucun fichier ne voie les modifications d'un autre.
+Les fichiers de l'espace connecté (`e2e/app/workspace.spec.ts`, `e2e/app/team.spec.ts`, `e2e/app/accessibility.spec.ts`) partagent ce faux backend et le réinitialisent : Playwright tourne donc avec un seul worker (`workers: 1`), pour qu'aucun fichier ne voie les modifications d'un autre.
 
 Le contrôle de débordement horizontal compare `scrollWidth` à `clientWidth` (et non à `innerWidth`, qui grandit avec le contenu sur mobile et masquait le problème).
 
@@ -72,3 +72,16 @@ pnpm build
 | 10  | Consultation de l'audit              | 8                   |
 | 11  | Isolation inter-organisations        | 2 puis chaque phase |
 | 12  | Erreur d'intégration                 | 9                   |
+
+> **Build local** : `next build` fige les variables `NEXT_PUBLIC_*`. Les tests end-to-end supposent un build fait **sans** `apps/web/.env.local` (comme en CI) ; avec ce fichier, ils appelleraient le vrai projet Supabase.
+
+## Hors ligne, accessibilité et mobile (ADR-020, ADR-021)
+
+En place depuis la Phase 8 : service worker testé unitairement dans un bac à sable `vm` ; coupure réseau Playwright (`context.setOffline`) sur la page hors ligne et le bandeau ; axe-core sur les pages publiques et connectées, et sur le panneau « Plus » ; cibles tactiles de 48 px ; débordement horizontal. Prévu ensuite :
+
+- **Hors ligne** : les parcours de vente Playwright coupent le réseau (`context.setOffline(true)`), enregistrent des ventes, rechargent la page, rétablissent le réseau et vérifient la synchronisation, le stock et l'absence de doublon.
+- **Synchronisation** : tests d'intégration de `POST /api/v1/sync` sur Postgres réel : rejeu du même lot, lot partiellement invalide, opération d'une autre boutique, appareil révoqué, prix ou total falsifié, stock devenu négatif.
+- **Calculs partagés** : tests unitaires des totaux, remises, taxes et arrondis `XOF` dans `packages/shared`, exécutés une fois et utilisés par le web et l'API.
+- **Accessibilité** : axe-core dans chaque parcours end-to-end ; aucune violation sérieuse ou critique tolérée.
+- **Mobile d'abord** : chaque parcours tourne en 360 × 740 et en 1280 × 800, avec le contrôle de débordement horizontal existant.
+- **Impression** : tests unitaires de l'encodeur ESC/POS (largeurs 58 et 80 mm, accents, alignement des montants) ; vérification manuelle sur chaque modèle d'imprimante annoncé comme compatible, consignée dans `IMPLEMENTATION_STATUS.md` (ADR-022).

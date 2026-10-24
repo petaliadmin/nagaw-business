@@ -20,13 +20,13 @@ export const metadata: Metadata = {
 
 const STATUS_MESSAGES = {
   accepted: 'Cette invitation a déjà été acceptée.',
-  revoked: 'Cette invitation a été annulée par l’organisation.',
+  revoked: 'Cette invitation a été annulée par la boutique.',
   expired:
-    'Cette invitation a expiré. Demandez à l’organisation de vous en envoyer une nouvelle.',
+    'Cette invitation a expiré. Demandez à la boutique de vous en envoyer une nouvelle.',
 } as const;
 
 function Title() {
-  return <h1 className="text-2xl font-semibold">Invitation</h1>;
+  return <h1 className="text-3xl font-extrabold">Invitation</h1>;
 }
 
 async function Invitation({ searchParams }: PageProps<'/invitation'>) {
@@ -63,16 +63,22 @@ async function Invitation({ searchParams }: PageProps<'/invitation'>) {
     return (
       <>
         <Title />
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Vous avez été invité à rejoindre une organisation sur Nagaw Business.
+        <p className="text-ink-muted">
+          Vous avez été invité à rejoindre une boutique sur Nagaw Business.
           Connectez-vous, ou créez un compte avec l’adresse e-mail qui a reçu
           l’invitation.
         </p>
-        <div className="flex flex-col gap-2 text-sm">
-          <Link href={`/connexion?next=${next}`} className="underline">
+        <div className="flex flex-col gap-2 text-base">
+          <Link
+            href={`/connexion?next=${next}`}
+            className="inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4"
+          >
             Se connecter pour accepter
           </Link>
-          <Link href={`/inscription?next=${next}`} className="underline">
+          <Link
+            href={`/inscription?next=${next}`}
+            className="inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4"
+          >
             Créer un compte
           </Link>
         </div>
@@ -94,7 +100,10 @@ async function Invitation({ searchParams }: PageProps<'/invitation'>) {
             ? 'Cette invitation n’existe pas ou n’est plus valable.'
             : `Invitation indisponible : ${preview.message}`}
         </Alert>
-        <Link href="/espace" className="text-sm underline">
+        <Link
+          href="/espace"
+          className="inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4"
+        >
           Aller à mon espace
         </Link>
       </>
@@ -118,7 +127,10 @@ async function Invitation({ searchParams }: PageProps<'/invitation'>) {
       <>
         {heading}
         <Alert tone="error">{STATUS_MESSAGES[invitation.status]}</Alert>
-        <Link href="/espace" className="text-sm underline">
+        <Link
+          href="/espace"
+          className="inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4"
+        >
           Aller à mon espace
         </Link>
       </>
@@ -135,7 +147,10 @@ async function Invitation({ searchParams }: PageProps<'/invitation'>) {
         </Alert>
         <form action={signOut}>
           <input type="hidden" name="next" value={here} />
-          <button type="submit" className="text-sm underline">
+          <button
+            type="submit"
+            className="inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4"
+          >
             Se déconnecter pour changer de compte
           </button>
         </form>
@@ -155,7 +170,7 @@ export default function InvitationPage(props: PageProps<'/invitation'>) {
   return (
     <Suspense
       fallback={
-        <p role="status" className="text-zinc-600 dark:text-zinc-400">
+        <p role="status" className="text-ink-muted">
           Chargement de l’invitation…
         </p>
       }

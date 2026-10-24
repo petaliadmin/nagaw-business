@@ -1,26 +1,175 @@
 @import 'tailwindcss';
 
+/*
+ * Design tokens (docs/DESIGN.md, ADR-021). Components only use these
+ * semantic names, never raw palette colors. Contrasts are documented in
+ * DESIGN.md; any change here must keep them at WCAG 2.2 AA.
+ *
+ * Each module color has four shades:
+ *   vivid  — illustrations, icons, large surfaces with dark text
+ *   strong — buttons and filled badges, white text on top
+ *   soft   — card and badge backgrounds
+ *   ink    — text on `soft`, links and accents on the canvas
+ * Text on a vivid shade is always `on-vivid` (dark, in both themes).
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --canvas: #f8f7fc;
+  --surface: #ffffff;
+  --surface-muted: #f3f1f9;
+  --ink: #111827;
+  --ink-muted: #4b5563;
+  --line: #e4e1ee;
+  --line-strong: #767189;
+  --focus: #7c3aed;
+  --on-vivid: #111827;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --brand: #7c3aed;
+  --brand-strong: #6d28d9;
+  --brand-soft: #ede9fe;
+  --brand-ink: #6d28d9;
+
+  --sales: #16a34a;
+  --sales-strong: #15803d;
+  --sales-soft: #dcfce7;
+  --sales-ink: #15803d;
+
+  --stock: #2563eb;
+  --stock-strong: #1d4ed8;
+  --stock-soft: #dbeafe;
+  --stock-ink: #1d4ed8;
+
+  --invoices: #db2777;
+  --invoices-strong: #be185d;
+  --invoices-soft: #fce7f3;
+  --invoices-ink: #be185d;
+
+  --stats: #f97316;
+  --stats-strong: #c2410c;
+  --stats-soft: #ffedd5;
+  --stats-ink: #c2410c;
+
+  --accounting: #0d9488;
+  --accounting-strong: #0f766e;
+  --accounting-soft: #ccfbf1;
+  --accounting-ink: #0f766e;
+
+  --danger: #dc2626;
+  --danger-strong: #b91c1c;
+  --danger-soft: #fee2e2;
+  --danger-ink: #b91c1c;
+
+  --warning: #f59e0b;
+  --warning-strong: #b45309;
+  --warning-soft: #fef3c7;
+  --warning-ink: #b45309;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --canvas: #13111c;
+    --surface: #1c1a27;
+    --surface-muted: #272335;
+    --ink: #f4f3f8;
+    --ink-muted: #c9c6d3;
+    --line: #3a3648;
+    --line-strong: #8d889c;
+    --focus: #ddd6fe;
+
+    --brand-soft: #2e1f5e;
+    --brand-ink: #ddd6fe;
+    --sales-soft: #0f3a22;
+    --sales-ink: #bbf7d0;
+    --stock-soft: #172c5c;
+    --stock-ink: #bfdbfe;
+    --invoices-soft: #4a1631;
+    --invoices-ink: #fbcfe8;
+    --stats-soft: #4a2410;
+    --stats-ink: #fed7aa;
+    --accounting-soft: #0d3b37;
+    --accounting-ink: #99f6e4;
+    --danger-soft: #4c1515;
+    --danger-ink: #fecaca;
+    --warning-soft: #45300a;
+    --warning-ink: #fde68a;
   }
 }
 
+@theme inline {
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-focus: var(--focus);
+  --color-on-vivid: var(--on-vivid);
+
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-sales: var(--sales);
+  --color-sales-strong: var(--sales-strong);
+  --color-sales-soft: var(--sales-soft);
+  --color-sales-ink: var(--sales-ink);
+  --color-stock: var(--stock);
+  --color-stock-strong: var(--stock-strong);
+  --color-stock-soft: var(--stock-soft);
+  --color-stock-ink: var(--stock-ink);
+  --color-invoices: var(--invoices);
+  --color-invoices-strong: var(--invoices-strong);
+  --color-invoices-soft: var(--invoices-soft);
+  --color-invoices-ink: var(--invoices-ink);
+  --color-stats: var(--stats);
+  --color-stats-strong: var(--stats-strong);
+  --color-stats-soft: var(--stats-soft);
+  --color-stats-ink: var(--stats-ink);
+  --color-accounting: var(--accounting);
+  --color-accounting-strong: var(--accounting-strong);
+  --color-accounting-soft: var(--accounting-soft);
+  --color-accounting-ink: var(--accounting-ink);
+  --color-danger: var(--danger);
+  --color-danger-strong: var(--danger-strong);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-ink: var(--danger-ink);
+  --color-warning: var(--warning);
+  --color-warning-strong: var(--warning-strong);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-ink: var(--warning-ink);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+
+@media (min-width: 48rem) {
+  body {
+    font-size: 1rem;
+  }
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

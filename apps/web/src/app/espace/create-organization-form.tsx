@@ -13,7 +13,7 @@ export function CreateOrganizationForm() {
     <form action={action} className="flex flex-col gap-4" noValidate>
       <FormMessage state={state} />
       <FormField
-        label="Nom de l’entreprise"
+        label="Nom de la boutique"
         name="name"
         autoComplete="organization"
         required
@@ -21,7 +21,7 @@ export function CreateOrganizationForm() {
         maxLength={120}
         error={state.fieldErrors?.name}
       />
-      <SubmitButton pendingLabel="Création…">Créer l’organisation</SubmitButton>
+      <SubmitButton pendingLabel="Création…">Créer la boutique</SubmitButton>
     </form>
   );
 }
