@@ -17,4 +17,13 @@ export async function expectAccessible(page: Page, label: string) {
       targets: v.nodes.map((n) => n.target.join(' ')),
     }));
   expect(blocking, label).toEqual([]);
+
+  // A duplicated id sends a label (and the typed value) to the wrong field.
+  const duplicated = await page.evaluate(() => {
+    const seen = new Map<string, number>();
+    for (const el of document.querySelectorAll('[id]'))
+      seen.set(el.id, (seen.get(el.id) ?? 0) + 1);
+    return [...seen].filter(([, count]) => count > 1).map(([id]) => id);
+  });
+  expect(duplicated, `${label} : identifiants en double`).toEqual([]);
 }

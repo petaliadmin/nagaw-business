@@ -7,7 +7,7 @@ test.beforeAll(async () => {
   await resetBackend();
 });
 
-const IN_BOTTOM_BAR = ['Accueil', 'Équipe', 'Historique'];
+const IN_BOTTOM_BAR = ['Accueil', 'Produits', 'Équipe'];
 
 /**
  * Desktop: the sidebar. Phones: the bottom bar, or the « Plus » sheet for
@@ -89,11 +89,22 @@ test('navigation reaches every section and marks the current page', async ({
   await page.getByRole('link', { name: 'Entrées plus anciennes' }).click();
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(3); // header + 2
   await expect(page.getByRole('table')).toContainText('Boutique créée');
-  await expect(
-    page
-      .getByRole('navigation', { name: 'Navigation principale' })
-      .getByRole('link', { name: 'Historique' }),
-  ).toHaveAttribute('aria-current', 'page');
+  // The current page is marked where its link lives.
+  if (isMobile) {
+    await page.getByRole('button', { name: 'Plus' }).click();
+    await expect(
+      page
+        .getByRole('dialog', { name: 'Plus' })
+        .getByRole('link', { name: 'Historique' }),
+    ).toHaveAttribute('aria-current', 'page');
+    await page.keyboard.press('Escape');
+  } else {
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Navigation principale' })
+        .getByRole('link', { name: 'Historique' }),
+    ).toHaveAttribute('aria-current', 'page');
+  }
 
   await navigate(page, isMobile, 'Paramètres');
   await expect(page).toHaveURL(/\/espace\/parametres$/);
@@ -316,6 +327,10 @@ test('pages never overflow horizontally', async ({
     '/espace/journal',
     '/espace/parametres',
     '/espace/nouvelle-boutique',
+    '/espace/produits',
+    '/espace/produits/nouveau',
+    '/espace/produits/categories',
+    '/espace/produits/dddddddd-0000-4000-8000-000000000001',
   ]) {
     await page.goto(path);
     await expect(

@@ -6,7 +6,7 @@ Application SaaS de **gestion de boutique**, mobile first, utilisable sur ordina
 
 ## État du projet
 
-**Socle livré** : comptes, boutiques (organisations) multi-tenant, équipe et rôles, historique (journal d'audit), design coloré et accessible, application installable avec page hors ligne (Phase 8, en attente de validation). **Modules boutique : pas encore développés** (Phases 9 à 14). Voir [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) et [`docs/ROADMAP.md`](docs/ROADMAP.md).
+**Socle livré** : comptes, boutiques (organisations) multi-tenant, équipe et rôles, historique (journal d'audit), design coloré et accessible, application installable avec page hors ligne (Phase 8), **produits et stock** (Phase 9). Ventes, factures, statistiques et comptabilité : Phases 10 à 14. Voir [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) et [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Documentation
 
@@ -45,7 +45,7 @@ Prérequis : Node.js 24 (`.nvmrc`) et pnpm 10.
 
 ```bash
 pnpm install
-cp apps/api/.env.example apps/api/.env      # facultatif : valeurs par défaut sûres
+cp apps/api/.env.example apps/api/.env      # lu au démarrage de l'API ; sans lui, pas de base
 cp apps/web/.env.example apps/web/.env.local
 pnpm dev        # web sur http://localhost:3000, API sur http://localhost:3001
 ```
