@@ -377,19 +377,20 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
     - nouvelle variante de bouton « vente » (vert) aux contrastes conformes.
 - **Tests exécutés** :
 
-  | Commande                       | Résultat                                                                                                                  |
-  | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-  | `pnpm test`                    | 118 tests OK (shared 42, api 28, web 48)                                                                                  |
-  | `pnpm test:integration`        | 84 tests OK, dont 13 nouveaux (prix serveur, remise, paiements, crédit, annulation, visibilité, isolation, garanties SQL) |
-  | Playwright                     | 92 tests OK, 4 ignorés volontairement (3 scénarios de vente couverts une fois sur ordinateur, 1 test réservé au mobile)   |
-  | Test de mutation               | Filtre de boutique retiré dans la lecture d'une vente : le test d'isolation échoue                                        |
-  | lint, typecheck, build, format | OK                                                                                                                        |
+  | Commande                       | Résultat                                                                                                                                               |
+  | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | `pnpm test`                    | 118 tests OK (shared 42, api 28, web 48)                                                                                                               |
+  | `pnpm test:integration`        | 84 tests OK, dont 13 nouveaux (prix serveur, remise, paiements, crédit, annulation, visibilité, isolation, garanties SQL)                              |
+  | Playwright                     | 143 tests OK, 5 ignorés volontairement (scénarios couverts une seule fois, tests réservés au mobile) ; accessibilité et débordement : un test par page |
+  | Test de mutation               | Filtre de boutique retiré dans la lecture d'une vente : le test d'isolation échoue                                                                     |
+  | lint, typecheck, build, format | OK                                                                                                                                                     |
 
 - **Limites** :
   - **impression Bluetooth directe non livrée** (ADR-022) : il faut au moins une imprimante réelle pour la développer et la vérifier ; en attendant, impression système et partage WhatsApp ;
   - pas de retour partiel : une vente s'annule en entier ;
   - pas encore de caisses ni de clôture de caisse (Phase 13) ;
-  - la caisse a besoin du réseau : le hors ligne arrive en Phase 11.
+  - la caisse a besoin du réseau : le hors ligne arrive en Phase 11 ;
+  - sur un poste chargé, les tests end-to-end parcourant plusieurs pages dépassaient 30 s : ils sont découpés par page ou ont un délai explicite.
 - **Prochaine action recommandée** : appliquer les deux migrations sur Supabase, tester sur téléphone, valider la Phase 10 et ADR-024, fournir un modèle d'imprimante pour les essais Bluetooth, puis lancer la Phase 11 (hors ligne et synchronisation).
 
 ## Phases 11 à 18
