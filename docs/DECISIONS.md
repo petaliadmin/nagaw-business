@@ -146,7 +146,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-018 — Suivi manuel des tâches
 
-- **Statut** : Remplacée par ADR-019 : le module Tâches est retiré sur décision du propriétaire (2026-10-24), sans avoir été validé. Les tables restent en base, inutilisées.
+- **Statut** : Acceptée le 2026-10-23 (Phase 7 validée par le propriétaire), puis remplacée par ADR-019 : le module Tâches est retiré sur décision du propriétaire (2026-10-24). Les tables restent en base, inutilisées.
 - **Contexte** : la Phase 7 est redéfinie par ADR-017 : une personne lance, renseigne et clôt chaque tâche ; rien ne s'exécute automatiquement.
 - **Décision** :
   - une tâche est ponctuelle ou rattachée à une responsabilité **active et dans sa période** ; elle est confiée à un membre actif (clé étrangère composite vers les appartenances) ;

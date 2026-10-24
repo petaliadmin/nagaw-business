@@ -4,16 +4,16 @@ Les phases suivent le prompt maître, avec des ajustements tirés de l'audit (d�
 
 ## Socle (phases livrées)
 
-| Phase | Intitulé                  | Ajustements par rapport au prompt maître                                                                                                                        | État               |
-| ----- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| 0     | Audit et plan             | —                                                                                                                                                               | Validée            |
-| 1     | Socle technique           | Création complète du monorepo : web, api, shared, CI, santé, projets Vercel                                                                                     | Validée            |
-| 2     | BDD, Auth, multi-tenant   | **Ajout** : `audit_logs` et service d'audit dès cette phase (requis par toutes les suivantes) ; pages connexion/inscription minimales pour tester l'auth réelle | Validée            |
-| 3     | Interface et navigation   | La navigation n'affiche que les modules livrés (aucun lien mort) ; interface en français uniquement (ADR-012)                                                   | Validée            |
-| 4     | Organisations, équipe     | Invitations par lien, sans fournisseur d'e-mail (ADR-015). Les organisations deviennent les **boutiques** (ADR-019)                                             | Validée            |
-| 5     | Agents                    | Livrée puis **retirée** sur décision du propriétaire (ADR-017) ; tables conservées en base, inutilisées                                                         | Retirée            |
-| 6     | Responsabilités           | Responsabilités confiées à un membre, déclenchement manuel (ADR-017). **Retrait décidé** (2026-10-24, ADR-019) et fait en Phase 8                               | Retirée en Phase 8 |
-| 7     | Suivi des tâches (manuel) | Une personne lance, renseigne et clôt chaque tâche (ADR-018). **Retrait décidé** (2026-10-24, ADR-019) et fait en Phase 8                                       | Retirée en Phase 8 |
+| Phase | Intitulé                  | Ajustements par rapport au prompt maître                                                                                                                        | État                                     |
+| ----- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 0     | Audit et plan             | —                                                                                                                                                               | Validée                                  |
+| 1     | Socle technique           | Création complète du monorepo : web, api, shared, CI, santé, projets Vercel                                                                                     | Validée                                  |
+| 2     | BDD, Auth, multi-tenant   | **Ajout** : `audit_logs` et service d'audit dès cette phase (requis par toutes les suivantes) ; pages connexion/inscription minimales pour tester l'auth réelle | Validée                                  |
+| 3     | Interface et navigation   | La navigation n'affiche que les modules livrés (aucun lien mort) ; interface en français uniquement (ADR-012)                                                   | Validée                                  |
+| 4     | Organisations, équipe     | Invitations par lien, sans fournisseur d'e-mail (ADR-015). Les organisations deviennent les **boutiques** (ADR-019)                                             | Validée                                  |
+| 5     | Agents                    | Livrée puis **retirée** sur décision du propriétaire (ADR-017) ; tables conservées en base, inutilisées                                                         | Retirée                                  |
+| 6     | Responsabilités           | Responsabilités confiées à un membre, déclenchement manuel (ADR-017). **Retrait décidé** (2026-10-24, ADR-019) et fait en Phase 8                               | Retirée en Phase 8                       |
+| 7     | Suivi des tâches (manuel) | Une personne lance, renseigne et clôt chaque tâche (ADR-018). **Retrait décidé** (2026-10-24, ADR-019) et fait en Phase 8                                       | Validée (2026-10-23), retirée en Phase 8 |
 
 Les anciennes phases 8 (approbations), 9 (outils et intégrations), 10 (documents) et 11 (notifications, planification) sont **remplacées** par les phases ci-dessous.
 
