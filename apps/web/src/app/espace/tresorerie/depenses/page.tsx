@@ -23,6 +23,7 @@ import { resolvePeriod } from '@/lib/treasury/period';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import {
   CancelExpenseForm,
+  ReceiptForm,
   CategoryForm,
   CategoryStatusButton,
   ExpenseForm,
@@ -119,6 +120,7 @@ async function Expenses({
                   <span className="flex flex-col">
                     <span className="font-bold">{expense.label}</span>
                     <span className="text-ink-muted">
+                      {expense.number} ·{' '}
                       {formatCalendarDate(expense.occurredOn)} ·{' '}
                       {expense.category.name} · {expense.account.name}
                     </span>
@@ -136,6 +138,36 @@ async function Expenses({
                   <p className="text-ink-muted">
                     Annulée : {expense.cancellation.reason}
                   </p>
+                )}
+                {expense.receiptVersion && (
+                  <a
+                    href={`/espace/tresorerie/depenses/${expense.id}/justificatif?v=${expense.receiptVersion}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex min-h-12 items-center font-semibold text-brand-ink underline underline-offset-4"
+                  >
+                    Voir le justificatif de {expense.number}
+                  </a>
+                )}
+                {canManage && (
+                  <details>
+                    <summary className="flex min-h-12 cursor-pointer items-center font-semibold text-brand-ink">
+                      {expense.receiptVersion
+                        ? 'Changer le justificatif'
+                        : 'Ajouter le justificatif (photo)'}
+                    </summary>
+                    <div className="pt-2">
+                      <ReceiptForm
+                        organizationId={organization.id}
+                        expenseId={expense.id}
+                        currentUrl={
+                          expense.receiptVersion
+                            ? `/espace/tresorerie/depenses/${expense.id}/justificatif?v=${expense.receiptVersion}`
+                            : null
+                        }
+                      />
+                    </div>
+                  </details>
                 )}
                 {canManage && expense.status === 'recorded' && (
                   <details>

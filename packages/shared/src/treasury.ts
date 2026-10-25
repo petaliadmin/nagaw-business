@@ -190,6 +190,10 @@ export type CancelExpenseInput = z.infer<typeof cancelExpenseSchema>;
 
 export interface ExpenseDto {
   id: string;
+  /** Voucher number given by the server: `DEP-2026-0001`. */
+  number: string;
+  /** Receipt photo: changes with it (cache key); null without one. */
+  receiptVersion: string | null;
   category: { id: string; name: string; accountCode: string };
   account: { id: string; name: string };
   label: string;

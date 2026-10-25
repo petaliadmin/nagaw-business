@@ -490,6 +490,36 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - soldes et statistiques calculés à chaque lecture : à remplacer par des agrégats si une boutique accumule un très grand nombre d'opérations.
 - **Prochaine action recommandée** : Phase 14 (comptabilité).
 
-## Phases 14 à 18
+## Phase 14 — Comptabilité (système minimal de trésorerie SYSCOHADA)
+
+- **Objectif** : que le comptable retrouve un journal des recettes et dépenses et un état de fin d'exercice conformes au SYSCOHADA révisé, sans aucune saisie de plus pour le commerçant (ADR-028).
+- **Statut** : livrée sur la branche `claude/phase-14-comptabilite`, **en attente de validation** du propriétaire. La migration `20261025150000_accounting.sql` doit être appliquée sur Supabase avant la fusion ; elle numérote les dépenses déjà saisies.
+- **Fonctionnalités terminées** :
+  - migration : numéro de pièce des dépenses (`DEP-AAAA-NNNN`, rattrapage des dépenses existantes), justificatifs photo (une par dépense, jamais supprimée) ;
+  - contrats partagés : comptes SYSCOHADA du système minimal (70, 585, 658, 758 ; 571, 55, 521), classement d'un mouvement (`accountOfMovement`), journal, état de fin d'exercice ; permission `accounting.read` ;
+  - API : 6 endpoints (journal, état, exports CSV, envoi et lecture du justificatif) ; journal **calculé** à partir des mouvements de trésorerie, état cohérent par construction (variation de la trésorerie = résultat) ; numérotation des pièces partagée avec les factures ;
+  - web :
+    - **Comptabilité** (menu, masqué pour les vendeurs) : **Journal** de la période (date, pièce, libellé, compte, caisse, recette ou dépense, totaux) et **État de fin d'exercice** (année en cours provisoire, deux années précédentes) : recettes et dépenses par compte, résultat, trésorerie au début et à la fin, créances, stock au prix d'achat ;
+    - **exports CSV** du journal et de l'état, prêts pour un tableur en français ;
+    - **Dépenses** : numéro de pièce affiché, photo du justificatif (prise ou choisie, réduite sur le téléphone), « Voir le justificatif ».
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                 |
+  | ------------------------------ | ---------------------------------------------------------------------------------------- |
+  | `pnpm test`                    | **UNIT**                                                                                 |
+  | `pnpm test:integration`        | **INTEGRATION**                                                                          |
+  | Playwright                     | **E2E**                                                                                  |
+  | Test de mutation               | Filtre de boutique retiré dans la lecture d'un justificatif : le test d'isolation échoue |
+  | Migration                      | Rattrapage des numéros vérifié sur une base jetable (dépenses sur deux années)           |
+  | lint, typecheck, build, format | OK                                                                                       |
+
+- **Limites** :
+  - comptabilité de trésorerie uniquement : pas de partie double, de dettes fournisseurs, d'achats à crédit ni d'immobilisations ;
+  - l'exercice ne se clôture pas encore définitivement : une dépense peut être saisie sur l'année précédente tant que ses caisses ne sont pas clôturées à cette date ;
+  - stock de fin d'exercice estimé au prix d'achat **actuel** des produits ;
+  - export PDF non livré (CSV seulement).
+- **Prochaine action recommandée** : appliquer la migration sur Supabase, envoyer un export au comptable pour avis, valider la Phase 14 et l'ADR-028, puis Phase 15 (abonnements et quotas, dont le prestataire de paiement est à choisir par le propriétaire).
+
+## Phases 15 à 18
 
 Non commencées. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.

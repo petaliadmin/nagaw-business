@@ -2,13 +2,16 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Res,
+  StreamableFile,
 } from '@nestjs/common';
 import {
   cancelExpenseSchema,
@@ -246,6 +249,40 @@ export class TreasuryController {
     );
     res.status(replayed ? HttpStatus.OK : HttpStatus.CREATED);
     return expense;
+  }
+
+  /** Raw image body (WebP, JPEG or PNG), resized on the device. */
+  @Put('expenses/:id/receipt')
+  @RequirePermission('treasury.manage')
+  setReceipt(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Headers('content-type') contentType: string | undefined,
+    @Body() body: unknown,
+    @RequestId() requestId: string | null,
+  ): Promise<ExpenseDto> {
+    return this.expenses.setReceipt(
+      tenant,
+      user,
+      id,
+      contentType,
+      body,
+      requestId,
+    );
+  }
+
+  @Get('expenses/:id/receipt')
+  @RequirePermission('treasury.read')
+  async receipt(
+    @CurrentTenant() tenant: TenantContext,
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const receipt = await this.expenses.receipt(tenant.organizationId, id);
+    res.setHeader('Cache-Control', 'private, no-cache');
+    res.setHeader('ETag', `"${receipt.sha256}"`);
+    return new StreamableFile(receipt.data, { type: receipt.contentType });
   }
 
   @Post('expenses/:id/cancel')

@@ -1,5 +1,6 @@
 import { roleHasPermission, type Permission, type Role } from '@nagaw/shared';
 import {
+  BookOpen,
   ChartColumn,
   Contact,
   FileText,
@@ -72,6 +73,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: Wallet,
     bottomBar: false,
     permission: 'treasury.read',
+  },
+  {
+    href: '/espace/comptabilite',
+    label: 'Comptabilité',
+    icon: BookOpen,
+    bottomBar: false,
+    permission: 'accounting.read',
   },
   { href: '/espace/equipe', label: 'Équipe', icon: Users, bottomBar: false },
   {

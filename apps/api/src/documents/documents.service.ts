@@ -27,6 +27,7 @@ import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { today } from '../common/today.js';
 import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
+import { takeSequenceNumber } from '../database/sequences.js';
 import type { Database } from '../database/schema.js';
 import {
   conflict,
@@ -115,27 +116,8 @@ export class DocumentsService {
     day: string,
   ): Promise<string> {
     const year = Number(day.slice(0, 4));
-    await trx
-      .insertInto('app.document_sequences')
-      .values({ organization_id: organizationId, kind, year })
-      .onConflict((oc) => oc.doNothing())
-      .execute();
-    const { next_number } = await trx
-      .selectFrom('app.document_sequences')
-      .select('next_number')
-      .where('organization_id', '=', organizationId)
-      .where('kind', '=', kind)
-      .where('year', '=', year)
-      .forUpdate()
-      .executeTakeFirstOrThrow();
-    await trx
-      .updateTable('app.document_sequences')
-      .set({ next_number: next_number + 1 })
-      .where('organization_id', '=', organizationId)
-      .where('kind', '=', kind)
-      .where('year', '=', year)
-      .execute();
-    return formatDocumentNumber(kind, year, next_number);
+    const next = await takeSequenceNumber(trx, organizationId, kind, year);
+    return formatDocumentNumber(kind, year, next);
   }
 
   private async customer(

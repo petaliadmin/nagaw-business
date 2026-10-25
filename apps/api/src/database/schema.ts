@@ -304,7 +304,7 @@ type Json<T> = ColumnType<T, string, string>;
 
 export interface DocumentSequencesTable {
   organization_id: string;
-  kind: 'quote' | 'invoice' | 'credit_note';
+  kind: 'quote' | 'invoice' | 'credit_note' | 'expense';
   year: number;
   next_number: Generated<number>;
 }
@@ -401,6 +401,7 @@ export interface ExpenseCategoriesTable {
 export interface ExpensesTable {
   id: Generated<string>;
   organization_id: string;
+  number: string;
   category_id: string;
   cash_account_id: string;
   label: string;
@@ -442,6 +443,16 @@ export interface CashClosingsTable {
   created_at: ColumnType<Date, never, never>;
 }
 
+export interface ExpenseReceiptsTable {
+  organization_id: string;
+  expense_id: string;
+  content_type: ProductPhotoType;
+  data: Buffer;
+  sha256: string;
+  updated_by: string;
+  updated_at: Timestamp;
+}
+
 export interface Database {
   'app.user_profiles': UserProfilesTable;
   'app.organizations': OrganizationsTable;
@@ -469,4 +480,5 @@ export interface Database {
   'app.expenses': ExpensesTable;
   'app.cash_transfers': CashTransfersTable;
   'app.cash_closings': CashClosingsTable;
+  'app.expense_receipts': ExpenseReceiptsTable;
 }
