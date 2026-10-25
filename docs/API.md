@@ -210,4 +210,5 @@ Les contrats (schémas zod et types) sont dans `packages/shared`. Chaque répons
 | `SHOP_STATUS_UNCHANGED`       | 409     | Boutique déjà suspendue, ou déjà active                                                                              |
 | `PLAN_REQUEST_NOT_FOUND`      | 404     | Demande d'offre inconnue                                                                                             |
 | `PLAN_REQUEST_NOT_PENDING`    | 409     | Demande déjà acceptée, refusée ou annulée                                                                            |
+| `DATABASE_UNAVAILABLE`        | 503     | Base de données momentanément injoignable ; la requête peut être réessayée                                           |
 | `INTERNAL_ERROR`              | 500     | Erreur inattendue (détails uniquement dans les logs)                                                                 |

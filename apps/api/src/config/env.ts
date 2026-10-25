@@ -39,6 +39,13 @@ const envSchema = z.object({
     .default('require'),
   DATABASE_CA_CERT: z.string().optional(),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(20).default(3),
+  /** Time allowed to open a connection before answering 503 (ms). */
+  DATABASE_CONNECT_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(1000)
+    .max(60_000)
+    .default(5000),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -338,3 +338,16 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **alertes calculées** à l'ouverture du tableau de bord, avec des **seuils en base** (`platform_settings`) : taux de refus hors ligne sur 7 jours (5 % par défaut), quota presque atteint (90 %), téléphone sans envoi depuis 3 jours, demandes d'offre en attente ;
   - **espace web séparé** `/admin`, lien « Administration de la plateforme » affiché aux seuls administrateurs.
 - **Reporté** : envoi des alertes (e-mail, SMS, WhatsApp : prestataire à choisir), métriques HTTP par route (fournies par Vercel en attendant), gestion des administrateurs dans l'application, effacement d'une boutique.
+
+## ADR-031 — Garde-fous de stabilisation
+
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 17).
+- **Contexte** : avant le pilote, chaque règle de sécurité doit être vérifiée automatiquement, pour qu'une phase future ne puisse pas la casser sans que la CI le voie.
+- **Décision** :
+  - **inventaire des routes** : un test d'intégration énumère toutes les routes de l'API depuis le routeur et vérifie que chacune refuse une requête sans session (401) et, pour toute route d'une boutique, une personne qui n'en est pas membre (404) ; les routes d'administration refusent un propriétaire de boutique (403). Les seules exceptions (santé, profil, création de boutique, invitations, offres, comparaison entre boutiques, documentation hors production) sont listées dans le test : une nouvelle route sans contrôle fait échouer la CI ;
+  - **aucun secret dans le navigateur** : la CI construit le web avec des **valeurs leurres** pour les secrets (`API_PROTECTION_BYPASS`, clé `service_role` et clé secrète Supabase, `DATABASE_URL`), puis `scripts/check-client-bundle.mjs` vérifie qu'aucune n'apparaît, ni aucune forme de clé privilégiée, dans le JavaScript client et les pages pré-rendues ; gitleaks ignore ces seuls leurres (`.gitleaks.toml`) ;
+  - **dépendances** : `pnpm audit --prod --audit-level high` en CI ; une dépendance transitive vulnérable est corrigée par une surcharge datée (`pnpm-workspace.yaml`) ;
+  - **en-têtes de sécurité du site** : `X-Frame-Options: DENY` et `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`, HSTS, `Permissions-Policy` (caméra seule), `base-uri`, `form-action` et `object-src` restreints. **Pas encore de CSP sur les scripts** : Next.js insère des scripts en ligne qui demanderaient des nonces (et rendraient toutes les pages dynamiques) ;
+  - **base injoignable = 503, pas 500** : une connexion à Postgres qui n'aboutit pas (délai dépassé, refus, trop de connexions) répond `503 DATABASE_UNAVAILABLE` « réessayez », que la caisse hors ligne traite comme un envoi à reporter ; le délai d'ouverture d'une connexion devient réglable (`DATABASE_CONNECT_TIMEOUT_MS`, 5 s par défaut, inchangé en production) ;
+  - **budget de poids** des pages clés (caisse, accueil, produits, statistiques, factures) au premier chargement, compressé : 300 Ko de JavaScript et 450 Ko au total, vérifié en end-to-end.
+- **Reporté** : CSP complète avec nonces, limitation de débit applicative (l'API sur Vercel est sans état : à faire au niveau de la plateforme ou d'un service tiers), mesure de performance sur appareil réel pendant le pilote.

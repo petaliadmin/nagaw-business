@@ -7,3 +7,9 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - unrs-resolver
+
+# Patched versions of transitive dependencies of the API (pnpm audit,
+# 2026-10-25): remove once @nestjs/platform-express ships them.
+overrides:
+  'body-parser@>=2.0.0 <2.4.0': ^2.4.0
+  'multer@>=2.0.0 <2.5.0': ^2.5.0

@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import type { ApiError } from '@nagaw/shared';
 import type { Request, Response } from 'express';
+import { isDatabaseUnavailable } from '../database/pg-errors.js';
 
 const STATUS_CODES: Record<number, string> = {
   400: 'BAD_REQUEST',
@@ -50,6 +51,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
         this.logger.error({ err: exception, requestId }, 'HTTP 5xx');
       }
       response.status(status).json(body);
+      return;
+    }
+
+    if (isDatabaseUnavailable(exception)) {
+      // Not a bug: the caller may retry (the checkout's outbox does).
+      this.logger.error({ err: exception, requestId }, 'Database unavailable');
+      const body: ApiError = {
+        error: {
+          code: 'DATABASE_UNAVAILABLE',
+          message:
+            'Le service est momentanément indisponible. Réessayez dans un instant.',
+          requestId,
+        },
+      };
+      response.status(HttpStatus.SERVICE_UNAVAILABLE).json(body);
       return;
     }
 

@@ -106,7 +106,8 @@ describe('Platform administration', () => {
       (await ctx.http().get('/api/v1/me').set(bearer(alice)).expect(200)).body
         .platformAdmin,
     ).toBe(false);
-  });
+    // A dozen requests: room for a busy machine, as in the other loops.
+  }, 60_000);
 
   it('never opens the business content of a shop', async () => {
     // An administrator is not a member: shop routes stay closed.

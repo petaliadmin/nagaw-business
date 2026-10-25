@@ -22,7 +22,7 @@ export class DatabaseService implements OnModuleDestroy {
       ssl: sslOptions(env),
       // Serverless instances are short-lived; do not hold idle connections.
       idleTimeoutMillis: 10_000,
-      connectionTimeoutMillis: 5_000,
+      connectionTimeoutMillis: env.DATABASE_CONNECT_TIMEOUT_MS,
     });
     this.kysely = new Kysely<Database>({
       dialect: new PostgresDialect({ pool }),
