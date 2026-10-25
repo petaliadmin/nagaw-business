@@ -426,7 +426,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 12 — Factures et devis
 
 - **Objectif** : remettre aux clients des devis et des factures propres, numérotés sans trou, impossibles à réécrire une fois émis (ADR-026).
-- **Statut** : livrée sur la branche `claude/phase-12-factures`, **en attente de validation** du propriétaire. La migration `20261025090000_invoices_quotes.sql` doit être appliquée sur Supabase avant la fusion.
+- **Statut** : **validée** par le propriétaire le 2026-10-25 (ADR-026 acceptée). Migration `20261025090000_invoices_quotes.sql` appliquée sur Supabase par le propriétaire le 2026-10-25.
 - **Fonctionnalités terminées** :
   - migration : identité légale de la boutique (raison sociale, adresse, téléphone, e-mail, NINEA, RCCM, mention de bas de page), délai de paiement et validité des devis en base ; e-mail, adresse et NINEA des clients ; compteurs de numérotation ; devis ; factures et avoirs (trigger : une facture émise ne change plus, sauf son annulation) ; paiements de factures en ajout seul ; RLS et droits minimaux de `nagaw_api` ;
   - contrats partagés : lignes de document, `computeDocumentTotals` (HT, TVA par taux, TTC, sur le calcul de la caisse), schémas de devis, factures, paiements et annulation, `formatDocumentNumber` ; permissions `documents.read` et `documents.manage` ;
@@ -455,7 +455,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - avoir uniquement total, pas d'avoir partiel ni de facture d'acompte ; une facture payée doit être remboursée hors application avant d'être annulée ;
   - factures et devis demandent le réseau (pas de création hors ligne) ;
   - les paiements de factures n'alimentent pas encore la trésorerie (Phase 13) ; ceux recopiés d'une vente sont marqués pour ne pas être comptés deux fois.
-- **Prochaine action recommandée** : appliquer la migration sur Supabase, essayer une facture et un devis de bout en bout, valider la Phase 12 et l'ADR-026, puis Phase 13 (statistiques et trésorerie).
+- **Prochaine action recommandée** : Phase 13 (statistiques et trésorerie).
 
 ## Phases 13 à 18
 

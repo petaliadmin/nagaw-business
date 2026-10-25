@@ -263,7 +263,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-026 — Factures, devis et avoirs
 
-- **Statut** : Proposée en Phase 12 (2026-10-25), en attente de validation du propriétaire.
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 12).
 - **Contexte** : une boutique doit remettre des devis et des factures conformes (numéro unique et continu, identité du vendeur et du client, HT / TVA / TTC) et ne jamais pouvoir réécrire une facture déjà remise.
 - **Décision** :
   - **numérotation par le serveur seul**, par boutique, type et année : `D-2026-0001` (devis, dès la création), `F-2026-0001` (facture, **à l'émission**), `A-2026-0001` (avoir). Le compteur `document_sequences` est verrouillé pendant l'attribution : ni trou ni doublon, même avec deux gérants en même temps ;
