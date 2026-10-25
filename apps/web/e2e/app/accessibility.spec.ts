@@ -30,6 +30,8 @@ const PAGES = [
   '/espace/tresorerie',
   '/espace/tresorerie/depenses',
   '/espace/tresorerie/cloture',
+  '/espace/comptabilite',
+  '/espace/comptabilite?vue=etat',
 ];
 
 for (const path of PAGES) {

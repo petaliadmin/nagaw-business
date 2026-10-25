@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import type {
   CancelExpenseInput,
   CreateExpenseCategoryInput,
@@ -8,8 +9,11 @@ import type {
   PeriodQuery,
   UpdateExpenseCategoryInput,
 } from '@nagaw/shared';
+import { PRODUCT_PHOTO_MAX_BYTES, type ProductPhotoType } from '@nagaw/shared';
 import { sql } from 'kysely';
 import { AuditService } from '../audit/audit.service.js';
+import { detectImageType } from '../catalog/products.service.js';
+import { ApiException } from '../common/api-exception.js';
 import {
   conflict,
   invalid,
@@ -24,6 +28,7 @@ import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { today } from '../common/today.js';
 import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
+import { takeSequenceNumber } from '../database/sequences.js';
 import { addDays, TreasuryService } from './treasury.service.js';
 
 const categoryNotFound = () =>
@@ -194,6 +199,11 @@ export class ExpensesService {
           .onRef('a.id', '=', 'e.cash_account_id'),
       )
       .innerJoin('app.user_profiles as u', 'u.id', 'e.created_by')
+      .leftJoin('app.expense_receipts as r', (join) =>
+        join
+          .onRef('r.organization_id', '=', 'e.organization_id')
+          .onRef('r.expense_id', '=', 'e.id'),
+      )
       .select([
         'e.id',
         'e.category_id',
@@ -201,6 +211,8 @@ export class ExpensesService {
         'c.account_code',
         'e.cash_account_id',
         'a.name as account_name',
+        'e.number',
+        'r.sha256 as receipt_sha256',
         'e.label',
         'e.amount',
         'e.status',
@@ -279,10 +291,20 @@ export class ExpensesService {
           input.occurredOn,
           'occurredOn',
         );
+        // Voucher number of the year of the expense, without gap (ADR-028).
+        const year = Number(input.occurredOn.slice(0, 4));
+        const n = await takeSequenceNumber(
+          trx,
+          tenant.organizationId,
+          'expense',
+          year,
+        );
+        const number = `DEP-${year}-${String(n).padStart(4, '0')}`;
         const { id } = await trx
           .insertInto('app.expenses')
           .values({
             organization_id: tenant.organizationId,
+            number,
             category_id: category.id,
             cash_account_id: account.id,
             label: input.label,
@@ -301,6 +323,7 @@ export class ExpensesService {
           targetType: 'expense',
           targetId: id,
           metadata: {
+            number,
             amount: input.amount,
             label: input.label,
             account: account.name,
@@ -383,9 +406,100 @@ export class ExpensesService {
       return this.expenseDto(trx, tenant.organizationId, id);
     });
   }
+
+  /** Receipt photo of an expense: same formats and limit as products. */
+  async setReceipt(
+    tenant: TenantContext,
+    user: AuthContext,
+    id: string,
+    declaredType: string | undefined,
+    data: unknown,
+    requestId: string | null,
+  ): Promise<ExpenseDto> {
+    if (!UUID_RE.test(id)) throw expenseNotFound();
+    if (!Buffer.isBuffer(data) || data.length === 0)
+      throw invalid('receipt', 'Envoyez une photo WebP, JPEG ou PNG.');
+    if (data.length > PRODUCT_PHOTO_MAX_BYTES)
+      throw new ApiException(
+        HttpStatus.PAYLOAD_TOO_LARGE,
+        'PHOTO_TOO_LARGE',
+        'Photo trop lourde : 512 Ko au plus.',
+      );
+    const contentType = detectImageType(data);
+    if (!contentType || contentType !== declaredType?.split(';')[0]?.trim())
+      throw invalid('receipt', 'Envoyez une photo WebP, JPEG ou PNG.');
+    const sha256 = createHash('sha256').update(data).digest('hex');
+    return this.database.db.transaction().execute(async (trx) => {
+      const expense = await trx
+        .selectFrom('app.expenses')
+        .select(['id', 'number'])
+        .where('organization_id', '=', tenant.organizationId)
+        .where('id', '=', id)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!expense) throw expenseNotFound();
+      await trx
+        .insertInto('app.expense_receipts')
+        .values({
+          organization_id: tenant.organizationId,
+          expense_id: id,
+          content_type: contentType,
+          data,
+          sha256,
+          updated_by: user.userId,
+        })
+        .onConflict((oc) =>
+          oc.columns(['organization_id', 'expense_id']).doUpdateSet({
+            content_type: contentType,
+            data,
+            sha256,
+            updated_by: user.userId,
+            updated_at: new Date(),
+          }),
+        )
+        .execute();
+      await this.audit.record(trx, {
+        organizationId: tenant.organizationId,
+        actorType: 'user',
+        actorId: user.userId,
+        action: 'expense.receipt_attached',
+        targetType: 'expense',
+        targetId: id,
+        metadata: { number: expense.number, contentType, bytes: data.length },
+        requestId,
+      });
+      return this.expenseDto(trx, tenant.organizationId, id);
+    });
+  }
+
+  async receipt(
+    organizationId: string,
+    id: string,
+  ): Promise<{ contentType: ProductPhotoType; data: Buffer; sha256: string }> {
+    const row = UUID_RE.test(id)
+      ? await this.database.db
+          .selectFrom('app.expense_receipts')
+          .select(['content_type', 'data', 'sha256'])
+          .where('organization_id', '=', organizationId)
+          .where('expense_id', '=', id)
+          .executeTakeFirst()
+      : undefined;
+    if (!row)
+      throw notFound(
+        'RECEIPT_NOT_FOUND',
+        'Cette dépense n’a pas de justificatif.',
+      );
+    return {
+      contentType: row.content_type,
+      data: row.data,
+      sha256: row.sha256,
+    };
+  }
 }
 
 function toExpenseDto(row: {
+  number: string;
+  receipt_sha256: string | null;
   id: string;
   category_id: string;
   category_name: string;
@@ -404,6 +518,8 @@ function toExpenseDto(row: {
 }): ExpenseDto {
   return {
     id: row.id,
+    number: row.number,
+    receiptVersion: row.receipt_sha256?.slice(0, 16) ?? null,
     category: {
       id: row.category_id,
       name: row.category_name,

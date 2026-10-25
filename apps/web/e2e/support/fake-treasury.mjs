@@ -4,6 +4,7 @@
 // that no longer change.
 import { randomUUID } from 'node:crypto';
 import {
+  accountOfMovement,
   accountOfPayment,
   cancelExpenseSchema,
   createClosingSchema,
@@ -16,6 +17,7 @@ import {
   roleHasPermission,
   shareBasisPoints,
   updateCashAccountSchema,
+  TREASURY_ACCOUNTS,
   updateExpenseCategorySchema,
 } from '@nagaw/shared';
 import { catalogState } from './fake-catalog.mjs';
@@ -62,6 +64,7 @@ function shop(orgId) {
       status: 'active',
     })),
     expenses: [],
+    expenseNumbers: {},
     transfers: [],
     closings: [],
   };
@@ -272,7 +275,9 @@ export async function handleTreasury(ctx) {
     apiError,
   } = ctx;
   if (
-    !/^\/api\/v1\/(treasury|expenses|expense-categories|stats)(\/|$)/.test(path)
+    !/^\/api\/v1\/(treasury|expenses|expense-categories|stats|accounting)(\/|$)/.test(
+      path,
+    )
   )
     return false;
   const reply = (status, body) => {
@@ -296,9 +301,11 @@ export async function handleTreasury(ctx) {
     });
   const permission = path.startsWith('/api/v1/stats')
     ? 'stats.read'
-    : req.method === 'GET'
-      ? 'treasury.read'
-      : 'treasury.manage';
+    : path.startsWith('/api/v1/accounting')
+      ? 'accounting.read'
+      : req.method === 'GET'
+        ? 'treasury.read'
+        : 'treasury.manage';
   if (!roleHasPermission(role, permission)) {
     ctx.forbidden(res);
     return true;
@@ -306,7 +313,15 @@ export async function handleTreasury(ctx) {
   const s = shop(orgId);
   const timeZone = organization.timezone;
   const today = dayIn(new Date().toISOString(), timeZone);
-  const body = req.method === 'GET' ? null : await ctx.readJson(req);
+  const receiptPath = /^\/api\/v1\/expenses\/([^/]+)\/receipt$/.exec(path);
+  // A receipt comes as raw image bytes, everything else as JSON.
+  let raw = null;
+  if (receiptPath && req.method === 'PUT') {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    raw = Buffer.concat(chunks);
+  }
+  const body = req.method === 'GET' || raw ? null : await ctx.readJson(req);
   const params = Object.fromEntries(url.searchParams);
   const lastClosing = (accountId) =>
     s.closings
@@ -398,6 +413,8 @@ export async function handleTreasury(ctx) {
     const category = s.categories.find((c) => c.id === e.categoryId);
     return {
       id: e.id,
+      number: e.number,
+      receiptVersion: e.receipt ? e.receipt.version : null,
       category: {
         id: category.id,
         name: category.name,
@@ -416,6 +433,178 @@ export async function handleTreasury(ctx) {
       createdAt: e.createdAt,
     };
   };
+
+  if (receiptPath) {
+    const expense = s.expenses.find((x) => x.id === receiptPath[1]);
+    if (!expense) return fail(404, 'EXPENSE_NOT_FOUND', 'Dépense introuvable.');
+    if (req.method === 'GET') {
+      if (!expense.receipt)
+        return fail(
+          404,
+          'RECEIPT_NOT_FOUND',
+          'Cette dépense n’a pas de justificatif.',
+        );
+      res.writeHead(200, { 'content-type': expense.receipt.type });
+      res.end(expense.receipt.data);
+      return true;
+    }
+    const type = req.headers['content-type'] ?? '';
+    if (
+      !raw.length ||
+      !['image/webp', 'image/jpeg', 'image/png'].includes(type)
+    )
+      return invalid([
+        { path: 'receipt', message: 'Envoyez une photo WebP, JPEG ou PNG.' },
+      ]);
+    expense.receipt = {
+      data: raw,
+      type,
+      version: randomUUID().replace(/-/g, '').slice(0, 16),
+    };
+    return reply(200, expenseDto(expense));
+  }
+
+  if (path.startsWith('/api/v1/accounting/')) {
+    const moves = movements(orgId, timeZone);
+    const expenseOf = (id) => s.expenses.find((x) => x.id === id);
+    const categoryOf = (e) => s.categories.find((c) => c.id === e.categoryId);
+    const entry = (m) => {
+      const e = m.kind === 'expense' ? expenseOf(m.sourceId) : null;
+      const cash = s.accounts.find((a) => a.id === m.accountId);
+      const account = accountOfMovement(
+        m.kind,
+        m.amount,
+        e
+          ? { code: categoryOf(e).accountCode, label: categoryOf(e).name }
+          : null,
+      );
+      const describe = {
+        sale: [`Ticket n° ${m.label}`, 'Vente au comptoir'],
+        sale_cancelled: [`Ticket n° ${m.label}`, 'Annulation de la vente'],
+        repayment: ['', `Remboursement de ${m.label}`],
+        invoice_payment: [m.label, `Paiement de la facture ${m.label}`],
+        expense: [e?.number ?? '', m.label],
+        transfer_in: ['', `Reçu de ${m.label}`],
+        transfer_out: ['', `Envoyé vers ${m.label}`],
+        closing: [
+          '',
+          m.label ? `Écart de clôture (${m.label})` : 'Écart de clôture',
+        ],
+      }[m.kind];
+      return {
+        day: m.day,
+        voucher: describe[0],
+        label: describe[1],
+        kind: m.kind,
+        account,
+        cashAccount: {
+          id: cash.id,
+          name: cash.name,
+          code: TREASURY_ACCOUNTS[cash.kind].code,
+        },
+        receipt: Math.max(m.amount, 0),
+        expense: Math.max(-m.amount, 0),
+      };
+    };
+    const csvFile = (body) => {
+      res.writeHead(200, { 'content-type': 'text/csv; charset=utf-8' });
+      res.end(`﻿${body}`);
+      return true;
+    };
+    if (
+      path === '/api/v1/accounting/journal' ||
+      path === '/api/v1/accounting/journal.csv'
+    ) {
+      const parsed = periodQuerySchema.safeParse(params);
+      if (!parsed.success) return invalid(parsed.error.issues);
+      const to = parsed.data.to ?? today;
+      const from = parsed.data.from ?? `${to.slice(0, 7)}-01`;
+      const entries = moves
+        .filter((m) => m.day >= from && m.day <= to)
+        .sort((a, b) => a.day.localeCompare(b.day))
+        .map(entry);
+      if (path.endsWith('.csv'))
+        return csvFile(
+          `Date;Pièce;Libellé;Compte\r\n${entries
+            .map((e) => [e.day, e.voucher, e.label, e.account.code].join(';'))
+            .join('\r\n')}\r\n`,
+        );
+      return reply(200, {
+        from,
+        to,
+        entries,
+        totals: {
+          receipts: entries.reduce((t, e) => t + e.receipt, 0),
+          expenses: entries.reduce((t, e) => t + e.expense, 0),
+        },
+        truncated: false,
+      });
+    }
+    if (
+      path === '/api/v1/accounting/statement' ||
+      path === '/api/v1/accounting/statement.csv'
+    ) {
+      const year = Number(params.year);
+      if (!Number.isInteger(year) || year < 2000 || `${year}-01-01` > today)
+        return invalid([{ path: 'year', message: 'Année invalide' }]);
+      const from = `${year}-01-01`;
+      const to = `${year}-12-31` < today ? `${year}-12-31` : today;
+      const lines = { receipts: new Map(), expenses: new Map() };
+      for (const m of moves.filter(
+        (x) => x.day >= from && x.day <= to && !x.kind.startsWith('transfer'),
+      )) {
+        const { account } = entry(m);
+        const side =
+          m.kind === 'expense' || (m.kind === 'closing' && m.amount < 0)
+            ? 'expenses'
+            : 'receipts';
+        const line = lines[side].get(account.code) ?? { ...account, amount: 0 };
+        line.amount += side === 'expenses' ? -m.amount : m.amount;
+        lines[side].set(account.code, line);
+      }
+      const receipts = [...lines.receipts.values()];
+      const expenses = [...lines.expenses.values()];
+      const sum = (list) => list.reduce((t, l) => t + l.amount, 0);
+      const balance = (a, until, strict) =>
+        a.openingBalance +
+        moves
+          .filter(
+            (m) =>
+              m.accountId === a.id && (strict ? m.day < until : m.day <= until),
+          )
+          .reduce((t, m) => t + m.amount, 0);
+      const accounts = s.accounts.map((a) => ({
+        id: a.id,
+        name: a.name,
+        code: TREASURY_ACCOUNTS[a.kind].code,
+        start: balance(a, from, true),
+        end: balance(a, to, false),
+      }));
+      const statement = {
+        year,
+        from,
+        to,
+        provisional: to < `${year}-12-31`,
+        receipts,
+        expenses,
+        totals: {
+          receipts: sum(receipts),
+          expenses: sum(expenses),
+          result: sum(receipts) - sum(expenses),
+        },
+        treasury: {
+          accounts,
+          start: accounts.reduce((t, a) => t + a.start, 0),
+          end: accounts.reduce((t, a) => t + a.end, 0),
+        },
+        receivables: receivables(orgId),
+        stock: { value: 0, unvaluedProducts: 0 },
+      };
+      if (path.endsWith('.csv'))
+        return csvFile(`Total des recettes;;${statement.totals.receipts}\r\n`);
+      return reply(200, statement);
+    }
+  }
 
   if (path === '/api/v1/stats/summary') {
     const parsed = periodQuerySchema.safeParse(params);
@@ -712,8 +901,12 @@ export async function handleTreasury(ctx) {
     if (!s.accounts.some((a) => a.id === e.cashAccountId))
       return invalid([{ path: 'cashAccountId', message: 'Caisse inconnue.' }]);
     if (openDay([e.cashAccountId], e.occurredOn)) return true;
+    const year = e.occurredOn.slice(0, 4);
+    s.expenseNumbers[year] = (s.expenseNumbers[year] ?? 0) + 1;
     const expense = {
       id: randomUUID(),
+      number: `DEP-${year}-${String(s.expenseNumbers[year]).padStart(4, '0')}`,
+      receipt: null,
       ...e,
       status: 'recorded',
       cancellation: null,

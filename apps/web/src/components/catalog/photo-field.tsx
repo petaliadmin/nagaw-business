@@ -35,10 +35,15 @@ async function shrink(file: File): Promise<File> {
 export function PhotoField({
   currentUrl,
   error,
+  legend = 'Photo (facultatif)',
+  removable = true,
 }: {
   /** Current photo, on the edit form. */
   currentUrl?: string | null;
   error?: string;
+  legend?: string;
+  /** Offers « Retirer la photo » when there is one. */
+  removable?: boolean;
 }) {
   const inputId = useId();
   const input = useRef<HTMLInputElement>(null);
@@ -76,9 +81,7 @@ export function PhotoField({
   const errorId = error || message ? `${inputId}-error` : undefined;
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="mb-1.5 text-base font-semibold">
-        Photo (facultatif)
-      </legend>
+      <legend className="mb-1.5 text-base font-semibold">{legend}</legend>
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex size-28 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-line-strong bg-surface-muted">
           {preview && !removed ? (
@@ -116,7 +119,7 @@ export function PhotoField({
               className="sr-only"
             />
           </label>
-          {currentUrl && (
+          {currentUrl && removable && (
             <label className="inline-flex min-h-12 items-center gap-3 text-base">
               <input
                 type="checkbox"

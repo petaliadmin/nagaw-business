@@ -3,11 +3,13 @@
 import { amountInputValue, formatAmount, parseAmount } from '@nagaw/shared';
 import { useActionState, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
+import { PhotoField } from '@/components/catalog/photo-field';
 import { FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState, type FormState } from '@/lib/auth/schemas';
 import {
+  attachReceipt,
   cancelExpense,
   createClosing,
   createExpense,
@@ -448,6 +450,44 @@ export function CategoryStatusButton({
       >
         {archived ? 'Reprendre' : 'Ranger'}
       </SubmitButton>
+    </ActionForm>
+  );
+}
+
+export function ReceiptForm({
+  organizationId,
+  expenseId,
+  currentUrl,
+}: {
+  organizationId: string;
+  expenseId: string;
+  currentUrl: string | null;
+}) {
+  const [state, action, pending] = useActionState(
+    attachReceipt,
+    initialFormState,
+  );
+  return (
+    <ActionForm
+      action={action}
+      pending={pending}
+      encType="multipart/form-data"
+      className="flex flex-col gap-3"
+    >
+      <input type="hidden" name="organizationId" value={organizationId} />
+      <input type="hidden" name="expenseId" value={expenseId} />
+      <FormMessage state={state} />
+      <PhotoField
+        legend="Photo du justificatif (reçu, facture du fournisseur)"
+        currentUrl={currentUrl}
+        removable={false}
+        error={state.fieldErrors?.photo}
+      />
+      <div>
+        <SubmitButton pendingLabel="Envoi…">
+          Enregistrer le justificatif
+        </SubmitButton>
+      </div>
     </ActionForm>
   );
 }

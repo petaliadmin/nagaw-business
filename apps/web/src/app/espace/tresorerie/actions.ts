@@ -7,6 +7,8 @@ import {
   createExpenseSchema,
   createTransferSchema,
   parseAmount,
+  PRODUCT_PHOTO_MAX_BYTES,
+  PRODUCT_PHOTO_TYPES,
   updateCashAccountSchema,
   updateExpenseCategorySchema,
   type CashAccountDto,
@@ -234,5 +236,42 @@ export async function setExpenseCategoryStatus(
       result.data.status === 'archived'
         ? `« ${result.data.name} » est rangée.`
         : `« ${result.data.name} » est de nouveau proposée.`,
+  };
+}
+
+/** Receipt photo of an expense, already resized on the device. */
+export async function attachReceipt(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const shop = await shopOf(text(formData, 'organizationId'));
+  if (!shop) return { status: 'error', message: SHOP_CHANGED };
+  const file = formData.get('photo');
+  if (!(file instanceof File) || file.size === 0)
+    return {
+      status: 'error',
+      message: 'Prenez ou choisissez d’abord la photo du justificatif.',
+      fieldErrors: { photo: 'Aucune photo choisie.' },
+    };
+  if (
+    file.size > PRODUCT_PHOTO_MAX_BYTES ||
+    !(PRODUCT_PHOTO_TYPES as readonly string[]).includes(file.type)
+  )
+    return {
+      status: 'error',
+      message: 'Vérifiez la photo.',
+      fieldErrors: { photo: 'Photo trop lourde ou format non pris en charge.' },
+    };
+  const result = await apiAsUser<ExpenseDto>(shop.token, {
+    method: 'PUT',
+    path: `/expenses/${id(formData, 'expenseId')}/receipt`,
+    organizationId: shop.organizationId,
+    rawBody: { data: file, contentType: file.type },
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message: `Justificatif de ${result.data.number} enregistré.`,
   };
 }
