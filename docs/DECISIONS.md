@@ -341,7 +341,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-031 — Garde-fous de stabilisation
 
-- **Statut** : Proposée en Phase 17 (2026-10-25), en attente de validation du propriétaire.
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 17).
 - **Contexte** : avant le pilote, chaque règle de sécurité doit être vérifiée automatiquement, pour qu'une phase future ne puisse pas la casser sans que la CI le voie.
 - **Décision** :
   - **inventaire des routes** : un test d'intégration énumère toutes les routes de l'API depuis le routeur et vérifie que chacune refuse une requête sans session (401) et, pour toute route d'une boutique, une personne qui n'en est pas membre (404) ; les routes d'administration refusent un propriétaire de boutique (403). Les seules exceptions (santé, profil, création de boutique, invitations, offres, comparaison entre boutiques, documentation hors production) sont listées dans le test : une nouvelle route sans contrôle fait échouer la CI ;

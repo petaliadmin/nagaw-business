@@ -574,7 +574,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 17 — Sécurité, tests, stabilisation
 
 - **Objectif** : vérifier automatiquement chaque règle de sécurité avant le pilote, pour qu'aucune phase future ne puisse la casser sans que la CI le voie (ADR-031).
-- **Statut** : livrée sur la branche `claude/phase-17-stabilisation`, **en attente de validation** du propriétaire. **Aucune migration** dans cette phase.
+- **Statut** : **validée** par le propriétaire le 2026-10-25 (ADR-031 acceptée). Aucune migration.
 - **Fonctionnalités terminées** :
   - **inventaire des routes de l'API** : un test énumère les **ROUTES** routes et vérifie 401 sans session, 404 pour un non-membre sur toute route de boutique, 403 pour l'administration ; exceptions listées une à une ;
   - **aucun secret dans le navigateur** : build CI avec des valeurs leurres, puis recherche des leurres et des formes de clés privilégiées (`service_role`, clé secrète Supabase, URL Postgres) dans le JavaScript client et les pages pré-rendues ; exception gitleaks limitée aux leurres ;
@@ -599,7 +599,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - pas encore de CSP sur les scripts (Next.js demanderait des nonces) ;
   - pas de limitation de débit dans l'application (API sans état sur Vercel) ;
   - performance mesurée sur téléphone simulé, pas encore sur un appareil réel d'entrée de gamme (à faire pendant le pilote).
-- **Prochaine action recommandée** : valider la Phase 17 et l'ADR-031, puis Phase 18 (déploiement et pilote avec des boutiques réelles).
+- **Prochaine action recommandée** : Phase 18 (déploiement et pilote).
 
 ## Phase 18
 
