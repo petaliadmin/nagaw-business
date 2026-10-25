@@ -523,7 +523,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 15 — Offres et quotas (sans paiement en ligne)
 
 - **Objectif** : donner à chaque boutique une offre et appliquer ses limites, sans prestataire de paiement tant que le propriétaire ne l'a pas choisi (ADR-029).
-- **Statut** : livrée sur la branche `claude/phase-15-abonnements`, **en attente de validation** du propriétaire. La migration `20261025170000_plans.sql` doit être appliquée sur Supabase avant la fusion ; elle passe les boutiques existantes en Pro.
+- **Statut** : **validée** par le propriétaire le 2026-10-25 (ADR-029 acceptée). Migration `20261025170000_plans.sql` appliquée sur Supabase par le propriétaire le 2026-10-25. Pas de prestataire de paiement pour l’instant (décision du propriétaire).
 - **Fonctionnalités terminées** :
   - migration : offres (Gratuit, Essentiel 5 000 F, Pro 15 000 F, grille choisie par le propriétaire), abonnement par boutique (Gratuit à la création, Pro pour les boutiques existantes), limites de l'offre recopiées dans les plafonds de la boutique par trigger, nouveau plafond de personnes, demandes de changement d'offre jamais supprimées ;
   - contrats partagés : offres, abonnement, demande ; permissions `subscription.read` et `subscription.manage` ;
@@ -543,7 +543,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - **pas de paiement en ligne** : une demande de changement d'offre est traitée à la main par la plateforme (mise à jour de `subscriptions`) jusqu'au choix du prestataire et à l'administration de la plateforme (Phase 16) ;
   - pas de facturation de l'abonnement, d'essai gratuit ni d'offre annuelle ;
   - une boutique existante qui avait plus de 10 téléphones de caisse les garde mais ne peut plus en ajouter.
-- **Prochaine action recommandée** : appliquer la migration sur Supabase, valider la Phase 15 et l'ADR-029 ; choisir le prestataire de paiement ; Phase 16 (administration de la plateforme, où seront traitées les demandes de changement d'offre).
+- **Prochaine action recommandée** : Phase 16 (administration de la plateforme, dont le traitement des demandes de changement d’offre).
 
 ## Phases 16 à 18
 

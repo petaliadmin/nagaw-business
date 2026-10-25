@@ -312,7 +312,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-029 — Offres et quotas, sans prestataire de paiement
 
-- **Statut** : Proposée en Phase 15 (2026-10-25), en attente de validation du propriétaire.
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 15). Pas de prestataire de paiement pour l’instant (décision du propriétaire du 2026-10-25).
 - **Contexte** : le modèle économique repose sur des offres par boutique. Le propriétaire a fixé la grille le 2026-10-25 ; il n'a pas encore choisi de prestataire de paiement (Mobile Money), qui ne doit pas être intégré sans sa décision.
 - **Décision** :
   - **offres en base** (`plans`), modifiables sans déploiement : **Gratuit** (0 F : 50 produits, 2 personnes, 1 téléphone de caisse), **Essentiel** (5 000 F par mois : 500, 5, 3), **Pro** (15 000 F par mois : 5 000, 20, 10). Ventes, factures, trésorerie et comptabilité sont dans toutes les offres ;
