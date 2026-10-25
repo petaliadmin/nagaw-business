@@ -129,6 +129,8 @@ export interface MeDto {
   locale: string;
   timezone: string;
   organizations: OrganizationWithRoleDto[];
+  /** Administrator of the platform (ADR-030). */
+  platformAdmin: boolean;
 }
 
 export interface AuditLogDto {

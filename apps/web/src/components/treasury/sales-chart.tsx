@@ -1,4 +1,5 @@
 import { formatAmount } from '@nagaw/shared';
+import { ScrollRegion } from '@/components/ui/scroll-region';
 
 interface Point {
   key: string;
@@ -121,7 +122,10 @@ export function SalesChart({
         <summary className="flex min-h-12 cursor-pointer items-center font-semibold text-brand-ink underline underline-offset-4">
           Voir les chiffres en tableau
         </summary>
-        <div className="mt-2 overflow-x-auto">
+        <ScrollRegion
+          label="Chiffre d’affaires et nombre de ventes"
+          className="mt-2"
+        >
           <table className="w-full text-left">
             <caption className="sr-only">
               Chiffre d’affaires et nombre de ventes
@@ -153,7 +157,7 @@ export function SalesChart({
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       </details>
     </figure>
   );

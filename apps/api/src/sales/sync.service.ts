@@ -47,6 +47,11 @@ export class SyncService {
       .executeTakeFirstOrThrow();
 
     const results: SyncResultDto[] = [];
+    const rejections: {
+      operation: SyncOperation;
+      code: string;
+      message: string;
+    }[] = [];
     for (const operation of request.operations) {
       try {
         results.push(
@@ -67,10 +72,52 @@ export class SyncService {
           status: 'rejected',
           error: { code, message },
         });
+        rejections.push({ operation, code, message });
       }
     }
+    await this.record(tenant, user, request.deviceId, results, rejections);
     await this.devices.touch(tenant.organizationId, request.deviceId);
     return { results };
+  }
+
+  /** What the batch brought, for the platform's metrics (ADR-030). */
+  private async record(
+    tenant: TenantContext,
+    user: AuthContext,
+    deviceId: string,
+    results: SyncResultDto[],
+    rejections: { operation: SyncOperation; code: string; message: string }[],
+  ): Promise<void> {
+    const count = (status: SyncResultDto['status']) =>
+      results.filter((r) => r.status === status).length;
+    await this.database.db.transaction().execute(async (trx) => {
+      const { id } = await trx
+        .insertInto('app.sync_batches')
+        .values({
+          organization_id: tenant.organizationId,
+          device_id: deviceId,
+          user_id: user.userId,
+          accepted: count('accepted'),
+          duplicates: count('duplicate'),
+          rejected: count('rejected'),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      if (rejections.length > 0)
+        await trx
+          .insertInto('app.sync_rejections')
+          .values(
+            rejections.map(({ operation, code, message }) => ({
+              organization_id: tenant.organizationId,
+              batch_id: id,
+              client_operation_id: operation.clientOperationId,
+              operation_type: operation.type,
+              code: code.slice(0, 60),
+              message: message.slice(0, 500),
+            })),
+          )
+          .execute();
+    });
   }
 
   private async applyOne(

@@ -19,6 +19,7 @@ import { apiAsUser } from '@/lib/api/server';
 import { formatCalendarDate, todayIn } from '@/lib/format';
 import { resolvePeriod } from '@/lib/treasury/period';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { ScrollRegion } from '@/components/ui/scroll-region';
 
 export const metadata: Metadata = { title: 'Comptabilité — Nagaw Business' };
 
@@ -259,7 +260,7 @@ async function Statement({
             </div>
           </Card>
           <Card title="Trésorerie et biens" titleId="balance" icon={Landmark}>
-            <div className="overflow-x-auto">
+            <ScrollRegion label="Trésorerie au début et à la fin de l’exercice">
               <table className="w-full text-left">
                 <caption className="sr-only">
                   Trésorerie au début et à la fin de l’exercice
@@ -309,7 +310,7 @@ async function Statement({
                   </tr>
                 </tfoot>
               </table>
-            </div>
+            </ScrollRegion>
             <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Stat
                 label="Crédit des clients"

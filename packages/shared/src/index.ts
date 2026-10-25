@@ -1,4 +1,5 @@
 export * from './accounting.js';
+export * from './admin.js';
 export * from './api-error.js';
 export * from './catalog.js';
 export * from './documents.js';

@@ -53,6 +53,8 @@ export interface OrganizationsTable {
   max_devices: Generated<number>;
   max_expense_categories: Generated<number>;
   max_members: Generated<number>;
+  suspended_at: NullableTimestamp;
+  suspension_reason: string | null;
   next_device_number: Generated<number>;
   legal_name: Generated<string>;
   address: Generated<string>;
@@ -479,11 +481,48 @@ export interface PlanChangeRequestsTable {
   id: Generated<string>;
   organization_id: string;
   plan_key: string;
-  status: Generated<'pending' | 'cancelled' | 'done'>;
+  status: Generated<'pending' | 'cancelled' | 'done' | 'rejected'>;
   requested_by: string;
   created_at: ColumnType<Date, never, never>;
   resolved_at: NullableTimestamp;
   resolved_by: string | null;
+  resolution_note: Generated<string>;
+}
+
+export interface PlatformAdminsTable {
+  user_id: string;
+  note: Generated<string>;
+  created_at: ColumnType<Date, never, never>;
+}
+
+export interface PlatformSettingsTable {
+  id: Generated<boolean>;
+  rejection_alert_basis_points: number;
+  quota_alert_basis_points: number;
+  silent_device_days: number;
+  updated_at: ColumnType<Date, never, never>;
+}
+
+export interface SyncBatchesTable {
+  id: Generated<string>;
+  organization_id: string;
+  device_id: string;
+  user_id: string;
+  accepted: number;
+  duplicates: number;
+  rejected: number;
+  received_at: ColumnType<Date, never, never>;
+}
+
+export interface SyncRejectionsTable {
+  id: Generated<string>;
+  organization_id: string;
+  batch_id: string;
+  client_operation_id: string;
+  operation_type: 'sale' | 'customer';
+  code: string;
+  message: string;
+  created_at: ColumnType<Date, never, never>;
 }
 
 export interface Database {
@@ -517,4 +556,8 @@ export interface Database {
   'app.plans': PlansTable;
   'app.subscriptions': SubscriptionsTable;
   'app.plan_change_requests': PlanChangeRequestsTable;
+  'app.platform_admins': PlatformAdminsTable;
+  'app.platform_settings': PlatformSettingsTable;
+  'app.sync_batches': SyncBatchesTable;
+  'app.sync_rejections': SyncRejectionsTable;
 }

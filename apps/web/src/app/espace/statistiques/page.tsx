@@ -21,6 +21,7 @@ import { formatCalendarDate, todayIn } from '@/lib/format';
 import { PAYMENT_LABELS } from '@/lib/sales/labels';
 import { resolvePeriod } from '@/lib/treasury/period';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { ScrollRegion } from '@/components/ui/scroll-region';
 
 export const metadata: Metadata = { title: 'Statistiques — Nagaw Business' };
 
@@ -226,7 +227,7 @@ async function Statistics({ searchParams }: PageProps<'/espace/statistiques'>) {
               Aucune autre boutique dont vous voyez les chiffres.
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollRegion label="Ventes de vos boutiques">
               <table className="w-full text-left">
                 <caption className="sr-only">Ventes de vos boutiques</caption>
                 <thead>
@@ -272,7 +273,7 @@ async function Statistics({ searchParams }: PageProps<'/espace/statistiques'>) {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
           )}
         </Card>
       )}
