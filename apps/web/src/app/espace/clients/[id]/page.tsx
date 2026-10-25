@@ -3,12 +3,20 @@ import {
   roleHasPermission,
   type CustomerDetailDto,
 } from '@nagaw/shared';
-import { HandCoins, History, Pencil, Phone } from 'lucide-react';
+import {
+  FilePlus2,
+  FileText,
+  HandCoins,
+  History,
+  Pencil,
+  Phone,
+} from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
+import { ButtonLink } from '@/components/ui/button-link';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -38,19 +46,40 @@ async function Customer({ params }: PageProps<'/espace/clients/[id]'>) {
   const currency = organization.defaultCurrency;
   const money = (value: number) => formatAmount(value, currency);
   const canManage = roleHasPermission(organization.role, 'customers.manage');
+  const canDocument = roleHasPermission(organization.role, 'documents.manage');
 
   return (
     <>
       <PageHeader title={c.name} description={c.notes || undefined} />
-      {c.phone && (
+      {(c.phone || canDocument) && (
         <div className="flex flex-wrap gap-3">
-          <a
-            href={`tel:${c.phone.replace(/\s/g, '')}`}
-            className={buttonClasses('secondary')}
-          >
-            <Phone aria-hidden className="size-5" />
-            Appeler le {c.phone}
-          </a>
+          {c.phone && (
+            <a
+              href={`tel:${c.phone.replace(/\s/g, '')}`}
+              className={buttonClasses('secondary')}
+            >
+              <Phone aria-hidden className="size-5" />
+              Appeler le {c.phone}
+            </a>
+          )}
+          {canDocument && (
+            <>
+              <ButtonLink
+                href={`/espace/factures/nouvelle?client=${c.id}`}
+                variant="secondary"
+              >
+                <FilePlus2 aria-hidden className="size-5" />
+                Faire une facture
+              </ButtonLink>
+              <ButtonLink
+                href={`/espace/factures/devis/nouveau?client=${c.id}`}
+                variant="secondary"
+              >
+                <FileText aria-hidden className="size-5" />
+                Faire un devis
+              </ButtonLink>
+            </>
+          )}
         </div>
       )}
 

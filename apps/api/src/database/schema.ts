@@ -1,5 +1,9 @@
 import type {
   CategoryColor,
+  DocumentLine,
+  InvoicePaymentMethod,
+  InvoiceStatus,
+  QuoteStatus,
   MobileMoneyProvider,
   PaymentMethod,
   ProductPhotoType,
@@ -48,6 +52,15 @@ export interface OrganizationsTable {
   max_offline_days: Generated<number>;
   max_devices: Generated<number>;
   next_device_number: Generated<number>;
+  legal_name: Generated<string>;
+  address: Generated<string>;
+  phone: Generated<string>;
+  email: Generated<string>;
+  tax_id: Generated<string>;
+  trade_register: Generated<string>;
+  invoice_footer: Generated<string>;
+  invoice_due_days: Generated<number>;
+  quote_validity_days: Generated<number>;
   created_by: string;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -191,6 +204,9 @@ export interface CustomersTable {
   name: string;
   phone: Generated<string>;
   notes: Generated<string>;
+  email: Generated<string>;
+  address: Generated<string>;
+  tax_id: Generated<string>;
   credit_limit: NullableNumeric;
   status: CatalogStatus;
   client_operation_id: string;
@@ -275,6 +291,86 @@ export interface CustomerPaymentsTable {
   created_at: ColumnType<Date, never, never>;
 }
 
+// Dates are read back as text (no time-zone shift on calendar dates).
+type CalendarDate = ColumnType<string, string, string>;
+type NullableCalendarDate = ColumnType<
+  string | null,
+  string | null | undefined,
+  string | null
+>;
+type Json<T> = ColumnType<T, string, string>;
+
+export interface DocumentSequencesTable {
+  organization_id: string;
+  kind: 'quote' | 'invoice' | 'credit_note';
+  year: number;
+  next_number: Generated<number>;
+}
+
+export interface QuotesTable {
+  id: Generated<string>;
+  organization_id: string;
+  number: string;
+  customer_id: string;
+  status: Generated<QuoteStatus>;
+  issue_date: CalendarDate;
+  valid_until: CalendarDate;
+  lines: Json<DocumentLine[]>;
+  notes: Generated<string>;
+  subtotal: Numeric;
+  discount: Numeric;
+  total: Numeric;
+  tax_total: Numeric;
+  client_operation_id: string;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface InvoicesTable {
+  id: Generated<string>;
+  organization_id: string;
+  kind: Generated<'invoice' | 'credit_note'>;
+  number: string | null;
+  status: Generated<InvoiceStatus>;
+  customer_id: string;
+  quote_id: string | null;
+  sale_id: string | null;
+  credit_for_id: string | null;
+  issue_date: NullableCalendarDate;
+  due_date: NullableCalendarDate;
+  lines: Json<DocumentLine[]>;
+  notes: Generated<string>;
+  subtotal: Numeric;
+  discount: Numeric;
+  total: Numeric;
+  tax_total: Numeric;
+  issued_at: NullableTimestamp;
+  issued_by: string | null;
+  cancelled_at: NullableTimestamp;
+  cancelled_by: string | null;
+  cancel_reason: string | null;
+  client_operation_id: string;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface InvoicePaymentsTable {
+  id: Generated<string>;
+  organization_id: string;
+  invoice_id: string;
+  method: InvoicePaymentMethod;
+  provider: MobileMoneyProvider | null;
+  reference: string | null;
+  amount: Numeric;
+  paid_on: CalendarDate;
+  from_sale: Generated<boolean>;
+  client_operation_id: string;
+  created_by: string;
+  created_at: ColumnType<Date, never, never>;
+}
+
 export interface Database {
   'app.user_profiles': UserProfilesTable;
   'app.organizations': OrganizationsTable;
@@ -293,4 +389,8 @@ export interface Database {
   'app.sale_payments': SalePaymentsTable;
   'app.customer_payments': CustomerPaymentsTable;
   'app.devices': DevicesTable;
+  'app.document_sequences': DocumentSequencesTable;
+  'app.quotes': QuotesTable;
+  'app.invoices': InvoicesTable;
+  'app.invoice_payments': InvoicePaymentsTable;
 }

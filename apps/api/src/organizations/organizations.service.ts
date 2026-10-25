@@ -111,40 +111,23 @@ export class OrganizationsService {
         .forUpdate()
         .executeTakeFirstOrThrow();
 
+      const set: Record<string, string | number> = {};
+      for (const [field, column] of Object.entries(UPDATABLE)) {
+        const value = input[field as keyof UpdateOrganizationInput];
+        if (value !== undefined) set[column] = value;
+      }
       const updated = await trx
         .updateTable('app.organizations')
-        .set({
-          ...(input.name !== undefined && { name: input.name }),
-          ...(input.timezone !== undefined && { timezone: input.timezone }),
-          ...(input.defaultCurrency !== undefined && {
-            default_currency: input.defaultCurrency,
-          }),
-          ...(input.invitationTtlHours !== undefined && {
-            invitation_ttl_hours: input.invitationTtlHours,
-          }),
-        })
+        .set(set)
         .where('id', '=', organizationId)
         .returningAll()
         .executeTakeFirstOrThrow();
 
       const changes: Record<string, { from: unknown; to: unknown }> = {};
-      if (before.name !== updated.name) {
-        changes.name = { from: before.name, to: updated.name };
-      }
-      if (before.timezone !== updated.timezone) {
-        changes.timezone = { from: before.timezone, to: updated.timezone };
-      }
-      if (before.default_currency !== updated.default_currency) {
-        changes.defaultCurrency = {
-          from: before.default_currency,
-          to: updated.default_currency,
-        };
-      }
-      if (before.invitation_ttl_hours !== updated.invitation_ttl_hours) {
-        changes.invitationTtlHours = {
-          from: before.invitation_ttl_hours,
-          to: updated.invitation_ttl_hours,
-        };
+      for (const [field, column] of Object.entries(UPDATABLE)) {
+        const from = before[column];
+        const to = updated[column];
+        if (from !== to) changes[field] = { from, to };
       }
 
       await this.audit.record(trx, {
@@ -203,6 +186,25 @@ export class OrganizationsService {
   }
 }
 
+/** API field → column, for the settings an owner may change. */
+const UPDATABLE = {
+  name: 'name',
+  timezone: 'timezone',
+  defaultCurrency: 'default_currency',
+  invitationTtlHours: 'invitation_ttl_hours',
+  legalName: 'legal_name',
+  address: 'address',
+  phone: 'phone',
+  email: 'email',
+  taxId: 'tax_id',
+  tradeRegister: 'trade_register',
+  invoiceFooter: 'invoice_footer',
+  invoiceDueDays: 'invoice_due_days',
+  quoteValidityDays: 'quote_validity_days',
+} as const satisfies Partial<
+  Record<keyof UpdateOrganizationInput, keyof OrganizationsTable>
+>;
+
 function toOrganizationDto(
   row: Selectable<OrganizationsTable>,
 ): OrganizationDto {
@@ -214,6 +216,15 @@ function toOrganizationDto(
     timezone: row.timezone,
     defaultCurrency: row.default_currency,
     invitationTtlHours: row.invitation_ttl_hours,
+    legalName: row.legal_name,
+    address: row.address,
+    phone: row.phone,
+    email: row.email,
+    taxId: row.tax_id,
+    tradeRegister: row.trade_register,
+    invoiceFooter: row.invoice_footer,
+    invoiceDueDays: row.invoice_due_days,
+    quoteValidityDays: row.quote_validity_days,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };

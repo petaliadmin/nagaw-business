@@ -1,5 +1,6 @@
 export * from './api-error.js';
 export * from './catalog.js';
+export * from './documents.js';
 export * from './health.js';
 export * from './members.js';
 export * from './money.js';

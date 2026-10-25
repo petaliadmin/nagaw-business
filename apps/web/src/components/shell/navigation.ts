@@ -1,5 +1,7 @@
+import { roleHasPermission, type Permission, type Role } from '@nagaw/shared';
 import {
   Contact,
+  FileText,
   House,
   Package,
   Receipt,
@@ -16,6 +18,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** Shown in the phone bottom bar; the others live under « Plus ». */
   bottomBar: boolean;
+  /** Hidden from the roles without it (the API refuses them anyway). */
+  permission?: Permission;
 }
 
 /**
@@ -41,6 +45,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   { href: '/espace/ventes', label: 'Ventes', icon: Receipt, bottomBar: false },
   {
+    href: '/espace/factures',
+    label: 'Factures',
+    icon: FileText,
+    bottomBar: false,
+    permission: 'documents.read',
+  },
+  {
     href: '/espace/clients',
     label: 'Clients',
     icon: Contact,
@@ -60,6 +71,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
     bottomBar: false,
   },
 ];
+
+/** Entries the role may open. */
+export function navItemsFor(role: Role): NavItem[] {
+  return NAV_ITEMS.filter(
+    (item) => !item.permission || roleHasPermission(role, item.permission),
+  );
+}
 
 /** Exact match for the overview, prefix match for sections. */
 export function isActive(href: string, pathname: string): boolean {

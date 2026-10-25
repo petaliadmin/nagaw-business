@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NAV_ITEMS, isActive } from './navigation';
+import { NAV_ITEMS, isActive, navItemsFor } from './navigation';
 
 describe('navigation', () => {
   it('marks only the overview on /espace', () => {
@@ -18,6 +18,15 @@ describe('navigation', () => {
     const bottom = NAV_ITEMS.filter((item) => item.bottomBar);
     expect(bottom.length).toBeLessThanOrEqual(3);
     expect(bottom[0]?.href).toBe('/espace');
+  });
+
+  it('hides the invoices from the sellers, who may not open them', () => {
+    const hrefs = (role: 'owner' | 'member' | 'viewer') =>
+      navItemsFor(role).map((item) => item.href);
+    expect(hrefs('owner')).toContain('/espace/factures');
+    expect(hrefs('viewer')).toContain('/espace/factures');
+    expect(hrefs('member')).not.toContain('/espace/factures');
+    expect(hrefs('member')).toContain('/caisse');
   });
 
   it('only links to pages of the space, and to the offline checkout', () => {

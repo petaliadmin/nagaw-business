@@ -72,6 +72,32 @@ export function CustomerForm({
           error={errors.phone}
         />
         <FormField
+          label="E-mail (facultatif)"
+          name="email"
+          id={`${prefix}email`}
+          type="email"
+          inputMode="email"
+          defaultValue={customer?.email}
+          maxLength={320}
+          error={errors.email}
+        />
+        <FormField
+          label="Adresse, pour les factures (facultatif)"
+          name="address"
+          id={`${prefix}address`}
+          defaultValue={customer?.address}
+          maxLength={300}
+          error={errors.address}
+        />
+        <FormField
+          label="NINEA, pour les entreprises (facultatif)"
+          name="taxId"
+          id={`${prefix}taxId`}
+          defaultValue={customer?.taxId}
+          maxLength={40}
+          error={errors.taxId}
+        />
+        <FormField
           label={`Crédit maximum (${currencySymbol(currency)}, facultatif)`}
           name="creditLimit"
           id={`${prefix}creditLimit`}

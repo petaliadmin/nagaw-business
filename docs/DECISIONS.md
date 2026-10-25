@@ -260,3 +260,21 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **envoi automatique** : à l'ouverture, au retour du réseau et toutes les 30 secondes tant que des ventes attendent ; un bandeau indique en permanence ce qui attend ou a été refusé ;
   - **déconnexion** : la base locale est effacée ; s'il reste des ventes non envoyées, la personne est prévenue qu'elles seraient perdues et peut annuler.
 - **Limites** : les entrées, pertes et inventaires de stock restent en ligne ; les fiches et listes de l'espace (hors caisse) demandent le réseau ; une session expirée doit être renouvelée pour envoyer (les ventes attendent sans risque).
+
+## ADR-026 — Factures, devis et avoirs
+
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 12).
+- **Contexte** : une boutique doit remettre des devis et des factures conformes (numéro unique et continu, identité du vendeur et du client, HT / TVA / TTC) et ne jamais pouvoir réécrire une facture déjà remise.
+- **Décision** :
+  - **numérotation par le serveur seul**, par boutique, type et année : `D-2026-0001` (devis, dès la création), `F-2026-0001` (facture, **à l'émission**), `A-2026-0001` (avoir). Le compteur `document_sequences` est verrouillé pendant l'attribution : ni trou ni doublon, même avec deux gérants en même temps ;
+  - **facture en deux temps** : un **brouillon** sans numéro se modifie librement ; une fois **émise**, la facture reçoit son numéro, sa date et son échéance, et **ne change plus** (trigger en base, même pour un accès SQL direct) ;
+  - **annulation par un avoir** du même montant, numéroté, lié à la facture ; une facture qui a déjà reçu des paiements ne s'annule pas (rembourser d'abord) ; un seul avoir par facture ;
+  - **lignes en JSON validé** sur le document (`lines jsonb`, schéma partagé `documentLineSchema`) plutôt qu'en tables de lignes : les lignes sont figées avec le document et un brouillon se réécrit sans droit de suppression (ADR-013) ; lignes du catalogue (produit vérifié de la boutique) ou libres (service) ;
+  - **prix TTC** comme à la caisse (ADR-024) et **même calcul partagé** (`computeDocumentTotals` sur `computeSaleTotals`), avec la TVA détaillée par taux et le total HT ;
+  - **paiements partiels** en ajout seul (espèces, Mobile Money avec opérateur, carte, virement, chèque), jamais au-delà du reste à payer, idempotents (`clientOperationId`) ; l'état « à payer / payée en partie / payée / en retard » est **calculé**, jamais stocké ;
+  - **devis** : brouillon → envoyé → accepté ou refusé ; modifiable seulement en brouillon ; « expiré » calculé après la date de validité ; un devis accepté donne **une** facture brouillon qui reprend ses lignes ;
+  - **facture d'une vente** payée en caisse (pas à crédit) : brouillon reprenant les lignes du ticket, au nom du client de la vente ou d'un client choisi ; à l'émission, les paiements de la vente y sont recopiés, marqués « réglé en caisse » (`from_sale`) pour ne jamais être comptés deux fois en trésorerie (Phase 13) ; une vente n'a qu'une facture non annulée ;
+  - **PDF généré par l'API** (`pdf-lib`, sans navigateur ni service externe), A4, police standard : identité de la boutique (raison sociale, adresse, téléphone, NINEA, RCCM, mention de bas de page), client, lignes, HT / TVA / TTC, paiements et reste à payer, mention « ACQUITTÉE » ou « ANNULÉE ». Le web le relaie avec le jeton de la personne ; il se partage par la feuille de partage du téléphone (WhatsApp, e-mail) ;
+  - **réglages en base** : identité légale, délai de paiement (`invoice_due_days`, 30 jours par défaut) et validité des devis (`quote_validity_days`, 30 jours) dans `organizations`, modifiables dans Paramètres ;
+  - **droits** : propriétaire et gérants font les documents (`documents.manage`) ; le lecteur les consulte (`documents.read`) ; un vendeur n'y a pas accès (le menu ne les montre pas).
+- **Limites** : pas de logo sur le PDF ; pas d'envoi d'e-mail par le serveur (partage par le téléphone) ; avoir uniquement total (pas d'avoir partiel) ; pas de facture d'acompte ; documents en ligne uniquement (pas de création hors ligne).

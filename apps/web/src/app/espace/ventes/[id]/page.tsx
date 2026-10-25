@@ -2,9 +2,10 @@ import {
   formatAmount,
   formatRate,
   roleHasPermission,
+  type CustomerDto,
   type SaleDto,
 } from '@nagaw/shared';
-import { MessageCircle, ShoppingCart, Undo2 } from 'lucide-react';
+import { FileText, MessageCircle, ShoppingCart, Undo2 } from 'lucide-react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
@@ -19,6 +20,7 @@ import { formatDateTime } from '@/lib/format';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 import { ticketLabel, ticketText, whatsappLink } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { InvoiceFromSaleForm } from '../../factures/document-actions';
 import { CancelSaleForm, PrintButton } from './ticket-actions';
 
 export const metadata: Metadata = { title: 'Vente — Nagaw Business' };
@@ -65,6 +67,18 @@ async function Sale({
   const canCancel =
     s.status === 'completed' &&
     roleHasPermission(organization.role, 'sales.cancel');
+  // A sale paid at the counter can get an invoice (ADR-026); on credit, not.
+  const canInvoice =
+    s.status === 'completed' &&
+    !s.payments.some((p) => p.method === 'credit') &&
+    roleHasPermission(organization.role, 'documents.manage');
+  const customers =
+    canInvoice && !s.customer
+      ? await apiAsUser<CustomerDto[]>(accessToken, {
+          path: '/customers',
+          organizationId: organization.id,
+        })
+      : null;
   const share = ticketText(s, {
     name: organization.name,
     currency,
@@ -189,6 +203,38 @@ async function Sale({
         téléphone ou de votre ordinateur ; l’impression Bluetooth directe sera
         ajoutée après les essais sur vos imprimantes.
       </p>
+
+      {canInvoice && (
+        <div className="print:hidden">
+          <Card
+            title="Facture de cette vente"
+            titleId="sale-invoice"
+            icon={FileText}
+          >
+            <p className="mb-4 text-ink-muted">
+              Pour un client qui demande une facture : elle reprend les articles
+              du ticket et sera marquée payée.
+            </p>
+            {customers && !customers.ok ? (
+              <Alert tone="error">
+                Clients indisponibles : {customers.message}
+              </Alert>
+            ) : (
+              <InvoiceFromSaleForm
+                organizationId={organization.id}
+                saleId={s.id}
+                customers={
+                  customers
+                    ? customers.data
+                        .filter((c) => c.status === 'active')
+                        .map((c) => ({ id: c.id, name: c.name }))
+                    : null
+                }
+              />
+            )}
+          </Card>
+        </div>
+      )}
 
       {canCancel && (
         <div className="print:hidden">

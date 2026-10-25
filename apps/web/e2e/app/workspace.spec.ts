@@ -128,12 +128,10 @@ test('owner updates the shop settings', async ({ page, context, baseURL }) => {
   await page.goto('/espace/parametres');
   await page.getByLabel('Nom de la boutique').fill('Acme Dakar SA');
   await page.getByLabel('Fuseau horaire').selectOption('Africa/Abidjan');
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  const shop = page.getByRole('region', { name: 'Boutique' });
+  await shop.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(
-    page
-      .getByRole('main')
-      .getByRole('status')
-      .filter({ hasText: 'Paramètres enregistrés.' }),
+    shop.getByRole('status').filter({ hasText: 'Paramètres enregistrés.' }),
   ).toBeVisible();
 
   await page.goto('/espace');
@@ -155,7 +153,10 @@ test('settings validate input before calling the API', async ({
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/parametres');
   await page.getByLabel('Nom de la boutique').fill('A');
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await page
+    .getByRole('region', { name: 'Boutique' })
+    .getByRole('button', { name: 'Enregistrer' })
+    .click();
   await expect(
     page.getByText('Le nom doit contenir au moins 2 caractères'),
   ).toBeVisible();
@@ -333,6 +334,8 @@ for (const path of [
   '/espace/ventes',
   '/espace/clients',
   '/espace/clients/eeeeeeee-0000-4000-8000-000000000001',
+  '/espace/factures',
+  '/espace/factures/nouvelle',
 ]) {
   test(`${path} never overflows horizontally`, async ({
     page,

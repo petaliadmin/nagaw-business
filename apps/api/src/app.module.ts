@@ -9,6 +9,7 @@ import { AuthGuard } from './auth/auth.guard.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { DatabaseModule } from './database/database.module.js';
+import { DocumentsModule } from './documents/documents.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MeModule } from './me/me.module.js';
 import { MembersModule } from './members/members.module.js';
@@ -34,6 +35,7 @@ import { TenantGuard } from './tenancy/tenant.guard.js';
     MembersModule,
     CatalogModule,
     SalesModule,
+    DocumentsModule,
   ],
   providers: [
     // Order matters: authenticate first, then resolve the tenant.

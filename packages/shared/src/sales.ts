@@ -272,12 +272,23 @@ const customerName = z
   .max(120, '120 caractères au plus');
 const phone = z.string().trim().max(30, '30 caractères au plus');
 const notes = z.string().trim().max(1000, '1000 caractères au plus');
+const email = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .pipe(z.union([z.literal(''), z.email('Adresse e-mail invalide').max(320)]));
+const address = z.string().trim().max(300, '300 caractères au plus');
+/** NINEA or other tax number, for invoices to businesses. */
+const taxId = z.string().trim().max(40, '40 caractères au plus');
 
 export const createCustomerSchema = z
   .object({
     name: customerName,
     phone: phone.default(''),
     notes: notes.default(''),
+    email: email.default(''),
+    address: address.default(''),
+    taxId: taxId.default(''),
     creditLimit: amountSchema.nullable().default(null),
     clientOperationId: uuid,
   })
@@ -289,6 +300,9 @@ export const updateCustomerSchema = z
     name: customerName.optional(),
     phone: phone.optional(),
     notes: notes.optional(),
+    email: email.optional(),
+    address: address.optional(),
+    taxId: taxId.optional(),
     creditLimit: amountSchema.nullable().optional(),
     status: z.enum(['active', 'archived']).optional(),
   })
@@ -320,6 +334,9 @@ export interface CustomerDto {
   name: string;
   phone: string;
   notes: string;
+  email: string;
+  address: string;
+  taxId: string;
   creditLimit: number | null;
   /** What the customer owes: credit of completed sales minus repayments. */
   balance: number;

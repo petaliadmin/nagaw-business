@@ -2,21 +2,26 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { NAV_ITEMS, isActive } from './navigation';
+import type { Role } from '@nagaw/shared';
+import { isActive, navItemsFor } from './navigation';
 
 /**
  * Vertical links: the brand-colored sidebar (tablet and desktop), or the
  * « Plus » sheet on phones (`only="secondary"`: entries not in the bottom bar).
  */
 export function NavLinks({
+  role,
   only = 'all',
   tone = 'sidebar',
 }: {
+  role: Role;
   only?: 'all' | 'secondary';
   tone?: 'sidebar' | 'sheet';
 }) {
   const pathname = usePathname();
-  const items = NAV_ITEMS.filter((item) => only === 'all' || !item.bottomBar);
+  const items = navItemsFor(role).filter(
+    (item) => only === 'all' || !item.bottomBar,
+  );
   const styles =
     tone === 'sidebar'
       ? {
@@ -53,12 +58,13 @@ export function NavLinks({
 }
 
 /** Bottom tab bar entries (phones). */
-export function BottomNavLinks() {
+export function BottomNavLinks({ role }: { role: Role }) {
   const pathname = usePathname();
   return (
     <>
-      {NAV_ITEMS.filter((item) => item.bottomBar).map(
-        ({ href, label, icon: Icon }) => {
+      {navItemsFor(role)
+        .filter((item) => item.bottomBar)
+        .map(({ href, label, icon: Icon }) => {
           const active = isActive(href, pathname);
           return (
             <li key={href} className="flex-1">
@@ -80,8 +86,7 @@ export function BottomNavLinks() {
               </Link>
             </li>
           );
-        },
-      )}
+        })}
     </>
   );
 }

@@ -211,6 +211,9 @@ export async function addLocalCustomer(
         data: {
           name: customer.name,
           phone: customer.phone,
+          email: '',
+          address: '',
+          taxId: '',
           notes: '',
           creditLimit: null,
         },
