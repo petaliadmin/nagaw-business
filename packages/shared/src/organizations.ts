@@ -39,6 +39,15 @@ export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 /** Bounds mirror the database check constraint. */
 export const INVITATION_TTL_HOURS = { min: 1, max: 720 } as const;
 
+const text = (max: number) =>
+  z.string().trim().max(max, `${max} caractères au plus`);
+const days = (min: number, max: number) =>
+  z.coerce
+    .number()
+    .int('Nombre de jours entier attendu')
+    .min(min, `Au moins ${min} jour${min > 1 ? 's' : ''}`)
+    .max(max, `Au plus ${max} jours`);
+
 export const updateOrganizationSchema = z
   .object({
     name: nameSchema.optional(),
@@ -53,6 +62,23 @@ export const updateOrganizationSchema = z
       .min(INVITATION_TTL_HOURS.min, 'Au moins 1 heure')
       .max(INVITATION_TTL_HOURS.max, 'Au plus 720 heures (30 jours)')
       .optional(),
+    // Printed on quotes and invoices (ADR-026).
+    legalName: text(160).optional(),
+    address: text(300).optional(),
+    phone: text(30).optional(),
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .pipe(
+        z.union([z.literal(''), z.email('Adresse e-mail invalide').max(320)]),
+      )
+      .optional(),
+    taxId: text(40).optional(),
+    tradeRegister: text(60).optional(),
+    invoiceFooter: text(500).optional(),
+    invoiceDueDays: days(0, 365).optional(),
+    quoteValidityDays: days(1, 365).optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {
@@ -69,6 +95,16 @@ export interface OrganizationDto {
   defaultCurrency: string;
   /** Lifetime of new invitations. */
   invitationTtlHours: number;
+  /** Identity printed on documents (ADR-026). */
+  legalName: string;
+  address: string;
+  phone: string;
+  email: string;
+  taxId: string;
+  tradeRegister: string;
+  invoiceFooter: string;
+  invoiceDueDays: number;
+  quoteValidityDays: number;
   createdAt: string;
   updatedAt: string;
 }

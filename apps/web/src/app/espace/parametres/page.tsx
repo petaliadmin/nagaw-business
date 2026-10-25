@@ -5,7 +5,7 @@ import {
   type OrganizationDto,
   type TaxRateDto,
 } from '@nagaw/shared';
-import { Smartphone, Store, UserRound } from 'lucide-react';
+import { FileText, Smartphone, Store, UserRound } from 'lucide-react';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
@@ -16,6 +16,7 @@ import { apiAsUser } from '@/lib/api/server';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { ReferenceList } from '../produits/reference-page';
 import { RevokeDeviceButton } from './device-actions';
+import { InvoiceSettingsForm } from './invoice-settings-form';
 import { currencyOptions, timeZoneOptions } from './options';
 import { OrganizationSettingsForm } from './organization-settings-form';
 
@@ -84,6 +85,36 @@ async function Settings() {
           </div>
         )}
       </Card>
+      {organization.ok && roleHasPermission(active.role, 'documents.read') && (
+        <Card
+          title="Factures et devis"
+          titleId="invoice-settings"
+          icon={FileText}
+        >
+          <p className="mb-4 text-ink-muted">
+            Ces informations sont imprimées sur vos factures et vos devis.
+          </p>
+          {canUpdate ? (
+            <InvoiceSettingsForm organization={organization.data} />
+          ) : (
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Stat
+                label="Raison sociale"
+                value={organization.data.legalName || organization.data.name}
+              />
+              <Stat label="NINEA" value={organization.data.taxId || '—'} />
+              <Stat
+                label="Délai de paiement"
+                value={`${organization.data.invoiceDueDays} jours`}
+              />
+              <Stat
+                label="Validité des devis"
+                value={`${organization.data.quoteValidityDays} jours`}
+              />
+            </dl>
+          )}
+        </Card>
+      )}
       {devices && (
         <Card title="Appareils de vente" titleId="devices" icon={Smartphone}>
           {!devices.ok ? (

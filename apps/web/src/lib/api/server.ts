@@ -44,7 +44,7 @@ export async function apiAsUser<T>(
 }
 
 /**
- * Binary GET (product photo) on behalf of the user. Errors are reduced to
+ * Binary GET (product photo, document PDF) on behalf of the user. Errors are reduced to
  * their HTTP status: the caller only needs to know whether it can show it.
  */
 export async function fetchBinaryAsUser(
@@ -77,7 +77,7 @@ export async function fetchBinaryAsUser(
         response.headers.get('content-type') ?? 'application/octet-stream',
     };
   } catch (error) {
-    console.error('Photo indisponible', path, error);
+    console.error('Fichier indisponible', path, error);
     return { ok: false, status: 502 };
   }
 }

@@ -30,6 +30,9 @@ function seed() {
         organizationId: ACME,
         name: 'Fatou Ndiaye',
         phone: '77 111 22 33',
+        email: '',
+        address: 'Rue 12, Médina, Dakar',
+        taxId: '',
         notes: '',
         creditLimit: null,
         status: 'active',
@@ -47,6 +50,7 @@ let state = seed();
 export function resetSales() {
   state = seed();
 }
+export const salesState = () => state;
 
 const today = (timeZone) =>
   new Intl.DateTimeFormat('en-CA', { timeZone }).format(new Date());
@@ -69,6 +73,9 @@ const customerDto = (c) => ({
   id: c.id,
   name: c.name,
   phone: c.phone,
+  email: c.email,
+  address: c.address,
+  taxId: c.taxId,
   notes: c.notes,
   creditLimit: c.creditLimit,
   balance: balance(c.id),

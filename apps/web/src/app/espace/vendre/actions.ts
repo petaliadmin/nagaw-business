@@ -76,6 +76,9 @@ export async function createCustomer(
   const parsed = parseValues(createCustomerSchema, {
     name: text(formData, 'name'),
     phone: text(formData, 'phone'),
+    email: text(formData, 'email'),
+    address: text(formData, 'address'),
+    taxId: text(formData, 'taxId'),
     notes: text(formData, 'notes'),
     creditLimit: optionalAmountField(formData, 'creditLimit', shop.currency),
     clientOperationId: text(formData, 'clientOperationId'),
@@ -100,6 +103,9 @@ export async function updateCustomer(
   const parsed = parseValues(updateCustomerSchema, {
     name: text(formData, 'name'),
     phone: text(formData, 'phone'),
+    email: text(formData, 'email'),
+    address: text(formData, 'address'),
+    taxId: text(formData, 'taxId'),
     notes: text(formData, 'notes'),
     creditLimit: optionalAmountField(formData, 'creditLimit', shop.currency),
   });

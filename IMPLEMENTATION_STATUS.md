@@ -423,6 +423,40 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - le stock affiché par la caisse hors ligne est celui du dernier rafraîchissement.
 - **Prochaine action recommandée** : Phase 12 (factures et devis).
 
-## Phases 12 à 18
+## Phase 12 — Factures et devis
+
+- **Objectif** : remettre aux clients des devis et des factures propres, numérotés sans trou, impossibles à réécrire une fois émis (ADR-026).
+- **Statut** : livrée sur la branche `claude/phase-12-factures`, **en attente de validation** du propriétaire. La migration `20261025090000_invoices_quotes.sql` doit être appliquée sur Supabase avant la fusion.
+- **Fonctionnalités terminées** :
+  - migration : identité légale de la boutique (raison sociale, adresse, téléphone, e-mail, NINEA, RCCM, mention de bas de page), délai de paiement et validité des devis en base ; e-mail, adresse et NINEA des clients ; compteurs de numérotation ; devis ; factures et avoirs (trigger : une facture émise ne change plus, sauf son annulation) ; paiements de factures en ajout seul ; RLS et droits minimaux de `nagaw_api` ;
+  - contrats partagés : lignes de document, `computeDocumentTotals` (HT, TVA par taux, TTC, sur le calcul de la caisse), schémas de devis, factures, paiements et annulation, `formatDocumentNumber` ; permissions `documents.read` et `documents.manage` ;
+  - API : 17 endpoints (devis, factures, facture d'un devis ou d'une vente, émission, paiements, avoir, PDF, identité de la boutique) ; numéros `D-`, `F-`, `A-AAAA-NNNN` attribués sous verrou ; créations et paiements idempotents ; **PDF A4** généré par l'API (`pdf-lib`) avec identité de la boutique, client, HT / TVA / TTC, paiements et reste à payer ;
+  - web :
+    - **Factures** dans le menu (masqué pour les vendeurs) : onglets Factures / Devis, badges « À payer », « Payée en partie », « Payée », « En retard », « Annulée », « Expiré », reste à encaisser ;
+    - **éditeur** de facture ou de devis : client, lignes du catalogue (prix et TVA repris) ou libres (services), quantité, unité, prix TTC, TVA, remise, date, remarque, totaux en direct ; les saisies restent en cas d'erreur ;
+    - **fiche facture** : brouillon modifiable puis « Émettre la facture », paiements (espèces, Mobile Money, carte, virement, chèque), annulation par un avoir, « Ouvrir le PDF », « Envoyer le PDF » (feuille de partage du téléphone : WhatsApp, e-mail) ;
+    - **fiche devis** : envoyé, accepté, refusé, « Faire la facture de ce devis » ;
+    - **vente** : « Faire une facture » pour une vente payée en caisse (client choisi si la vente n'en a pas), marquée payée à l'émission ;
+    - **client** : e-mail, adresse et NINEA ; « Faire une facture » et « Faire un devis » depuis sa fiche ;
+    - **Paramètres** : carte « Factures et devis » (identité légale, délai de paiement, validité des devis, mention de bas de page).
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                             |
+  | ------------------------------ | ------------------------------------------------------------------------------------ |
+  | `pnpm test`                    | **UNIT**                                                                             |
+  | `pnpm test:integration`        | **INTEGRATION**                                                                      |
+  | Playwright                     | **E2E**                                                                              |
+  | Test de mutation               | Filtre de boutique retiré dans la lecture d'une facture : le test d'isolation échoue |
+  | lint, typecheck, build, format | OK                                                                                   |
+
+- **Limites** :
+  - pas de logo sur le PDF ; police standard (les caractères hors alphabet latin s'impriment « ? ») ;
+  - pas d'envoi d'e-mail par le serveur : le PDF se partage depuis le téléphone ; sur un ordinateur sans partage de fichiers, le PDF s'ouvre pour être enregistré ;
+  - avoir uniquement total, pas d'avoir partiel ni de facture d'acompte ; une facture payée doit être remboursée hors application avant d'être annulée ;
+  - factures et devis demandent le réseau (pas de création hors ligne) ;
+  - les paiements de factures n'alimentent pas encore la trésorerie (Phase 13) ; ceux recopiés d'une vente sont marqués pour ne pas être comptés deux fois.
+- **Prochaine action recommandée** : appliquer la migration sur Supabase, essayer une facture et un devis de bout en bout, valider la Phase 12 et l'ADR-026, puis Phase 13 (statistiques et trésorerie).
+
+## Phases 13 à 18
 
 Non commencées. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.

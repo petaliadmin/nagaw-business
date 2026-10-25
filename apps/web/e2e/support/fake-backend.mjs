@@ -12,6 +12,7 @@ import {
   createLocalJWKSet,
 } from 'jose';
 import { handleCatalog, resetCatalog } from './fake-catalog.mjs';
+import { handleDocuments, resetDocuments } from './fake-documents.mjs';
 import { handleSales, resetSales } from './fake-sales.mjs';
 
 const PORT = Number(process.env.FAKE_BACKEND_PORT ?? 54400);
@@ -42,6 +43,18 @@ const USERS = {
   },
 };
 
+const DOCUMENT_SETTINGS = {
+  legalName: '',
+  address: '',
+  phone: '',
+  email: '',
+  taxId: '',
+  tradeRegister: '',
+  invoiceFooter: '',
+  invoiceDueDays: 30,
+  quoteValidityDays: 30,
+};
+
 function makeState() {
   const created = '2026-10-01T09:00:00.000Z';
   const organizations = {
@@ -53,6 +66,7 @@ function makeState() {
       timezone: 'Africa/Dakar',
       defaultCurrency: 'XOF',
       invitationTtlHours: 168,
+      ...DOCUMENT_SETTINGS,
       createdAt: created,
       updatedAt: created,
     },
@@ -64,6 +78,7 @@ function makeState() {
       timezone: 'UTC',
       defaultCurrency: 'EUR',
       invitationTtlHours: 168,
+      ...DOCUMENT_SETTINGS,
       createdAt: created,
       updatedAt: created,
     },
@@ -288,6 +303,7 @@ const server = createServer(async (req, res) => {
     state = makeState();
     resetCatalog();
     resetSales();
+    resetDocuments();
     return send(res, 200, { ok: true });
   }
 
@@ -604,6 +620,21 @@ const server = createServer(async (req, res) => {
       readJson,
       forbidden,
       userById,
+    })
+  )
+    return;
+  if (
+    await handleDocuments({
+      req,
+      res,
+      path,
+      orgId,
+      role: membership.role,
+      organization: state.organizations[orgId],
+      send,
+      apiError,
+      readJson,
+      forbidden,
     })
   )
     return;

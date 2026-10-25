@@ -148,7 +148,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
           <NewShopLink tone="sidebar" />
         </div>
         <nav aria-label="Navigation principale">
-          <NavLinks />
+          <NavLinks role={organization.role} />
         </nav>
         <div className="mt-auto">
           <Account me={me} organization={organization} tone="sidebar" />
@@ -175,10 +175,14 @@ export async function AppShell({ children }: { children: ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgb(0_0_0/0.06)] md:hidden print:hidden"
       >
         <ul className="mx-auto flex max-w-xl gap-1 px-2 py-1">
-          <BottomNavLinks />
+          <BottomNavLinks role={organization.role} />
           <MoreMenu>
             <nav aria-label="Autres pages">
-              <NavLinks only="secondary" tone="sheet" />
+              <NavLinks
+                role={organization.role}
+                only="secondary"
+                tone="sheet"
+              />
             </nav>
             <div className="flex flex-col gap-1">
               <OrganizationSwitcher

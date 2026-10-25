@@ -22,6 +22,10 @@ const PAGES = [
   '/espace/ventes',
   '/espace/clients',
   '/espace/clients/eeeeeeee-0000-4000-8000-000000000001',
+  '/espace/factures',
+  '/espace/factures?type=devis',
+  '/espace/factures/nouvelle',
+  '/espace/factures/devis/nouveau',
 ];
 
 for (const path of PAGES) {
