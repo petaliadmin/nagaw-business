@@ -298,7 +298,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-028 — Comptabilité : système minimal de trésorerie (SMT) SYSCOHADA
 
-- **Statut** : Proposée en Phase 14 (2026-10-25), en attente de validation du propriétaire.
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 14).
 - **Contexte** : les très petites entités relevant du SYSCOHADA révisé peuvent tenir un **système minimal de trésorerie** : un journal des recettes et des dépenses et un état de fin d'exercice. Le commerçant ne doit rien saisir de plus que ses ventes, paiements et dépenses ; le comptable doit pouvoir tout reprendre.
 - **Décision** :
   - **comptabilité de trésorerie** : une recette est de l'argent reçu, une dépense de l'argent sorti, à la date du mouvement. Le journal est **calculé** à partir des mouvements de la trésorerie (ADR-027), jamais saisi ni stocké : il ne peut pas diverger des caisses ;

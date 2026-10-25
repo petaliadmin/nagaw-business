@@ -493,7 +493,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 14 — Comptabilité (système minimal de trésorerie SYSCOHADA)
 
 - **Objectif** : que le comptable retrouve un journal des recettes et dépenses et un état de fin d'exercice conformes au SYSCOHADA révisé, sans aucune saisie de plus pour le commerçant (ADR-028).
-- **Statut** : livrée sur la branche `claude/phase-14-comptabilite`, **en attente de validation** du propriétaire. La migration `20261025150000_accounting.sql` doit être appliquée sur Supabase avant la fusion ; elle numérote les dépenses déjà saisies.
+- **Statut** : **validée** par le propriétaire le 2026-10-25 (ADR-028 acceptée). Migration `20261025150000_accounting.sql` appliquée sur Supabase par le propriétaire le 2026-10-25.
 - **Fonctionnalités terminées** :
   - migration : numéro de pièce des dépenses (`DEP-AAAA-NNNN`, rattrapage des dépenses existantes), justificatifs photo (une par dépense, jamais supprimée) ;
   - contrats partagés : comptes SYSCOHADA du système minimal (70, 585, 658, 758 ; 571, 55, 521), classement d'un mouvement (`accountOfMovement`), journal, état de fin d'exercice ; permission `accounting.read` ;
@@ -518,7 +518,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - l'exercice ne se clôture pas encore définitivement : une dépense peut être saisie sur l'année précédente tant que ses caisses ne sont pas clôturées à cette date ;
   - stock de fin d'exercice estimé au prix d'achat **actuel** des produits ;
   - export PDF non livré (CSV seulement).
-- **Prochaine action recommandée** : appliquer la migration sur Supabase, envoyer un export au comptable pour avis, valider la Phase 14 et l'ADR-028, puis Phase 15 (abonnements et quotas, dont le prestataire de paiement est à choisir par le propriétaire).
+- **Prochaine action recommandée** : faire relire un export par le comptable ; Phase 15 (abonnements et quotas, sans prestataire de paiement tant que le propriétaire ne l’a pas choisi).
 
 ## Phases 15 à 18
 
