@@ -326,7 +326,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-030 — Administration de la plateforme et observabilité
 
-- **Statut** : Proposée en Phase 16 (2026-10-25), en attente de validation du propriétaire.
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 16).
 - **Contexte** : sans paiement en ligne, les demandes de changement d'offre (ADR-029) doivent être traitées par quelqu'un ; la plateforme doit aussi voir la santé de la synchronisation et les boutiques proches de leurs limites, sans jamais lire leurs ventes, produits ou clients.
 - **Décision** :
   - **administrateurs de la plateforme** dans une table à part (`platform_admins`), **ajoutés uniquement en SQL** par le propriétaire : aucun endpoint n'en crée. Un administrateur n'est membre d'aucune boutique : les routes des boutiques lui restent fermées (404) ;

@@ -548,7 +548,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 16 — Administration de la plateforme et observabilité
 
 - **Objectif** : traiter les demandes d'offre, voir la santé de la plateforme et agir sur une boutique, sans jamais lire son contenu (ADR-030).
-- **Statut** : livrée sur la branche `claude/phase-16-administration`, **en attente de validation** du propriétaire. La migration `20261025190000_platform_admin.sql` doit être appliquée sur Supabase avant la fusion ; un premier administrateur s'ajoute ensuite en SQL (`insert into app.platform_admins (user_id) values ('<uuid du compte>')`).
+- **Statut** : **validée** par le propriétaire le 2026-10-25 (ADR-030 acceptée). Migration `20261025190000_platform_admin.sql` appliquée sur Supabase par le propriétaire le 2026-10-25 ; le premier administrateur s’ajoute en SQL (`insert into app.platform_admins …`).
 - **Fonctionnalités terminées** :
   - migration : administrateurs de la plateforme et seuils des alertes en base, suspension datée et motivée d'une boutique, demandes d'offre refusables, lots et refus de synchronisation enregistrés (ajout seul) ;
   - API : 10 endpoints `/admin/*` derrière une garde relue en base ; tableau de bord, boutiques, fiche, changement d'offre, suspension et réactivation, demandes (acceptation, refus), synchronisation ; `/me` indique si la personne administre la plateforme ; la synchronisation enregistre chaque lot et chaque refus ;
@@ -569,7 +569,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - les administrateurs s'ajoutent et se retirent en SQL ;
   - une boutique suspendue disparaît de la liste de ses membres, sans message qui l'explique dans leur espace ;
   - métriques HTTP (erreurs, latence par route) : celles de Vercel, pas dans l'application.
-- **Prochaine action recommandée** : appliquer la migration, ajouter le premier administrateur en SQL, valider la Phase 16 et l'ADR-030, puis Phase 17 (sécurité, tests, stabilisation).
+- **Prochaine action recommandée** : Phase 17 (sécurité, tests, stabilisation).
 
 ## Phases 17 et 18
 
