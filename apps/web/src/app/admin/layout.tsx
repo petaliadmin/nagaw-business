@@ -14,6 +14,7 @@ const LINKS = [
   { href: '/admin/boutiques', label: 'Boutiques' },
   { href: '/admin/demandes', label: 'Demandes d’offre' },
   { href: '/admin/synchronisation', label: 'Synchronisation' },
+  { href: '/admin/avis', label: 'Avis' },
 ] as const;
 
 /** Frame of the platform administration, apart from the shops' space. */

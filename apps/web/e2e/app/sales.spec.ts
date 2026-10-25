@@ -217,8 +217,14 @@ test('sales of the day are listed with their totals, and on the home page', asyn
   await expect(page.getByText('Aucune vente ce jour-là')).toBeVisible();
 
   await page.goto('/espace');
-  const today = page.getByRole('region', { name: 'Aujourd’hui' });
-  await expect(today.getByRole('link', { name: 'Vendre' })).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Aujourd’hui' }).getByText('Ventes', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('main').getByRole('link', { name: 'Vendre', exact: true }),
+  ).toBeVisible();
 });
 
 test('a seller sells and sees only their own sales, and cannot cancel', async ({

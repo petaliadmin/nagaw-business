@@ -69,6 +69,8 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   'subscription.change_rejected':
     'Demande de changement d’offre refusée par la plateforme',
   'subscription.plan_changed': 'Offre changée par la plateforme',
+  'feedback.sent': 'Avis envoyé à l’équipe Nagaw',
+  'feedback.answered': 'Avis traité par la plateforme',
 };
 
 /** Human label for an audit action; unknown actions show their raw key. */

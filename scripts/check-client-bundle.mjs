@@ -5,6 +5,7 @@
 // environment variables; none of them may appear in the output.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 export const CANARIES = {
   API_PROTECTION_BYPASS: 'canary-api-protection-bypass-7f3a91',
@@ -44,9 +45,16 @@ const PATTERNS = [
   },
 ];
 
-const root = process.argv[2] ?? 'apps/web/.next';
-// What is served to browsers: static assets and prerendered pages.
-const SERVED = [join(root, 'static'), join(root, 'server', 'app')];
+/** Names of the secrets found in `text`: canaries and key shapes. */
+export function findSecrets(text) {
+  return [
+    ...Object.entries(CANARIES)
+      .filter(([, value]) => text.includes(value))
+      .map(([name]) => `valeur de ${name}`),
+    ...PATTERNS.filter(({ re }) => re.test(text)).map(({ name }) => name),
+  ];
+}
+
 const EXTENSIONS = /\.(js|mjs|css|html|rsc|body|json|txt|map)$/;
 
 function files(dir) {
@@ -64,32 +72,34 @@ function files(dir) {
   });
 }
 
-const scanned = SERVED.flatMap(files).filter(
-  // Server bundles of route handlers run on the server only.
-  (path) => !path.includes(`${join('server', 'app')}`) || !path.endsWith('.js'),
-);
-if (scanned.length === 0) {
-  console.error(
-    `Aucun fichier à vérifier dans ${root} : lancez d'abord le build.`,
+function main(root) {
+  // What is served to browsers: static assets and prerendered pages.
+  const scanned = [join(root, 'static'), join(root, 'server', 'app')]
+    .flatMap(files)
+    .filter(
+      // Server bundles of route handlers run on the server only.
+      (path) => !path.includes(join('server', 'app')) || !path.endsWith('.js'),
+    );
+  if (scanned.length === 0) {
+    console.error(
+      `Aucun fichier à vérifier dans ${root} : lancez d'abord le build.`,
+    );
+    process.exit(2);
+  }
+  const findings = scanned.flatMap((path) =>
+    findSecrets(readFileSync(path, 'utf8')).map(
+      (finding) => `${relative('.', path)} : ${finding}`,
+    ),
   );
-  process.exit(2);
+  if (findings.length > 0) {
+    console.error('Secret trouvé dans ce que le navigateur télécharge :');
+    for (const finding of findings) console.error(`  - ${finding}`);
+    process.exit(1);
+  }
+  console.log(
+    `Aucun secret dans ${scanned.length} fichiers servis au navigateur.`,
+  );
 }
 
-const findings = [];
-for (const path of scanned) {
-  const text = readFileSync(path, 'utf8');
-  for (const [name, value] of Object.entries(CANARIES))
-    if (text.includes(value))
-      findings.push(`${relative('.', path)} : valeur de ${name}`);
-  for (const { name, re } of PATTERNS)
-    if (re.test(text)) findings.push(`${relative('.', path)} : ${name}`);
-}
-
-if (findings.length > 0) {
-  console.error('Secret trouvé dans ce que le navigateur télécharge :');
-  for (const finding of findings) console.error(`  - ${finding}`);
-  process.exit(1);
-}
-console.log(
-  `Aucun secret dans ${scanned.length} fichiers servis au navigateur.`,
-);
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href)
+  main(process.argv[2] ?? 'apps/web/.next');

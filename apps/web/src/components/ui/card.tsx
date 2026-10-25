@@ -1,16 +1,20 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { MODULE_TONES, type ModuleTone } from '@/components/dashboard/tones';
 
 export function Card({
   title,
   titleId,
   icon: Icon,
+  tone,
   children,
   className = '',
 }: {
   title?: string;
   titleId?: string;
   icon?: LucideIcon;
+  /** Module colour of the icon (brand by default). */
+  tone?: ModuleTone;
   children: ReactNode;
   className?: string;
 }) {
@@ -25,7 +29,11 @@ export function Card({
           className="mb-4 flex items-center gap-2 text-xl font-bold"
         >
           {Icon && (
-            <span className="flex size-9 items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
+            <span
+              className={`flex size-9 items-center justify-center rounded-xl ${
+                tone ? MODULE_TONES[tone].badge : 'bg-brand-soft text-brand-ink'
+              }`}
+            >
               <Icon aria-hidden className="size-5" />
             </span>
           )}

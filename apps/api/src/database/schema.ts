@@ -525,6 +525,21 @@ export interface SyncRejectionsTable {
   created_at: ColumnType<Date, never, never>;
 }
 
+export interface FeedbackTable {
+  id: Generated<string>;
+  organization_id: string;
+  author_id: string;
+  kind: 'problem' | 'idea' | 'question';
+  message: string;
+  page: Generated<string>;
+  status: Generated<'new' | 'read' | 'done'>;
+  answer: Generated<string>;
+  answered_at: NullableTimestamp;
+  answered_by: string | null;
+  client_operation_id: string;
+  created_at: ColumnType<Date, never, never>;
+}
+
 export interface Database {
   'app.user_profiles': UserProfilesTable;
   'app.organizations': OrganizationsTable;
@@ -560,4 +575,5 @@ export interface Database {
   'app.platform_settings': PlatformSettingsTable;
   'app.sync_batches': SyncBatchesTable;
   'app.sync_rejections': SyncRejectionsTable;
+  'app.feedback': FeedbackTable;
 }

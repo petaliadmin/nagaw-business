@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Logo } from '@/components/ui/logo';
 import { ROLE_LABELS } from '@/lib/labels';
 import { loadWorkspace } from '@/lib/workspace/load';
+import { FeedbackLink } from './feedback-link';
 import { MoreMenu } from './mobile-nav';
 import { BottomNavLinks, NavLinks } from './nav-links';
 import { OrganizationSwitcher } from './organization-switcher';
@@ -58,6 +59,7 @@ function Account({
           </Badge>
         </span>
       </div>
+      <FeedbackLink tone={tone} />
       {me.platformAdmin && (
         <Link
           href="/admin"

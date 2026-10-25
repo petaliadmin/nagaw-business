@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:e2e": "pnpm --filter @nagaw/shared build && pnpm --filter @nagaw/web build && pnpm --filter @nagaw/web test:e2e",
-    "check:bundle": "node scripts/check-client-bundle.mjs apps/web/.next"
+    "check:bundle": "node scripts/check-client-bundle.mjs apps/web/.next",
+    "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
     "prettier": "^3.4.2"

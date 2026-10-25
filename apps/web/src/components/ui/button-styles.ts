@@ -10,6 +10,8 @@ const VARIANTS = {
   // Selling: green of the sales module. No lighter hover: white on the
   // vivid green would fall under 4.5:1 (DESIGN.md).
   sell: 'bg-sales-strong text-white shadow-sm hover:shadow-md',
+  // On a dark module colour (dashboard): outlined in white.
+  outlineOnDark: 'border-2 border-white text-white hover:bg-white/15',
 } as const;
 
 export type ButtonVariant = keyof typeof VARIANTS;

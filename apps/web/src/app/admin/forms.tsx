@@ -8,6 +8,7 @@ import { SubmitButton } from '@/components/submit-button';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { initialFormState } from '@/lib/auth/schemas';
 import {
+  answerFeedback,
   reactivateShop,
   resolvePlanRequest,
   setShopPlan,
@@ -151,6 +152,59 @@ export function ResolveRequestForm({
           className={buttonClasses('danger')}
         >
           Refuser
+        </button>
+      </div>
+    </ActionForm>
+  );
+}
+
+export function AnswerFeedbackForm({
+  feedbackId,
+  answered,
+}: {
+  feedbackId: string;
+  answered: boolean;
+}) {
+  const [state, action, pending] = useActionState(
+    answerFeedback,
+    initialFormState,
+  );
+  return (
+    <ActionForm
+      action={action}
+      pending={pending}
+      noValidate
+      className="flex flex-col gap-3"
+    >
+      <input type="hidden" name="feedbackId" value={feedbackId} />
+      <FormMessage state={state} />
+      {!answered && (
+        <FormField
+          label="Réponse à la boutique (facultatif)"
+          name="answer"
+          id={`answer-${feedbackId}`}
+          maxLength={2000}
+          error={state.fieldErrors?.answer}
+        />
+      )}
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="submit"
+          name="status"
+          value="read"
+          disabled={pending}
+          className={buttonClasses('secondary')}
+        >
+          Marquer comme lu
+        </button>
+        <button
+          type="submit"
+          name="status"
+          value="done"
+          disabled={pending}
+          className={buttonClasses('primary')}
+        >
+          {answered ? 'Marquer comme traité' : 'Répondre et clore'}
         </button>
       </div>
     </ActionForm>

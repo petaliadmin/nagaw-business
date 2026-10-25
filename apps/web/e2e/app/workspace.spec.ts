@@ -53,11 +53,10 @@ test('overview shows only real data for the active shop', async ({
   await expect(
     main.getByRole('heading', { level: 1, name: 'Acme Dakar' }),
   ).toBeVisible();
-  await expect(main.getByText('Personnes dans l’équipe')).toBeVisible();
+  // The team lives in « Équipe », not on the dashboard (2026-10-25).
   await expect(
-    main.getByRole('region', { name: 'Votre boutique' }).locator('dd').first(),
-  ).toHaveText('2');
-  await expect(main.getByText('Propriétaire')).toBeVisible();
+    main.getByRole('region', { name: 'Votre boutique' }),
+  ).toHaveCount(0);
   // Latest of the 27 audit entries comes first, with the author's e-mail.
   const activity = main.getByRole('region', { name: 'Activité récente' });
   await expect(activity.getByRole('listitem')).toHaveCount(5);
