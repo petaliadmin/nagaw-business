@@ -1,5 +1,6 @@
 import { roleHasPermission, type Permission, type Role } from '@nagaw/shared';
 import {
+  ChartColumn,
   Contact,
   FileText,
   House,
@@ -9,6 +10,7 @@ import {
   Settings,
   ShoppingCart,
   Users,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -56,6 +58,20 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Clients',
     icon: Contact,
     bottomBar: false,
+  },
+  {
+    href: '/espace/statistiques',
+    label: 'Statistiques',
+    icon: ChartColumn,
+    bottomBar: false,
+    permission: 'stats.read',
+  },
+  {
+    href: '/espace/tresorerie',
+    label: 'Trésorerie',
+    icon: Wallet,
+    bottomBar: false,
+    permission: 'treasury.read',
   },
   { href: '/espace/equipe', label: 'Équipe', icon: Users, bottomBar: false },
   {

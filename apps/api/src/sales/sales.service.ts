@@ -355,6 +355,7 @@ export class SalesService {
             'p.name',
             'p.unit',
             'p.sale_price',
+            'p.purchase_price',
             'p.track_stock',
             'p.status',
             't.rate_basis_points',
@@ -478,6 +479,8 @@ export class SalesService {
               line_total: totals.lines[index]!.lineTotal,
               tax_rate_basis_points: product.rate_basis_points,
               tax_amount: totals.lines[index]!.taxAmount,
+              // Cost at the time of the sale, for the margin (ADR-027).
+              unit_cost: product.purchase_price,
             })),
           )
           .execute();

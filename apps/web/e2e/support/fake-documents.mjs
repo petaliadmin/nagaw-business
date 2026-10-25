@@ -26,6 +26,7 @@ let state = seed();
 export function resetDocuments() {
   state = seed();
 }
+export const documentsState = () => state;
 
 const today = (timeZone) =>
   new Intl.DateTimeFormat('en-CA', { timeZone }).format(new Date());

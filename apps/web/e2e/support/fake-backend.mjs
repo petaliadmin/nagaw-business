@@ -14,6 +14,11 @@ import {
 import { handleCatalog, resetCatalog } from './fake-catalog.mjs';
 import { handleDocuments, resetDocuments } from './fake-documents.mjs';
 import { handleSales, resetSales } from './fake-sales.mjs';
+import {
+  handleTreasury,
+  resetTreasury,
+  shopsSummary,
+} from './fake-treasury.mjs';
 
 const PORT = Number(process.env.FAKE_BACKEND_PORT ?? 54400);
 const ORIGIN = `http://localhost:${PORT}`;
@@ -304,6 +309,7 @@ const server = createServer(async (req, res) => {
     resetCatalog();
     resetSales();
     resetDocuments();
+    resetTreasury();
     return send(res, 200, { ok: true });
   }
 
@@ -325,6 +331,18 @@ const server = createServer(async (req, res) => {
       'Une erreur interne est survenue.',
     );
 
+  // Across the person's shops: no active shop, each membership checked.
+  if (path === '/api/v1/stats/shops' && req.method === 'GET')
+    return send(
+      res,
+      200,
+      shopsSummary(
+        user.id,
+        state.organizations,
+        state.memberships,
+        Object.fromEntries(url.searchParams),
+      ),
+    );
   if (path === '/api/v1/me' && req.method === 'GET') {
     return send(res, 200, {
       id: user.id,
@@ -628,6 +646,23 @@ const server = createServer(async (req, res) => {
       req,
       res,
       path,
+      orgId,
+      role: membership.role,
+      organization: state.organizations[orgId],
+      send,
+      apiError,
+      readJson,
+      forbidden,
+    })
+  )
+    return;
+  if (
+    await handleTreasury({
+      req,
+      res,
+      path,
+      url,
+      user,
       orgId,
       role: membership.role,
       organization: state.organizations[orgId],

@@ -16,6 +16,7 @@ import { MembersModule } from './members/members.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { SalesModule } from './sales/sales.module.js';
 import { TenantGuard } from './tenancy/tenant.guard.js';
+import { TreasuryModule } from './treasury/treasury.module.js';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { TenantGuard } from './tenancy/tenant.guard.js';
     CatalogModule,
     SalesModule,
     DocumentsModule,
+    TreasuryModule,
   ],
   providers: [
     // Order matters: authenticate first, then resolve the tenant.

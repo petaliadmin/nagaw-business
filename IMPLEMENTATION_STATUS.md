@@ -457,6 +457,39 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - les paiements de factures n'alimentent pas encore la trésorerie (Phase 13) ; ceux recopiés d'une vente sont marqués pour ne pas être comptés deux fois.
 - **Prochaine action recommandée** : Phase 13 (statistiques et trésorerie).
 
-## Phases 13 à 18
+## Phase 13 — Statistiques et trésorerie
+
+- **Objectif** : savoir combien la boutique gagne et où est son argent, sans double saisie (ADR-027).
+- **Statut** : livrée sur la branche `claude/phase-13-tresorerie`, **en attente de validation** du propriétaire. La migration `20261025130000_treasury.sql` doit être appliquée sur Supabase avant la fusion.
+- **Fonctionnalités terminées** :
+  - migration : caisses (Caisse, Wave, Orange Money, Free Money, autre Mobile Money, Banque) créées pour chaque boutique, catégories de dépenses avec leur compte SYSCOHADA, dépenses (annulation seulement, par trigger), transferts et clôtures en ajout seul, prix d'achat figé sur chaque ligne de vente, plafond de catégories en base ; RLS et droits minimaux de `nagaw_api` ;
+  - contrats partagés : caisse d'un paiement (`accountOfPayment`), périodes (un an au plus), dépenses, transferts, clôtures, statistiques ; permissions `stats.read`, `treasury.read`, `treasury.manage` ;
+  - API : 15 endpoints ; soldes **calculés** à partir des paiements des ventes, des remboursements, des paiements de factures, des dépenses, des transferts et des écarts de clôture ; montant attendu d'une clôture calculé par le serveur ; journée clôturée figée ; statistiques par période avec marge sur les lignes dont le coût est connu ; comparaison entre boutiques ;
+  - web :
+    - **Statistiques** (menu, masqué pour les vendeurs) : période (aujourd'hui, hier, 7 jours, ce mois, mois dernier, dates au choix), chiffre d'affaires, ventes, panier moyen, marge brute (et la part qu'elle couvre), dépenses, taxes ; graphique des ventes par jour (par mois au-delà de deux mois) avec ses chiffres en tableau ; moyens de paiement ; produits les plus vendus et ceux qui ne se vendent pas ; « Vos boutiques » pour qui en a plusieurs ;
+    - **Trésorerie** : total, entrées et sorties du jour, caisses et leur solde (les caisses vides sont repliées), créances (crédit des clients, factures à encaisser), « Déplacer de l'argent » ;
+    - **fiche d'une caisse** : relevé de la période (solde au début et à la fin, entrées et sorties), clôtures, nom et argent de départ ;
+    - **Clôturer la caisse** : entré, sorti, ce qui devrait y avoir ; la personne saisit ce qu'elle a compté et voit tout de suite « Il manque… » ou « Le compte est juste » ;
+    - **Dépenses** : saisie (quoi, montant, catégorie, caisse, date), liste de la période avec total, annulation avec motif, catégories (ajout, rangement) ;
+    - accueil : carte **Trésorerie** (total des caisses, ce qu'on vous doit).
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                            |
+  | ------------------------------ | ----------------------------------------------------------------------------------- |
+  | `pnpm test`                    | **UNIT**                                                                            |
+  | `pnpm test:integration`        | **INTEGRATION**                                                                     |
+  | Playwright                     | **E2E**                                                                             |
+  | Test de mutation               | Filtre de boutique retiré dans la lecture d'une caisse : le test d'isolation échoue |
+  | lint, typecheck, build, format | OK                                                                                  |
+
+- **Limites** :
+  - une vente faite hors ligne et envoyée après la clôture de son jour ressort en écart à la clôture suivante : la page conseille d'envoyer les ventes avant de clôturer ;
+  - une seule caisse espèces par boutique ; achats de marchandises (entrées de stock) non reliés à la trésorerie : les saisir en dépense « Achat de marchandises » ;
+  - les ventes d'avant cette phase n'ont pas de prix d'achat figé : elles sont hors marge ;
+  - pas de justificatif photo des dépenses (Phase 14) ; dépenses et clôtures en ligne uniquement ;
+  - soldes et statistiques calculés à chaque lecture : à remplacer par des agrégats si une boutique accumule un très grand nombre d'opérations.
+- **Prochaine action recommandée** : appliquer la migration sur Supabase, essayer une clôture de caisse et une dépense, valider la Phase 13 et l'ADR-027, puis Phase 14 (comptabilité).
+
+## Phases 14 à 18
 
 Non commencées. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.

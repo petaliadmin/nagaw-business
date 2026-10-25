@@ -51,6 +51,7 @@ export interface OrganizationsTable {
   next_sale_number: Generated<number>;
   max_offline_days: Generated<number>;
   max_devices: Generated<number>;
+  max_expense_categories: Generated<number>;
   next_device_number: Generated<number>;
   legal_name: Generated<string>;
   address: Generated<string>;
@@ -266,6 +267,7 @@ export interface SaleLinesTable {
   line_total: Numeric;
   tax_rate_basis_points: number | null;
   tax_amount: Numeric;
+  unit_cost: NullableNumeric;
 }
 
 export interface SalePaymentsTable {
@@ -371,6 +373,75 @@ export interface InvoicePaymentsTable {
   created_at: ColumnType<Date, never, never>;
 }
 
+export interface CashAccountsTable {
+  id: Generated<string>;
+  organization_id: string;
+  kind: 'cash' | 'mobile_money' | 'bank';
+  provider: MobileMoneyProvider | null;
+  name: string;
+  opening_balance: ColumnType<
+    string,
+    number | string | undefined,
+    number | string
+  >;
+  created_at: ColumnType<Date, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
+export interface ExpenseCategoriesTable {
+  id: Generated<string>;
+  organization_id: string;
+  name: string;
+  account_code: string;
+  status: Generated<'active' | 'archived'>;
+  created_at: ColumnType<Date, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
+export interface ExpensesTable {
+  id: Generated<string>;
+  organization_id: string;
+  category_id: string;
+  cash_account_id: string;
+  label: string;
+  amount: Numeric;
+  occurred_on: CalendarDate;
+  status: Generated<'recorded' | 'cancelled'>;
+  cancelled_at: NullableTimestamp;
+  cancelled_by: string | null;
+  cancel_reason: string | null;
+  client_operation_id: string;
+  created_by: string;
+  created_at: ColumnType<Date, never, never>;
+}
+
+export interface CashTransfersTable {
+  id: Generated<string>;
+  organization_id: string;
+  from_account_id: string;
+  to_account_id: string;
+  amount: Numeric;
+  occurred_on: CalendarDate;
+  note: Generated<string>;
+  client_operation_id: string;
+  created_by: string;
+  created_at: ColumnType<Date, never, never>;
+}
+
+export interface CashClosingsTable {
+  id: Generated<string>;
+  organization_id: string;
+  cash_account_id: string;
+  day: CalendarDate;
+  expected_amount: Numeric;
+  counted_amount: Numeric;
+  difference: Numeric;
+  note: Generated<string>;
+  client_operation_id: string;
+  closed_by: string;
+  created_at: ColumnType<Date, never, never>;
+}
+
 export interface Database {
   'app.user_profiles': UserProfilesTable;
   'app.organizations': OrganizationsTable;
@@ -393,4 +464,9 @@ export interface Database {
   'app.quotes': QuotesTable;
   'app.invoices': InvoicesTable;
   'app.invoice_payments': InvoicePaymentsTable;
+  'app.cash_accounts': CashAccountsTable;
+  'app.expense_categories': ExpenseCategoriesTable;
+  'app.expenses': ExpensesTable;
+  'app.cash_transfers': CashTransfersTable;
+  'app.cash_closings': CashClosingsTable;
 }
