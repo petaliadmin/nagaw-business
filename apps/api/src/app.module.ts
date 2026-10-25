@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { DocumentsModule } from './documents/documents.module.js';
+import { FeedbackModule } from './feedback/feedback.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MeModule } from './me/me.module.js';
 import { MembersModule } from './members/members.module.js';
@@ -44,6 +45,7 @@ import { TreasuryModule } from './treasury/treasury.module.js';
     AccountingModule,
     SubscriptionsModule,
     AdminModule,
+    FeedbackModule,
   ],
   providers: [
     // Order matters: authenticate first, then resolve the tenant.

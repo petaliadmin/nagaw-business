@@ -192,6 +192,8 @@ function makeState() {
     nextAuditId: id,
     // { id, organizationId, email, role, status, token, expiresAt, ... }
     invitations: [],
+    // Feedback of the shops (ADR-032).
+    feedback: [],
     subscriptions: {
       [ACME]: { planKey: 'pro', pending: null },
       [GLOBEX]: { planKey: 'free', pending: null },
@@ -580,6 +582,45 @@ const server = createServer(async (req, res) => {
         note,
       });
     }
+    if (path === '/api/v1/admin/feedback' && req.method === 'GET') {
+      const status = url.searchParams.get('status');
+      return send(
+        res,
+        200,
+        state.feedback
+          .filter((f) => !status || f.status === status)
+          .reverse()
+          .map(({ organizationId, authorId, ...f }) => ({
+            ...f,
+            shop: {
+              id: organizationId,
+              name: state.organizations[organizationId].name,
+            },
+            author: userById(authorId).email,
+          })),
+      );
+    }
+    const feedbackMatch = /^\/api\/v1\/admin\/feedback\/([^/]+)$/.exec(path);
+    if (feedbackMatch && req.method === 'POST') {
+      const feedback = state.feedback.find((f) => f.id === feedbackMatch[1]);
+      if (!feedback)
+        return apiError(res, 404, 'FEEDBACK_NOT_FOUND', 'Message introuvable.');
+      const body = await readJson(req);
+      feedback.status = body.status;
+      if (body.answer && !feedback.answer) {
+        feedback.answer = body.answer;
+        feedback.answeredAt = new Date().toISOString();
+      }
+      const { organizationId, authorId, ...f } = feedback;
+      return send(res, 200, {
+        ...f,
+        shop: {
+          id: organizationId,
+          name: state.organizations[organizationId].name,
+        },
+        author: userById(authorId).email,
+      });
+    }
     return apiError(res, 404, 'NOT_FOUND', 'Introuvable.');
   }
   if (path === '/api/v1/me' && req.method === 'GET') {
@@ -896,6 +937,53 @@ const server = createServer(async (req, res) => {
     })
   )
     return;
+  if (path === '/api/v1/feedback') {
+    const dto = (f) => ({
+      id: f.id,
+      kind: f.kind,
+      message: f.message,
+      page: f.page,
+      status: f.status,
+      answer: f.answer,
+      answeredAt: f.answeredAt,
+      createdAt: f.createdAt,
+    });
+    if (req.method === 'GET')
+      return send(
+        res,
+        200,
+        state.feedback
+          .filter((f) => f.organizationId === orgId && f.authorId === user.id)
+          .reverse()
+          .map(dto),
+      );
+    const body = await readJson(req);
+    if (
+      !['problem', 'idea', 'question'].includes(body.kind) ||
+      !body.message?.trim()
+    )
+      return send(res, 400, {
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'Données invalides.',
+          details: [{ path: 'message', message: 'Écrivez votre message' }],
+        },
+      });
+    const feedback = {
+      id: randomUUID(),
+      organizationId: orgId,
+      authorId: user.id,
+      kind: body.kind,
+      message: body.message.trim(),
+      page: (body.page ?? '').split('?')[0],
+      status: 'new',
+      answer: '',
+      answeredAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    state.feedback.push(feedback);
+    return send(res, 201, dto(feedback));
+  }
   if (path.startsWith('/api/v1/subscription')) {
     const subscription = state.subscriptions[orgId];
     const role = membership.role;

@@ -1,0 +1,27 @@
+name: Smoke
+
+# Read-only checks of production (scripts/smoke.mjs). Vercel reports its
+# deployments as commit statuses: the check runs when the site's deployment
+# of main (production) succeeds, and on demand.
+on:
+  status:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.state == 'success' &&
+       github.event.context == 'Vercel – nagaw-web' &&
+       contains(github.event.branches.*.name, 'main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/smoke.mjs https://nagaw-web.vercel.app https://nagaw-api-petalia.vercel.app

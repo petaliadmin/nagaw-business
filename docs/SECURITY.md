@@ -79,6 +79,15 @@
 | `/sw.js` servi sans cache et avec une politique de sécurité de contenu stricte ; caches des versions précédentes supprimés                                                                  | `next.config.ts`, route `/sw.js`                | `pwa.spec.ts`, drops the caches of previous versions                                          |
 | Modules Responsabilités et Tâches retirés : leurs routes répondent 404 dans le web et l'API                                                                                                 | —                                               | `workspace.spec.ts` › withdrawn modules are gone                                              |
 
+## Contrôles implémentés (Phase 18)
+
+| Contrôle                                                                                                  | Où                                          | Preuve (test)                                                              |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------- |
+| Avis lus dans la boutique de l'appelant ; chacun ne voit que les siens ; la plateforme seule les lit tous | `FeedbackService`, `PlatformAdminGuard`     | keeps the messages of a shop to that shop ; lets the platform read…        |
+| Page d'origine réduite au chemin (ni paramètres ni ancre, où un jeton pourrait se trouver)                | `createFeedbackSchema`, page `/espace/avis` | lets anyone of a shop write… (`/caisse?jeton=secret#x` gardé en `/caisse`) |
+| Message gardé tel qu'envoyé, même en SQL                                                                  | trigger `feedback_only_answer`              | keeps a message as it was sent, even in SQL                                |
+| Production vérifiée après chaque déploiement, en lecture seule                                            | `scripts/smoke.mjs`, workflow `smoke.yml`   | 10 vérifications sur la production (2026-10-25)                            |
+
 ## Contrôles implémentés (Phase 17)
 
 | Contrôle                                                                                                                                                                        | Où                                    | Preuve (test)                                                                                                                       |

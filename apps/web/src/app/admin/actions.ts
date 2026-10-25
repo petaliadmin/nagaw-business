@@ -1,9 +1,11 @@
 'use server';
 
 import {
+  answerFeedbackSchema,
   adminResolveRequestSchema,
   adminSetPlanSchema,
   adminSuspendSchema,
+  type AdminFeedbackDto,
   type AdminPlanRequestDto,
   type AdminShopDto,
 } from '@nagaw/shared';
@@ -104,4 +106,28 @@ export async function resolvePlanRequest(
   if (!result.ok) return apiErrorState(result);
   // The request leaves the pending list: the shop shows the outcome.
   redirect(`/admin/boutiques/${encodeURIComponent(result.data.shop.id)}`);
+}
+
+export async function answerFeedback(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const parsed = parseValues(answerFeedbackSchema, {
+    status: text(formData, 'status'),
+    answer: text(formData, 'answer'),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<AdminFeedbackDto>(token, {
+    method: 'POST',
+    path: `/admin/feedback/${id(formData, 'feedbackId')}`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message:
+      result.data.status === 'done' ? 'Avis traité.' : 'Avis marqué comme lu.',
+  };
 }

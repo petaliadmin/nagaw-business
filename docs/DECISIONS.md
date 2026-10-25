@@ -351,3 +351,13 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **base injoignable = 503, pas 500** : une connexion à Postgres qui n'aboutit pas (délai dépassé, refus, trop de connexions) répond `503 DATABASE_UNAVAILABLE` « réessayez », que la caisse hors ligne traite comme un envoi à reporter ; le délai d'ouverture d'une connexion devient réglable (`DATABASE_CONNECT_TIMEOUT_MS`, 5 s par défaut, inchangé en production) ;
   - **budget de poids** des pages clés (caisse, accueil, produits, statistiques, factures) au premier chargement, compressé : 300 Ko de JavaScript et 450 Ko au total, vérifié en end-to-end.
 - **Reporté** : CSP complète avec nonces, limitation de débit applicative (l'API sur Vercel est sans état : à faire au niveau de la plateforme ou d'un service tiers), mesure de performance sur appareil réel pendant le pilote.
+
+## ADR-032 — Outillage du pilote : avis dans l'application et test de fumée
+
+- **Statut** : Proposée en Phase 18 (2026-10-25), en attente de validation du propriétaire.
+- **Contexte** : pendant le pilote, chaque difficulté d'un commerçant doit remonter sans friction, et chaque déploiement de production être vérifié sans attendre qu'un commerçant tombe sur un problème.
+- **Décision** :
+  - **« Donner mon avis »** dans le menu de toute personne d'une boutique (vendeurs compris) : problème, idée ou question, avec la page d'où elle écrit (chemin seul, jamais l'adresse complète ni ses paramètres) ; elle retrouve ses messages et la réponse de l'équipe ; la plateforme les lit et y répond dans **Administration → Avis** ; un message n'est jamais modifié ni supprimé (trigger), seuls son statut et la réponse changent ; chaque réponse est inscrite dans l'historique de la boutique ;
+  - **test de fumée** en lecture seule (`pnpm smoke <site> <API>`) : santé de l'API, routes fermées sans session, pas de documentation en production, pages et en-têtes de sécurité, application installable, aucun secret dans les pages ni le JavaScript téléchargé ; lancé par GitHub quand Vercel signale le déploiement réussi du site sur `main` (statut de commit « Vercel – nagaw-web »), et à la demande ;
+  - **plan du pilote et protocole de test utilisateur** dans `docs/PILOT.md`, avec les décisions qui reviennent au propriétaire.
+- **Reporté** : notification de l'équipe à chaque nouvel avis (prestataire d'envoi à choisir) ; pièces jointes (capture d'écran) dans un avis.

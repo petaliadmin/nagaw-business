@@ -601,6 +601,26 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - performance mesurée sur téléphone simulé, pas encore sur un appareil réel d'entrée de gamme (à faire pendant le pilote).
 - **Prochaine action recommandée** : Phase 18 (déploiement et pilote).
 
-## Phase 18
+## Phase 18 — Déploiement et pilote
 
-Non commencée. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.
+- **Objectif** : préparer le pilote avec des boutiques réelles : faire remonter chaque difficulté, vérifier chaque déploiement, donner un plan et un protocole de test (ADR-032).
+- **Statut** : outillage livré sur la branche `claude/phase-18-pilote`, **en attente de validation** du propriétaire. La migration `20261025210000_feedback.sql` doit être appliquée sur Supabase avant la fusion. **Le pilote lui-même reste à mener** (boutiques, sauvegardes, séances avec des commerçants : voir `docs/PILOT.md`).
+- **Fonctionnalités terminées** :
+  - **« Donner mon avis »** dans le menu de toute personne d'une boutique : problème, idée ou question, avec la page d'où elle écrit ; ses messages et les réponses de l'équipe ; **Administration → Avis** pour lire, répondre et clore ; messages jamais modifiés ni supprimés ;
+  - **test de fumée de la production** (`pnpm smoke`), en lecture seule : 10 vérifications, toutes réussies sur la production le 2026-10-25 ; workflow GitHub `smoke.yml` déclenché par le statut « Vercel – nagaw-web » réussi sur `main` (**à vérifier au premier déploiement après la fusion** : GitHub n'exécute ce type de workflow que depuis la branche principale) ;
+  - **`docs/PILOT.md`** : organisation proposée, préparatifs du propriétaire (sauvegardes, restauration testée, parcours complet sur vrais téléphones), accueil d'une boutique, suivi quotidien, protocole de test utilisateur avec grille d'observation, critères de réussite, état de chaque critère d'acceptation du MVP.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                  |
+  | ------------------------------ | ------------------------- |
+  | `pnpm test`                    | **UNIT**                  |
+  | `pnpm test:integration`        | **INTEGRATION**           |
+  | Playwright                     | **E2E**                   |
+  | `pnpm smoke` (production)      | 10 vérifications réussies |
+  | lint, typecheck, build, format | OK                        |
+
+- **Limites** :
+  - l'équipe n'est pas prévenue d'un nouvel avis (aucun prestataire d'envoi) : consulter **Administration → Avis** chaque jour ;
+  - le parcours complet du MVP sur le **backend réel** se fait à la main (étape 5 des préparatifs), les tests de bout en bout automatisés tournant contre un faux backend ;
+  - sauvegardes et restauration dépendent du plan Supabase (à activer par le propriétaire).
+- **Prochaine action recommandée** : appliquer la migration, valider la Phase 18 et l'ADR-032, puis suivre les préparatifs de `docs/PILOT.md` avant d'accueillir la première boutique. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.
