@@ -59,6 +59,36 @@ test('a cash sale shows in the statistics and in the drawer', async ({
   await expect(accountBalance(page, 'Wave')).toBeVisible();
 });
 
+// Uses the sale of the first test (serial file, shared backend).
+test('the home page shows the essentials of the period', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  const essentials = async () =>
+    plain(
+      await page.getByRole('region', { name: 'L’essentiel' }).textContent(),
+    );
+  const salesCount = (text: string) =>
+    Number(/Nombre de ventes(\d+)/.exec(text)?.[1]);
+  await page.goto('/espace');
+  expect(await essentials()).toContain('Chiffre d’affaires'); // this month
+  await page.getByRole('link', { name: 'Aujourd’hui' }).click();
+  await expect(page).toHaveURL(/periode=jour/);
+  const text = await essentials();
+  expect(salesCount(text)).toBeGreaterThanOrEqual(1);
+  expect(text).toMatch(/Panier moyen[\d ]+ F CFA/);
+  expect(text).toContain('Comparé à la période d’avant');
+  await expect(
+    page.getByRole('list', { name: 'Produits qui rapportent le plus' }),
+  ).toContainText('Eau minérale 1,5 L');
+  await expect(
+    page.getByRole('list', { name: 'Paiements par moyen' }),
+  ).toContainText('Espèces');
+  await expectAccessible(page, 'tableau de bord');
+});
+
 test('an expense lowers the drawer until it is cancelled', async ({
   page,
   context,
@@ -167,6 +197,9 @@ test('a seller sees neither the money nor the statistics', async ({
   await page.goto('/espace');
   await expect(page.getByRole('link', { name: 'Trésorerie' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Statistiques' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'L’essentiel' })).toHaveCount(
+    0,
+  );
   await page.goto('/espace/tresorerie');
   await expect(
     page.getByText('Votre rôle ne donne pas accès à l’argent de la boutique.'),

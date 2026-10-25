@@ -10,6 +10,7 @@ export function PeriodPicker({
   from,
   to,
   extra = {},
+  dates = true,
 }: {
   path: string;
   current: PeriodKey | 'perso';
@@ -17,6 +18,8 @@ export function PeriodPicker({
   to: string;
   /** Other search parameters to keep (an account…). */
   extra?: Record<string, string>;
+  /** Also offer two dates chosen by hand. */
+  dates?: boolean;
 }) {
   const href = (periode: string) =>
     `${path}?${new URLSearchParams({ ...extra, periode })}`;
@@ -36,38 +39,40 @@ export function PeriodPicker({
           </Link>
         ))}
       </nav>
-      <form action={path} className="flex flex-wrap items-end gap-2">
-        {Object.entries(extra).map(([name, value]) => (
-          <input key={name} type="hidden" name={name} value={value} />
-        ))}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="period-from" className="text-base font-semibold">
-            Du
-          </label>
-          <input
-            id="period-from"
-            name="du"
-            type="date"
-            defaultValue={from}
-            className={CONTROL}
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="period-to" className="text-base font-semibold">
-            Au
-          </label>
-          <input
-            id="period-to"
-            name="au"
-            type="date"
-            defaultValue={to}
-            className={CONTROL}
-          />
-        </div>
-        <button type="submit" className={buttonClasses('secondary')}>
-          Voir
-        </button>
-      </form>
+      {dates && (
+        <form action={path} className="flex flex-wrap items-end gap-2">
+          {Object.entries(extra).map(([name, value]) => (
+            <input key={name} type="hidden" name={name} value={value} />
+          ))}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="period-from" className="text-base font-semibold">
+              Du
+            </label>
+            <input
+              id="period-from"
+              name="du"
+              type="date"
+              defaultValue={from}
+              className={CONTROL}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="period-to" className="text-base font-semibold">
+              Au
+            </label>
+            <input
+              id="period-to"
+              name="au"
+              type="date"
+              defaultValue={to}
+              className={CONTROL}
+            />
+          </div>
+          <button type="submit" className={buttonClasses('secondary')}>
+            Voir
+          </button>
+        </form>
+      )}
     </div>
   );
 }

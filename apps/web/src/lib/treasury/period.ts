@@ -48,3 +48,30 @@ export function resolvePeriod(
     }
   }
 }
+
+const daysBetween = (from: string, to: string) =>
+  Math.round(
+    (Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) /
+      86_400_000,
+  );
+
+/**
+ * The period to compare with: the same days of the month before when the
+ * period starts on the 1st and stays in one month, otherwise as many days
+ * just before.
+ */
+export function previousPeriod(
+  from: string,
+  to: string,
+): { from: string; to: string } {
+  if (from.endsWith('-01') && from.slice(0, 7) === to.slice(0, 7)) {
+    const lastDay = addDays(from, -1);
+    const day = Math.min(Number(to.slice(8)), Number(lastDay.slice(8)));
+    return {
+      from: `${lastDay.slice(0, 8)}01`,
+      to: `${lastDay.slice(0, 8)}${String(day).padStart(2, '0')}`,
+    };
+  }
+  const length = daysBetween(from, to) + 1;
+  return { from: addDays(from, -length), to: addDays(from, -1) };
+}

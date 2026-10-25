@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolvePeriod } from './period';
+import { previousPeriod, resolvePeriod } from './period';
 
 describe('periods', () => {
   const today = '2026-03-05';
@@ -44,5 +44,28 @@ describe('periods', () => {
     expect(resolvePeriod({ periode: 'inconnue' }, today, 'mois').key).toBe(
       'mois',
     );
+  });
+
+  it('compares with the same days of the month before, or the days just before', () => {
+    expect(previousPeriod('2026-03-01', '2026-03-05')).toEqual({
+      from: '2026-02-01',
+      to: '2026-02-05',
+    });
+    expect(previousPeriod('2026-03-01', '2026-03-31')).toEqual({
+      from: '2026-02-01',
+      to: '2026-02-28',
+    });
+    expect(previousPeriod('2026-01-01', '2026-01-10')).toEqual({
+      from: '2025-12-01',
+      to: '2025-12-10',
+    });
+    expect(previousPeriod('2026-03-05', '2026-03-05')).toEqual({
+      from: '2026-03-04',
+      to: '2026-03-04',
+    });
+    expect(previousPeriod('2026-02-27', '2026-03-05')).toEqual({
+      from: '2026-02-20',
+      to: '2026-02-26',
+    });
   });
 });
