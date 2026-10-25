@@ -309,3 +309,17 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **exports CSV** pour le comptable : séparateur `;`, UTF-8 avec BOM et fins de ligne CRLF (ouverture directe dans un tableur réglé en français), dates `JJ/MM/AAAA`, montants sans séparateur de milliers ;
   - **droits** : `accounting.read` pour le propriétaire, les gérants et le lecteur (le comptable) ; un vendeur n'y a pas accès.
 - **Reporté** : clôture définitive d'un exercice (verrou des dépenses et transferts de l'année), export PDF, partie double (journaux, grand livre, balance), dettes fournisseurs et achats à crédit, immobilisations.
+
+## ADR-029 — Offres et quotas, sans prestataire de paiement
+
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 15). Pas de prestataire de paiement pour l’instant (décision du propriétaire du 2026-10-25).
+- **Contexte** : le modèle économique repose sur des offres par boutique. Le propriétaire a fixé la grille le 2026-10-25 ; il n'a pas encore choisi de prestataire de paiement (Mobile Money), qui ne doit pas être intégré sans sa décision.
+- **Décision** :
+  - **offres en base** (`plans`), modifiables sans déploiement : **Gratuit** (0 F : 50 produits, 2 personnes, 1 téléphone de caisse), **Essentiel** (5 000 F par mois : 500, 5, 3), **Pro** (15 000 F par mois : 5 000, 20, 10). Ventes, factures, trésorerie et comptabilité sont dans toutes les offres ;
+  - **un abonnement par boutique** (`subscriptions`) : une nouvelle boutique démarre en Gratuit ; les boutiques créées avant cette phase sont passées en **Pro** (décision du propriétaire : personne ne perd rien) ;
+  - **les limites de l'offre deviennent les plafonds de la boutique** (`organizations.max_products`, `max_members`, `max_devices`), recopiés par un trigger à chaque changement d'offre. Les contrôles déjà en place à chaque création s'appliquent donc sans code nouveau ; un nouveau plafond, **`max_members`**, compte les personnes actives (et, à l'invitation, les invitations en attente), vérifié à l'invitation, à l'acceptation et à la réactivation, sous verrou de la boutique ;
+  - **passer à une offre plus petite ne retire rien** : ce qui existe reste ; seules les nouvelles créations au-delà de la limite sont refusées, avec un message qui renvoie vers « Abonnement » ;
+  - **changement d'offre** : l'API ne peut pas modifier un abonnement (aucun droit en base). Le propriétaire **demande** une offre (une demande en cours à la fois, annulable, auditée, jamais supprimée) ; la plateforme fait le changement, en attendant le paiement en ligne et l'administration de la plateforme (Phase 16) ;
+  - **droits** : propriétaire et gérants voient l'abonnement (`subscription.read`) ; seul le propriétaire demande un changement (`subscription.manage`) ; la grille des offres est lisible par toute personne connectée.
+- **Reporté** : paiement en ligne et renouvellement automatique (prestataire à choisir par le propriétaire), facturation de l'abonnement, période d'essai, offre annuelle.
+- **Points d'attention** : une boutique existante qui avait plus de 10 téléphones de caisse les garde mais ne peut plus en ajouter (le plafond était de 20) ; une demande de changement n'est traitée que par la plateforme, à la main, jusqu'à la Phase 16.

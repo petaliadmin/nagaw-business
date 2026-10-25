@@ -60,6 +60,9 @@ describe('Offline devices and synchronization', () => {
       ).body.id as string;
     acmeId = await createOrg(alice, 'Acme Dakar');
     globexId = await createOrg(bob, 'Globex');
+    // Several selling devices: more than the free offer allows.
+    await ctx.setPlan(acmeId, 'pro');
+    await ctx.setPlan(globexId, 'pro');
     await ctx.admin.query(
       `insert into app.organization_memberships (organization_id, user_id, role)
        values ($1, $2, 'member')`,

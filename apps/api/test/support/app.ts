@@ -53,6 +53,17 @@ export async function createTestContext() {
     return { id, email, token: await auth.sign(id, { email }) };
   }
 
+  /**
+   * Puts a shop on an offer, as the platform does (ADR-029): new shops
+   * start on the free offer, too small for tests about teams and devices.
+   */
+  async function setPlan(organizationId: string, planKey: string) {
+    await admin.query(
+      'update app.subscriptions set plan_key = $2 where organization_id = $1',
+      [organizationId, planKey],
+    );
+  }
+
   function http() {
     return request(app.getHttpServer());
   }
@@ -62,7 +73,7 @@ export async function createTestContext() {
     await admin.end();
   }
 
-  return { app, admin, auth, createUser, http, close };
+  return { app, admin, auth, createUser, setPlan, http, close };
 }
 
 export type TestContext = Awaited<ReturnType<typeof createTestContext>>;

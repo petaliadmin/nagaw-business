@@ -16,6 +16,7 @@ import { MeModule } from './me/me.module.js';
 import { MembersModule } from './members/members.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { SalesModule } from './sales/sales.module.js';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
 import { TenantGuard } from './tenancy/tenant.guard.js';
 import { TreasuryModule } from './treasury/treasury.module.js';
 
@@ -40,6 +41,7 @@ import { TreasuryModule } from './treasury/treasury.module.js';
     DocumentsModule,
     TreasuryModule,
     AccountingModule,
+    SubscriptionsModule,
   ],
   providers: [
     // Order matters: authenticate first, then resolve the tenant.

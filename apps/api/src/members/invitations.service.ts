@@ -19,6 +19,7 @@ import {
   generateInvitationToken,
   hashInvitationToken,
 } from './invitation-token.js';
+import { assertMemberRoom } from './member-limit.js';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -177,6 +178,9 @@ export class InvitationsService {
             `Limite de ${organization.max_pending_invitations} invitations en attente atteinte. Annulez-en avant d’en créer de nouvelles.`,
           );
         }
+
+        // Each pending invitation promises a place of the offer.
+        await assertMemberRoom(trx, tenant.organizationId, true);
 
         const inserted = await trx
           .insertInto('app.organization_invitations')
@@ -359,6 +363,7 @@ export class InvitationsService {
           );
         }
 
+        await assertMemberRoom(trx, invitation.organization_id, false);
         await trx
           .insertInto('app.organization_memberships')
           .values({

@@ -341,6 +341,7 @@ for (const path of [
   '/espace/tresorerie/depenses',
   '/espace/comptabilite',
   '/espace/comptabilite?vue=etat',
+  '/espace/abonnement',
 ]) {
   test(`${path} never overflows horizontally`, async ({
     page,

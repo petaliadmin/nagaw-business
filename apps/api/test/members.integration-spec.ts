@@ -93,6 +93,9 @@ describe('Invitations and member management', () => {
         .send({ name: 'Globex' })
         .expect(201)
     ).body.id;
+    // A team bigger than the free offer allows.
+    await ctx.setPlan(acmeId, 'pro');
+    await ctx.setPlan(globexId, 'pro');
     await ctx.admin.query(
       `insert into app.organization_memberships (organization_id, user_id, role)
        values ($1, $2, 'member'), ($1, $3, 'admin')`,

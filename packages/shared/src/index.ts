@@ -8,6 +8,7 @@ export * from './money.js';
 export * from './offline.js';
 export * from './organizations.js';
 export * from './permissions.js';
+export * from './plans.js';
 export * from './sales.js';
 export * from './stats.js';
 export * from './treasury.js';

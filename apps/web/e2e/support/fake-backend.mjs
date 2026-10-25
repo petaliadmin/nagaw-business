@@ -48,6 +48,30 @@ const USERS = {
   },
 };
 
+const PLANS = [
+  {
+    key: 'free',
+    name: 'Gratuit',
+    monthlyPrice: 0,
+    currency: 'XOF',
+    limits: { products: 50, members: 2, devices: 1 },
+  },
+  {
+    key: 'essential',
+    name: 'Essentiel',
+    monthlyPrice: 5000,
+    currency: 'XOF',
+    limits: { products: 500, members: 5, devices: 3 },
+  },
+  {
+    key: 'pro',
+    name: 'Pro',
+    monthlyPrice: 15000,
+    currency: 'XOF',
+    limits: { products: 5000, members: 20, devices: 10 },
+  },
+];
+
 const DOCUMENT_SETTINGS = {
   legalName: '',
   address: '',
@@ -168,6 +192,10 @@ function makeState() {
     nextAuditId: id,
     // { id, organizationId, email, role, status, token, expiresAt, ... }
     invitations: [],
+    subscriptions: {
+      [ACME]: { planKey: 'pro', pending: null },
+      [GLOBEX]: { planKey: 'free', pending: null },
+    },
   };
 }
 let state = makeState();
@@ -343,6 +371,9 @@ const server = createServer(async (req, res) => {
         Object.fromEntries(url.searchParams),
       ),
     );
+  // The offer grid, the same for everyone (ADR-029).
+  if (path === '/api/v1/plans' && req.method === 'GET')
+    return send(res, 200, PLANS);
   if (path === '/api/v1/me' && req.method === 'GET') {
     return send(res, 200, {
       id: user.id,
@@ -656,6 +687,73 @@ const server = createServer(async (req, res) => {
     })
   )
     return;
+  if (path.startsWith('/api/v1/subscription')) {
+    const subscription = state.subscriptions[orgId];
+    const role = membership.role;
+    if (!['owner', 'admin'].includes(role)) return forbidden(res);
+    const plan = (key) => PLANS.find((p) => p.key === key);
+    const dto = () => ({
+      plan: plan(subscription.planKey),
+      startedAt: '2026-10-01T09:00:00.000Z',
+      usage: {
+        products: 2,
+        members: state.memberships.filter(
+          (m) => m.organizationId === orgId && m.status === 'active',
+        ).length,
+        devices: 0,
+      },
+      limits: plan(subscription.planKey).limits,
+      pendingRequest: subscription.pending
+        ? {
+            id: subscription.pending.id,
+            plan: plan(subscription.pending.planKey),
+            createdAt: subscription.pending.createdAt,
+          }
+        : null,
+    });
+    if (path === '/api/v1/subscription' && req.method === 'GET')
+      return send(res, 200, dto());
+    if (role !== 'owner') return forbidden(res);
+    if (path === '/api/v1/subscription/requests' && req.method === 'POST') {
+      const { planKey } = await readJson(req);
+      if (!plan(planKey))
+        return apiError(res, 400, 'VALIDATION_FAILED', 'Offre inconnue.');
+      if (planKey === subscription.planKey)
+        return apiError(
+          res,
+          409,
+          'ALREADY_ON_PLAN',
+          `La boutique est déjà sur l’offre ${plan(planKey).name}.`,
+        );
+      if (subscription.pending)
+        return apiError(
+          res,
+          409,
+          'PLAN_CHANGE_PENDING',
+          'Une demande de changement d’offre est déjà en cours : annulez-la pour en faire une autre.',
+        );
+      subscription.pending = {
+        id: randomUUID(),
+        planKey,
+        createdAt: new Date().toISOString(),
+      };
+      return send(res, 201, dto());
+    }
+    if (
+      path === '/api/v1/subscription/requests/cancel' &&
+      req.method === 'POST'
+    ) {
+      if (!subscription.pending)
+        return apiError(
+          res,
+          409,
+          'NO_PENDING_REQUEST',
+          'Aucune demande de changement d’offre en cours.',
+        );
+      subscription.pending = null;
+      return send(res, 200, dto());
+    }
+  }
   if (
     await handleTreasury({
       req,
