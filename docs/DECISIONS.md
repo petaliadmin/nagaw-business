@@ -354,7 +354,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-032 — Outillage du pilote : avis dans l'application et test de fumée
 
-- **Statut** : Proposée en Phase 18 (2026-10-25), en attente de validation du propriétaire.
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 18).
 - **Contexte** : pendant le pilote, chaque difficulté d'un commerçant doit remonter sans friction, et chaque déploiement de production être vérifié sans attendre qu'un commerçant tombe sur un problème.
 - **Décision** :
   - **« Donner mon avis »** dans le menu de toute personne d'une boutique (vendeurs compris) : problème, idée ou question, avec la page d'où elle écrit (chemin seul, jamais l'adresse complète ni ses paramètres) ; elle retrouve ses messages et la réponse de l'équipe ; la plateforme les lit et y répond dans **Administration → Avis** ; un message n'est jamais modifié ni supprimé (trigger), seuls son statut et la réponse changent ; chaque réponse est inscrite dans l'historique de la boutique ;
