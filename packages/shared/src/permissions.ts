@@ -27,6 +27,9 @@ export const PERMISSIONS = [
   'devices.manage',
   'documents.read',
   'documents.manage',
+  'stats.read',
+  'treasury.read',
+  'treasury.manage',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -50,6 +53,9 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'devices.manage',
     'documents.read',
     'documents.manage',
+    'stats.read',
+    'treasury.read',
+    'treasury.manage',
   ],
   admin: [
     'organization.read',
@@ -70,6 +76,9 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'devices.manage',
     'documents.read',
     'documents.manage',
+    'stats.read',
+    'treasury.read',
+    'treasury.manage',
   ],
   // Sellers see the catalogue and the stock (managing them is the manager's
   // job, docs/ARCHITECTURE.md § 5), sell, see their own sales and serve
@@ -92,6 +101,8 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'sales.read_all',
     'customers.read',
     'documents.read',
+    'stats.read',
+    'treasury.read',
   ],
 };
 

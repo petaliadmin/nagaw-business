@@ -26,6 +26,10 @@ const PAGES = [
   '/espace/factures?type=devis',
   '/espace/factures/nouvelle',
   '/espace/factures/devis/nouveau',
+  '/espace/statistiques',
+  '/espace/tresorerie',
+  '/espace/tresorerie/depenses',
+  '/espace/tresorerie/cloture',
 ];
 
 for (const path of PAGES) {

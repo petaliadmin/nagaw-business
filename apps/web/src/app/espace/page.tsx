@@ -6,6 +6,7 @@ import {
   type Paginated,
   type SalesDaySummaryDto,
   type StockSummaryDto,
+  type TreasuryDto,
 } from '@nagaw/shared';
 import {
   CalendarDays,
@@ -14,6 +15,7 @@ import {
   ShoppingCart,
   Store,
   UserPlus,
+  Wallet,
 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -173,7 +175,8 @@ async function Overview() {
     'catalog.manage',
   );
 
-  const [members, sales, stock, audit] = await Promise.all([
+  const canReadTreasury = roleHasPermission(organization.role, 'treasury.read');
+  const [members, sales, stock, audit, treasury] = await Promise.all([
     apiAsUser<MemberDto[]>(accessToken, {
       path: '/organizations/current/members',
       organizationId: organization.id,
@@ -189,6 +192,12 @@ async function Overview() {
     canReadAudit
       ? apiAsUser<Paginated<AuditLogDto>>(accessToken, {
           path: '/audit-logs?limit=5',
+          organizationId: organization.id,
+        })
+      : null,
+    canReadTreasury
+      ? apiAsUser<TreasuryDto>(accessToken, {
+          path: '/treasury',
           organizationId: organization.id,
         })
       : null,
@@ -221,6 +230,41 @@ async function Overview() {
         currency={organization.defaultCurrency}
         canSell={roleHasPermission(organization.role, 'sales.create')}
       />
+
+      {treasury && (
+        <Card title="Trésorerie" titleId="treasury-summary" icon={Wallet}>
+          {!treasury.ok ? (
+            <Alert tone="error">
+              Trésorerie indisponible : {treasury.message}
+            </Alert>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Stat
+                  label="Total des caisses"
+                  value={formatAmount(
+                    treasury.data.total,
+                    organization.defaultCurrency,
+                  )}
+                />
+                <Stat
+                  label="On vous doit"
+                  value={formatAmount(
+                    treasury.data.receivables.customers +
+                      treasury.data.receivables.invoices,
+                    organization.defaultCurrency,
+                  )}
+                />
+              </dl>
+              <div>
+                <ButtonLink href="/espace/tresorerie" variant="secondary">
+                  Voir la trésorerie
+                </ButtonLink>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card title="Votre boutique" titleId="org-summary" icon={Store}>
         {members.ok ? (

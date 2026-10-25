@@ -47,6 +47,8 @@
   --stats-strong: #c2410c;
   --stats-soft: #ffedd5;
   --stats-ink: #c2410c;
+  /* Chart marks, checked for contrast and lightness (dataviz validator). */
+  --stats-chart: #c2410c;
 
   --accounting: #0d9488;
   --accounting-strong: #0f766e;
@@ -85,6 +87,7 @@
     --invoices-ink: #fbcfe8;
     --stats-soft: #4a2410;
     --stats-ink: #fed7aa;
+    --stats-chart: #ea580c;
     --accounting-soft: #0d3b37;
     --accounting-ink: #99f6e4;
     --danger-soft: #4c1515;
@@ -127,6 +130,7 @@
   --color-stats-strong: var(--stats-strong);
   --color-stats-soft: var(--stats-soft);
   --color-stats-ink: var(--stats-ink);
+  --color-stats-chart: var(--stats-chart);
   --color-accounting: var(--accounting);
   --color-accounting-strong: var(--accounting-strong);
   --color-accounting-soft: var(--accounting-soft);
