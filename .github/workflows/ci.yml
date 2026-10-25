@@ -49,7 +49,19 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm test:integration
-      - run: pnpm build
+      - name: Build, with decoy secrets that must not reach the browser
+        run: pnpm build
+        env:
+          # Canary values, not secrets: scripts/check-client-bundle.mjs fails
+          # if any of them appears in what the web app serves.
+          API_PROTECTION_BYPASS: canary-api-protection-bypass-7f3a91
+          SUPABASE_SERVICE_ROLE_KEY: canary-supabase-service-role-2c8e40
+          SUPABASE_SECRET_KEY: canary-supabase-secret-key-9b1d72
+          DATABASE_URL: postgres://canary:canary-db-password-5e6f13@db.invalid:5432/postgres
+      - name: No privileged secret in the web bundle
+        run: pnpm check:bundle
+      - name: No known vulnerable dependency
+        run: pnpm audit --prod --audit-level high
       - run: pnpm --filter @nagaw/web exec playwright install --with-deps chromium
       - run: pnpm --filter @nagaw/web test:e2e
 

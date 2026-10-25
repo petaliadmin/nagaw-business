@@ -571,6 +571,36 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - métriques HTTP (erreurs, latence par route) : celles de Vercel, pas dans l'application.
 - **Prochaine action recommandée** : Phase 17 (sécurité, tests, stabilisation).
 
-## Phases 17 et 18
+## Phase 17 — Sécurité, tests, stabilisation
 
-Non commencées. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.
+- **Objectif** : vérifier automatiquement chaque règle de sécurité avant le pilote, pour qu'aucune phase future ne puisse la casser sans que la CI le voie (ADR-031).
+- **Statut** : livrée sur la branche `claude/phase-17-stabilisation`, **en attente de validation** du propriétaire. **Aucune migration** dans cette phase.
+- **Fonctionnalités terminées** :
+  - **inventaire des routes de l'API** : un test énumère les **ROUTES** routes et vérifie 401 sans session, 404 pour un non-membre sur toute route de boutique, 403 pour l'administration ; exceptions listées une à une ;
+  - **aucun secret dans le navigateur** : build CI avec des valeurs leurres, puis recherche des leurres et des formes de clés privilégiées (`service_role`, clé secrète Supabase, URL Postgres) dans le JavaScript client et les pages pré-rendues ; exception gitleaks limitée aux leurres ;
+  - **dépendances** : 2 vulnérabilités « high » corrigées (`body-parser`, `multer`, dépendances de NestJS) ; audit en CI ;
+  - **en-têtes de sécurité** sur toutes les pages du site (cadre interdit, `nosniff`, HSTS, référent, caméra seule autorisée, `base-uri`, `form-action`, `object-src`) ;
+  - **performance** : budget de poids des pages clés vérifié en end-to-end ; mesure sur téléphone simulé lent (processeur ÷ 4, « Fast 3G ») : caisse utilisable en 4,2 s au premier chargement, 1,1 s ensuite ;
+  - **robustesse** : sous forte charge, des connexions à la base dépassaient leur délai et répondaient 500 (découvert par des tests d'intégration instables) ; une base injoignable répond désormais **503 « réessayez »** (`DATABASE_UNAVAILABLE`), que la caisse hors ligne reporte ; délai de connexion réglable (`DATABASE_CONNECT_TIMEOUT_MS`, 5 s par défaut) ;
+  - **exploitation** : `docs/OPERATIONS.md` réécrit (ce qui est en place, procédures : administrateurs, téléphone perdu ou volé, suspension, changement d'offre, rotation d'un secret, dépendance vulnérable).
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                                                |
+  | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+  | `pnpm test`                    | **UNIT**                                                                                                                |
+  | `pnpm test:integration`        | **INTEGRATION**                                                                                                         |
+  | Playwright                     | **E2E**                                                                                                                 |
+  | `pnpm check:bundle`            | Aucun secret dans 625 fichiers servis (build avec leurres) ; contrôle négatif : leurre et jeton `service_role` détectés |
+  | `pnpm audit`                   | Aucune vulnérabilité connue                                                                                             |
+  | Tests de mutation              | Permission retirée d'une route : l'inventaire échoue                                                                    |
+  | lint, typecheck, build, format | OK                                                                                                                      |
+
+- **Limites** :
+  - pas encore de CSP sur les scripts (Next.js demanderait des nonces) ;
+  - pas de limitation de débit dans l'application (API sans état sur Vercel) ;
+  - performance mesurée sur téléphone simulé, pas encore sur un appareil réel d'entrée de gamme (à faire pendant le pilote).
+- **Prochaine action recommandée** : valider la Phase 17 et l'ADR-031, puis Phase 18 (déploiement et pilote avec des boutiques réelles).
+
+## Phase 18
+
+Non commencée. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.

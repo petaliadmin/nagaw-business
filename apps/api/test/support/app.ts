@@ -28,6 +28,8 @@ export async function createTestContext() {
         LOG_LEVEL: 'silent',
         DATABASE_URL: inject('databaseUrl'),
         DATABASE_SSL: 'disable',
+        // Postgres in Docker on a busy machine opens connections slowly.
+        DATABASE_CONNECT_TIMEOUT_MS: '20000',
       }),
     )
     .overrideProvider(JWT_VERIFIER)

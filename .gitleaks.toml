@@ -1,0 +1,7 @@
+# Secret scanning (CI): all default rules, plus one exception.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Decoy secrets of the bundle check (scripts/check-client-bundle.mjs), never real"
+regexes = ['''canary-[a-z-]+-[0-9a-f]{6}''']
