@@ -3,6 +3,7 @@ import {
   BookOpen,
   ChartColumn,
   Contact,
+  Crown,
   FileText,
   House,
   Package,
@@ -93,6 +94,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Paramètres',
     icon: Settings,
     bottomBar: false,
+  },
+  {
+    href: '/espace/abonnement',
+    label: 'Abonnement',
+    icon: Crown,
+    bottomBar: false,
+    permission: 'subscription.read',
   },
 ];
 

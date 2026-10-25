@@ -520,6 +520,31 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - export PDF non livré (CSV seulement).
 - **Prochaine action recommandée** : faire relire un export par le comptable ; Phase 15 (abonnements et quotas, sans prestataire de paiement tant que le propriétaire ne l’a pas choisi).
 
-## Phases 15 à 18
+## Phase 15 — Offres et quotas (sans paiement en ligne)
+
+- **Objectif** : donner à chaque boutique une offre et appliquer ses limites, sans prestataire de paiement tant que le propriétaire ne l'a pas choisi (ADR-029).
+- **Statut** : livrée sur la branche `claude/phase-15-abonnements`, **en attente de validation** du propriétaire. La migration `20261025170000_plans.sql` doit être appliquée sur Supabase avant la fusion ; elle passe les boutiques existantes en Pro.
+- **Fonctionnalités terminées** :
+  - migration : offres (Gratuit, Essentiel 5 000 F, Pro 15 000 F, grille choisie par le propriétaire), abonnement par boutique (Gratuit à la création, Pro pour les boutiques existantes), limites de l'offre recopiées dans les plafonds de la boutique par trigger, nouveau plafond de personnes, demandes de changement d'offre jamais supprimées ;
+  - contrats partagés : offres, abonnement, demande ; permissions `subscription.read` et `subscription.manage` ;
+  - API : 4 endpoints (offres, abonnement, demande, annulation) ; plafond de personnes vérifié à l'invitation, à l'acceptation et à la réactivation ; messages de limite qui renvoient vers « Abonnement » ;
+  - web : page **Abonnement** (menu, propriétaire et gérants) : offre actuelle, jauges d'utilisation (produits, personnes, téléphones), comparaison des offres, « Demander cette offre » pour le propriétaire, demande en cours et annulation.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                                                                       |
+  | ------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+  | `pnpm test`                    | **UNIT**                                                                                                       |
+  | `pnpm test:integration`        | **INTEGRATION**                                                                                                |
+  | Playwright                     | **E2E**                                                                                                        |
+  | Migration                      | Boutique existante passée en Pro avec ses limites, nouvelle boutique en Gratuit : vérifié sur une base jetable |
+  | lint, typecheck, build, format | OK                                                                                                             |
+
+- **Limites** :
+  - **pas de paiement en ligne** : une demande de changement d'offre est traitée à la main par la plateforme (mise à jour de `subscriptions`) jusqu'au choix du prestataire et à l'administration de la plateforme (Phase 16) ;
+  - pas de facturation de l'abonnement, d'essai gratuit ni d'offre annuelle ;
+  - une boutique existante qui avait plus de 10 téléphones de caisse les garde mais ne peut plus en ajouter.
+- **Prochaine action recommandée** : appliquer la migration sur Supabase, valider la Phase 15 et l'ADR-029 ; choisir le prestataire de paiement ; Phase 16 (administration de la plateforme, où seront traitées les demandes de changement d'offre).
+
+## Phases 16 à 18
 
 Non commencées. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.

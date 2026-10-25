@@ -52,6 +52,7 @@ export interface OrganizationsTable {
   max_offline_days: Generated<number>;
   max_devices: Generated<number>;
   max_expense_categories: Generated<number>;
+  max_members: Generated<number>;
   next_device_number: Generated<number>;
   legal_name: Generated<string>;
   address: Generated<string>;
@@ -453,6 +454,38 @@ export interface ExpenseReceiptsTable {
   updated_at: Timestamp;
 }
 
+export interface PlansTable {
+  key: string;
+  name: string;
+  monthly_price: Numeric;
+  currency: string;
+  max_products: number;
+  max_members: number;
+  max_devices: number;
+  position: number;
+  created_at: ColumnType<Date, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
+export interface SubscriptionsTable {
+  organization_id: string;
+  plan_key: string;
+  started_at: ColumnType<Date, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+  changed_by: string | null;
+}
+
+export interface PlanChangeRequestsTable {
+  id: Generated<string>;
+  organization_id: string;
+  plan_key: string;
+  status: Generated<'pending' | 'cancelled' | 'done'>;
+  requested_by: string;
+  created_at: ColumnType<Date, never, never>;
+  resolved_at: NullableTimestamp;
+  resolved_by: string | null;
+}
+
 export interface Database {
   'app.user_profiles': UserProfilesTable;
   'app.organizations': OrganizationsTable;
@@ -481,4 +514,7 @@ export interface Database {
   'app.cash_transfers': CashTransfersTable;
   'app.cash_closings': CashClosingsTable;
   'app.expense_receipts': ExpenseReceiptsTable;
+  'app.plans': PlansTable;
+  'app.subscriptions': SubscriptionsTable;
+  'app.plan_change_requests': PlanChangeRequestsTable;
 }

@@ -31,6 +31,8 @@ describe('navigation', () => {
     expect(hrefs('viewer')).toContain('/espace/tresorerie');
     expect(hrefs('viewer')).toContain('/espace/comptabilite');
     expect(hrefs('member')).not.toContain('/espace/comptabilite');
+    expect(hrefs('owner')).toContain('/espace/abonnement');
+    expect(hrefs('viewer')).not.toContain('/espace/abonnement');
     expect(hrefs('member')).toContain('/caisse');
   });
 

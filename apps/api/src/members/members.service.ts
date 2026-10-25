@@ -10,6 +10,7 @@ import { ApiException } from '../common/api-exception.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode } from '../database/pg-errors.js';
+import { assertMemberRoom } from './member-limit.js';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -88,6 +89,8 @@ export class MembersService {
 
         const role = input.role ?? target.role;
         const status = input.status ?? target.status;
+        if (target.status === 'disabled' && status === 'active')
+          await assertMemberRoom(trx, tenant.organizationId, false);
         if (role !== target.role || status !== target.status) {
           await trx
             .updateTable('app.organization_memberships')

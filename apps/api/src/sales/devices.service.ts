@@ -112,7 +112,7 @@ export class DevicesService {
         .where('revoked_at', 'is', null)
         .executeTakeFirstOrThrow();
       if (Number(count) >= org.max_devices)
-        throw limitReached('appareils', org.max_devices);
+        throw limitReached('appareils', org.max_devices, true);
       const { id } = await trx
         .insertInto('app.devices')
         .values({

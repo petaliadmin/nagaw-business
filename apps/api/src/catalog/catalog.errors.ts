@@ -30,10 +30,17 @@ export function nameTaken(what: string): ApiException {
   return conflict('NAME_TAKEN', `${what} porte déjà ce nom.`);
 }
 
-export function limitReached(what: string, max: number): ApiException {
+export function limitReached(
+  what: string,
+  max: number,
+  /** Set when the offer gives this limit (ADR-029). */
+  fromPlan = false,
+): ApiException {
   return conflict(
     'CATALOG_LIMIT_REACHED',
-    `Limite de ${max} ${what} atteinte.`,
+    `Limite de ${max} ${what} atteinte.${
+      fromPlan ? ' Changez d’offre dans « Abonnement » pour en ajouter.' : ''
+    }`,
   );
 }
 

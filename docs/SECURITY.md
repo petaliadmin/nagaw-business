@@ -79,6 +79,15 @@
 | `/sw.js` servi sans cache et avec une politique de sécurité de contenu stricte ; caches des versions précédentes supprimés                                                                  | `next.config.ts`, route `/sw.js`                | `pwa.spec.ts`, drops the caches of previous versions                                          |
 | Modules Responsabilités et Tâches retirés : leurs routes répondent 404 dans le web et l'API                                                                                                 | —                                               | `workspace.spec.ts` › withdrawn modules are gone                                              |
 
+## Contrôles implémentés (Phase 15)
+
+| Contrôle                                                                                                                                          | Où                                                     | Preuve (test)                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| L'API ne peut pas changer une offre : aucun droit de mise à jour sur `subscriptions` ; la plateforme seule le fait                                | migration `20261025170000_plans.sql`                   | lets the owner ask for another offer… (l'offre ne change pas sur une demande)                   |
+| Les limites de l'offre sont les plafonds de la boutique, appliqués côté serveur à chaque création ; personnes comptées sous verrou de la boutique | trigger `subscriptions_apply_plan`, `assertMemberRoom` | applies the free offer to products, devices and people ; refuses a new member beyond the offer… |
+| Abonnement et demandes toujours lus dans la boutique de l'appelant ; seul le propriétaire demande                                                 | `SubscriptionsService`, permissions `subscription.*`   | never shows nor touches the subscription of another shop                                        |
+| Demandes de changement jamais supprimées, même en SQL                                                                                             | trigger `plan_change_requests_no_delete`               | keeps requests as a record, even in SQL                                                         |
+
 ## Contrôles implémentés (Phase 14)
 
 | Contrôle                                                                                                                                              | Où                                                             | Preuve (test)                                                                                                                          |
