@@ -27,6 +27,11 @@ export class MeController {
         'Profil utilisateur introuvable.',
       );
     }
+    const admin = await this.database.db
+      .selectFrom('app.platform_admins')
+      .select('user_id')
+      .where('user_id', '=', user.userId)
+      .executeTakeFirst();
     return {
       id: profile.id,
       email: profile.email,
@@ -34,6 +39,7 @@ export class MeController {
       locale: profile.locale,
       timezone: profile.timezone,
       organizations: await this.organizations.listForUser(user.userId),
+      platformAdmin: admin !== undefined,
     };
   }
 }

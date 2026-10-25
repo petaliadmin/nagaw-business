@@ -79,6 +79,16 @@
 | `/sw.js` servi sans cache et avec une politique de sécurité de contenu stricte ; caches des versions précédentes supprimés                                                                  | `next.config.ts`, route `/sw.js`                | `pwa.spec.ts`, drops the caches of previous versions                                          |
 | Modules Responsabilités et Tâches retirés : leurs routes répondent 404 dans le web et l'API                                                                                                 | —                                               | `workspace.spec.ts` › withdrawn modules are gone                                              |
 
+## Contrôles implémentés (Phase 16)
+
+| Contrôle                                                                                                                                                           | Où                                                                 | Preuve (test)                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Administration réservée aux administrateurs de la plateforme, relus en base à chaque requête ; aucun endpoint n'en crée                                            | `PlatformAdminGuard`, `platform_admins` (lecture seule pour l'API) | opens only to platform administrators… (mutation : garde neutralisée, le test échoue) |
+| Un administrateur ne lit aucun contenu métier : il n'est membre d'aucune boutique, et les réponses d'administration ne contiennent que comptes, offres et agrégats | `AdminService`, `TenantGuard`                                      | never opens the business content of a shop (liste exacte des champs vérifiée)         |
+| Chaque action de la plateforme (offre, suspension) inscrite dans l'historique de la boutique concernée                                                             | `AuditService` (`actor_type = platform_admin`)                     | approves a request to change offer, audited in the shop history                       |
+| Une boutique suspendue est fermée à ses membres (404) sans perte de données                                                                                        | `TenantGuard` (statut), `organizations_suspension_check`           | suspends a shop, closing it to its members, then reactivates it                       |
+| Lots et refus de synchronisation conservés, même en SQL                                                                                                            | triggers `reject_append_only_mutation`                             | keeps what devices sent, even in SQL                                                  |
+
 ## Contrôles implémentés (Phase 15)
 
 | Contrôle                                                                                                                                          | Où                                                     | Preuve (test)                                                                                   |

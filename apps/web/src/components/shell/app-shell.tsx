@@ -58,6 +58,18 @@ function Account({
           </Badge>
         </span>
       </div>
+      {me.platformAdmin && (
+        <Link
+          href="/admin"
+          className={`inline-flex min-h-12 items-center font-semibold underline underline-offset-4 ${
+            tone === 'sidebar'
+              ? 'text-white focus-visible:outline-white'
+              : 'text-brand-ink'
+          }`}
+        >
+          Administration de la plateforme
+        </Link>
+      )}
       <SignOutButton tone={tone} />
     </div>
   );

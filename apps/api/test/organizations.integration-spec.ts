@@ -273,7 +273,9 @@ describe('Organizations, memberships and tenant isolation', () => {
         .send({ name: 'Suspended Co' })
         .expect(201);
       await ctx.admin.query(
-        `update app.organizations set status = 'suspended' where id = $1`,
+        `update app.organizations
+            set status = 'suspended', suspended_at = now(), suspension_reason = 'Test'
+          where id = $1`,
         [created.body.id],
       );
       await ctx

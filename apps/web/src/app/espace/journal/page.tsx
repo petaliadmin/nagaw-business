@@ -93,10 +93,12 @@ async function AuditLog({ searchParams }: PageProps<'/espace/journal'>) {
               {
                 header: 'Par',
                 cell: (entry) =>
-                  entry.actorType !== 'user'
-                    ? 'Système'
-                    : ((entry.actorId && emailById.get(entry.actorId)) ??
-                      'Ancienne personne de l’équipe'),
+                  entry.actorType === 'platform_admin'
+                    ? 'Nagaw (plateforme)'
+                    : entry.actorType !== 'user'
+                      ? 'Système'
+                      : ((entry.actorId && emailById.get(entry.actorId)) ??
+                        'Ancienne personne de l’équipe'),
               },
               {
                 header: 'Référence',

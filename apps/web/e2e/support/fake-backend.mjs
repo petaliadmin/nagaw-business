@@ -374,12 +374,221 @@ const server = createServer(async (req, res) => {
   // The offer grid, the same for everyone (ADR-029).
   if (path === '/api/v1/plans' && req.method === 'GET')
     return send(res, 200, PLANS);
+  // Platform administration (ADR-030): Binta administers the platform.
+  if (path.startsWith('/api/v1/admin/')) {
+    if (user.id !== USERS.binta.id)
+      return apiError(
+        res,
+        403,
+        'PLATFORM_ADMIN_REQUIRED',
+        'Réservé à l’administration de la plateforme.',
+      );
+    const plan = (key) => PLANS.find((p) => p.key === key);
+    const owners = (orgId) =>
+      state.memberships
+        .filter(
+          (m) =>
+            m.organizationId === orgId &&
+            m.role === 'owner' &&
+            m.status === 'active',
+        )
+        .map((m) => userById(m.userId).email);
+    const listItem = (org) => ({
+      id: org.id,
+      name: org.name,
+      status: org.status,
+      plan: {
+        key: state.subscriptions[org.id].planKey,
+        name: plan(state.subscriptions[org.id].planKey).name,
+      },
+      ownerEmails: owners(org.id),
+      members: state.memberships.filter(
+        (m) => m.organizationId === org.id && m.status === 'active',
+      ).length,
+      createdAt: org.createdAt,
+      lastSaleAt: null,
+    });
+    const requestDto = (org) => {
+      const r = state.subscriptions[org.id].pending;
+      return {
+        id: r.id,
+        shop: { id: org.id, name: org.name },
+        from: {
+          key: state.subscriptions[org.id].planKey,
+          name: plan(state.subscriptions[org.id].planKey).name,
+        },
+        to: { key: r.planKey, name: plan(r.planKey).name },
+        requestedBy: owners(org.id)[0] ?? '',
+        status: r.status ?? 'pending',
+        note: r.note ?? '',
+        createdAt: r.createdAt,
+        resolvedAt: r.resolvedAt ?? null,
+      };
+    };
+    const shopDto = (org) => ({
+      ...listItem(org),
+      timezone: org.timezone,
+      currency: org.defaultCurrency,
+      usage: { products: 2, members: listItem(org).members, devices: 0 },
+      limits: plan(state.subscriptions[org.id].planKey).limits,
+      suspension:
+        org.status === 'suspended'
+          ? { at: org.suspendedAt, reason: org.suspensionReason }
+          : null,
+      devices: [],
+      requests: state.subscriptions[org.id].pending ? [requestDto(org)] : [],
+    });
+    const orgs = Object.values(state.organizations);
+    const pending = orgs.filter(
+      (o) =>
+        state.subscriptions[o.id].pending &&
+        !state.subscriptions[o.id].pending.status,
+    );
+    if (path === '/api/v1/admin/overview')
+      return send(res, 200, {
+        shops: {
+          active: orgs.filter((o) => o.status === 'active').length,
+          suspended: orgs.filter((o) => o.status === 'suspended').length,
+          createdLast30Days: 0,
+          byPlan: PLANS.map((p) => ({
+            key: p.key,
+            name: p.name,
+            count: orgs.filter(
+              (o) => state.subscriptions[o.id].planKey === p.key,
+            ).length,
+          })),
+        },
+        users: { total: Object.keys(USERS).length, createdLast30Days: 0 },
+        pendingRequests: pending.length,
+        sync: { batches: 0, accepted: 0, rejected: 0, rejectionBasisPoints: 0 },
+        alerts: pending.length
+          ? [
+              {
+                kind: 'plan_request',
+                message: `${pending.length} demande(s) de changement d’offre en attente.`,
+                shop: null,
+              },
+            ]
+          : [],
+      });
+    if (path === '/api/v1/admin/shops')
+      return send(res, 200, orgs.map(listItem));
+    if (path === '/api/v1/admin/plan-requests')
+      return send(
+        res,
+        200,
+        (url.searchParams.get('status') === 'all'
+          ? orgs.filter((o) => state.subscriptions[o.id].pending)
+          : pending
+        ).map(requestDto),
+      );
+    if (path === '/api/v1/admin/sync') {
+      const days = Number(url.searchParams.get('days') ?? 7);
+      const today = new Date();
+      return send(res, 200, {
+        days: Array.from({ length: days }, (_, i) => ({
+          day: new Date(today.getTime() - (days - 1 - i) * 86_400_000)
+            .toISOString()
+            .slice(0, 10),
+          batches: 0,
+          accepted: 0,
+          duplicates: 0,
+          rejected: 0,
+        })),
+        reasons: [],
+        silentDevices: [],
+      });
+    }
+    const shopMatch =
+      /^\/api\/v1\/admin\/shops\/([^/]+)(\/plan|\/suspend|\/reactivate)?$/.exec(
+        path,
+      );
+    if (shopMatch) {
+      const org = state.organizations[shopMatch[1]];
+      if (!org)
+        return apiError(res, 404, 'SHOP_NOT_FOUND', 'Boutique introuvable.');
+      if (!shopMatch[2]) return send(res, 200, shopDto(org));
+      const body = await readJson(req);
+      if (shopMatch[2] === '/plan') {
+        if (!plan(body.planKey))
+          return apiError(res, 400, 'VALIDATION_FAILED', 'Offre inconnue.');
+        if (body.planKey === state.subscriptions[org.id].planKey)
+          return apiError(
+            res,
+            409,
+            'ALREADY_ON_PLAN',
+            'La boutique est déjà sur cette offre.',
+          );
+        state.subscriptions[org.id].planKey = body.planKey;
+        return send(res, 200, shopDto(org));
+      }
+      if (shopMatch[2] === '/suspend') {
+        if (!body.reason?.trim())
+          return apiError(
+            res,
+            400,
+            'VALIDATION_FAILED',
+            'Indiquez pourquoi la boutique est suspendue',
+          );
+        Object.assign(org, {
+          status: 'suspended',
+          suspendedAt: new Date().toISOString(),
+          suspensionReason: body.reason,
+        });
+        return send(res, 200, shopDto(org));
+      }
+      Object.assign(org, {
+        status: 'active',
+        suspendedAt: null,
+        suspensionReason: null,
+      });
+      return send(res, 200, shopDto(org));
+    }
+    const requestMatch =
+      /^\/api\/v1\/admin\/plan-requests\/([^/]+)\/(approve|reject)$/.exec(path);
+    if (requestMatch) {
+      const org = orgs.find(
+        (o) => state.subscriptions[o.id].pending?.id === requestMatch[1],
+      );
+      if (!org)
+        return apiError(
+          res,
+          404,
+          'PLAN_REQUEST_NOT_FOUND',
+          'Demande introuvable.',
+        );
+      const subscription = state.subscriptions[org.id];
+      if (subscription.pending.status)
+        return apiError(
+          res,
+          409,
+          'PLAN_REQUEST_NOT_PENDING',
+          'Cette demande a déjà été traitée ou annulée.',
+        );
+      const { note = '' } = await readJson(req);
+      const dto = requestDto(org);
+      if (requestMatch[2] === 'approve')
+        subscription.planKey = subscription.pending.planKey;
+      Object.assign(subscription.pending, {
+        status: requestMatch[2] === 'approve' ? 'done' : 'rejected',
+        note,
+        resolvedAt: new Date().toISOString(),
+      });
+      return send(res, 200, {
+        ...dto,
+        status: subscription.pending.status,
+        note,
+      });
+    }
+    return apiError(res, 404, 'NOT_FOUND', 'Introuvable.');
+  }
   if (path === '/api/v1/me' && req.method === 'GET') {
     return send(res, 200, {
       id: user.id,
       email: user.email,
       displayName: null,
       locale: 'fr',
+      platformAdmin: user.id === USERS.binta.id,
       timezone: 'UTC',
       organizations: orgsOf(user.id),
     });
@@ -703,13 +912,14 @@ const server = createServer(async (req, res) => {
         devices: 0,
       },
       limits: plan(subscription.planKey).limits,
-      pendingRequest: subscription.pending
-        ? {
-            id: subscription.pending.id,
-            plan: plan(subscription.pending.planKey),
-            createdAt: subscription.pending.createdAt,
-          }
-        : null,
+      pendingRequest:
+        subscription.pending && !subscription.pending.status
+          ? {
+              id: subscription.pending.id,
+              plan: plan(subscription.pending.planKey),
+              createdAt: subscription.pending.createdAt,
+            }
+          : null,
     });
     if (path === '/api/v1/subscription' && req.method === 'GET')
       return send(res, 200, dto());
@@ -725,7 +935,7 @@ const server = createServer(async (req, res) => {
           'ALREADY_ON_PLAN',
           `La boutique est déjà sur l’offre ${plan(planKey).name}.`,
         );
-      if (subscription.pending)
+      if (subscription.pending && !subscription.pending.status)
         return apiError(
           res,
           409,
@@ -743,7 +953,7 @@ const server = createServer(async (req, res) => {
       path === '/api/v1/subscription/requests/cancel' &&
       req.method === 'POST'
     ) {
-      if (!subscription.pending)
+      if (!subscription.pending || subscription.pending.status)
         return apiError(
           res,
           409,

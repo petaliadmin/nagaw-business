@@ -323,3 +323,18 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **droits** : propriétaire et gérants voient l'abonnement (`subscription.read`) ; seul le propriétaire demande un changement (`subscription.manage`) ; la grille des offres est lisible par toute personne connectée.
 - **Reporté** : paiement en ligne et renouvellement automatique (prestataire à choisir par le propriétaire), facturation de l'abonnement, période d'essai, offre annuelle.
 - **Points d'attention** : une boutique existante qui avait plus de 10 téléphones de caisse les garde mais ne peut plus en ajouter (le plafond était de 20) ; une demande de changement n'est traitée que par la plateforme, à la main, jusqu'à la Phase 16.
+
+## ADR-030 — Administration de la plateforme et observabilité
+
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 16).
+- **Contexte** : sans paiement en ligne, les demandes de changement d'offre (ADR-029) doivent être traitées par quelqu'un ; la plateforme doit aussi voir la santé de la synchronisation et les boutiques proches de leurs limites, sans jamais lire leurs ventes, produits ou clients.
+- **Décision** :
+  - **administrateurs de la plateforme** dans une table à part (`platform_admins`), **ajoutés uniquement en SQL** par le propriétaire : aucun endpoint n'en crée. Un administrateur n'est membre d'aucune boutique : les routes des boutiques lui restent fermées (404) ;
+  - **endpoints `/api/v1/admin/*`** protégés par une garde qui relit la table à chaque requête ; ils ne renvoient que des comptes, des offres et des agrégats (nombre de produits, de personnes, de téléphones, date de la dernière vente), jamais de contenu métier ;
+  - **demandes d'offre** : l'administrateur accepte (l'offre change, la demande est close) ou refuse, avec une remarque ; il peut aussi changer l'offre d'une boutique directement (paiement reçu hors application). L'API reçoit pour cela le droit de modifier l'offre d'un abonnement, protégé par la garde ;
+  - **suspension** d'une boutique avec un motif : ses membres n'y ont plus accès (la boutique disparaît de leur liste) ; rien n'est effacé ; la réactivation rend tout ;
+  - **transparence** : chaque action de la plateforme sur une boutique est inscrite dans **l'historique de cette boutique** (« Nagaw (plateforme) »), visible par son propriétaire ;
+  - **métriques de synchronisation** : chaque lot reçu (acceptées, doublons, refusées) et chaque refus avec son motif sont désormais **enregistrés en base** (ajout seul) ; vue par jour, motifs les plus fréquents, téléphones silencieux ;
+  - **alertes calculées** à l'ouverture du tableau de bord, avec des **seuils en base** (`platform_settings`) : taux de refus hors ligne sur 7 jours (5 % par défaut), quota presque atteint (90 %), téléphone sans envoi depuis 3 jours, demandes d'offre en attente ;
+  - **espace web séparé** `/admin`, lien « Administration de la plateforme » affiché aux seuls administrateurs.
+- **Reporté** : envoi des alertes (e-mail, SMS, WhatsApp : prestataire à choisir), métriques HTTP par route (fournies par Vercel en attendant), gestion des administrateurs dans l'application, effacement d'une boutique.

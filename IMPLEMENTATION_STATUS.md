@@ -545,6 +545,32 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - une boutique existante qui avait plus de 10 téléphones de caisse les garde mais ne peut plus en ajouter.
 - **Prochaine action recommandée** : Phase 16 (administration de la plateforme, dont le traitement des demandes de changement d’offre).
 
-## Phases 16 à 18
+## Phase 16 — Administration de la plateforme et observabilité
+
+- **Objectif** : traiter les demandes d'offre, voir la santé de la plateforme et agir sur une boutique, sans jamais lire son contenu (ADR-030).
+- **Statut** : **validée** par le propriétaire le 2026-10-25 (ADR-030 acceptée). Migration `20261025190000_platform_admin.sql` appliquée sur Supabase par le propriétaire le 2026-10-25 ; le premier administrateur s’ajoute en SQL (`insert into app.platform_admins …`).
+- **Fonctionnalités terminées** :
+  - migration : administrateurs de la plateforme et seuils des alertes en base, suspension datée et motivée d'une boutique, demandes d'offre refusables, lots et refus de synchronisation enregistrés (ajout seul) ;
+  - API : 10 endpoints `/admin/*` derrière une garde relue en base ; tableau de bord, boutiques, fiche, changement d'offre, suspension et réactivation, demandes (acceptation, refus), synchronisation ; `/me` indique si la personne administre la plateforme ; la synchronisation enregistre chaque lot et chaque refus ;
+  - web : espace **Administration** (`/admin`, lien réservé aux administrateurs) : tableau de bord avec alertes, boutiques (recherche, fiche, offre, suspension), demandes d'offre (accepter, refuser), synchronisation (envois par jour, motifs de refus, téléphones silencieux) ;
+  - historique des boutiques : actions de la plateforme affichées « Nagaw (plateforme) » ; **toutes les actions** des phases 9 à 16 ont maintenant un libellé en français (elles s'affichaient avec leur clé technique), vérifié par un test.
+- **Tests exécutés** :
+
+  | Commande                       | Résultat                                                    |
+  | ------------------------------ | ----------------------------------------------------------- |
+  | `pnpm test`                    | **UNIT**                                                    |
+  | `pnpm test:integration`        | **INTEGRATION**                                             |
+  | Playwright                     | **E2E**                                                     |
+  | Test de mutation               | Garde d'administration neutralisée : le test d'accès échoue |
+  | lint, typecheck, build, format | OK                                                          |
+
+- **Limites** :
+  - les alertes s'affichent dans le tableau de bord ; aucun envoi (e-mail, SMS, WhatsApp) tant qu'un prestataire n'est pas choisi ;
+  - les administrateurs s'ajoutent et se retirent en SQL ;
+  - une boutique suspendue disparaît de la liste de ses membres, sans message qui l'explique dans leur espace ;
+  - métriques HTTP (erreurs, latence par route) : celles de Vercel, pas dans l'application.
+- **Prochaine action recommandée** : Phase 17 (sécurité, tests, stabilisation).
+
+## Phases 17 et 18
 
 Non commencées. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.
