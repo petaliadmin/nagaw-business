@@ -460,7 +460,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Phase 13 — Statistiques et trésorerie
 
 - **Objectif** : savoir combien la boutique gagne et où est son argent, sans double saisie (ADR-027).
-- **Statut** : livrée sur la branche `claude/phase-13-tresorerie`, **en attente de validation** du propriétaire. La migration `20261025130000_treasury.sql` doit être appliquée sur Supabase avant la fusion.
+- **Statut** : **validée** par le propriétaire le 2026-10-25 (ADR-027 acceptée). Migration `20261025130000_treasury.sql` appliquée sur Supabase par le propriétaire le 2026-10-25.
 - **Fonctionnalités terminées** :
   - migration : caisses (Caisse, Wave, Orange Money, Free Money, autre Mobile Money, Banque) créées pour chaque boutique, catégories de dépenses avec leur compte SYSCOHADA, dépenses (annulation seulement, par trigger), transferts et clôtures en ajout seul, prix d'achat figé sur chaque ligne de vente, plafond de catégories en base ; RLS et droits minimaux de `nagaw_api` ;
   - contrats partagés : caisse d'un paiement (`accountOfPayment`), périodes (un an au plus), dépenses, transferts, clôtures, statistiques ; permissions `stats.read`, `treasury.read`, `treasury.manage` ;
@@ -488,7 +488,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - les ventes d'avant cette phase n'ont pas de prix d'achat figé : elles sont hors marge ;
   - pas de justificatif photo des dépenses (Phase 14) ; dépenses et clôtures en ligne uniquement ;
   - soldes et statistiques calculés à chaque lecture : à remplacer par des agrégats si une boutique accumule un très grand nombre d'opérations.
-- **Prochaine action recommandée** : appliquer la migration sur Supabase, essayer une clôture de caisse et une dépense, valider la Phase 13 et l'ADR-027, puis Phase 14 (comptabilité).
+- **Prochaine action recommandée** : Phase 14 (comptabilité).
 
 ## Phases 14 à 18
 

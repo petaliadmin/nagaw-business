@@ -281,7 +281,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-027 — Trésorerie et statistiques calculées, jamais stockées
 
-- **Statut** : Proposée en Phase 13 (2026-10-25), en attente de validation du propriétaire.
+- **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 13).
 - **Contexte** : le commerçant doit savoir combien il a gagné et où est son argent, sans double saisie et sans écart possible entre ventes, factures et caisses.
 - **Décision** :
   - **caisses** (`cash_accounts`) créées pour chaque boutique (trigger à la création, migration pour les existantes) : « Caisse » (espèces), un compte par opérateur Mobile Money (Wave, Orange Money, Free Money, autre) et « Banque ». Une seule caisse espèces par boutique au MVP ;
