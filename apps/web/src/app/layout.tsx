@@ -51,7 +51,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="fr" className={`${nunito.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">
+      {/* Browser extensions (ColorZilla's cz-shortcut-listen…) add
+          attributes to <body> before React loads: only this element's
+          attributes are exempt, never its content. */}
+      <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <ConnectionBanner />
         {children}
         <ServiceWorkerRegistration />
