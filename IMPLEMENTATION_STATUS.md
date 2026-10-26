@@ -632,3 +632,16 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Statut** : livré sur la branche `claude/offres-limites-produits`, **en attente de validation**. La migration `20261026090000_plan_product_limits.sql` doit être appliquée sur Supabase avant la fusion.
 - **Fonctionnalités terminées** : plafond vide (`null`) pour « sans limite », dans l'offre et dans la boutique ; « Produits sans limite » dans « Abonnement » et l'administration ; pas d'alerte de quota sans plafond ; produits existants gardés.
 - **Tests** : intégration (grille, refus du 4ᵉ produit en Gratuit, 11 produits en Pro), bout en bout (page « Abonnement »).
+
+## Après la Phase 18 — Audit d'accessibilité (WCAG 2.2 AA)
+
+- **Objectif** : corriger les défauts trouvés par l'audit d'accessibilité du 2026-10-26 (relecture du code et contrastes de tous les jetons ; pas encore de test avec TalkBack ou NVDA).
+- **Statut** : livré sur la branche `claude/accessibilite-audit`, **en attente de validation**. Aucune migration, aucun endpoint.
+- **Corrections** :
+  - **caisse** : les tuiles produit n'ont plus d'`aria-label` qui masquait la rupture, le stock restant et la quantité déjà dans le panier ; chaque ajout ou retrait est annoncé (« Riz ajouté. 3 dans le panier. ») par une zone `role="status"` toujours présente ; le focus suit les étapes (titre « Panier » après « Encaisser », recherche au retour, confirmation après la vente, titre « Vendre » après « Nouvelle vente ») ; message sous une quantité ou une remise refusée ; libellés visibles pour le paiement en plusieurs fois ; « À rendre » annoncé de façon fiable, le total n'est plus relu à chaque touche ; marge basse pour que « Encaisser » ne cache plus la dernière rangée (2.4.3, 3.3.1, 3.3.2, 4.1.2, 4.1.3) ;
+  - **menu « Plus »** : `<dialog>` natif modal, le focus ne peut plus en sortir (2.4.3) ;
+  - **choix de la boutique** : le bouton « Ouvrir » l'applique, choisir dans la liste ne recharge plus la page (3.2.2) ;
+  - **focus visible** : anneau blanc sur les fonds colorés (bande verte de l'accueil, boutons sur tuiles foncées, liste de la barre latérale) ; `scroll-padding` pour qu'un élément ne passe plus sous les barres fixes (2.4.7, 2.4.11) ;
+  - **formulaires** : après une réponse en erreur, le focus va au premier champ en erreur (`ActionForm`) ; textes d'exemple à 7,5:1 (1.4.3).
+- **Tests** : bout en bout (annonce et nom accessible des tuiles, focus après « Encaisser », Tab qui reste dans le menu « Plus », bouton « Ouvrir ») ; suite complète Playwright, unitaires, intégration, lint, typecheck et build réussis.
+- **Limites** : un test avec un lecteur d'écran réel sur un Android d'entrée de gamme reste à faire (parcours de vente complet), ainsi qu'un zoom à 200 % sur la caisse et les factures.

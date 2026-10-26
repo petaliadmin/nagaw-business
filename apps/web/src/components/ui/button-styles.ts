@@ -11,7 +11,9 @@ const VARIANTS = {
   // vivid green would fall under 4.5:1 (DESIGN.md).
   sell: 'bg-sales-strong text-white shadow-sm hover:shadow-md',
   // On a dark module colour (dashboard): outlined in white.
-  outlineOnDark: 'border-2 border-white text-white hover:bg-white/15',
+  // The violet focus ring would vanish on the module colour: white instead.
+  outlineOnDark:
+    'border-2 border-white text-white hover:bg-white/15 focus-visible:outline-white',
 } as const;
 
 export type ButtonVariant = keyof typeof VARIANTS;

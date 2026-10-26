@@ -611,7 +611,7 @@ export default function Home() {
         <section
           id="fonctions"
           aria-labelledby="modules-title"
-          className="mx-auto flex w-full max-w-6xl scroll-mt-20 flex-col gap-8 px-4 pb-14"
+          className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pb-14"
         >
           <SectionTitle
             id="modules-title"
@@ -769,7 +769,7 @@ export default function Home() {
           aria-labelledby="pricing-title"
           className="bg-surface-muted"
         >
-          <div className="mx-auto flex w-full max-w-6xl scroll-mt-20 flex-col gap-8 px-4 py-14">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-14">
             <SectionTitle
               id="pricing-title"
               eyebrow="Tarifs"
@@ -814,7 +814,7 @@ export default function Home() {
         <section
           id="questions"
           aria-labelledby="faq-title"
-          className="mx-auto flex w-full max-w-6xl scroll-mt-20 flex-col gap-6 px-4 py-14"
+          className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-14"
         >
           <SectionTitle id="faq-title" title="Vos questions" />
           <ul className="flex flex-col gap-3">
@@ -850,7 +850,8 @@ export default function Home() {
             <ButtonLink
               href="/inscription"
               variant="secondary"
-              className="shrink-0 text-lg"
+              // Violet ring on the green band: 1.1:1, white instead.
+              className="shrink-0 text-lg focus-visible:outline-white"
             >
               Créer ma boutique gratuitement
             </ButtonLink>

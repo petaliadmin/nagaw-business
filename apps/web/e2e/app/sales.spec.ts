@@ -34,11 +34,21 @@ test('a cash sale shows the change, the ticket and lowers the stock', async ({
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/vendre');
   await addToCart(page, 'Eau minérale 1,5 L', 3);
+  // Each tap is spoken, and the tile says what is in the cart (WCAG 4.1.3).
+  await expect(
+    page.getByText('Eau minérale 1,5 L ajouté. 3 dans le panier.'),
+  ).toBeAttached();
+  await expect(
+    page.getByRole('button', { name: /^Ajouter Eau minérale 1,5 L/ }),
+  ).toHaveAccessibleName(/, 3 dans le panier$/);
   if (isMobile)
     await expect(
       page.getByRole('button', { name: /^Encaisser/ }),
     ).toContainText('1 500');
   await openPayment(page, isMobile);
+  // The pressed button is gone: the focus goes to the top of the cart.
+  if (isMobile)
+    await expect(page.getByRole('heading', { name: 'Panier' })).toBeFocused();
   const cart = page.getByRole('list', { name: 'Articles du panier' });
   await expect(
     cart.getByLabel('Eau minérale 1,5 L', { exact: true }),
