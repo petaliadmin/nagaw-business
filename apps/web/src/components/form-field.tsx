@@ -2,7 +2,7 @@ import type { InputHTMLAttributes } from 'react';
 
 // 16 px text (no zoom on iOS focus), 48 px high, 3:1 border (DESIGN.md).
 export const CONTROL =
-  'min-h-12 w-full rounded-xl border-2 border-line-strong bg-surface px-4 py-2 text-base text-ink aria-[invalid]:border-danger';
+  'min-h-12 w-full rounded-xl border-2 border-line-strong bg-surface px-4 py-2 text-base text-ink placeholder:text-ink-muted aria-[invalid]:border-danger';
 const LABEL = 'text-base font-semibold';
 const ERROR = 'text-base font-medium text-danger-ink';
 

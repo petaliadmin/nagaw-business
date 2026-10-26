@@ -149,8 +149,15 @@
   --color-warning-ink: var(--warning-ink);
 }
 
+/*
+ * Keyboard focus never lands under the sticky top bars (header, connection
+ * banner) or the fixed bottom ones (tab bar, « Vendre », « Encaisser »):
+ * WCAG 2.4.11. Also offsets in-page anchors.
+ */
 html {
   -webkit-tap-highlight-color: transparent;
+  scroll-padding-top: 5rem;
+  scroll-padding-bottom: 10rem;
 }
 
 body {

@@ -57,6 +57,9 @@ Ces valeurs deviennent des jetons CSS (`@theme` de Tailwind 4) dans `apps/web/sr
 - Cibles tactiles d'au moins **48 × 48 px**, espacées de 8 px.
 - Contraste ≥ 4,5 pour le texte, ≥ 3 pour les icônes et bordures de champs.
 - Navigation complète au clavier sur ordinateur, focus visible et coloré.
+- Sur un fond de couleur forte (bande de module, tuile foncée, barre latérale), anneau de focus **blanc** (`focus-visible:outline-white`) : le violet y tombe sous 3:1. Le texte sombre `on-vivid` ne va que sur les teintes vives qui le portent à 4,5:1 (vert, orange, ambre), jamais sur le violet, le bleu, le rose ou le rouge vifs.
+- Quand une action fait disparaître le bouton pressé (étapes de la caisse, ticket), le focus est placé sur le titre ou le message qui suit ; un ajout au panier est annoncé par une zone `role="status"` toujours présente.
+- Une liste déroulante ne déclenche jamais de navigation à elle seule : un bouton valide le choix (WCAG 3.2.2).
 - Libellés visibles au-dessus des champs (pas de placeholder seul), erreurs annoncées (`aria-live`).
 - Pavé numérique natif pour les quantités et montants (`inputmode="decimal"`).
 - `prefers-reduced-motion` respecté ; aucune information transmise uniquement par une animation.

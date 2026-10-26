@@ -26,7 +26,14 @@ import {
   Trash2,
   type LucideIcon,
 } from 'lucide-react';
-import { useId, useMemo, useState, useTransition } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react';
 import { CONTROL } from '@/components/form-field';
 import { ProductTile } from '@/components/catalog/product-tile';
 import { Alert } from '@/components/ui/alert';
@@ -58,6 +65,14 @@ const parseQuantity = (text: string): number => {
   return /^\d+(\.\d+)?$/.test(value) ? Number(value) : Number.NaN;
 };
 const quantityText = (value: number) => String(value).replace('.', ',');
+
+/** Why a typed quantity is refused, or null when it is fine. */
+function quantityError(product: ProductDto, quantity: number): string | null {
+  if (!(quantity > 0)) return 'Tapez un nombre plus grand que 0.';
+  if (!UNITS[product.unit].decimals && !Number.isInteger(quantity))
+    return 'Tapez un nombre entier, sans virgule.';
+  return null;
+}
 
 function MethodButton({
   method,
@@ -175,6 +190,22 @@ export function Checkout({
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Spoken after each tap on a product: on phones the cart is out of view.
+  const [announcement, setAnnouncement] = useState('');
+  // Where the focus goes once the step has changed: the button that was
+  // pressed disappears with it (WCAG 2.4.3).
+  const cartTitleRef = useRef<HTMLHeadingElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const focusAfterStep = useRef(false);
+  useEffect(() => {
+    if (!focusAfterStep.current) return;
+    focusAfterStep.current = false;
+    (step === 'pay' ? cartTitleRef : searchRef).current?.focus();
+  }, [step]);
+  function goTo(next: 'cart' | 'pay') {
+    focusAfterStep.current = true;
+    setStep(next);
+  }
 
   const byId = useMemo(
     () => new Map(products.map((p) => [p.id, p])),
@@ -195,9 +226,7 @@ export function Checkout({
       : [];
   });
   const linesValid = lines.every(
-    ({ product, quantity }) =>
-      quantity > 0 &&
-      (UNITS[product.unit].decimals || Number.isInteger(quantity)),
+    ({ product, quantity }) => quantityError(product, quantity) === null,
   );
   const discount =
     discountText.trim() === '' ? 0 : parseAmount(discountText, currency);
@@ -212,6 +241,12 @@ export function Checkout({
 
   function add(product: ProductDto) {
     setError(null);
+    const existing = cart.find((line) => line.productId === product.id);
+    const before = existing ? parseQuantity(existing.quantityText) : 0;
+    const count = (Number.isFinite(before) ? before : 0) + 1;
+    setAnnouncement(
+      `${product.name} ajouté. ${quantityText(count)} dans le panier.`,
+    );
     setCart((current) => {
       const existing = current.find((line) => line.productId === product.id);
       if (!existing)
@@ -364,7 +399,9 @@ export function Checkout({
     >
       <h2
         id={`${ids}-cart`}
-        className="flex items-center gap-2 text-xl font-bold"
+        ref={cartTitleRef}
+        tabIndex={-1}
+        className="flex items-center gap-2 text-xl font-bold focus:outline-none"
       >
         <ShoppingCart aria-hidden className="size-6 text-sales-ink" />
         Panier
@@ -378,6 +415,7 @@ export function Checkout({
         >
           {lines.map(({ product, quantity, line }, index) => {
             const inputId = `${ids}-qty-${product.id}`;
+            const invalid = quantityError(product, quantity);
             return (
               <li
                 key={product.id}
@@ -414,7 +452,8 @@ export function Checkout({
                         ),
                       );
                     }}
-                    aria-invalid={!(quantity > 0) || undefined}
+                    aria-invalid={invalid ? true : undefined}
+                    aria-describedby={invalid ? `${inputId}-error` : undefined}
                     className={`${CONTROL.replace('w-full', 'w-24')} shrink-0 text-center text-lg font-bold`}
                   />
                   <button
@@ -430,17 +469,26 @@ export function Checkout({
                   </span>
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      setAnnouncement(`${product.name} retiré du panier.`);
                       setCart((current) =>
                         current.filter((l) => l.productId !== product.id),
-                      )
-                    }
+                      );
+                    }}
                     aria-label={`Retirer ${product.name}`}
                     className="ml-auto flex size-12 items-center justify-center rounded-xl text-danger-ink hover:bg-danger-soft"
                   >
                     <Trash2 aria-hidden className="size-5" />
                   </button>
                 </div>
+                {invalid && (
+                  <p
+                    id={`${inputId}-error`}
+                    className="font-medium text-danger-ink"
+                  >
+                    {invalid}
+                  </p>
+                )}
               </li>
             );
           })}
@@ -464,15 +512,23 @@ export function Checkout({
               value={discountText}
               onChange={(event) => setDiscountText(event.currentTarget.value)}
               aria-invalid={discount === null || undefined}
+              aria-describedby={
+                discount === null ? `${ids}-discount-error` : undefined
+              }
               className={`${CONTROL} mt-1`}
             />
+            {discount === null && (
+              <p
+                id={`${ids}-discount-error`}
+                className="mt-1 font-medium text-danger-ink"
+              >
+                Tapez un montant en chiffres, par exemple 500.
+              </p>
+            )}
           </details>
           <div className="flex items-end justify-between gap-2 border-t border-line pt-3">
             <span className="text-lg font-semibold">À payer</span>
-            <span
-              className="text-3xl font-extrabold tabular-nums text-sales-ink"
-              aria-live="polite"
-            >
+            <span className="text-3xl font-extrabold tabular-nums text-sales-ink">
               {money(totals.total)}
             </span>
           </div>
@@ -530,14 +586,14 @@ export function Checkout({
             onChange={(event) => setCashText(event.currentTarget.value)}
             className={CONTROL}
           />
-          {change !== null && (
-            <p
-              className="rounded-xl bg-sales-soft p-3 text-2xl font-extrabold text-sales-ink"
-              aria-live="polite"
-            >
-              À rendre : {money(change)}
-            </p>
-          )}
+          {/* Present before it fills, so that screen readers speak it. */}
+          <div aria-live="polite">
+            {change !== null && (
+              <p className="rounded-xl bg-sales-soft p-3 text-2xl font-extrabold text-sales-ink">
+                À rendre : {money(change)}
+              </p>
+            )}
+          </div>
         </div>
       )}
       {method === 'mobile_money' && (
@@ -569,39 +625,55 @@ export function Checkout({
               className="flex flex-col gap-2 rounded-xl bg-surface-muted p-3"
             >
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <select
-                  aria-label={`Moyen du paiement ${index + 1}`}
-                  value={row.method}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value as PaymentMethod;
-                    setSplit((rows) =>
-                      rows.map((r, i) =>
-                        i === index ? { ...r, method: value } : r,
-                      ),
-                    );
-                  }}
-                  className={CONTROL}
-                >
-                  {PAYMENT_METHODS.map((m) => (
-                    <option key={m} value={m}>
-                      {PAYMENT_LABELS[m]}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  aria-label={`Montant du paiement ${index + 1}`}
-                  inputMode="decimal"
-                  value={row.amountText}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value;
-                    setSplit((rows) =>
-                      rows.map((r, i) =>
-                        i === index ? { ...r, amountText: value } : r,
-                      ),
-                    );
-                  }}
-                  className={CONTROL}
-                />
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor={`${ids}-split-${index}-method`}
+                    className="font-semibold"
+                  >
+                    Moyen du paiement {index + 1}
+                  </label>
+                  <select
+                    id={`${ids}-split-${index}-method`}
+                    value={row.method}
+                    onChange={(event) => {
+                      const value = event.currentTarget.value as PaymentMethod;
+                      setSplit((rows) =>
+                        rows.map((r, i) =>
+                          i === index ? { ...r, method: value } : r,
+                        ),
+                      );
+                    }}
+                    className={CONTROL}
+                  >
+                    {PAYMENT_METHODS.map((m) => (
+                      <option key={m} value={m}>
+                        {PAYMENT_LABELS[m]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor={`${ids}-split-${index}-amount`}
+                    className="font-semibold"
+                  >
+                    Montant du paiement {index + 1}
+                  </label>
+                  <input
+                    id={`${ids}-split-${index}-amount`}
+                    inputMode="decimal"
+                    value={row.amountText}
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      setSplit((rows) =>
+                        rows.map((r, i) =>
+                          i === index ? { ...r, amountText: value } : r,
+                        ),
+                      );
+                    }}
+                    className={CONTROL}
+                  />
+                </div>
               </div>
               {row.method === 'mobile_money' && (
                 <ProviderPicker
@@ -752,6 +824,7 @@ export function Checkout({
           />
           <input
             id={`${ids}-search`}
+            ref={searchRef}
             type="search"
             value={query}
             onChange={(event) => setQuery(event.currentTarget.value)}
@@ -773,18 +846,14 @@ export function Checkout({
                   <button
                     type="button"
                     onClick={() => add(product)}
-                    aria-label={`Ajouter ${product.name}, ${money(product.salePrice)}`}
                     className={`relative flex h-full min-h-40 w-full flex-col items-center gap-2 rounded-2xl border-2 bg-surface p-3 text-center shadow-sm ${
                       inCart
                         ? 'border-sales-strong'
                         : 'border-line hover:border-sales'
                     }`}
                   >
-                    {inCart && (
-                      <span className="absolute top-2 right-2 rounded-full bg-sales-strong px-2.5 py-0.5 text-base font-extrabold text-white">
-                        {inCart.quantityText}
-                      </span>
-                    )}
+                    {/* No aria-label: the stock and the cart are read too. */}
+                    <span className="sr-only">Ajouter </span>
                     <ProductTile product={product} />
                     <span className="line-clamp-2 font-semibold">
                       {product.name}
@@ -803,6 +872,13 @@ export function Checkout({
                         {formatQuantity(product.stockQuantity, product.unit)}
                       </span>
                     )}
+                    {inCart && (
+                      <span className="absolute top-2 right-2 rounded-full bg-sales-strong px-2.5 py-0.5 text-base font-extrabold text-white">
+                        <span className="sr-only">, </span>
+                        {inCart.quantityText}
+                        <span className="sr-only"> dans le panier</span>
+                      </span>
+                    )}
                   </button>
                 </li>
               );
@@ -817,7 +893,7 @@ export function Checkout({
         {step === 'pay' && (
           <button
             type="button"
-            onClick={() => setStep('cart')}
+            onClick={() => goTo('cart')}
             className={`${buttonClasses('secondary')} lg:hidden`}
           >
             <ArrowLeft aria-hidden className="size-5" />
@@ -832,7 +908,7 @@ export function Checkout({
         <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 px-4 lg:hidden">
           <button
             type="button"
-            onClick={() => setStep('pay')}
+            onClick={() => goTo('pay')}
             className={buttonClasses(
               'sell',
               'min-h-16 w-full text-lg shadow-lg',
@@ -843,6 +919,9 @@ export function Checkout({
           </button>
         </div>
       )}
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
     </div>
   );
 }

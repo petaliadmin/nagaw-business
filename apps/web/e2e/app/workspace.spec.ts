@@ -192,6 +192,8 @@ test('switching shop changes data and permissions', async ({
   await page.goto('/espace');
   const scope = await shopSwitcher(page, isMobile);
   await scope.getByLabel('Boutique').selectOption({ label: 'Globex Sénégal' });
+  // Choosing alone does not reload the page (WCAG 3.2.2): the button does.
+  await scope.getByRole('button', { name: 'Ouvrir' }).click();
 
   const main = page.getByRole('main');
   await expect(
@@ -298,6 +300,19 @@ test('phone navigation: bottom bar and a keyboard-friendly « Plus » sheet', as
   await expect(
     dialog.getByRole('button', { name: 'Se déconnecter' }),
   ).toBeVisible();
+  // A modal: Tab never leaves the sheet for the page behind (WCAG 2.4.3).
+  for (let i = 0; i < 25; i++) {
+    await page.keyboard.press('Tab');
+    expect(
+      // Between the last and the first control, the browser's own bar.
+      await page.evaluate(() => {
+        const active = document.activeElement;
+        return (
+          !active || active === document.body || !!active.closest('dialog')
+        );
+      }),
+    ).toBe(true);
+  }
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(button).toBeFocused();

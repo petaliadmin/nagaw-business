@@ -11,7 +11,7 @@ import {
 import { ArrowLeft, ShoppingCart, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
 import {
@@ -204,6 +204,16 @@ export function CaisseApp() {
     return () => window.removeEventListener(OUTBOX_EVENT, update);
   }, [state, loadRejected]);
 
+  // « Nouvelle vente » disappears with the ticket: the focus goes back to
+  // the top of the checkout instead of the start of the page (WCAG 2.4.3).
+  const sellTitleRef = useRef<HTMLHeadingElement>(null);
+  const backToSell = useRef(false);
+  useEffect(() => {
+    if (ticket || !backToSell.current) return;
+    backToSell.current = false;
+    sellTitleRef.current?.focus();
+  }, [ticket]);
+
   if (state.status === 'loading')
     return (
       <p role="status" className="p-6 text-lg">
@@ -371,7 +381,7 @@ export function CaisseApp() {
       </header>
       <main
         id="contenu"
-        className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 pt-4 pb-28 lg:pb-8"
+        className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 pt-4 pb-40 lg:pb-8"
       >
         {!state.fresh && (
           <Alert tone="warning">
@@ -430,11 +440,20 @@ export function CaisseApp() {
             sale={asSale(ticket)}
             shop={snapshot.shop}
             money={money}
-            onNext={() => setTicket(null)}
+            onNext={() => {
+              backToSell.current = true;
+              setTicket(null);
+            }}
           />
         ) : (
           <>
-            <h1 className="text-2xl font-extrabold md:text-3xl">Vendre</h1>
+            <h1
+              ref={sellTitleRef}
+              tabIndex={-1}
+              className="text-2xl font-extrabold focus:outline-none md:text-3xl"
+            >
+              Vendre
+            </h1>
             <Checkout
               currency={snapshot.shop.currency}
               products={snapshot.products}

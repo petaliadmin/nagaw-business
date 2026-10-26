@@ -2,6 +2,7 @@
 
 import type { SaleDto } from '@nagaw/shared';
 import { CloudOff, MessageCircle, Printer, ShoppingCart } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { formatQuantity } from '@/lib/catalog/labels';
@@ -51,20 +52,28 @@ export function LocalTicketView({
     currency: shop.currency,
     timeZone: shop.timeZone,
   });
+  // The « Valider la vente » button is gone: the confirmation takes the
+  // focus, so that it is read at once (WCAG 2.4.3).
+  const confirmationRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    confirmationRef.current?.focus();
+  }, []);
   return (
     <>
       <style>
         {'@media print { @page { size: 58mm auto; margin: 2mm; } }'}
       </style>
       <div className="flex flex-col gap-3 print:hidden">
-        <Alert tone="success">
-          Vente enregistrée.
-          {sale.changeGiven !== null && sale.changeGiven > 0 && (
-            <strong className="block text-2xl">
-              À rendre : {money(sale.changeGiven)}
-            </strong>
-          )}
-        </Alert>
+        <div ref={confirmationRef} tabIndex={-1} className="focus:outline-none">
+          <Alert tone="success">
+            Vente enregistrée.
+            {sale.changeGiven !== null && sale.changeGiven > 0 && (
+              <strong className="block text-2xl">
+                À rendre : {money(sale.changeGiven)}
+              </strong>
+            )}
+          </Alert>
+        </div>
         {ticket.status === 'pending' && (
           <p
             role="status"

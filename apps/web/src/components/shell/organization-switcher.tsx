@@ -5,8 +5,9 @@ import { useId } from 'react';
 import { selectOrganization } from '@/app/espace/actions';
 
 /**
- * Switches the active shop (organization). Submits on change; the button
- * keeps it usable without JavaScript and for assistive technologies.
+ * Switches the active shop (organization). Choosing in the list changes
+ * nothing yet; the button opens the shop, so that moving through the list
+ * with the arrow keys never reloads the page (WCAG 3.2.2).
  */
 export function OrganizationSwitcher({
   organizations,
@@ -18,6 +19,8 @@ export function OrganizationSwitcher({
   tone?: 'sidebar' | 'sheet';
 }) {
   const selectId = useId();
+  // On the dark sidebar the violet focus ring falls under 3:1.
+  const focus = tone === 'sidebar' ? 'focus-visible:outline-white' : '';
   return (
     <form action={selectOrganization} className="flex flex-col gap-1">
       <label
@@ -31,8 +34,7 @@ export function OrganizationSwitcher({
           id={selectId}
           name="organizationId"
           defaultValue={activeId}
-          onChange={(event) => event.currentTarget.form?.requestSubmit()}
-          className="min-h-12 min-w-0 flex-1 rounded-xl border-2 border-line-strong bg-surface px-3 text-base font-bold text-ink"
+          className={`min-h-12 min-w-0 flex-1 rounded-xl border-2 border-line-strong bg-surface px-3 text-base font-bold text-ink ${focus}`}
         >
           {organizations.map((org) => (
             <option key={org.id} value={org.id}>
@@ -40,14 +42,12 @@ export function OrganizationSwitcher({
             </option>
           ))}
         </select>
-        <noscript>
-          <button
-            type="submit"
-            className="min-h-12 rounded-xl border-2 border-line-strong bg-surface px-3 text-base font-bold text-ink"
-          >
-            Ouvrir
-          </button>
-        </noscript>
+        <button
+          type="submit"
+          className={`min-h-12 rounded-xl border-2 border-line-strong bg-surface px-3 text-base font-bold text-ink hover:bg-surface-muted ${focus}`}
+        >
+          Ouvrir
+        </button>
       </div>
     </form>
   );
