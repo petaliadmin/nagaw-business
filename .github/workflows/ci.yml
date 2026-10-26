@@ -15,7 +15,8 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The whole suite (end-to-end included) ran about 14 min in October 2026.
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:17
