@@ -33,6 +33,8 @@ Les anciennes phases 8 (approbations), 9 (outils et intégrations), 10 (document
 | 17    | Sécurité, tests, stabilisation   | Passage global : isolation, sync, appareils perdus, accessibilité, performance sur téléphone d'entrée de gamme                                                                                                                                                                                                          |    ✔    | Validée (2026-10-25)                                                    |
 | 18    | Déploiement, pilote              | Production, pilote avec des boutiques réelles, test utilisateur avec des commerçants                                                                                                                                                                                                                                    |    ✔    | Outillage validé (2026-10-25) — **pilote à mener (propriétaire)**       |
 
+Après la Phase 18 : **notifications, accès élargi des vendeurs et contrôle du stock à la vente** (ADR-036, validée le 2026-10-26).
+
 ## Critères d'acceptation du MVP
 
 Le MVP est atteint lorsque le parcours suivant fonctionne **en préproduction**, sur le backend réel, sur un téléphone (360 px) et sur ordinateur, couvert par des tests end-to-end automatisés :

@@ -29,6 +29,7 @@ import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
 import { takeSequenceNumber } from '../database/sequences.js';
 import type { Database } from '../database/schema.js';
+import { AlertsService } from '../notifications/alerts.service.js';
 import {
   conflict,
   invalid,
@@ -64,6 +65,7 @@ export class DocumentsService {
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    private readonly alerts: AlertsService,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -1063,7 +1065,17 @@ export class DocumentsService {
         metadata: { number, total: toNumber(invoice.total) },
         requestId,
       });
-      return this.getInvoice(trx, tenant.organizationId, id);
+      const issued = await this.getInvoice(trx, tenant.organizationId, id);
+      if (issued.kind === 'invoice')
+        await this.alerts.invoiceIssued(trx, {
+          organizationId: tenant.organizationId,
+          invoiceId: id,
+          number: issued.number ?? number,
+          customerName: issued.customer.name,
+          total: issued.totals.total,
+          userId: user.userId,
+        });
+      return issued;
     });
   }
 

@@ -9,6 +9,7 @@ import {
   UNITS,
   type CancelSaleInput,
   type CreateSaleInput,
+  type MySalesStatsDto,
   type PaymentMethod,
   type SaleDto,
   type SaleListItemDto,
@@ -30,6 +31,10 @@ import {
   UUID_RE,
   type Executor,
 } from '../catalog/catalog.errors.js';
+import {
+  AlertsService,
+  type StockChange,
+} from '../notifications/alerts.service.js';
 import { balances } from './customers.service.js';
 
 /** A sale recorded on a device, possibly offline (ADR-020, ADR-025). */
@@ -45,6 +50,9 @@ function saleNotFound(): ApiException {
   return notFound('SALE_NOT_FOUND', 'Vente introuvable.');
 }
 
+/** Rounds away floating-point noise on quantities with 3 decimals. */
+const round3 = (value: number) => Math.round(value * 1000) / 1000;
+
 /** Sellers only see their own sales; managers and the reader see all. */
 function sellerScope(tenant: TenantContext, user: AuthContext): string | null {
   return roleHasPermission(tenant.role, 'sales.read_all') ? null : user.userId;
@@ -55,6 +63,7 @@ export class SalesService {
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    private readonly alerts: AlertsService,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -145,6 +154,7 @@ export class SalesService {
       occurredAt: sale.occurred_at.toISOString(),
       deviceTicket: sale.device_ticket,
       priceReview: sale.price_review,
+      stockReview: sale.stock_review,
       cancellation:
         sale.cancelled_at && sale.cancelled_by && sale.cancel_reason
           ? {
@@ -201,6 +211,7 @@ export class SalesService {
         's.occurred_at',
         's.device_ticket',
         's.price_review',
+        's.stock_review',
         'u.email as seller_email',
         'c.name as customer_name',
       ])
@@ -235,6 +246,7 @@ export class SalesService {
       occurredAt: row.occurred_at.toISOString(),
       deviceTicket: row.device_ticket,
       priceReview: row.price_review,
+      stockReview: row.stock_review,
     }));
   }
 
@@ -296,6 +308,86 @@ export class SalesService {
     };
   }
 
+  /**
+   * The caller's own figures (ADR-036): today, the last 7 days and their
+   * best products. Always limited to the caller's sales, whatever the role.
+   */
+  async myStats(
+    tenant: TenantContext,
+    user: AuthContext,
+  ): Promise<MySalesStatsDto> {
+    const { day, timezone } = await this.dayOf(
+      tenant.organizationId,
+      undefined,
+    );
+    const start = new Date(`${day}T12:00:00Z`);
+    start.setUTCDate(start.getUTCDate() - 6);
+    const from = start.toISOString().slice(0, 10);
+    const localDay = sql<string>`(s.occurred_at at time zone ${timezone})::date`;
+    const mine = this.database.db
+      .selectFrom('app.sales as s')
+      .where('s.organization_id', '=', tenant.organizationId)
+      .where('s.seller_id', '=', user.userId)
+      .where('s.status', '=', 'completed')
+      .where(localDay, '>=', sql<string>`${from}::date`)
+      .where(localDay, '<=', sql<string>`${day}::date`);
+    const [byDay, top] = await Promise.all([
+      mine
+        .select(sql<string>`${localDay}::text`.as('day'))
+        .select([
+          sql<string>`count(*)`.as('count'),
+          sql<string>`sum(s.total)`.as('total'),
+        ])
+        // By position: the bound time zone makes each copy of the
+        // expression a different one for Postgres.
+        .groupBy(sql`1`)
+        .execute(),
+      mine
+        .innerJoin('app.sale_lines as l', (join) =>
+          join
+            .onRef('l.organization_id', '=', 's.organization_id')
+            .onRef('l.sale_id', '=', 's.id'),
+        )
+        .select(['l.product_id', sql<string>`max(l.label)`.as('label')])
+        .select([
+          sql<string>`sum(l.quantity)`.as('quantity'),
+          sql<string>`sum(l.line_total)`.as('total'),
+        ])
+        .groupBy('l.product_id')
+        .orderBy(sql`sum(l.line_total)`, 'desc')
+        .limit(5)
+        .execute(),
+    ]);
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(start);
+      date.setUTCDate(start.getUTCDate() + index);
+      const key = date.toISOString().slice(0, 10);
+      const row = byDay.find((r) => r.day === key);
+      return {
+        day: key,
+        count: row ? Number(row.count) : 0,
+        total: row ? toNumber(row.total) : 0,
+      };
+    });
+    const count = days.reduce((sum, d) => sum + d.count, 0);
+    const total = days.reduce((sum, d) => sum + d.total, 0);
+    return {
+      today: days.at(-1)!,
+      days,
+      week: {
+        count,
+        total,
+        averageBasket: count > 0 ? Math.round(total / count) : 0,
+      },
+      topProducts: top.map((row) => ({
+        productId: row.product_id,
+        label: row.label,
+        quantity: toNumber(row.quantity),
+        total: toNumber(row.total),
+      })),
+    };
+  }
+
   // -------------------------------------------------------------------------
   // Recording a sale
   // -------------------------------------------------------------------------
@@ -317,6 +409,7 @@ export class SalesService {
             'next_sale_number',
             'seller_max_discount_basis_points',
             'default_currency',
+            'credit_near_limit_percent',
           ])
           .where('id', '=', tenant.organizationId)
           .forUpdate()
@@ -358,6 +451,7 @@ export class SalesService {
             'p.purchase_price',
             'p.track_stock',
             'p.status',
+            'p.low_stock_threshold',
             't.rate_basis_points',
           ])
           .where('p.organization_id', '=', tenant.organizationId)
@@ -426,12 +520,48 @@ export class SalesService {
           customerId: input.customerId,
         });
         if (problem) throw invalid(problem.path, problem.message);
-        await this.assertCustomer(
+        const customer = await this.assertCustomer(
           trx,
           tenant.organizationId,
           input,
           org.default_currency,
         );
+
+        // The server checks the stock it knows (ADR-036). A sale already
+        // made is never refused for it (ADR-024): it is flagged for the
+        // managers instead, who are told.
+        const sold = new Map<string, number>();
+        for (const { line, product } of lines)
+          if (product.track_stock)
+            sold.set(
+              product.id,
+              round3((sold.get(product.id) ?? 0) + line.quantity),
+            );
+        const stockBefore = new Map<string, number>();
+        if (sold.size > 0)
+          for (const row of await trx
+            .selectFrom('app.stock_movements')
+            .select('product_id')
+            .select((eb) => eb.fn.sum<string>('quantity').as('quantity'))
+            .where('organization_id', '=', tenant.organizationId)
+            .where('product_id', 'in', [...sold.keys()])
+            .groupBy('product_id')
+            .execute())
+            stockBefore.set(row.product_id, toNumber(row.quantity));
+        const shortages = [...sold].flatMap(([productId, quantity]) => {
+          const stock = stockBefore.get(productId) ?? 0;
+          const product = byId.get(productId)!;
+          return quantity > stock
+            ? [
+                {
+                  name: product.name,
+                  unit: product.unit,
+                  sold: quantity,
+                  stock,
+                },
+              ]
+            : [];
+        });
 
         const cash = input.payments
           .filter((p) => p.method === 'cash')
@@ -456,6 +586,7 @@ export class SalesService {
             occurred_at: device?.occurredAt,
             synced_at: device ? new Date() : null,
             price_review: priceReview,
+            stock_review: shortages.length > 0,
           })
           .returning('id')
           .executeTakeFirstOrThrow();
@@ -534,13 +665,45 @@ export class SalesService {
                   priceReview,
                 }
               : {}),
+            ...(shortages.length > 0 ? { stockReview: true } : {}),
           },
           requestId,
         });
-        return {
-          sale: await this.find(trx, tenant.organizationId, id, null),
-          replayed: false,
-        };
+        const sale = await this.find(trx, tenant.organizationId, id, null);
+
+        await this.alerts.stockChanged(
+          trx,
+          tenant.organizationId,
+          [...sold].map(([productId, quantity]): StockChange => {
+            const product = byId.get(productId)!;
+            const before = stockBefore.get(productId) ?? 0;
+            return {
+              productId,
+              name: product.name,
+              unit: product.unit,
+              threshold: toNullableNumber(product.low_stock_threshold),
+              before,
+              after: round3(before - quantity),
+            };
+          }),
+        );
+        await this.alerts.saleRecorded(trx, {
+          organizationId: tenant.organizationId,
+          id,
+          saleNumber: sale.saleNumber,
+          deviceTicket: sale.deviceTicket,
+          total: sale.total,
+          credit: input.payments
+            .filter((p) => p.method === 'credit')
+            .reduce((sum, p) => sum + p.amount, 0),
+          sellerId: user.userId,
+          sellerEmail: sale.seller.email,
+          priceReview,
+          shortages,
+          customer,
+          nearLimitPercent: org.credit_near_limit_percent,
+        });
+        return { sale, replayed: false };
       });
     } catch (error) {
       if (pgErrorCode(error) === UNIQUE_VIOLATION) {
@@ -572,8 +735,13 @@ export class SalesService {
     organizationId: string,
     input: CreateSaleInput,
     currency: string,
-  ): Promise<void> {
-    if (!input.customerId) return;
+  ): Promise<{
+    id: string;
+    name: string;
+    balanceBefore: number;
+    limit: number | null;
+  } | null> {
+    if (!input.customerId) return null;
     const customer = await executor
       .selectFrom('app.customers as c')
       .innerJoin(
@@ -581,7 +749,7 @@ export class SalesService {
         'b.customer_id',
         'c.id',
       )
-      .select(['c.id', 'c.status', 'c.credit_limit', 'b.balance'])
+      .select(['c.id', 'c.name', 'c.status', 'c.credit_limit', 'b.balance'])
       .where('c.organization_id', '=', organizationId)
       .where('c.id', '=', input.customerId)
       .forUpdate(['c'])
@@ -601,6 +769,12 @@ export class SalesService {
         'CREDIT_LIMIT_EXCEEDED',
         `Ce client ne peut pas devoir plus de ${formatAmount(limit, currency)} (il doit déjà ${formatAmount(toNumber(customer.balance), currency)}).`,
       );
+    return {
+      id: customer.id,
+      name: customer.name,
+      balanceBefore: toNumber(customer.balance),
+      limit,
+    };
   }
 
   // -------------------------------------------------------------------------

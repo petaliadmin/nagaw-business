@@ -526,18 +526,54 @@ describe('Quotes, invoices and credit notes', () => {
   });
 
   describe('roles', () => {
-    it('lets the reader read, and keeps documents to managers', async () => {
+    it('lets the reader read, and keeps invoices to managers', async () => {
       expect(
         (await get(dan, acmeId, '/invoices').expect(200)).body.length,
       ).toBeGreaterThan(0);
       await draftInvoice({}, dan).expect(403);
       await draftInvoice({}, carol).expect(403);
-      await get(carol, acmeId, '/invoices').expect(403);
       const invoice = await issuedInvoice();
+      // Sellers read invoices but neither issue nor cash them (ADR-036).
+      await get(carol, acmeId, '/invoices').expect(200);
+      await post(carol, acmeId, `/invoices/${invoice.id}/payments`, {
+        method: 'cash',
+        amount: 100,
+        paidOn: `${year}-01-15`,
+        clientOperationId: randomUUID(),
+      }).expect(403);
       await post(dan, acmeId, `/invoices/${invoice.id}/payments`, {
         method: 'cash',
         amount: 100,
         paidOn: `${year}-01-15`,
+        clientOperationId: randomUUID(),
+      }).expect(403);
+    });
+  });
+
+  describe('quotes prepared by sellers (ADR-036)', () => {
+    it('lets a seller prepare and send a quote, not turn it into an invoice', async () => {
+      const quote = (
+        await post(carol, acmeId, '/quotes', {
+          customerId: customer.id,
+          lines: [serviceLine],
+          clientOperationId: randomUUID(),
+        }).expect(201)
+      ).body;
+      await put(carol, acmeId, `/quotes/${quote.id}`, {
+        customerId: customer.id,
+        lines: [serviceLine, serviceLine],
+        validUntil: quote.validUntil,
+      }).expect(200);
+      await post(carol, acmeId, `/quotes/${quote.id}/status`, {
+        status: 'sent',
+      }).expect(200);
+      await post(carol, acmeId, `/quotes/${quote.id}/invoice`, {
+        clientOperationId: randomUUID(),
+      }).expect(403);
+      // The reader still only reads.
+      await post(dan, acmeId, '/quotes', {
+        customerId: customer.id,
+        lines: [serviceLine],
         clientOperationId: randomUUID(),
       }).expect(403);
     });

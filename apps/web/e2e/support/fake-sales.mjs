@@ -13,9 +13,18 @@ import {
   registerDeviceSchema,
   syncRequestSchema,
   paymentProblem,
+  roleHasPermission,
   updateCustomerSchema,
 } from '@nagaw/shared';
 import { catalogState } from './fake-catalog.mjs';
+import { shopSettings } from './fake-notifications.mjs';
+
+const stockOf = (productId) =>
+  Math.round(
+    catalogState()
+      .movements.filter((m) => m.productId === productId)
+      .reduce((sum, m) => sum + m.quantity, 0) * 1000,
+  ) / 1000;
 
 const ACME = '11111111-1111-4111-8111-111111111111';
 const AWA = 'aaaaaaaa-0000-4000-8000-000000000001';
@@ -105,6 +114,7 @@ function saleDto(sale, userById) {
     occurredAt: sale.occurredAt,
     deviceTicket: sale.deviceTicket ?? null,
     priceReview: sale.priceReview ?? false,
+    stockReview: sale.stockReview ?? false,
     cancellation: sale.cancellation
       ? {
           ...sale.cancellation,
@@ -183,6 +193,7 @@ export async function handleSales(ctx) {
           occurredAt: s.occurredAt,
           deviceTicket: s.deviceTicket ?? null,
           priceReview: s.priceReview ?? false,
+          stockReview: s.stockReview ?? false,
         })),
     );
   }
@@ -309,6 +320,10 @@ export async function handleSales(ctx) {
       occurredAt: device?.occurredAt ?? new Date().toISOString(),
       deviceTicket: device?.deviceTicket ?? null,
       priceReview: lines.some((l) => l.unitPrice !== l.product.salePrice),
+      // More than the known stock: accepted, flagged (ADR-036).
+      stockReview: lines.some(
+        (l) => l.product.trackStock && l.quantity > stockOf(l.product.id),
+      ),
       cancellation: null,
     };
     state.sales.push(sale);
@@ -425,6 +440,65 @@ export async function handleSales(ctx) {
         });
         continue;
       }
+      if (op.type === 'stock_correction') {
+        const catalog = catalogState();
+        const previous = catalog.movements.find(
+          (m) => mine(m) && m.clientOperationId === op.clientOperationId,
+        );
+        const product = catalog.products.find(
+          (p) => mine(p) && p.id === op.data.productId,
+        );
+        const max = shopSettings(orgId).sellerStockCorrectionMax;
+        const refuse = (code, message) =>
+          results.push({
+            clientOperationId: op.clientOperationId,
+            status: 'rejected',
+            error: { code, message },
+          });
+        if (previous) {
+          results.push({
+            clientOperationId: op.clientOperationId,
+            status: 'duplicate',
+            stockQuantity: stockOf(previous.productId),
+          });
+        } else if (!product) {
+          refuse('PRODUCT_NOT_FOUND', 'Produit introuvable.');
+        } else if (!roleHasPermission(role, 'stock.correct')) {
+          refuse(
+            'PERMISSION_DENIED',
+            'Votre rôle ne permet pas de corriger le stock.',
+          );
+        } else if (
+          !roleHasPermission(role, 'stock.move') &&
+          Math.abs(op.data.quantity) > max
+        ) {
+          refuse(
+            'STOCK_CORRECTION_TOO_LARGE',
+            `Une correction de plus de ${max} doit être faite par le propriétaire ou un gérant.`,
+          );
+        } else {
+          catalog.movements.push({
+            id: randomUUID(),
+            organizationId: orgId,
+            productId: product.id,
+            kind: 'adjustment',
+            quantity: op.data.quantity,
+            countedQuantity: null,
+            unitCost: null,
+            supplierId: null,
+            reason: op.data.reason,
+            clientOperationId: op.clientOperationId,
+            createdBy: user.id,
+            occurredAt: op.data.occurredAt,
+          });
+          results.push({
+            clientOperationId: op.clientOperationId,
+            status: 'accepted',
+            stockQuantity: stockOf(product.id),
+          });
+        }
+        continue;
+      }
       const data = op.data;
       const customerId = data.customerOperationId
         ? (state.customers.find(
@@ -450,6 +524,7 @@ export async function handleSales(ctx) {
               saleId: result.sale.id,
               saleNumber: result.sale.saleNumber,
               priceReview: result.sale.priceReview,
+              stockReview: result.sale.stockReview,
             }
           : {
               clientOperationId: op.clientOperationId,
@@ -460,6 +535,57 @@ export async function handleSales(ctx) {
     }
     device.lastSyncedAt = new Date().toISOString();
     return reply(200, { results });
+  }
+  if (path === '/api/v1/sales/my-stats' && req.method === 'GET') {
+    // The caller's own sales of the last 7 days (ADR-036).
+    const todayKey = today(timeZone);
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(`${todayKey}T12:00:00Z`);
+      date.setUTCDate(date.getUTCDate() - (6 - index));
+      return date.toISOString().slice(0, 10);
+    });
+    const own = state.sales.filter(
+      (s) =>
+        mine(s) &&
+        s.sellerId === user.id &&
+        s.status === 'completed' &&
+        days.includes(dayOf(s.occurredAt, timeZone)),
+    );
+    const byDay = days.map((day) => {
+      const list = own.filter((s) => dayOf(s.occurredAt, timeZone) === day);
+      return {
+        day,
+        count: list.length,
+        total: list.reduce((sum, s) => sum + s.total, 0),
+      };
+    });
+    const top = new Map();
+    for (const s of own)
+      for (const l of s.lines) {
+        const row = top.get(l.productId) ?? {
+          productId: l.productId,
+          label: l.label,
+          quantity: 0,
+          total: 0,
+        };
+        row.quantity += l.quantity;
+        row.total += l.lineTotal;
+        top.set(l.productId, row);
+      }
+    const count = own.length;
+    const total = own.reduce((sum, s) => sum + s.total, 0);
+    return reply(200, {
+      today: byDay[6],
+      days: byDay,
+      week: {
+        count,
+        total,
+        averageBasket: count > 0 ? Math.round(total / count) : 0,
+      },
+      topProducts: [...top.values()]
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5),
+    });
   }
   const saleMatch = /^\/api\/v1\/sales\/([^/]+)(\/cancel)?$/.exec(path);
   if (saleMatch) {

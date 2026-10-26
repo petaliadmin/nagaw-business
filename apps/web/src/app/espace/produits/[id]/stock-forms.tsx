@@ -92,11 +92,14 @@ export function StockForms({
   currency,
   product,
   suppliers,
+  receiveOnly = false,
 }: {
   organizationId: string;
   currency: string;
   product: ProductDto;
   suppliers: SupplierDto[];
+  /** Sellers record deliveries; losses and inventories are the managers'. */
+  receiveOnly?: boolean;
 }) {
   const unit = UNITS[product.unit].label;
   const shared = { organizationId, product };
@@ -149,67 +152,75 @@ export function StockForms({
         </MovementForm>
       </Section>
 
-      <Section
-        icon={PackageMinus}
-        title="Perte, casse ou produit abîmé"
-        tone="bg-danger-soft text-danger-ink"
-      >
-        <MovementForm kind="loss" submitLabel="Retirer du stock" {...shared}>
-          {(errors) => (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                label={`Quantité perdue (${unit})`}
-                name="quantity"
-                id="loss-quantity"
-                inputMode="decimal"
-                required
-                error={errors.quantity}
-              />
-              <FormField
-                label="Que s’est-il passé ?"
-                name="reason"
-                id="loss-reason"
-                placeholder="Cassé, périmé, volé…"
-                required
-                maxLength={500}
-                error={errors.reason}
-              />
-            </div>
-          )}
-        </MovementForm>
-      </Section>
+      {!receiveOnly && (
+        <>
+          <Section
+            icon={PackageMinus}
+            title="Perte, casse ou produit abîmé"
+            tone="bg-danger-soft text-danger-ink"
+          >
+            <MovementForm
+              kind="loss"
+              submitLabel="Retirer du stock"
+              {...shared}
+            >
+              {(errors) => (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <FormField
+                    label={`Quantité perdue (${unit})`}
+                    name="quantity"
+                    id="loss-quantity"
+                    inputMode="decimal"
+                    required
+                    error={errors.quantity}
+                  />
+                  <FormField
+                    label="Que s’est-il passé ?"
+                    name="reason"
+                    id="loss-reason"
+                    placeholder="Cassé, périmé, volé…"
+                    required
+                    maxLength={500}
+                    error={errors.reason}
+                  />
+                </div>
+              )}
+            </MovementForm>
+          </Section>
 
-      <Section
-        icon={ClipboardCheck}
-        title="J’ai compté ce qui reste (inventaire)"
-        tone="bg-stock-soft text-stock-ink"
-      >
-        <MovementForm
-          kind="inventory"
-          submitLabel="Corriger le stock"
-          {...shared}
-        >
-          {(errors) => (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                label={`Quantité comptée (${unit})`}
-                name="countedQuantity"
-                id="inventory-countedQuantity"
-                inputMode="decimal"
-                required
-                error={errors.countedQuantity}
-              />
-              <FormField
-                label="Remarque (facultatif)"
-                name="reason"
-                id="inventory-reason"
-                maxLength={500}
-                error={errors.reason}
-              />
-            </div>
-          )}
-        </MovementForm>
-      </Section>
+          <Section
+            icon={ClipboardCheck}
+            title="J’ai compté ce qui reste (inventaire)"
+            tone="bg-stock-soft text-stock-ink"
+          >
+            <MovementForm
+              kind="inventory"
+              submitLabel="Corriger le stock"
+              {...shared}
+            >
+              {(errors) => (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <FormField
+                    label={`Quantité comptée (${unit})`}
+                    name="countedQuantity"
+                    id="inventory-countedQuantity"
+                    inputMode="decimal"
+                    required
+                    error={errors.countedQuantity}
+                  />
+                  <FormField
+                    label="Remarque (facultatif)"
+                    name="reason"
+                    id="inventory-reason"
+                    maxLength={500}
+                    error={errors.reason}
+                  />
+                </div>
+              )}
+            </MovementForm>
+          </Section>
+        </>
+      )}
     </div>
   );
 }

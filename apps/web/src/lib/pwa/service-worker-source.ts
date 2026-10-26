@@ -95,5 +95,46 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(networkOrOfflinePage(request));
   }
 });
+
+// Push messages (ADR-036): the server sends { title, body, tag, url }. A
+// message of the same tag replaces the previous one on the phone.
+function samePageOfApp(url) {
+  return typeof url === 'string' && /^\/(espace|caisse)(\/|\?|$)/.test(url) && !url.includes('//')
+    ? url
+    : '/espace/notifications';
+}
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (error) {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+  const title = typeof data.title === 'string' && data.title ? data.title : 'Nagaw Business';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: typeof data.body === 'string' ? data.body : '',
+      tag: typeof data.tag === 'string' ? data.tag : undefined,
+      renotify: true,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: samePageOfApp(data.url) },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL(samePageOfApp(event.notification.data && event.notification.data.url), self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      for (const client of windows) {
+        if (client.url === target && 'focus' in client) return client.focus();
+      }
+      return self.clients.openWindow(target);
+    }),
+  );
+});
 `;
 }

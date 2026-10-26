@@ -1,4 +1,5 @@
-import { HttpException, Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { roleHasPermission } from '@nagaw/shared';
 import type {
   SyncOperation,
   SyncRequest,
@@ -9,6 +10,8 @@ import { ApiException } from '../common/api-exception.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import { invalid } from '../catalog/catalog.errors.js';
+import { StockService } from '../catalog/stock.service.js';
+import { AlertsService } from '../notifications/alerts.service.js';
 import { CustomersService } from './customers.service.js';
 import { DevicesService } from './devices.service.js';
 import { SalesService } from './sales.service.js';
@@ -31,6 +34,8 @@ export class SyncService {
     private readonly devices: DevicesService,
     private readonly sales: SalesService,
     private readonly customers: CustomersService,
+    private readonly stock: StockService,
+    private readonly alerts: AlertsService,
   ) {}
 
   async apply(
@@ -77,6 +82,7 @@ export class SyncService {
     }
     await this.record(tenant, user, request.deviceId, results, rejections);
     await this.devices.touch(tenant.organizationId, request.deviceId);
+    await this.alerts.flush(tenant.organizationId);
     return { results };
   }
 
@@ -117,6 +123,16 @@ export class SyncService {
             })),
           )
           .execute();
+      // The managers learn the same day what a phone could not record.
+      await this.alerts.syncRejected(trx, {
+        organizationId: tenant.organizationId,
+        userId: user.userId,
+        userEmail: user.email ?? 'un vendeur',
+        rejections: rejections.map(({ operation, message }) => ({
+          label: labelOf(operation),
+          message,
+        })),
+      });
     });
   }
 
@@ -141,8 +157,7 @@ export class SyncService {
       };
     }
 
-    const sale = operation.data;
-    const occurredAt = new Date(sale.occurredAt);
+    const occurredAt = new Date(operation.data.occurredAt);
     const age = Date.now() - occurredAt.getTime();
     if (age < -FUTURE_TOLERANCE_MS)
       throw invalid(
@@ -152,8 +167,31 @@ export class SyncService {
     if (age > options.maxOfflineDays * 24 * 60 * 60 * 1000)
       throw invalid(
         'occurredAt',
-        `Vente de plus de ${options.maxOfflineDays} jours : elle doit être vérifiée par un gérant.`,
+        `Opération de plus de ${options.maxOfflineDays} jours : elle doit être vérifiée par un gérant.`,
       );
+
+    if (operation.type === 'stock_correction') {
+      // A seller without the right gets the usual refusal, kept on the phone.
+      if (!roleHasPermission(tenant.role, 'stock.correct'))
+        throw new ApiException(
+          HttpStatus.FORBIDDEN,
+          'PERMISSION_DENIED',
+          'Votre rôle ne permet pas de corriger le stock.',
+        );
+      const { stockQuantity, replayed } = await this.stock.correct(
+        tenant,
+        user,
+        { ...operation.data, clientOperationId: operation.clientOperationId },
+        options.requestId,
+      );
+      return {
+        clientOperationId: operation.clientOperationId,
+        status: replayed ? 'duplicate' : 'accepted',
+        stockQuantity,
+      };
+    }
+
+    const sale = operation.data;
 
     let customerId = sale.customerId;
     if (sale.customerOperationId) {
@@ -197,7 +235,20 @@ export class SyncService {
       saleId: recorded.id,
       saleNumber: recorded.saleNumber,
       priceReview: recorded.priceReview,
+      stockReview: recorded.stockReview,
     };
+  }
+}
+
+/** How a refused operation is named to the managers. */
+function labelOf(operation: SyncOperation): string {
+  switch (operation.type) {
+    case 'sale':
+      return `Vente ${operation.data.deviceTicket}`;
+    case 'customer':
+      return `Client ${operation.data.name}`;
+    case 'stock_correction':
+      return 'Correction de stock';
   }
 }
 

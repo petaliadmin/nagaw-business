@@ -34,3 +34,37 @@ describe('member management permissions', () => {
     }
   });
 });
+
+describe('seller access (ADR-036)', () => {
+  it('lets sellers receive goods, correct the stock at the counter and prepare quotes', () => {
+    for (const permission of [
+      'stock.receive',
+      'stock.correct',
+      'documents.read',
+      'quotes.manage',
+    ] as const)
+      expect(roleHasPermission('member', permission)).toBe(true);
+  });
+
+  it('keeps losses, inventories, invoices and the money away from sellers', () => {
+    for (const permission of [
+      'stock.move',
+      'catalog.manage',
+      'documents.manage',
+      'sales.cancel',
+      'sales.read_all',
+      'stats.read',
+      'treasury.read',
+    ] as const)
+      expect(roleHasPermission('member', permission)).toBe(false);
+  });
+
+  it('keeps the accountant read-only', () => {
+    for (const permission of [
+      'stock.receive',
+      'stock.correct',
+      'quotes.manage',
+    ] as const)
+      expect(roleHasPermission('viewer', permission)).toBe(false);
+  });
+});

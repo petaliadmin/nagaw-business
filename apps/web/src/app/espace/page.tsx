@@ -5,6 +5,7 @@ import {
   type AuditLogDto,
   type MemberDto,
   type Paginated,
+  type MySalesStatsDto,
   type SalesDaySummaryDto,
   type StatsSummaryDto,
   type StockSummaryDto,
@@ -358,6 +359,70 @@ function Details({
   );
 }
 
+/**
+ * A seller's own figures (ADR-036): their sales today and over 7 days,
+ * and what they sell best. Never the shop's totals.
+ */
+function MyFiguresCard({
+  figures,
+  currency,
+}: {
+  figures: ApiResult<MySalesStatsDto>;
+  currency: string;
+}) {
+  const money = (value: number) => formatAmount(value, currency);
+  return (
+    <Card title="Mes ventes" titleId="my-figures" icon={Trophy} tone="sales">
+      {!figures.ok ? (
+        <Alert tone="error">
+          Vos chiffres sont indisponibles : {figures.message}
+        </Alert>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <KpiTile
+              label="Aujourd’hui"
+              value={money(figures.data.today.total)}
+              tone="sales"
+              icon={Receipt}
+            >
+              <p className="text-base">
+                {figures.data.today.count} vente
+                {figures.data.today.count > 1 ? 's' : ''}
+              </p>
+            </KpiTile>
+            <KpiTile
+              label="Ces 7 derniers jours"
+              value={money(figures.data.week.total)}
+              tone="stats"
+              icon={ChartColumn}
+            >
+              <p className="text-base">
+                {figures.data.week.count} vente
+                {figures.data.week.count > 1 ? 's' : ''}
+                {figures.data.week.count > 0 &&
+                  `, panier moyen ${money(figures.data.week.averageBasket)}`}
+              </p>
+            </KpiTile>
+          </dl>
+          {figures.data.topProducts.length > 0 && (
+            <BarList
+              label="Ce que je vends le plus (7 jours)"
+              tone="sales"
+              rows={figures.data.topProducts.map((p) => ({
+                key: p.productId,
+                name: p.label,
+                value: p.total,
+                text: money(p.total),
+              }))}
+            />
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 /** Money on hand and owed: today, whatever the period. */
 function MoneyCard({
   treasury,
@@ -534,7 +599,9 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
       organizationId: organization.id,
     });
 
-  const [members, sales, stock, audit, treasury, stats, statsBefore] =
+  // Sellers see their own figures, not the shop's.
+  const showMine = canSell && !canReadStats;
+  const [members, sales, stock, audit, treasury, stats, statsBefore, mine] =
     await Promise.all([
       // Only to name the authors of the recent activity.
       canReadAudit
@@ -565,6 +632,12 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
         : null,
       canReadStats ? statsOf(period) : null,
       canReadStats ? statsOf(before) : null,
+      showMine
+        ? apiAsUser<MySalesStatsDto>(accessToken, {
+            path: '/sales/my-stats',
+            organizationId: organization.id,
+          })
+        : null,
     ]);
 
   const emailById = new Map(
@@ -605,6 +678,8 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
       )}
 
       <TodayCard summary={sales} currency={currency} />
+
+      {mine && <MyFiguresCard figures={mine} currency={currency} />}
 
       {stats?.ok && <Details stats={stats.data} currency={currency} />}
 

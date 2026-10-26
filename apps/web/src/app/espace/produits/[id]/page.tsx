@@ -92,6 +92,8 @@ async function Product({
   const currency = organization.defaultCurrency;
   const canManage = roleHasPermission(organization.role, 'catalog.manage');
   const canMove = roleHasPermission(organization.role, 'stock.move');
+  // Sellers record deliveries only (ADR-036).
+  const canReceive = roleHasPermission(organization.role, 'stock.receive');
 
   const [product, movements, suppliers] = await Promise.all([
     apiAsUser<ProductDto>(accessToken, {
@@ -102,7 +104,7 @@ async function Product({
       path: `/products/${encodeURIComponent(id)}/movements`,
       organizationId: organization.id,
     }),
-    canMove
+    canReceive
       ? apiAsUser<SupplierDto[]>(accessToken, {
           path: '/suppliers',
           organizationId: organization.id,
@@ -192,8 +194,9 @@ async function Product({
         )}
       </section>
 
-      {canMove && p.trackStock && p.status === 'active' && (
+      {canReceive && p.trackStock && p.status === 'active' && (
         <StockForms
+          receiveOnly={!canMove}
           organizationId={organization.id}
           currency={currency}
           product={p}

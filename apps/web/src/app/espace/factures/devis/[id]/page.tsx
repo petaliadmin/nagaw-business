@@ -42,6 +42,7 @@ async function Quote({ params }: PageProps<'/espace/factures/devis/[id]'>) {
 
   const quote = result.data;
   const canManage = roleHasPermission(organization.role, 'documents.manage');
+  const canQuote = roleHasPermission(organization.role, 'quotes.manage');
   const badge = documentBadge({
     kind: 'quote',
     status: quote.status,
@@ -130,7 +131,7 @@ async function Quote({ params }: PageProps<'/espace/factures/devis/[id]'>) {
           Ouvrir le PDF
         </a>
         <SharePdfButton href={pdfHref} fileName={quote.number} />
-        {canManage && quote.status === 'draft' && (
+        {canQuote && quote.status === 'draft' && (
           <ButtonLink
             href={`/espace/factures/devis/${quote.id}/modifier`}
             variant="secondary"
@@ -141,7 +142,7 @@ async function Quote({ params }: PageProps<'/espace/factures/devis/[id]'>) {
         )}
       </div>
 
-      {canManage && next.length > 0 && (
+      {canQuote && next.length > 0 && (
         <Card title="Réponse du client" titleId="quote-status">
           <QuoteStatusForm
             organizationId={organization.id}

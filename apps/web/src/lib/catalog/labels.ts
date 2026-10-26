@@ -1,4 +1,5 @@
 import {
+  formatQuantity,
   UNITS,
   type CategoryColor,
   type StockLevel,
@@ -6,28 +7,8 @@ import {
   type Unit,
 } from '@nagaw/shared';
 
-/** Words of the unit that take an « s » in the plural. */
-const PLURAL_S: ReadonlySet<Unit> = new Set([
-  'piece',
-  'carton',
-  'paquet',
-  'sachet',
-  'bouteille',
-  'sac',
-  'litre',
-  'metre',
-]);
-
-const quantityFormat = new Intl.NumberFormat('fr', {
-  maximumFractionDigits: 3,
-});
-
-/** `12 pièces`, `1,5 kg`, `1 sac`. */
-export function formatQuantity(quantity: number, unit: Unit): string {
-  const label = UNITS[unit].label;
-  const plural = Math.abs(quantity) >= 2 && PLURAL_S.has(unit);
-  return `${quantityFormat.format(quantity)} ${plural ? `${label}s` : label}`;
-}
+// Shared with the API, which writes quantities in notifications (ADR-036).
+export { formatQuantity };
 
 /** Signed change: `+6 pièces`, `−3 pièces`. */
 export function formatQuantityChange(quantity: number, unit: Unit): string {

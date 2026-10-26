@@ -661,7 +661,7 @@ describe('Catalogue and stock', () => {
       await move(whole.id, { kind: 'purchase', quantity: 1.5 }).expect(400);
     });
 
-    it('refuses a supplier of another shop and lets only managers move stock', async () => {
+    it('refuses a supplier of another shop and keeps losses and inventories to managers', async () => {
       const globexSupplier = (
         await post(bob, globexId, '/suppliers', {
           name: 'Fournisseur Globex',
@@ -676,9 +676,21 @@ describe('Catalogue and stock', () => {
       expect(res.body.error.details).toEqual([
         { path: 'supplierId', message: 'Fournisseur inconnu.' },
       ]);
+      // Sellers record deliveries (ADR-036), not losses nor inventories.
       await move(created.id, { kind: 'purchase', quantity: 1 }, carol).expect(
-        403,
+        201,
       );
+      const loss = await move(
+        created.id,
+        { kind: 'loss', quantity: 1, reason: 'Cassé' },
+        carol,
+      ).expect(403);
+      expect(loss.body.error.code).toBe('PERMISSION_DENIED');
+      await move(
+        created.id,
+        { kind: 'inventory', countedQuantity: 0 },
+        carol,
+      ).expect(403);
     });
   });
 

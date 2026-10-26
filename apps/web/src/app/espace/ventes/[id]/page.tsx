@@ -108,6 +108,12 @@ async function Sale({
             différents de ceux du catalogue au moment de son envoi.
           </Alert>
         )}
+        {s.stockReview && (
+          <Alert tone="warning">
+            Stock à vérifier : cette vente a pris plus d’articles que le stock
+            enregistré. Comptez le rayon et corrigez le stock si besoin.
+          </Alert>
+        )}
         {s.status === 'cancelled' && s.cancellation && (
           <Alert tone="warning">
             Vente annulée le{' '}

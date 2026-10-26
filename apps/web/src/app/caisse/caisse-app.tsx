@@ -2,6 +2,8 @@
 
 import {
   formatAmount,
+  roleHasPermission,
+  ROLES,
   type CustomerDto,
   type DeviceDto,
   type ProductDto,
@@ -23,6 +25,7 @@ import {
   readTicket,
   recordLocally,
   addLocalCustomer,
+  correctStockLocally,
   saveSnapshot,
   type LocalTicket,
   type RejectedEntry,
@@ -44,6 +47,7 @@ interface ServerData {
   products: ProductDto[];
   customers: CustomerDto[];
   devices: DeviceDto[];
+  rules: { stockCorrectionMax: number };
 }
 
 function deviceLabel(): string {
@@ -96,6 +100,7 @@ async function refresh(
     products: data.products,
     customers: data.customers,
     device: { id: device.id, ticketPrefix: device.ticketPrefix },
+    rules: data.rules,
   });
   return { ok: true, snapshot };
 }
@@ -146,6 +151,7 @@ function asSale(ticket: LocalTicket): SaleDto {
     occurredAt: ticket.sale.occurredAt,
     deviceTicket: ticket.deviceTicket,
     priceReview: false,
+    stockReview: false,
     cancellation: null,
   };
 }
@@ -333,6 +339,46 @@ export function CaisseApp() {
     return null;
   }
 
+  // The role saved with the shop data decides what the checkout offers;
+  // the server checks again when the operation arrives (ADR-036).
+  const role = ROLES.find((r) => r === snapshot.shop.role);
+  const stockRights = {
+    canCorrect: role !== undefined && roleHasPermission(role, 'stock.correct'),
+    manager: role !== undefined && roleHasPermission(role, 'stock.move'),
+    max: snapshot.rules?.stockCorrectionMax ?? 0,
+  };
+
+  async function onCorrectStock(
+    product: ProductDto,
+    counted: number,
+    reason: string,
+  ): Promise<string | null> {
+    try {
+      const updated = await correctStockLocally(snapshot.organizationId, {
+        type: 'stock_correction',
+        clientOperationId: crypto.randomUUID(),
+        data: {
+          productId: product.id,
+          quantity: Math.round((counted - product.stockQuantity) * 1000) / 1000,
+          countedQuantity: counted,
+          reason,
+          occurredAt: new Date().toISOString(),
+        },
+      });
+      setState((current) =>
+        current.status === 'ready'
+          ? { ...current, snapshot: updated }
+          : current,
+      );
+    } catch (error) {
+      console.error('Correction de stock non enregistrée', error);
+      return 'La correction n’a pas pu être enregistrée sur ce téléphone. Rechargez la caisse avec internet.';
+    }
+    // Sent with the next sale at the latest; never waits for the network.
+    void flushOutbox();
+    return null;
+  }
+
   async function onCreateCustomer(values: { name: string; phone: string }) {
     const name = values.name.trim();
     if (!name)
@@ -458,8 +504,10 @@ export function CaisseApp() {
               currency={snapshot.shop.currency}
               products={snapshot.products}
               customers={snapshot.customers}
+              stockRights={stockRights}
               onRecord={onRecord}
               onCreateCustomer={onCreateCustomer}
+              onCorrectStock={onCorrectStock}
             />
           </>
         )}

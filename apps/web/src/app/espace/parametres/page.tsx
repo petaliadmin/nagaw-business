@@ -2,11 +2,20 @@ import {
   formatRate,
   roleHasPermission,
   type DeviceDto,
+  type NotificationSettingsDto,
   type OrganizationDto,
   type TaxRateDto,
 } from '@nagaw/shared';
-import { FileText, Plus, Smartphone, Store, UserRound } from 'lucide-react';
+import {
+  BellRing,
+  FileText,
+  Plus,
+  Smartphone,
+  Store,
+  UserRound,
+} from 'lucide-react';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { ButtonLink } from '@/components/ui/button-link';
@@ -18,6 +27,7 @@ import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { ReferenceList } from '../produits/reference-page';
 import { RevokeDeviceButton } from './device-actions';
 import { InvoiceSettingsForm } from './invoice-settings-form';
+import { NotificationSettingsForm } from './notification-settings-form';
 import { currencyOptions, timeZoneOptions } from './options';
 import { OrganizationSettingsForm } from './organization-settings-form';
 
@@ -30,7 +40,8 @@ async function Settings() {
 
   // Fresh read, so the form never starts from stale values.
   const canManageDevices = roleHasPermission(active.role, 'devices.manage');
-  const [organization, taxRates, devices] = await Promise.all([
+  const canUpdate = roleHasPermission(active.role, 'organization.update');
+  const [organization, taxRates, devices, alerts] = await Promise.all([
     apiAsUser<OrganizationDto>(accessToken, {
       path: '/organizations/current',
       organizationId: active.id,
@@ -45,8 +56,13 @@ async function Settings() {
           organizationId: active.id,
         })
       : null,
+    canUpdate
+      ? apiAsUser<NotificationSettingsDto>(accessToken, {
+          path: '/notifications/settings',
+          organizationId: active.id,
+        })
+      : null,
   ]);
-  const canUpdate = roleHasPermission(active.role, 'organization.update');
   const when = (iso: string) =>
     new Intl.DateTimeFormat('fr', {
       dateStyle: 'short',
@@ -113,6 +129,31 @@ async function Settings() {
                 value={`${organization.data.quoteValidityDays} jours`}
               />
             </dl>
+          )}
+        </Card>
+      )}
+      {alerts && (
+        <Card title="Alertes et stock" titleId="alerts" icon={BellRing}>
+          <p className="mb-4 text-ink-muted">
+            Ce qui déclenche vos notifications, et ce que les vendeurs peuvent
+            corriger à la caisse. Chacun choisit ensuite ce qu’il reçoit dans{' '}
+            <Link
+              href="/espace/notifications/reglages"
+              className="font-bold text-brand-ink underline underline-offset-4"
+            >
+              Notifications
+            </Link>
+            .
+          </p>
+          {alerts.ok ? (
+            <NotificationSettingsForm
+              organizationId={active.id}
+              settings={alerts.data}
+            />
+          ) : (
+            <Alert tone="error">
+              Réglages indisponibles : {alerts.message}
+            </Alert>
           )}
         </Card>
       )}

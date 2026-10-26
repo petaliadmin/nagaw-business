@@ -12,6 +12,8 @@ interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   /** Defaults to the name; set it when the same form repeats on a page. */
   id?: string;
   error?: string;
+  /** Help shown under the label, read with the field. */
+  hint?: string;
 }
 
 export function FormField({
@@ -19,19 +21,27 @@ export function FormField({
   name,
   id = name,
   error,
+  hint,
   ...input
 }: FormFieldProps) {
   const errorId = error ? `${id}-error` : undefined;
+  const hintId = hint ? `${id}-hint` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className={LABEL}>
         {label}
       </label>
+      {hint && (
+        <p id={hintId} className="text-ink-muted">
+          {hint}
+        </p>
+      )}
       <input
         id={id}
         name={name}
         aria-invalid={error ? true : undefined}
-        aria-describedby={errorId}
+        aria-describedby={describedBy}
         className={CONTROL}
         {...input}
       />

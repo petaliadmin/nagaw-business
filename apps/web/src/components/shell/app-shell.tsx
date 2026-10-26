@@ -13,6 +13,7 @@ import { ROLE_LABELS } from '@/lib/labels';
 import { loadWorkspace } from '@/lib/workspace/load';
 import { FeedbackLink } from './feedback-link';
 import { MoreMenu } from './mobile-nav';
+import { NotificationBell } from './notification-bell';
 import { BottomNavLinks, NavLinks } from './nav-links';
 import { OrganizationSwitcher } from './organization-switcher';
 
@@ -124,7 +125,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  const { me, organization } = workspace;
+  const { me, organization, accessToken } = workspace;
   return (
     <div className="flex min-h-full flex-1">
       <a
@@ -137,7 +138,14 @@ export async function AppShell({ children }: { children: ReactNode }) {
         aria-label="Barre latérale"
         className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col gap-6 overflow-y-auto bg-sidebar p-4 text-white md:flex print:hidden"
       >
-        <Logo href="/espace" tone="sidebar" />
+        <div className="flex items-center justify-between gap-2">
+          <Logo href="/espace" tone="sidebar" />
+          <NotificationBell
+            accessToken={accessToken}
+            organizationId={organization.id}
+            tone="sidebar"
+          />
+        </div>
         <OrganizationSwitcher
           organizations={me.organizations}
           activeId={organization.id}
@@ -155,9 +163,14 @@ export async function AppShell({ children }: { children: ReactNode }) {
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-strong text-white">
             <Store aria-hidden className="size-6" />
           </span>
-          <span className="min-w-0 truncate text-lg font-extrabold">
+          <span className="min-w-0 flex-1 truncate text-lg font-extrabold">
             {organization.name}
           </span>
+          <NotificationBell
+            accessToken={accessToken}
+            organizationId={organization.id}
+            tone="surface"
+          />
         </header>
         <main
           id="contenu"

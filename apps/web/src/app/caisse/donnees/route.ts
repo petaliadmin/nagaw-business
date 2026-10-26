@@ -1,4 +1,9 @@
-import type { CustomerDto, DeviceDto, ProductDto } from '@nagaw/shared';
+import type {
+  CustomerDto,
+  DeviceDto,
+  NotificationSettingsDto,
+  ProductDto,
+} from '@nagaw/shared';
 import { apiAsUser } from '@/lib/api/server';
 import { loadWorkspace } from '@/lib/workspace/load';
 
@@ -13,13 +18,14 @@ export async function GET() {
   const { organization, accessToken } = workspace;
   const call = <T>(path: string) =>
     apiAsUser<T>(accessToken, { path, organizationId: organization.id });
-  const [products, customers, devices] = await Promise.all([
+  const [products, customers, devices, settings] = await Promise.all([
     call<ProductDto[]>('/products'),
     call<CustomerDto[]>('/customers'),
     call<DeviceDto[]>('/devices'),
+    call<NotificationSettingsDto>('/notifications/settings'),
   ]);
-  if (!products.ok || !customers.ok || !devices.ok) {
-    const failed = [products, customers, devices].find((r) => !r.ok);
+  if (!products.ok || !customers.ok || !devices.ok || !settings.ok) {
+    const failed = [products, customers, devices, settings].find((r) => !r.ok);
     return Response.json(
       { error: failed && !failed.ok ? failed.message : 'API indisponible' },
       { status: failed && !failed.ok && failed.status === 403 ? 403 : 502 },
@@ -36,6 +42,7 @@ export async function GET() {
       },
       products: products.data,
       customers: customers.data,
+      rules: { stockCorrectionMax: settings.data.sellerStockCorrectionMax },
       devices: devices.data.filter(
         (d) => !d.revokedAt && d.user.userId === workspace.me.id,
       ),

@@ -5,6 +5,8 @@ import type {
   InvoiceStatus,
   QuoteStatus,
   MobileMoneyProvider,
+  NotificationCategory,
+  NotificationSeverity,
   PaymentMethod,
   ProductPhotoType,
   StockMovementKind,
@@ -66,6 +68,22 @@ export interface OrganizationsTable {
   invoice_footer: Generated<string>;
   invoice_due_days: Generated<number>;
   quote_validity_days: Generated<number>;
+  seller_stock_correction_max: ColumnType<
+    string,
+    number | string | undefined,
+    number | string
+  >;
+  stock_forecast_days: Generated<number>;
+  stock_forecast_window_days: Generated<number>;
+  credit_overdue_days: Generated<number>;
+  credit_near_limit_percent: Generated<number>;
+  daily_summary_hour: Generated<number>;
+  /** Read it as text (`daily_run_on::text`): pg returns a Date. */
+  daily_run_on: ColumnType<
+    Date | null,
+    string | null | undefined,
+    string | null
+  >;
   created_by: string;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -241,6 +259,7 @@ export interface SalesTable {
   device_id: string | null;
   device_ticket: string | null;
   price_review: Generated<boolean>;
+  stock_review: Generated<boolean>;
   synced_at: NullableTimestamp;
   created_at: ColumnType<Date, never, never>;
 }
@@ -521,7 +540,7 @@ export interface SyncRejectionsTable {
   organization_id: string;
   batch_id: string;
   client_operation_id: string;
-  operation_type: 'sale' | 'customer';
+  operation_type: 'sale' | 'customer' | 'stock_correction';
   code: string;
   message: string;
   created_at: ColumnType<Date, never, never>;
@@ -540,6 +559,48 @@ export interface FeedbackTable {
   answered_by: string | null;
   client_operation_id: string;
   created_at: ColumnType<Date, never, never>;
+}
+
+export interface NotificationsTable {
+  id: Generated<string>;
+  organization_id: string;
+  recipient_id: string;
+  category: NotificationCategory;
+  kind: string;
+  severity: Generated<NotificationSeverity>;
+  title: string;
+  body: Generated<string>;
+  link: string | null;
+  group_key: string;
+  occurrences: Generated<number>;
+  data: Json<Record<string, unknown>>;
+  push_status: Generated<'none' | 'pending' | 'sent' | 'failed'>;
+  read_at: NullableTimestamp;
+  created_at: ColumnType<Date, never, never>;
+  updated_at: ColumnType<Date, never, never>;
+}
+
+export interface NotificationPreferencesTable {
+  organization_id: string;
+  user_id: string;
+  category: NotificationCategory;
+  enabled: boolean;
+  push: boolean;
+  updated_at: ColumnType<Date, never, never>;
+}
+
+export interface PushSubscriptionsTable {
+  id: Generated<string>;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  label: Generated<string>;
+  failure_count: Generated<number>;
+  last_success_at: NullableTimestamp;
+  disabled_at: NullableTimestamp;
+  created_at: ColumnType<Date, never, never>;
+  updated_at: ColumnType<Date, never, never>;
 }
 
 export interface Database {
@@ -578,4 +639,7 @@ export interface Database {
   'app.sync_batches': SyncBatchesTable;
   'app.sync_rejections': SyncRejectionsTable;
   'app.feedback': FeedbackTable;
+  'app.notifications': NotificationsTable;
+  'app.notification_preferences': NotificationPreferencesTable;
+  'app.push_subscriptions': PushSubscriptionsTable;
 }

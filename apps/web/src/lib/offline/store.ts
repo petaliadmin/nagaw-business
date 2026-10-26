@@ -7,6 +7,7 @@ import {
   type SyncResponseDto,
 } from '@nagaw/shared';
 import { idb, STORES, transact } from './db';
+import { applyPendingStock } from './local-stock';
 
 /** Shop data the checkout needs to work offline. */
 export interface ShopSnapshot {
@@ -16,6 +17,8 @@ export interface ShopSnapshot {
   /** `pendingOperationId`: created on this device, not yet sent. */
   customers: (CustomerDto & { pendingOperationId?: string })[];
   device: { id: string; ticketPrefix: string } | null;
+  /** Shop rules the checkout applies offline (absent in older copies). */
+  rules?: { stockCorrectionMax: number };
   /** Next offline ticket number of this device. */
   nextTicket: number;
   refreshedAt: string;
@@ -102,30 +105,39 @@ export async function readSnapshot(
 export async function saveSnapshot(
   fresh: Omit<ShopSnapshot, 'nextTicket' | 'refreshedAt'>,
 ): Promise<ShopSnapshot> {
-  return transact([STORES.snapshots], 'readwrite', async (tx) => {
-    const previous = await idb.get<ShopSnapshot>(
-      tx,
-      STORES.snapshots,
-      fresh.organizationId,
-    );
-    const pending = (previous?.customers ?? []).filter(
-      (c) => c.pendingOperationId,
-    );
-    const sameDevice = previous?.device?.id === fresh.device?.id;
-    const snapshot: ShopSnapshot = {
-      ...fresh,
-      // Customers created here and not sent yet are unknown to the server.
-      customers: [...fresh.customers, ...pending],
-      nextTicket: sameDevice ? (previous?.nextTicket ?? 1) : 1,
-      refreshedAt: new Date().toISOString(),
-    };
-    await idb.put(tx, STORES.snapshots, snapshot);
-    await idb.put(tx, STORES.snapshots, {
-      organizationId: ACTIVE_KEY,
-      value: fresh.organizationId,
-    });
-    return snapshot;
-  });
+  return transact(
+    [STORES.snapshots, STORES.outbox],
+    'readwrite',
+    async (tx) => {
+      const previous = await idb.get<ShopSnapshot>(
+        tx,
+        STORES.snapshots,
+        fresh.organizationId,
+      );
+      const pending = (previous?.customers ?? []).filter(
+        (c) => c.pendingOperationId,
+      );
+      const sameDevice = previous?.device?.id === fresh.device?.id;
+      // What this phone did and has not sent yet is not in the server's stock.
+      const waiting = (await idb.getAll<OutboxEntry>(tx, STORES.outbox))
+        .filter((e) => e.organizationId === fresh.organizationId)
+        .map((e) => e.operation);
+      const snapshot: ShopSnapshot = {
+        ...fresh,
+        products: applyPendingStock(fresh.products, waiting),
+        // Customers created here and not sent yet are unknown to the server.
+        customers: [...fresh.customers, ...pending],
+        nextTicket: sameDevice ? (previous?.nextTicket ?? 1) : 1,
+        refreshedAt: new Date().toISOString(),
+      };
+      await idb.put(tx, STORES.snapshots, snapshot);
+      await idb.put(tx, STORES.snapshots, {
+        organizationId: ACTIVE_KEY,
+        value: fresh.organizationId,
+      });
+      return snapshot;
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -161,6 +173,7 @@ export async function recordLocally(
       const { operations, ticket: draft } = build(deviceTicket);
       await idb.put(tx, STORES.snapshots, {
         ...snapshot,
+        products: applyPendingStock(snapshot.products, operations),
         nextTicket: snapshot.nextTicket + 1,
       });
       for (const operation of operations) {
@@ -184,6 +197,44 @@ export async function recordLocally(
   );
   notify();
   return ticket;
+}
+
+/**
+ * A stock correction made at the counter (ADR-036): queued like a sale,
+ * before the sale that follows it, and applied to this phone's stock at
+ * once. Resolves with the updated snapshot.
+ */
+export async function correctStockLocally(
+  organizationId: string,
+  operation: Extract<SyncOperation, { type: 'stock_correction' }>,
+): Promise<ShopSnapshot> {
+  const updated = await transact(
+    [STORES.snapshots, STORES.outbox],
+    'readwrite',
+    async (tx) => {
+      const snapshot = await idb.get<ShopSnapshot>(
+        tx,
+        STORES.snapshots,
+        organizationId,
+      );
+      if (!snapshot?.device) throw new Error('Appareil non enregistré');
+      const next: ShopSnapshot = {
+        ...snapshot,
+        products: applyPendingStock(snapshot.products, [operation]),
+      };
+      await idb.put(tx, STORES.snapshots, next);
+      const entry: OutboxEntry = {
+        organizationId,
+        deviceId: snapshot.device.id,
+        operation,
+        createdAt: new Date().toISOString(),
+      };
+      await idb.add(tx, STORES.outbox, entry);
+      return next;
+    },
+  );
+  notify();
+  return updated;
 }
 
 /** A customer created at the counter, sent with the next batch. */
@@ -327,6 +378,18 @@ async function runFlush(): Promise<FlushOutcome> {
   }
 }
 
+/** How an operation is named on the phone when it is refused. */
+function labelOf(operation: SyncOperation): string {
+  switch (operation.type) {
+    case 'sale':
+      return `Vente ${operation.data.deviceTicket}`;
+    case 'customer':
+      return `Client ${operation.data.name}`;
+    case 'stock_correction':
+      return 'Correction de stock';
+  }
+}
+
 async function applyResults(
   group: OutboxEntry[],
   results: SyncResponseDto['results'],
@@ -352,10 +415,7 @@ async function applyResults(
             clientOperationId: entry.operation.clientOperationId,
             organizationId: entry.organizationId,
             type: entry.operation.type,
-            label:
-              entry.operation.type === 'sale'
-                ? `Vente ${entry.operation.data.deviceTicket}`
-                : `Client ${entry.operation.data.name}`,
+            label: labelOf(entry.operation),
             code: result.error?.code ?? 'REJECTED',
             message: result.error?.message ?? 'Refusée par le serveur.',
             at: new Date().toISOString(),

@@ -41,6 +41,8 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   'product.photo_changed': 'Photo d’un produit changée',
   'product.photo_removed': 'Photo d’un produit retirée',
   'stock.moved': 'Mouvement de stock',
+  'stock.corrected': 'Stock corrigé à la caisse',
+  'notification_settings.updated': 'Réglages des alertes modifiés',
   'sale.completed': 'Vente enregistrée',
   'sale.cancelled': 'Vente annulée',
   'customer.created': 'Client ajouté',

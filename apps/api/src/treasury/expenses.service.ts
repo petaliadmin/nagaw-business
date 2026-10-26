@@ -29,6 +29,7 @@ import { today } from '../common/today.js';
 import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
 import { takeSequenceNumber } from '../database/sequences.js';
+import { AlertsService } from '../notifications/alerts.service.js';
 import { addDays, TreasuryService } from './treasury.service.js';
 
 const categoryNotFound = () =>
@@ -43,6 +44,7 @@ export class ExpensesService {
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
     private readonly treasury: TreasuryService,
+    private readonly alerts: AlertsService,
   ) {}
 
   async listCategories(organizationId: string): Promise<ExpenseCategoryDto[]> {
@@ -329,6 +331,12 @@ export class ExpensesService {
             account: account.name,
           },
           requestId,
+        });
+        await this.alerts.expenseRecorded(trx, {
+          organizationId: tenant.organizationId,
+          label: input.label,
+          amount: input.amount,
+          userId: user.userId,
         });
         return {
           expense: await this.expenseDto(trx, tenant.organizationId, id),

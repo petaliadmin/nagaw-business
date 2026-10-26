@@ -23,6 +23,7 @@ import {
   type CustomerDetailDto,
   type CustomerDto,
   type CustomerRepaymentInput,
+  type MySalesStatsDto,
   type SaleDto,
   type SaleListItemDto,
   type SaleListQuery,
@@ -38,6 +39,7 @@ import {
   CurrentUser,
   RequestId,
 } from '../tenancy/current.decorator.js';
+import { AlertsService } from '../notifications/alerts.service.js';
 import { RequirePermission } from '../tenancy/require-permission.decorator.js';
 import { CustomersService } from './customers.service.js';
 import { SalesService } from './sales.service.js';
@@ -58,6 +60,7 @@ export class SalesController {
   constructor(
     private readonly sales: SalesService,
     private readonly customers: CustomersService,
+    private readonly alerts: AlertsService,
   ) {}
 
   @Get('sales')
@@ -80,6 +83,16 @@ export class SalesController {
     return this.sales.summary(tenant, user, query.day);
   }
 
+  /** The caller's own figures, never the shop's (ADR-036). */
+  @Get('sales/my-stats')
+  @RequirePermission('sales.read')
+  myStats(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+  ): Promise<MySalesStatsDto> {
+    return this.sales.myStats(tenant, user);
+  }
+
   @Post('sales')
   @RequirePermission('sales.create')
   async create(
@@ -95,6 +108,7 @@ export class SalesController {
       body,
       requestId,
     );
+    await this.alerts.flush(tenant.organizationId);
     res.status(replayed ? HttpStatus.OK : HttpStatus.CREATED);
     return sale;
   }
