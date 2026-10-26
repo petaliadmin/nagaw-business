@@ -37,6 +37,7 @@ import { LocalTicketView } from './local-ticket';
 type State =
   | { status: 'loading' }
   | { status: 'never-online' }
+  | { status: 'server-error'; message: string }
   | { status: 'signed-out' }
   | { status: 'not-allowed' }
   | { status: 'device-limit'; message: string }
@@ -59,7 +60,13 @@ function deviceLabel(): string {
   return `Appareil enregistré le ${date}`;
 }
 
-type RefreshFailure = 'offline' | 'signed-out' | 'not-allowed' | 'device-limit';
+type RefreshFailure =
+  | 'offline'
+  | 'signed-out'
+  | 'not-allowed'
+  | 'device-limit'
+  /** The server answered, with an error: not a network problem. */
+  | 'server';
 
 /**
  * The registration of this browser keeps one operation id per shop and
@@ -90,6 +97,16 @@ function forgetOperationId(key: string): void {
   } catch (error) {
     console.warn('Identifiant d’appareil non effacé', error);
   }
+}
+
+/** The reason a route gave, in its `{ error }` body, for the screen. */
+async function errorOf(response: Response): Promise<string> {
+  const body = (await response.json().catch(() => null)) as {
+    error?: unknown;
+  } | null;
+  return typeof body?.error === 'string' && body.error
+    ? body.error
+    : `erreur ${response.status}`;
 }
 
 type Registration =
@@ -141,7 +158,8 @@ async function requestDevice(
       forgetOperationId(key);
       continue;
     }
-    if (!response.ok) return { ok: false, reason: 'offline' };
+    if (!response.ok)
+      return { ok: false, reason: 'server', message: await errorOf(response) };
     const device = (await response.json()) as DeviceDto;
     // A device a manager removed is never used again.
     if (device.revokedAt) {
@@ -169,7 +187,8 @@ async function refresh(
   }
   if (response.status === 401) return { ok: false, reason: 'signed-out' };
   if (response.status === 403) return { ok: false, reason: 'not-allowed' };
-  if (!response.ok) return { ok: false, reason: 'offline' };
+  if (!response.ok)
+    return { ok: false, reason: 'server', message: await errorOf(response) };
   const data = (await response.json()) as ServerData;
 
   // The list holds only this account's devices that are still allowed:
@@ -278,6 +297,11 @@ export function CaisseApp() {
           status: 'device-limit',
           message: fresh.message ?? 'Limite d’appareils atteinte.',
         });
+      } else if (!cached && fresh.reason === 'server') {
+        setState({
+          status: 'server-error',
+          message: fresh.message ?? 'erreur inconnue',
+        });
       } else if (!cached) {
         setState({
           status:
@@ -361,6 +385,23 @@ export function CaisseApp() {
           type="button"
           onClick={() => window.location.reload()}
           className={buttonClasses('secondary')}
+        >
+          Réessayer
+        </button>
+      </Centered>
+    );
+  if (state.status === 'server-error')
+    return (
+      <Centered>
+        <Alert tone="error">
+          Vous êtes connecté, mais le serveur n’a pas pu préparer la caisse :{' '}
+          {state.message}. Réessayez dans un instant ; si cela continue,
+          prévenez l’équipe avec « Donner mon avis ».
+        </Alert>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className={buttonClasses('primary')}
         >
           Réessayer
         </button>
