@@ -231,6 +231,8 @@ export interface SaleDto {
   deviceTicket: string | null;
   /** Made offline at prices that differed from the catalogue. */
   priceReview: boolean;
+  /** Took more goods than the stock the server knew (ADR-036). */
+  stockReview: boolean;
   cancellation: {
     at: string;
     by: { userId: string; email: string };
@@ -250,6 +252,7 @@ export interface SaleListItemDto {
   occurredAt: string;
   deviceTicket: string | null;
   priceReview: boolean;
+  stockReview: boolean;
 }
 
 export interface SalesDaySummaryDto {
@@ -259,6 +262,20 @@ export interface SalesDaySummaryDto {
   total: number;
   byMethod: Record<PaymentMethod, number>;
   cancelledCount: number;
+}
+
+/** A seller's own figures (ADR-036): never the shop's. */
+export interface MySalesStatsDto {
+  today: { day: string; count: number; total: number };
+  /** The last 7 days, today included, oldest first. */
+  days: { day: string; count: number; total: number }[];
+  week: { count: number; total: number; averageBasket: number };
+  topProducts: {
+    productId: string;
+    label: string;
+    quantity: number;
+    total: number;
+  }[];
 }
 
 // ---------------------------------------------------------------------------

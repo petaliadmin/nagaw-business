@@ -30,4 +30,22 @@ describe('loadEnv', () => {
       /SUPABASE_URL/,
     );
   });
+
+  it('accepts push keys only as a complete set', () => {
+    expect(loadEnv({}).VAPID_PUBLIC_KEY).toBeUndefined();
+    expect(() => loadEnv({ VAPID_PUBLIC_KEY: 'BPub' })).toThrow(
+      /VAPID_PUBLIC_KEY/,
+    );
+    expect(
+      loadEnv({
+        VAPID_PUBLIC_KEY: 'BPub',
+        VAPID_PRIVATE_KEY: 'priv',
+        VAPID_SUBJECT: 'mailto:contact@example.test',
+      }).VAPID_SUBJECT,
+    ).toBe('mailto:contact@example.test');
+  });
+
+  it('refuses a short cron secret', () => {
+    expect(() => loadEnv({ CRON_SECRET: 'short' })).toThrow(/CRON_SECRET/);
+  });
 });

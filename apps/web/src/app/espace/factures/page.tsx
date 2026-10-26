@@ -33,6 +33,8 @@ async function Documents({ searchParams }: PageProps<'/espace/factures'>) {
   const money = (value: number) =>
     formatAmount(value, organization.defaultCurrency);
   const canManage = roleHasPermission(organization.role, 'documents.manage');
+  // Sellers prepare quotes; invoices stay with the managers (ADR-036).
+  const canQuote = roleHasPermission(organization.role, 'quotes.manage');
   const owed =
     documents.ok && !quotes
       ? documents.data.reduce((sum, d) => sum + (d.balance ?? 0), 0)
@@ -44,15 +46,17 @@ async function Documents({ searchParams }: PageProps<'/espace/factures'>) {
         title="Factures et devis"
         description="Des documents propres, numérotés, à envoyer à vos clients."
         actions={
-          canManage && (
+          canQuote && (
             <div className="flex flex-wrap gap-2">
-              <ButtonLink href="/espace/factures/nouvelle">
-                <FilePlus2 aria-hidden className="size-5" />
-                Nouvelle facture
-              </ButtonLink>
+              {canManage && (
+                <ButtonLink href="/espace/factures/nouvelle">
+                  <FilePlus2 aria-hidden className="size-5" />
+                  Nouvelle facture
+                </ButtonLink>
+              )}
               <ButtonLink
                 href="/espace/factures/devis/nouveau"
-                variant="secondary"
+                variant={canManage ? 'secondary' : 'primary'}
               >
                 <FileText aria-hidden className="size-5" />
                 Nouveau devis
@@ -90,11 +94,11 @@ async function Documents({ searchParams }: PageProps<'/espace/factures'>) {
               : 'Aucune facture pour le moment'
           }
         >
-          {canManage
-            ? quotes
-              ? 'Un devis donne un prix à un client avant qu’il commande.'
-              : 'Créez une facture ici, ou depuis une vente avec le bouton « Faire une facture ».'
-            : 'Les documents de la boutique apparaîtront ici.'}
+          {quotes && canQuote
+            ? 'Un devis donne un prix à un client avant qu’il commande.'
+            : !quotes && canManage
+              ? 'Créez une facture ici, ou depuis une vente avec le bouton « Faire une facture ».'
+              : 'Les documents de la boutique apparaîtront ici.'}
         </EmptyState>
       ) : (
         <>

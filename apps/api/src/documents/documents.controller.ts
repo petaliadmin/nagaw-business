@@ -88,7 +88,7 @@ export class DocumentsController {
   }
 
   @Post('quotes')
-  @RequirePermission('documents.manage')
+  @RequirePermission('quotes.manage')
   async createQuote(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,
@@ -116,7 +116,7 @@ export class DocumentsController {
   }
 
   @Put('quotes/:id')
-  @RequirePermission('documents.manage')
+  @RequirePermission('quotes.manage')
   updateQuote(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,
@@ -129,7 +129,7 @@ export class DocumentsController {
 
   @Post('quotes/:id/status')
   @HttpCode(HttpStatus.OK)
-  @RequirePermission('documents.manage')
+  @RequirePermission('quotes.manage')
   changeQuoteStatus(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,

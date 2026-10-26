@@ -36,6 +36,29 @@ export const quantitySchema = z
   .max(MAX_QUANTITY, 'Quantité trop grande')
   .refine(hasAtMostThreeDecimals, 'Trois décimales au plus');
 
+/** Words of the unit that take an « s » in the plural. */
+const PLURAL_S: ReadonlySet<Unit> = new Set([
+  'piece',
+  'carton',
+  'paquet',
+  'sachet',
+  'bouteille',
+  'sac',
+  'litre',
+  'metre',
+]);
+
+const quantityFormat = new Intl.NumberFormat('fr', {
+  maximumFractionDigits: 3,
+});
+
+/** `12 pièces`, `1,5 kg`, `1 sac`. */
+export function formatQuantity(quantity: number, unit: Unit): string {
+  const label = UNITS[unit].label;
+  const plural = Math.abs(quantity) >= 2 && PLURAL_S.has(unit);
+  return `${quantityFormat.format(quantity)} ${plural ? `${label}s` : label}`;
+}
+
 /** Products counted in whole units (pièce, carton…) refuse decimals. */
 export function quantityFitsUnit(quantity: number, unit: Unit): boolean {
   return UNITS[unit].decimals || Number.isInteger(quantity);

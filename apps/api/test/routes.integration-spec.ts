@@ -22,6 +22,12 @@ const NOT_SHOP_SCOPED: Record<string, 'public' | 'user' | 'admin'> = {
   'GET /api/v1/stats/shops': 'user',
   // The offer grid, shown on the home page (ADR-034).
   'GET /api/v1/plans': 'public',
+  // A browser receives push messages for its person, whatever the shop.
+  'GET /api/v1/push/config': 'user',
+  'POST /api/v1/push/subscriptions': 'user',
+  'POST /api/v1/push/subscriptions/remove': 'user',
+  // Vercel Cron, behind its own secret (notifications.integration-spec).
+  'GET /api/v1/cron/daily': 'public',
 };
 
 /** API documentation: public, and not served in production (Phase 1). */

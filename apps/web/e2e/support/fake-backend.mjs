@@ -13,6 +13,11 @@ import {
 } from 'jose';
 import { handleCatalog, resetCatalog } from './fake-catalog.mjs';
 import { handleDocuments, resetDocuments } from './fake-documents.mjs';
+import {
+  handleNotifications,
+  handlePush,
+  resetNotifications,
+} from './fake-notifications.mjs';
 import { handleSales, resetSales } from './fake-sales.mjs';
 import {
   handleTreasury,
@@ -340,6 +345,7 @@ const server = createServer(async (req, res) => {
     resetSales();
     resetDocuments();
     resetTreasury();
+    resetNotifications();
     return send(res, 200, { ok: true });
   }
 
@@ -623,6 +629,7 @@ const server = createServer(async (req, res) => {
     }
     return apiError(res, 404, 'NOT_FOUND', 'Introuvable.');
   }
+  if (handlePush({ req, res, path, send })) return;
   if (path === '/api/v1/me' && req.method === 'GET') {
     return send(res, 200, {
       id: user.id,
@@ -905,6 +912,21 @@ const server = createServer(async (req, res) => {
     });
   }
   if (
+    await handleNotifications({
+      req,
+      res,
+      path,
+      user,
+      orgId,
+      role: membership.role,
+      send,
+      apiError,
+      readJson,
+      forbidden,
+    })
+  )
+    return;
+  if (
     await handleSales({
       req,
       res,
@@ -1077,6 +1099,7 @@ const server = createServer(async (req, res) => {
       url,
       user,
       orgId,
+      role: membership.role,
       canManage,
       send,
       apiError,

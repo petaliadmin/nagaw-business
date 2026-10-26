@@ -197,3 +197,78 @@ describe('service worker', () => {
     expect([...caches.keys()].sort()).toEqual(['nagaw-shell-v2', 'other-app']);
   });
 });
+
+describe('service worker push messages (ADR-036)', () => {
+  function bootPush() {
+    const listeners = new Map<string, (event: unknown) => void>();
+    const shown: { title: string; options: Record<string, unknown> }[] = [];
+    const opened: string[] = [];
+    const self = {
+      location: { origin: ORIGIN },
+      registration: {
+        showNotification: async (
+          title: string,
+          options: Record<string, unknown>,
+        ) => {
+          shown.push({ title, options });
+        },
+      },
+      clients: {
+        claim: async () => undefined,
+        matchAll: async () => [],
+        openWindow: async (url: string) => {
+          opened.push(url);
+        },
+      },
+      addEventListener: (type: string, listener: (event: unknown) => void) =>
+        listeners.set(type, listener),
+    };
+    runInNewContext(serviceWorkerSource('v1'), { self, URL });
+    async function dispatch(type: string, event: Record<string, unknown>) {
+      let waited: Promise<unknown> | undefined;
+      listeners.get(type)!({
+        ...event,
+        waitUntil: (p: Promise<unknown>) => (waited = p),
+      });
+      await waited;
+    }
+    return { shown, opened, dispatch };
+  }
+
+  it('shows the message the server sent, grouped by its tag', async () => {
+    const sw = bootPush();
+    await sw.dispatch('push', {
+      data: {
+        json: () => ({
+          title: 'Acme · Riz : épuisé',
+          body: 'Il n’en reste plus.',
+          tag: 'org:stock:1',
+          url: '/espace/produits/1',
+        }),
+      },
+    });
+    expect(sw.shown).toEqual([
+      {
+        title: 'Acme · Riz : épuisé',
+        options: expect.objectContaining({
+          body: 'Il n’en reste plus.',
+          tag: 'org:stock:1',
+          data: { url: '/espace/produits/1' },
+        }),
+      },
+    ]);
+  });
+
+  it('opens only pages of the application', async () => {
+    const sw = bootPush();
+    await sw.dispatch('push', {
+      data: { json: () => ({ title: 'x', url: 'https://evil.example' }) },
+    });
+    const notification = {
+      close: () => undefined,
+      data: sw.shown[0]!.options.data,
+    };
+    await sw.dispatch('notificationclick', { notification });
+    expect(sw.opened).toEqual([`${ORIGIN}/espace/notifications`]);
+  });
+});

@@ -82,7 +82,8 @@ describe('navigation', () => {
       sectionTabsFor(section, role).map((tab) => tab.href);
     expect(tabs('ventes', 'owner')).toContain('/espace/factures');
     expect(tabs('ventes', 'viewer')).toContain('/espace/factures');
-    expect(tabs('ventes', 'member')).not.toContain('/espace/factures');
+    // Sellers read invoices and prepare quotes (ADR-036).
+    expect(tabs('ventes', 'member')).toContain('/espace/factures');
     expect(tabs('rapports', 'viewer')).toContain('/espace/comptabilite');
     expect(tabs('rapports', 'member')).toEqual([]);
     expect(tabs('parametres', 'owner')).toContain('/espace/abonnement');

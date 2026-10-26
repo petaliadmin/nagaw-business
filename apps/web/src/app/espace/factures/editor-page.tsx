@@ -23,12 +23,19 @@ export async function EditorPage({
   documentId?: string;
 }) {
   const { organization, accessToken } = workspace;
-  if (!roleHasPermission(organization.role, 'documents.manage'))
+  if (
+    !roleHasPermission(
+      organization.role,
+      kind === 'quote' ? 'quotes.manage' : 'documents.manage',
+    )
+  )
     return (
       <>
         <PageHeader title={title} />
         <Alert>
-          Seuls le propriétaire et les gérants font les factures et les devis.
+          {kind === 'quote'
+            ? 'Votre rôle permet de lire les devis, pas d’en préparer.'
+            : 'Seuls le propriétaire et les gérants font les factures.'}
         </Alert>
       </>
     );

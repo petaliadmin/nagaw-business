@@ -10,6 +10,7 @@ import {
   createTaxRateSchema,
   productListQuerySchema,
   quantityFitsUnit,
+  roleHasPermission,
   stockLevel,
   updateCategorySchema,
   updateProductSchema,
@@ -226,7 +227,8 @@ async function readRaw(req) {
  * readJson, forbidden, userById }.
  */
 export async function handleCatalog(ctx) {
-  const { req, res, path, url, user, orgId, canManage, send, apiError } = ctx;
+  const { req, res, path, url, user, orgId, role, canManage, send, apiError } =
+    ctx;
   const mine = (item) => item.organizationId === orgId;
   // Each answers the request and reports it as handled.
   const reply = (status, body) => {
@@ -507,10 +509,13 @@ export async function handleCatalog(ctx) {
     return true;
   }
   if (sub === 'movements' && req.method === 'POST') {
-    if (!canManage) return deny();
+    // Sellers record deliveries only (ADR-036).
+    if (!roleHasPermission(role, 'stock.receive')) return deny();
     const parsed = createStockMovementSchema.safeParse(await ctx.readJson(req));
     if (!parsed.success) return invalid(parsed.error.issues);
     const input = parsed.data;
+    if (input.kind !== 'purchase' && !roleHasPermission(role, 'stock.move'))
+      return deny();
     const previous = catalog.movements.find(
       (m) => mine(m) && m.clientOperationId === input.clientOperationId,
     );

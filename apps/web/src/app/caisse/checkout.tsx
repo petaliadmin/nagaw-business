@@ -39,6 +39,7 @@ import { ProductTile } from '@/components/catalog/product-tile';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { formatQuantity, STOCK_LEVEL_LABELS } from '@/lib/catalog/labels';
+import { correctionProblem, shortagesOf } from '@/lib/offline/local-stock';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 
 const METHOD_ICONS: Record<PaymentMethod, LucideIcon> = {
@@ -134,6 +135,137 @@ function ProviderPicker({
   );
 }
 
+/** What the seller may do about the stock at the counter (ADR-036). */
+export interface StockRights {
+  canCorrect: boolean;
+  /** Owner or manager: not limited by the shop's correction cap. */
+  manager: boolean;
+  /** Largest change a seller may make (0: none). */
+  max: number;
+}
+
+/**
+ * Shown under a cart line that asks for more than the recorded stock: the
+ * seller is warned and, when allowed, corrects the stock with what is
+ * really on the shelf before selling.
+ */
+function StockWarning({
+  product,
+  wanted,
+  rights,
+  onCorrect,
+}: {
+  product: ProductDto;
+  wanted: number;
+  rights: StockRights;
+  onCorrect: (counted: number, reason: string) => Promise<string | null>;
+}) {
+  const ids = useId();
+  const [open, setOpen] = useState(false);
+  const [countedText, setCountedText] = useState('');
+  const [reason, setReason] = useState('Recompté en rayon');
+  const [problem, setProblem] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const known = Math.max(product.stockQuantity, 0);
+
+  function save() {
+    const counted = parseQuantity(countedText);
+    if (!(counted >= 0))
+      return setProblem('Tapez le nombre compté, par exemple 12.');
+    if (!UNITS[product.unit].decimals && !Number.isInteger(counted))
+      return setProblem('Tapez un nombre entier, sans virgule.');
+    if (!reason.trim()) return setProblem('Dites pourquoi le stock change.');
+    const refused = correctionProblem(
+      Math.round((counted - product.stockQuantity) * 1000) / 1000,
+      rights,
+    );
+    if (refused) return setProblem(refused);
+    setProblem(null);
+    startTransition(async () => {
+      const failure = await onCorrect(counted, reason.trim().slice(0, 500));
+      if (failure) setProblem(failure);
+      else setOpen(false);
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border-l-4 border-warning bg-warning-soft p-3 text-warning-ink">
+      <p className="font-semibold">
+        Stock insuffisant : {formatQuantity(wanted, product.unit)} dans le
+        panier, {formatQuantity(known, product.unit)} en stock.
+      </p>
+      {!rights.canCorrect ? (
+        <p>La vente sera signalée au gérant.</p>
+      ) : !open ? (
+        <button
+          type="button"
+          onClick={() => {
+            setCountedText('');
+            setOpen(true);
+          }}
+          className={`${buttonClasses('secondary')} self-start`}
+        >
+          Corriger le stock
+        </button>
+      ) : (
+        <div className="flex flex-col gap-2 text-ink">
+          <label htmlFor={`${ids}-counted`} className="font-semibold">
+            Combien y en a-t-il vraiment en rayon ? ({UNITS[product.unit].label}
+            )
+          </label>
+          <input
+            id={`${ids}-counted`}
+            inputMode="decimal"
+            value={countedText}
+            onChange={(event) => setCountedText(event.currentTarget.value)}
+            aria-invalid={problem ? true : undefined}
+            aria-describedby={problem ? `${ids}-problem` : undefined}
+            className={CONTROL}
+          />
+          <label htmlFor={`${ids}-reason`} className="font-semibold">
+            Pourquoi ?
+          </label>
+          <input
+            id={`${ids}-reason`}
+            value={reason}
+            maxLength={500}
+            onChange={(event) => setReason(event.currentTarget.value)}
+            className={CONTROL}
+          />
+          {problem && (
+            <p id={`${ids}-problem`} className="font-medium text-danger-ink">
+              {problem}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={save}
+              disabled={pending}
+              className={buttonClasses('primary')}
+            >
+              {pending ? 'Enregistrement…' : 'Enregistrer le stock'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setProblem(null);
+                setOpen(false);
+              }}
+              className={buttonClasses('secondary')}
+            >
+              Annuler
+            </button>
+          </div>
+          <p className="text-ink-muted">
+            Le gérant est prévenu de chaque correction.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** What the checkout hands over once the seller confirms the sale. */
 export interface SaleDraft {
   customer: CustomerDto | null;
@@ -152,12 +284,21 @@ export function Checkout({
   currency,
   products,
   customers: initialCustomers,
+  stockRights,
   onRecord,
   onCreateCustomer,
+  onCorrectStock,
 }: {
   currency: string;
   products: ProductDto[];
   customers: CustomerDto[];
+  stockRights: StockRights;
+  /** Resolves with an error message, or nothing once recorded. */
+  onCorrectStock: (
+    product: ProductDto,
+    counted: number,
+    reason: string,
+  ) => Promise<string | null>;
   /** Resolves with an error message, or nothing once recorded. */
   onRecord: (draft: SaleDraft) => Promise<string | null>;
   onCreateCustomer: (values: {
@@ -228,6 +369,7 @@ export function Checkout({
   const linesValid = lines.every(
     ({ product, quantity }) => quantityError(product, quantity) === null,
   );
+  const shortages = shortagesOf(lines);
   const discount =
     discountText.trim() === '' ? 0 : parseAmount(discountText, currency);
   const totals = computeSaleTotals(
@@ -245,7 +387,10 @@ export function Checkout({
     const before = existing ? parseQuantity(existing.quantityText) : 0;
     const count = (Number.isFinite(before) ? before : 0) + 1;
     setAnnouncement(
-      `${product.name} ajouté. ${quantityText(count)} dans le panier.`,
+      `${product.name} ajouté. ${quantityText(count)} dans le panier.` +
+        (product.trackStock && count > product.stockQuantity
+          ? ' Attention : stock insuffisant.'
+          : ''),
     );
     setCart((current) => {
       const existing = current.find((line) => line.productId === product.id);
@@ -489,6 +634,18 @@ export function Checkout({
                     {invalid}
                   </p>
                 )}
+                {!invalid &&
+                  product.trackStock &&
+                  quantity > product.stockQuantity && (
+                    <StockWarning
+                      product={product}
+                      wanted={quantity}
+                      rights={stockRights}
+                      onCorrect={(counted, reason) =>
+                        onCorrectStock(product, counted, reason)
+                      }
+                    />
+                  )}
               </li>
             );
           })}
@@ -795,6 +952,16 @@ export function Checkout({
         )}
       </div>
 
+      {shortages.length > 0 && (
+        <Alert tone="warning">
+          {shortages.length > 1
+            ? `${shortages.length} articles dépassent le stock enregistré.`
+            : `« ${shortages[0]!.product.name} » dépasse le stock enregistré.`}{' '}
+          {stockRights.canCorrect
+            ? 'Corrigez le stock dans le panier si le rayon en a plus ; sinon la vente sera signalée au gérant.'
+            : 'La vente sera signalée au gérant.'}
+        </Alert>
+      )}
       {error && <Alert tone="error">{error}</Alert>}
       <button
         type="button"
@@ -804,7 +971,9 @@ export function Checkout({
       >
         {pending
           ? 'Enregistrement…'
-          : `Valider la vente — ${money(totals.total)}`}
+          : shortages.length > 0
+            ? `Vendre quand même — ${money(totals.total)}`
+            : `Valider la vente — ${money(totals.total)}`}
       </button>
     </section>
   );

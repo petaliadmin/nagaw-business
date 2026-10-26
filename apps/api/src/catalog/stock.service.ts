@@ -2,11 +2,13 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   MAX_QUANTITY,
   quantityFitsUnit,
+  roleHasPermission,
   UNITS,
   type CreateStockMovementInput,
   type ProductDto,
   type RecordedStockMovementDto,
   type StockAlertDto,
+  type StockCorrectionInput,
   type StockMovementDto,
   type StockSummaryDto,
 } from '@nagaw/shared';
@@ -16,6 +18,7 @@ import { ApiException } from '../common/api-exception.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
+import { AlertsService } from '../notifications/alerts.service.js';
 import {
   conflict,
   invalid,
@@ -38,6 +41,7 @@ export class StockService {
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
     private readonly products: ProductsService,
+    private readonly alerts: AlertsService,
   ) {}
 
   private selectMovements(executor: Executor, organizationId: string) {
@@ -120,6 +124,17 @@ export class StockService {
     requestId: string | null,
   ): Promise<{ result: RecordedStockMovementDto; replayed: boolean }> {
     if (!UUID_RE.test(productId)) throw productNotFound();
+    // Sellers record deliveries only; losses and inventories are the
+    // managers' (ADR-036).
+    if (
+      input.kind !== 'purchase' &&
+      !roleHasPermission(tenant.role, 'stock.move')
+    )
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        'PERMISSION_DENIED',
+        'Seuls le propriétaire et les gérants enregistrent les pertes et les inventaires.',
+      );
     try {
       return await this.database.db.transaction().execute(async (trx) => {
         const product = await this.products.lock(
@@ -200,6 +215,29 @@ export class StockService {
           },
           requestId,
         });
+        await this.alerts.stockChanged(trx, tenant.organizationId, [
+          {
+            productId,
+            name: product.name,
+            unit: product.unit,
+            threshold: product.lowStockThreshold,
+            before: product.stockQuantity,
+            after,
+          },
+        ]);
+        if (
+          input.kind === 'purchase' &&
+          !roleHasPermission(tenant.role, 'stock.move')
+        )
+          await this.alerts.goodsReceived(trx, {
+            organizationId: tenant.organizationId,
+            productId,
+            name: product.name,
+            unit: product.unit,
+            quantity: delta,
+            userId: user.userId,
+            userEmail: user.email ?? 'un vendeur',
+          });
 
         const movement = await this.selectMovements(trx, tenant.organizationId)
           .where('m.id', '=', id)
@@ -235,6 +273,162 @@ export class StockService {
             },
             replayed: true,
           };
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * A correction made at the counter (ADR-036), sent with the phone's
+   * sales: the change the seller found on the shelf, recorded as an
+   * `adjustment`. Sellers are limited by the shop's
+   * `seller_stock_correction_max`; the managers are told.
+   */
+  async correct(
+    tenant: TenantContext,
+    user: AuthContext,
+    input: StockCorrectionInput & { clientOperationId: string },
+    requestId: string | null,
+  ): Promise<{ stockQuantity: number; replayed: boolean }> {
+    try {
+      return await this.database.db.transaction().execute(async (trx) => {
+        const previous = await this.findMovement(
+          trx,
+          tenant.organizationId,
+          input.clientOperationId,
+        );
+        if (previous) {
+          if (previous.product_id !== input.productId)
+            throw conflict(
+              'OPERATION_ID_REUSED',
+              'Cet identifiant d’opération a déjà servi pour un autre produit.',
+            );
+          const product = await this.products.find(
+            trx,
+            tenant.organizationId,
+            input.productId,
+          );
+          return { stockQuantity: product.stockQuantity, replayed: true };
+        }
+        const product = await this.products.lock(
+          trx,
+          tenant.organizationId,
+          input.productId,
+        );
+        if (!product.trackStock)
+          throw conflict(
+            'STOCK_NOT_TRACKED',
+            'Le stock de ce produit n’est pas suivi.',
+          );
+        const unitLabel = UNITS[product.unit].label;
+        if (
+          !quantityFitsUnit(input.quantity, product.unit) ||
+          !quantityFitsUnit(input.countedQuantity, product.unit)
+        )
+          throw invalid(
+            'quantity',
+            `Nombre entier attendu (unité : ${unitLabel}).`,
+          );
+
+        const manager = roleHasPermission(tenant.role, 'stock.move');
+        if (!manager) {
+          const { seller_stock_correction_max } = await trx
+            .selectFrom('app.organizations')
+            .select('seller_stock_correction_max')
+            .where('id', '=', tenant.organizationId)
+            .executeTakeFirstOrThrow();
+          const max = toNumber(seller_stock_correction_max);
+          if (max <= 0)
+            throw new ApiException(
+              HttpStatus.FORBIDDEN,
+              'STOCK_CORRECTION_NOT_ALLOWED',
+              'Dans cette boutique, seuls le propriétaire et les gérants corrigent le stock.',
+            );
+          if (Math.abs(input.quantity) > max)
+            throw new ApiException(
+              HttpStatus.FORBIDDEN,
+              'STOCK_CORRECTION_TOO_LARGE',
+              `Une correction de plus de ${new Intl.NumberFormat('fr').format(max)} ${unitLabel} doit être faite par le propriétaire ou un gérant.`,
+            );
+        }
+        const after = round3(product.stockQuantity + input.quantity);
+        if (Math.abs(after) > MAX_QUANTITY)
+          throw invalid('quantity', 'Quantité trop grande.');
+
+        const { id } = await trx
+          .insertInto('app.stock_movements')
+          .values({
+            organization_id: tenant.organizationId,
+            product_id: product.id,
+            kind: 'adjustment',
+            quantity: input.quantity,
+            reason:
+              `${input.reason} (compté à la caisse : ${new Intl.NumberFormat('fr').format(input.countedQuantity)} ${unitLabel})`.slice(
+                0,
+                500,
+              ),
+            client_operation_id: input.clientOperationId,
+            created_by: user.userId,
+            occurred_at: input.occurredAt,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await this.audit.record(trx, {
+          organizationId: tenant.organizationId,
+          actorType: 'user',
+          actorId: user.userId,
+          action: 'stock.corrected',
+          targetType: 'product',
+          targetId: product.id,
+          metadata: {
+            movementId: id,
+            quantity: input.quantity,
+            countedQuantity: input.countedQuantity,
+            stockBefore: product.stockQuantity,
+            stockAfter: after,
+            reason: input.reason,
+          },
+          requestId,
+        });
+        await this.alerts.stockChanged(trx, tenant.organizationId, [
+          {
+            productId: product.id,
+            name: product.name,
+            unit: product.unit,
+            threshold: product.lowStockThreshold,
+            before: product.stockQuantity,
+            after,
+          },
+        ]);
+        if (!manager)
+          await this.alerts.stockCorrected(trx, {
+            organizationId: tenant.organizationId,
+            productId: product.id,
+            name: product.name,
+            unit: product.unit,
+            quantity: input.quantity,
+            counted: input.countedQuantity,
+            reason: input.reason,
+            userId: user.userId,
+            userEmail: user.email ?? 'un vendeur',
+          });
+        return { stockQuantity: after, replayed: false };
+      });
+    } catch (error) {
+      // The same correction arrived twice at once: answer like a replay.
+      if (pgErrorCode(error) === UNIQUE_VIOLATION) {
+        const previous = await this.findMovement(
+          this.database.db,
+          tenant.organizationId,
+          input.clientOperationId,
+        );
+        if (previous?.product_id === input.productId) {
+          const product = await this.products.get(
+            tenant.organizationId,
+            input.productId,
+          );
+          return { stockQuantity: product.stockQuantity, replayed: true };
         }
       }
       throw error;

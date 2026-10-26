@@ -35,6 +35,7 @@ import {
   CurrentUser,
   RequestId,
 } from '../tenancy/current.decorator.js';
+import { AlertsService } from '../notifications/alerts.service.js';
 import { RequirePermission } from '../tenancy/require-permission.decorator.js';
 import { ProductsService } from './products.service.js';
 import { StockService } from './stock.service.js';
@@ -48,6 +49,7 @@ export class ProductsController {
   constructor(
     private readonly products: ProductsService,
     private readonly stock: StockService,
+    private readonly alerts: AlertsService,
   ) {}
 
   @Get('products')
@@ -154,8 +156,9 @@ export class ProductsController {
     return this.stock.movements(tenant.organizationId, id);
   }
 
+  /** Sellers may record deliveries; the service keeps the rest for managers. */
   @Post('products/:id/movements')
-  @RequirePermission('stock.move')
+  @RequirePermission('stock.receive')
   async move(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,
@@ -172,6 +175,7 @@ export class ProductsController {
       body,
       requestId,
     );
+    await this.alerts.flush(tenant.organizationId);
     res.status(replayed ? HttpStatus.OK : HttpStatus.CREATED);
     return result;
   }

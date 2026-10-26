@@ -18,6 +18,8 @@ export const PERMISSIONS = [
   'catalog.read',
   'catalog.manage',
   'stock.move',
+  'stock.receive',
+  'stock.correct',
   'sales.create',
   'sales.read',
   'sales.read_all',
@@ -27,6 +29,7 @@ export const PERMISSIONS = [
   'devices.manage',
   'documents.read',
   'documents.manage',
+  'quotes.manage',
   'stats.read',
   'treasury.read',
   'treasury.manage',
@@ -48,6 +51,8 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'catalog.read',
     'catalog.manage',
     'stock.move',
+    'stock.receive',
+    'stock.correct',
     'sales.create',
     'sales.read',
     'sales.read_all',
@@ -57,6 +62,7 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'devices.manage',
     'documents.read',
     'documents.manage',
+    'quotes.manage',
     'stats.read',
     'treasury.read',
     'treasury.manage',
@@ -75,6 +81,8 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'catalog.read',
     'catalog.manage',
     'stock.move',
+    'stock.receive',
+    'stock.correct',
     'sales.create',
     'sales.read',
     'sales.read_all',
@@ -84,6 +92,7 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'devices.manage',
     'documents.read',
     'documents.manage',
+    'quotes.manage',
     'stats.read',
     'treasury.read',
     'treasury.manage',
@@ -91,17 +100,24 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'subscription.read',
     'feedback.send',
   ],
-  // Sellers see the catalogue and the stock (managing them is the manager's
-  // job, docs/ARCHITECTURE.md § 5), sell, see their own sales and serve
-  // customers (credit, repayments); cancelling a sale is for managers.
+  // Sellers see the catalogue and the stock, record deliveries and correct
+  // the stock at the counter within a limit set by the shop (ADR-036);
+  // losses, inventories and the catalogue stay the manager's job. They
+  // sell, see their own sales and figures, serve customers (credit,
+  // repayments), read invoices and prepare quotes; issuing invoices and
+  // cancelling a sale are for managers.
   member: [
     'organization.read',
     'members.read',
     'catalog.read',
+    'stock.receive',
+    'stock.correct',
     'sales.create',
     'sales.read',
     'customers.read',
     'customers.manage',
+    'documents.read',
+    'quotes.manage',
     'feedback.send',
   ],
   // The accountant reads everything and changes nothing.

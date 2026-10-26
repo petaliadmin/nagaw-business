@@ -31,6 +31,7 @@ const sale: SaleDto = {
   occurredAt: '2026-10-24T10:30:00.000Z',
   deviceTicket: null,
   priceReview: false,
+  stockReview: false,
   cancellation: null,
 };
 

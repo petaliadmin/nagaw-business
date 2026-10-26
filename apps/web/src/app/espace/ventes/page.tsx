@@ -181,6 +181,9 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
                   {sale.priceReview && (
                     <Badge tone="warning">Prix à vérifier</Badge>
                   )}
+                  {sale.stockReview && (
+                    <Badge tone="warning">Stock à vérifier</Badge>
+                  )}
                   {sale.status === 'cancelled' && (
                     <Badge tone="danger">Annulée</Badge>
                   )}

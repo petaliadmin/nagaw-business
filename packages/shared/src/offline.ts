@@ -91,6 +91,31 @@ export const offlineSaleSchema = z
   });
 export type OfflineSaleInput = z.infer<typeof offlineSaleSchema>;
 
+/**
+ * A stock correction made at the counter when the shelf holds more (or
+ * less) than the phone thinks (ADR-036). It carries the change, not the
+ * count: sales sent meanwhile by other phones stay counted.
+ */
+export const stockCorrectionSchema = z
+  .object({
+    productId: uuid,
+    /** Signed change of the stock, never 0. */
+    quantity: quantitySchema.refine((q) => q !== 0, 'La correction est nulle'),
+    /** What the seller counted, for the managers (not applied as is). */
+    countedQuantity: quantitySchema.min(
+      0,
+      'Le compte ne peut pas être négatif',
+    ),
+    reason: z
+      .string()
+      .trim()
+      .min(1, 'Indiquez la raison')
+      .max(500, '500 caractères au plus'),
+    occurredAt: z.iso.datetime({ offset: true, error: 'Date invalide' }),
+  })
+  .strict();
+export type StockCorrectionInput = z.infer<typeof stockCorrectionSchema>;
+
 const offlineCustomerSchema = createCustomerSchema.omit({
   clientOperationId: true,
 });
@@ -108,6 +133,13 @@ export const syncOperationSchema = z.discriminatedUnion('type', [
       type: z.literal('sale'),
       clientOperationId: uuid,
       data: offlineSaleSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('stock_correction'),
+      clientOperationId: uuid,
+      data: stockCorrectionSchema,
     })
     .strict(),
 ]);
@@ -132,6 +164,10 @@ export interface SyncResultDto {
   saleNumber?: number;
   /** A sale accepted at prices that differ from the catalogue. */
   priceReview?: boolean;
+  /** A sale that took more goods than the server's stock. */
+  stockReview?: boolean;
+  /** For a stock correction: the stock after it. */
+  stockQuantity?: number;
   /** For a customer. */
   customerId?: string;
   /** Why an operation was refused (kept on the device, shown to people). */

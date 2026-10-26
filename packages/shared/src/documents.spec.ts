@@ -77,10 +77,13 @@ describe('invoice payments', () => {
 });
 
 describe('document permissions', () => {
-  it('keeps documents to managers, readable by the reader', () => {
+  it('keeps invoices to managers, readable by sellers and the reader', () => {
     expect(roleHasPermission('owner', 'documents.manage')).toBe(true);
     expect(roleHasPermission('admin', 'documents.manage')).toBe(true);
-    expect(roleHasPermission('member', 'documents.read')).toBe(false);
+    // Sellers read documents and prepare quotes (ADR-036).
+    expect(roleHasPermission('member', 'documents.read')).toBe(true);
+    expect(roleHasPermission('member', 'documents.manage')).toBe(false);
+    expect(roleHasPermission('member', 'quotes.manage')).toBe(true);
     expect(roleHasPermission('viewer', 'documents.read')).toBe(true);
     expect(roleHasPermission('viewer', 'documents.manage')).toBe(false);
   });
