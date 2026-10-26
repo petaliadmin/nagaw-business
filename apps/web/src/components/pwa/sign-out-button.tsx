@@ -28,7 +28,11 @@ export function SignOutButton({
         void (async () => {
           try {
             await flushOutbox();
-            const { pendingSales } = await outboxStatus();
+            const status = await outboxStatus();
+            // Sales stuck on another account's device are lost too.
+            const pendingSales =
+              status.pendingSales +
+              status.blocked.reduce((sum, b) => sum + b.sales, 0);
             if (
               pendingSales > 0 &&
               !window.confirm(

@@ -17,6 +17,8 @@ export interface ShopSnapshot {
   /** `pendingOperationId`: created on this device, not yet sent. */
   customers: (CustomerDto & { pendingOperationId?: string })[];
   device: { id: string; ticketPrefix: string } | null;
+  /** The account the device belongs to (absent in older copies). */
+  user?: { id: string; email: string };
   /** Shop rules the checkout applies offline (absent in older copies). */
   rules?: { stockCorrectionMax: number };
   /** Next offline ticket number of this device. */
@@ -30,6 +32,20 @@ export interface OutboxEntry {
   deviceId: string;
   operation: SyncOperation;
   createdAt: string;
+  /** Account that recorded it, to say whose sales are stuck. */
+  userEmail?: string;
+}
+
+/**
+ * Why the server refuses every operation of a device: it belongs to
+ * another account (`DEVICE_NOT_FOUND`) or a manager removed it
+ * (`DEVICE_REVOKED`). Its operations stay on the phone, never lost.
+ */
+export interface BlockedDevice {
+  deviceId: string;
+  organizationId: string;
+  code: string;
+  message: string;
 }
 
 export type TicketStatus = 'pending' | 'sent' | 'rejected';
@@ -75,6 +91,7 @@ export interface RejectedEntry {
 }
 
 const ACTIVE_KEY = '__active';
+const BLOCKED_KEY = '__blocked';
 export const OUTBOX_EVENT = 'nagaw:outbox';
 
 function notify() {
@@ -182,6 +199,7 @@ export async function recordLocally(
           deviceId: snapshot.device.id,
           operation,
           createdAt: new Date().toISOString(),
+          userEmail: snapshot.user?.email,
         };
         await idb.add(tx, STORES.outbox, entry);
       }
@@ -293,20 +311,65 @@ export async function readTicket(
 // ---------------------------------------------------------------------------
 
 export interface OutboxStatus {
+  /** Sales that will leave with the next sending. */
   pendingSales: number;
   pendingOther: number;
   rejected: RejectedEntry[];
+  /** Sales kept on a device the server refuses, with the reason. */
+  blocked: (BlockedDevice & { sales: number; email: string | null })[];
+}
+
+async function readBlocked(tx: IDBTransaction): Promise<BlockedDevice[]> {
+  return (
+    (
+      await idb.get<{ value: BlockedDevice[] }>(
+        tx,
+        STORES.snapshots,
+        BLOCKED_KEY,
+      )
+    )?.value ?? []
+  );
 }
 
 export async function outboxStatus(): Promise<OutboxStatus> {
-  return transact([STORES.outbox, STORES.rejected], 'readonly', async (tx) => {
-    const pending = await idb.getAll<OutboxEntry>(tx, STORES.outbox);
-    const rejected = await idb.getAll<RejectedEntry>(tx, STORES.rejected);
-    return {
-      pendingSales: pending.filter((e) => e.operation.type === 'sale').length,
-      pendingOther: pending.filter((e) => e.operation.type !== 'sale').length,
-      rejected,
-    };
+  return transact(
+    [STORES.outbox, STORES.rejected, STORES.snapshots],
+    'readonly',
+    async (tx) => {
+      const pending = await idb.getAll<OutboxEntry>(tx, STORES.outbox);
+      const rejected = await idb.getAll<RejectedEntry>(tx, STORES.rejected);
+      const blockedDevices = (await readBlocked(tx)).filter((b) =>
+        pending.some((e) => e.deviceId === b.deviceId),
+      );
+      const isBlocked = (e: OutboxEntry) =>
+        blockedDevices.some((b) => b.deviceId === e.deviceId);
+      const free = pending.filter((e) => !isBlocked(e));
+      return {
+        pendingSales: free.filter((e) => e.operation.type === 'sale').length,
+        pendingOther: free.filter((e) => e.operation.type !== 'sale').length,
+        rejected,
+        blocked: blockedDevices.map((b) => {
+          const mine = pending.filter((e) => e.deviceId === b.deviceId);
+          return {
+            ...b,
+            sales: mine.filter((e) => e.operation.type === 'sale').length,
+            email: mine.find((e) => e.userEmail)?.userEmail ?? null,
+          };
+        }),
+      };
+    },
+  );
+}
+
+async function setBlocked(
+  update: (current: BlockedDevice[]) => BlockedDevice[],
+): Promise<void> {
+  await transact([STORES.snapshots], 'readwrite', async (tx) => {
+    const next = update(await readBlocked(tx));
+    await idb.put(tx, STORES.snapshots, {
+      organizationId: BLOCKED_KEY,
+      value: next,
+    });
   });
 }
 
@@ -338,11 +401,19 @@ export function flushOutbox(): Promise<FlushOutcome> {
 
 async function runFlush(): Promise<FlushOutcome> {
   let sentAny = false;
+  let refusedAny = false;
+  // A device the server refuses is set aside for this round: the other
+  // devices' operations (another account on the same phone) still leave.
+  const skipped = new Set<string>();
+  const key = (e: OutboxEntry) => `${e.organizationId}:${e.deviceId}`;
   for (;;) {
     const batch = await transact([STORES.outbox], 'readonly', async (tx) =>
-      (await idb.getAll<OutboxEntry>(tx, STORES.outbox)).slice(0, 50),
+      (await idb.getAll<OutboxEntry>(tx, STORES.outbox))
+        .filter((e) => !skipped.has(key(e)))
+        .slice(0, 50),
     );
-    if (batch.length === 0) return sentAny ? 'sent' : 'empty';
+    if (batch.length === 0)
+      return sentAny ? 'sent' : refusedAny ? 'device-refused' : 'empty';
     // One device and one shop per request.
     const { deviceId, organizationId } = batch[0]!;
     const group = batch.filter(
@@ -362,17 +433,41 @@ async function runFlush(): Promise<FlushOutcome> {
       });
     } catch (error) {
       console.info('Synchronisation reportée : pas de réseau', error);
-      return 'offline';
+      return sentAny ? 'sent' : 'offline';
     }
     if (response.status === 401) return 'signed-out';
-    if (response.status === 403 || response.status === 404)
-      return 'device-refused';
+    if (response.status === 403 || response.status === 404) {
+      const body = (await response.json().catch(() => null)) as {
+        code?: string;
+        error?: string;
+      } | null;
+      const code =
+        body?.code ??
+        (response.status === 403 ? 'DEVICE_REVOKED' : 'DEVICE_NOT_FOUND');
+      await setBlocked((current) => [
+        ...current.filter((b) => b.deviceId !== deviceId),
+        {
+          deviceId,
+          organizationId,
+          code,
+          message: body?.error ?? 'Appareil refusé par le serveur.',
+        },
+      ]);
+      skipped.add(key(group[0]!));
+      refusedAny = true;
+      notify();
+      continue;
+    }
     if (!response.ok) {
       console.warn('Synchronisation reportée', response.status);
-      return 'offline';
+      return sentAny ? 'sent' : 'offline';
     }
     const { results } = (await response.json()) as SyncResponseDto;
     await applyResults(group, results);
+    // Accepted again (the right account came back): no longer blocked.
+    await setBlocked((current) =>
+      current.filter((b) => b.deviceId !== deviceId),
+    );
     sentAny = true;
     notify();
   }
