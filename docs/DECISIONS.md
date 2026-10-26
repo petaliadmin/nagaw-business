@@ -381,3 +381,17 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - la page d'accueil lit la grille **au moment de la requête** (section « Tarifs », sous `<Suspense>`) ; si l'API ne répond pas, elle le dit sans afficher de prix ;
   - le changement d'offre se demande toujours depuis l'application (ADR-029), sans paiement en ligne.
 - **Conséquence** : un changement de prix en base apparaît sur la page d'accueil sans redéploiement. L'inventaire des routes (`routes.integration-spec.ts`) classe la route comme publique, et un test vérifie que la grille servie sans session est identique à celle servie avec.
+
+## ADR-035 — Référencement (SEO et GEO) et guides publics
+
+- **Statut** : **Proposée** (demande du propriétaire du 2026-10-26 : « améliorer le référencement SEO, GEO, ajouter un blog et 20 articles »).
+- **Contexte** : le site public se résumait à la page d'accueil, sans `robots.txt`, plan du site, URL canonique, image de partage ni données structurées. Les commerçants cherchent des réponses à leurs problèmes (stock, caisse, crédit, TVA, SYSCOHADA) sur Google et, de plus en plus, auprès d'assistants IA.
+- **Décision** :
+  - **guides** sous `/blog` : articles écrits dans le dépôt (`apps/web/src/content/blog/*.ts`) dans un **sous-ensemble de Markdown** (titres, listes, tableaux, encadrés, gras, liens) analysé par `lib/blog/markdown.ts` et rendu par React, sans HTML brut ni nouvelle dépendance ; pages statiques (`generateStaticParams`), hors du proxy Supabase ;
+  - **règle de contenu** (comme la page d'accueil) : toute promesse sur l'application est une fonction livrée, chaque chiffre d'exemple est présenté comme un exemple, aucun prix d'offre n'est écrit (ADR-029), aucun témoignage ni auteur inventé (« l'équipe Nagaw Business ») ; les sujets fiscaux et comptables renvoient au comptable ou à l'administration ;
+  - **structure pensée pour les moteurs et les assistants (GEO)** : réponse dès le premier paragraphe, encadré « En bref », intertitres en questions, tableaux, questions fréquentes, date de mise à jour visible, maillage interne entre guides ;
+  - **SEO technique** : `metadataBase` depuis `SITE_URL`, URL canoniques, Open Graph et image de partage générée (`next/og`) pour l'accueil et chaque guide, `robots.txt` (pages privées exclues, robots des assistants IA nommés et admis), `sitemap.xml`, **`llms.txt`** généré à partir des mêmes données ; une prévisualisation Vercel (`VERCEL_ENV` ≠ `production`) est fermée à l'indexation ;
+  - **données structurées JSON-LD** : `Organization`, `WebSite`, `SoftwareApplication` (offres lues dans la grille en base), `FAQPage` sur l'accueil ; `Blog`, `BlogPosting`, `BreadcrumbList`, `FAQPage` sur les guides ;
+  - **garde-fous** : un test unitaire refuse un lien interne cassé, un slug en double, une description hors 110–165 caractères, un titre de plus de 60 caractères ou un article trop court ; des tests de bout en bout vérifient robots, plan du site, `llms.txt`, données structurées et accessibilité (axe) des guides.
+- **Reporté** : interface d'édition des articles (un article s'ajoute par un fichier et une revue de code), auteurs nommés, Google Search Console et Bing Webmaster Tools (comptes du propriétaire), traduction.
+- **Conséquence** : publier un guide = ajouter un fichier dans `content/blog` et l'inscrire dans `content/blog/index.ts` ; il apparaît dans la liste, le plan du site et `llms.txt` au déploiement suivant.
