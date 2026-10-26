@@ -149,7 +149,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
           />
         </div>
         {/* The shop is changed in Paramètres (owner's choice, 2026-10-26). */}
-        <p className="flex items-center gap-2 text-lg font-extrabold">
+        <p className="flex min-h-12 items-center gap-2 rounded-xl bg-white px-3 py-2 text-lg font-extrabold text-brand-strong shadow-sm">
           <Store aria-hidden className="size-5 shrink-0" />
           <span className="min-w-0 truncate">{organization.name}</span>
         </p>
