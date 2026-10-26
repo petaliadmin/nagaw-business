@@ -76,14 +76,16 @@ test('the connection banner appears and disappears with the network', async ({
 test('public pages meet WCAG 2.2 AA (no serious violation)', async ({
   page,
 }) => {
-  // Five pages, each analysed by axe: more than the default 30 s on a busy machine.
-  test.setTimeout(90_000);
+  // Seven pages, each analysed by axe: more than the default 30 s on a busy machine.
+  test.setTimeout(120_000);
   for (const path of [
     '/',
     '/connexion',
     '/inscription',
     '/mot-de-passe-oublie',
     '/hors-ligne',
+    '/blog',
+    '/blog/calcul-tva-18-ht-ttc',
   ]) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();

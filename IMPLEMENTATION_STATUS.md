@@ -633,6 +633,20 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Fonctionnalités terminées** : plafond vide (`null`) pour « sans limite », dans l'offre et dans la boutique ; « Produits sans limite » dans « Abonnement » et l'administration ; pas d'alerte de quota sans plafond ; produits existants gardés.
 - **Tests** : intégration (grille, refus du 4ᵉ produit en Gratuit, 11 produits en Pro), bout en bout (page « Abonnement »).
 
+## Après la Phase 18 — Référencement et guides
+
+- **Objectif** : rendre le site trouvable sur Google et cité par les assistants IA (demande du propriétaire du 2026-10-26, ADR-035).
+- **Statut** : livré sur la branche `claude/seo-blog`, **en attente de validation**. Aucune migration.
+- **Fonctionnalités terminées** :
+  - **20 guides** sous `/blog` (gestion, ventes et caisse, stock, argent, factures et comptabilité, par type de boutique), chacun avec « En bref », sommaire, tableaux, questions fréquentes, liens vers les guides voisins et appel à créer sa boutique ; index par thème ; section « Guides » et lien dans le menu de l'accueil ;
+  - **SEO technique** : `metadataBase`, canoniques, Open Graph, images de partage générées, `robots.txt`, `sitemap.xml`, prévisualisations non indexables, guides servis sans passer par le proxy Supabase ;
+  - **GEO** : `llms.txt`, robots des assistants IA admis sur les pages publiques, données structurées JSON-LD (organisation, site, application et ses offres, FAQ, articles, fil d'Ariane), question « Qu'est-ce que Nagaw Business ? » sur l'accueil.
+- **Tests** : unitaires (analyse du Markdown, cohérence des 20 articles : liens internes, slugs, longueurs, structure ; politique d'indexation, échappement du JSON-LD) ; bout en bout sur ordinateur et mobile (accueil → guides, liste, article, 404, robots, plan du site, `llms.txt`, axe sur `/blog` et un article).
+- **Limites** :
+  - le contenu fiscal et comptable (mentions de facture, TVA, SYSCOHADA) est général et le dit : à faire relire par un comptable avant une large diffusion ;
+  - l'image de partage utilise la police par défaut de `next/og`, pas Nunito ;
+  - le référencement réel dépend aussi d'actions hors du code : déclarer le site et le plan du site dans Google Search Console et Bing Webmaster Tools, choisir un nom de domaine définitif (`SITE_URL`).
+
 ## Après la Phase 18 — Audit d'accessibilité (WCAG 2.2 AA)
 
 - **Objectif** : corriger les défauts trouvés par l'audit d'accessibilité du 2026-10-26 (relecture du code et contrastes de tous les jetons ; pas encore de test avec TalkBack ou NVDA).

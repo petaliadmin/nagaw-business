@@ -28,7 +28,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testMatch: ['auth-pages.spec.ts', 'pwa.spec.ts'],
+      testMatch: ['auth-pages.spec.ts', 'pwa.spec.ts', 'seo.spec.ts'],
       fullyParallel: true,
       use: {
         ...devices['Desktop Chrome'],
@@ -38,7 +38,7 @@ export default defineConfig({
     },
     {
       name: 'mobile',
-      testMatch: ['auth-pages.spec.ts', 'pwa.spec.ts'],
+      testMatch: ['auth-pages.spec.ts', 'pwa.spec.ts', 'seo.spec.ts'],
       fullyParallel: true,
       use: {
         ...devices['Pixel 7'],

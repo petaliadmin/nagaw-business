@@ -27,17 +27,48 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
+import { ArticleCard } from '@/components/blog/article-card';
+import { JsonLd } from '@/components/json-ld';
+import { SiteFooter } from '@/components/marketing/site-footer';
+import { SiteHeader } from '@/components/marketing/site-header';
 import { Alert } from '@/components/ui/alert';
 import { ButtonLink } from '@/components/ui/button-link';
-import { Logo } from '@/components/ui/logo';
 import { ScrollRegion } from '@/components/ui/scroll-region';
 import { apiPublic } from '@/lib/api/server';
+import { getArticle } from '@/lib/blog/articles';
+import { siteUrl } from '@/lib/env';
 import { PLAN_LIMITS, planCount } from '@/lib/plans';
+import { SITE_SUMMARY } from '@/lib/seo';
+import {
+  appId,
+  faqPage,
+  graph,
+  organization,
+  softwareApplication,
+  website,
+} from '@/lib/structured-data';
+
+const TITLE = 'Nagaw Business — caisse, stock et argent de votre boutique';
+const DESCRIPTION =
+  'Tenez votre boutique au franc près depuis votre téléphone : caisse qui marche sans internet, stock, crédit des clients, Wave et Orange Money, factures et comptabilité SYSCOHADA. Gratuit pour commencer.';
 
 export const metadata: Metadata = {
-  title: 'Nagaw Business — caisse, stock et argent de votre boutique',
-  description:
-    'Tenez votre boutique au franc près depuis votre téléphone : caisse qui marche sans internet, stock, crédit des clients, Wave et Orange Money, factures et comptabilité SYSCOHADA. Gratuit pour commencer.',
+  title: TITLE,
+  description: DESCRIPTION,
+  keywords: [
+    'logiciel de gestion de boutique',
+    'application de caisse',
+    'logiciel de caisse gratuit',
+    'gestion de stock',
+    'caisse hors ligne',
+    'Wave',
+    'Orange Money',
+    'SYSCOHADA',
+    'Sénégal',
+  ],
+  alternates: { canonical: '/' },
+  openGraph: { url: '/', title: TITLE, description: DESCRIPTION },
+  twitter: { title: TITLE, description: DESCRIPTION },
 };
 
 // Copy rule: every promise below is a delivered feature
@@ -202,6 +233,7 @@ const PLAN_PITCH: Record<string, string> = {
 };
 
 const FAQ: { question: string; answer: string }[] = [
+  { question: 'Qu’est-ce que Nagaw Business ?', answer: SITE_SUMMARY },
   {
     question: 'Faut-il internet pour vendre ?',
     answer:
@@ -399,91 +431,100 @@ async function Pricing() {
         commence avec l’offre gratuite.
       </Alert>
     );
+  const base = siteUrl();
   return (
-    <ul className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      {plans.data.map((plan) => {
-        const free = plan.monthlyPrice === 0;
-        return (
-          <li
-            key={plan.key}
-            className={`flex flex-col gap-4 rounded-3xl border bg-surface p-6 shadow-sm ${
-              free ? 'border-2 border-brand-strong' : 'border-line'
-            }`}
-          >
-            <div className="flex flex-col gap-1">
-              <h3 className="text-2xl font-extrabold text-brand-ink">
-                {plan.name}
-              </h3>
-              {PLAN_PITCH[plan.key] && (
-                <p className="text-base text-ink-muted">
-                  {PLAN_PITCH[plan.key]}
-                </p>
-              )}
-            </div>
-            <p className="flex flex-wrap items-baseline gap-x-2">
-              <span className="text-4xl font-extrabold tabular-nums">
-                {formatAmount(plan.monthlyPrice, plan.currency)}
-              </span>
-              <span className="text-lg text-ink-muted">par mois</span>
-            </p>
-            <ul className="flex flex-1 flex-col gap-2">
-              {PLAN_LIMITS.map((limit) => (
-                <li key={limit.key} className="flex items-start gap-2">
-                  <Check
-                    aria-hidden
-                    className="mt-0.5 size-5 shrink-0 text-sales-ink"
-                  />
-                  <span>
-                    {planCount(plan.limits[limit.key], limit.unit)}
-                    {limit.detail &&
-                      plan.limits[limit.key] !== null &&
-                      ` ${limit.detail}`}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <ButtonLink
-              href="/inscription"
-              variant={free ? 'primary' : 'secondary'}
+    <>
+      {/* The live grid as offers of the app (merged by its @id). */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'SoftwareApplication',
+          '@id': appId(base),
+          offers: plans.data.map((plan) => ({
+            '@type': 'Offer',
+            name: plan.name,
+            price: plan.monthlyPrice,
+            priceCurrency: plan.currency,
+            url: `${base}/#tarifs`,
+          })),
+        }}
+      />
+      <ul className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {plans.data.map((plan) => {
+          const free = plan.monthlyPrice === 0;
+          return (
+            <li
+              key={plan.key}
+              className={`flex flex-col gap-4 rounded-3xl border bg-surface p-6 shadow-sm ${
+                free ? 'border-2 border-brand-strong' : 'border-line'
+              }`}
             >
-              {free ? 'Commencer gratuitement' : 'Créer ma boutique'}
-            </ButtonLink>
-          </li>
-        );
-      })}
-    </ul>
+              <div className="flex flex-col gap-1">
+                <h3 className="text-2xl font-extrabold text-brand-ink">
+                  {plan.name}
+                </h3>
+                {PLAN_PITCH[plan.key] && (
+                  <p className="text-base text-ink-muted">
+                    {PLAN_PITCH[plan.key]}
+                  </p>
+                )}
+              </div>
+              <p className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-4xl font-extrabold tabular-nums">
+                  {formatAmount(plan.monthlyPrice, plan.currency)}
+                </span>
+                <span className="text-lg text-ink-muted">par mois</span>
+              </p>
+              <ul className="flex flex-1 flex-col gap-2">
+                {PLAN_LIMITS.map((limit) => (
+                  <li key={limit.key} className="flex items-start gap-2">
+                    <Check
+                      aria-hidden
+                      className="mt-0.5 size-5 shrink-0 text-sales-ink"
+                    />
+                    <span>
+                      {planCount(plan.limits[limit.key], limit.unit)}
+                      {limit.detail &&
+                        plan.limits[limit.key] !== null &&
+                        ` ${limit.detail}`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <ButtonLink
+                href="/inscription"
+                variant={free ? 'primary' : 'secondary'}
+              >
+                {free ? 'Commencer gratuitement' : 'Créer ma boutique'}
+              </ButtonLink>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
+/** Guides shown on the home page, for readers and for internal links. */
+const GUIDES = [
+  'logiciel-gestion-boutique',
+  'vendre-sans-internet',
+  'cloture-de-caisse',
+].flatMap((slug) => getArticle(slug) ?? []);
+
 export default function Home() {
+  const base = siteUrl();
   return (
     <div className="flex flex-1 flex-col">
-      <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-2">
-          <Logo href="/" />
-          <nav aria-label="Sur cette page" className="hidden md:block">
-            <ul className="flex gap-1">
-              {[
-                ['#fonctions', 'Fonctions'],
-                ['#tarifs', 'Tarifs'],
-                ['#questions', 'Questions'],
-              ].map(([href, label]) => (
-                <li key={href}>
-                  <a
-                    href={href}
-                    className="inline-flex min-h-12 items-center px-3 font-bold text-ink underline-offset-4 hover:underline"
-                  >
-                    {label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          <ButtonLink href="/connexion" variant="secondary" className="px-4">
-            Se connecter
-          </ButtonLink>
-        </div>
-      </header>
+      <JsonLd
+        data={graph(
+          organization(base),
+          website(base),
+          softwareApplication(base),
+          faqPage(FAQ),
+        )}
+      />
+      <SiteHeader />
 
       <main className="flex flex-1 flex-col">
         {/* Hero: the promise, the action, and the proof next to it. */}
@@ -835,6 +876,30 @@ export default function Home() {
           </ul>
         </section>
 
+        {/* Guides. */}
+        <section
+          aria-labelledby="guides-title"
+          className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-14"
+        >
+          <SectionTitle
+            id="guides-title"
+            eyebrow="Guides gratuits"
+            title="Des conseils pour mieux gérer votre boutique"
+            text="Stock, caisse, crédit, marge, factures : expliqué simplement, avec des exemples en F CFA."
+          />
+          <ul className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {GUIDES.map((article) => (
+              <li key={article.slug}>
+                <ArticleCard article={article} />
+              </li>
+            ))}
+          </ul>
+          <ButtonLink href="/blog" variant="secondary" className="self-start">
+            Voir tous les guides
+            <ArrowRight aria-hidden className="size-5" />
+          </ButtonLink>
+        </section>
+
         {/* Last call. */}
         <section className="px-4 pb-16">
           <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-5 rounded-3xl bg-sales-strong p-6 text-white md:flex-row md:items-center md:justify-between md:p-10">
@@ -859,35 +924,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-line bg-surface">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col gap-1">
-            <Logo href="/" />
-            <p className="text-base text-ink-muted">
-              La gestion de boutique, simple et en français.
-            </p>
-          </div>
-          <nav aria-label="Pied de page">
-            <ul className="flex flex-wrap gap-x-4">
-              {[
-                ['#tarifs', 'Tarifs'],
-                ['#questions', 'Questions'],
-                ['/inscription', 'Créer un compte'],
-                ['/connexion', 'Se connecter'],
-              ].map(([href, label]) => (
-                <li key={href}>
-                  <a
-                    href={href}
-                    className="inline-flex min-h-12 items-center font-semibold text-brand-ink underline underline-offset-4"
-                  >
-                    {label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
