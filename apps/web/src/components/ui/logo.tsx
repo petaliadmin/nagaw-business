@@ -20,7 +20,7 @@ export function Logo({
       <span
         className={`flex size-10 items-center justify-center rounded-xl ${
           tone === 'sidebar'
-            ? 'bg-white text-brand-strong'
+            ? 'bg-brand text-white'
             : 'bg-brand-strong text-white'
         }`}
       >

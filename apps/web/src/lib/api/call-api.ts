@@ -13,7 +13,8 @@ export type ApiResult<T> =
 
 export interface CallApiOptions {
   baseUrl: string | undefined;
-  token: string;
+  /** User's access token; absent for the public routes (the offers). */
+  token?: string;
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   body?: unknown;
@@ -51,7 +52,8 @@ export async function callApi<T>(
     };
   }
 
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
   if (rawBody) headers['Content-Type'] = rawBody.contentType;
   else if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (organizationId) headers['X-Organization-Id'] = organizationId;

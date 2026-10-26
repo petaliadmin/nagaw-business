@@ -18,6 +18,7 @@ import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { ButtonLink } from '@/components/ui/button-link';
 import { Card, Stat } from '@/components/ui/card';
+import { FoldCard } from '@/components/ui/fold-card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
@@ -165,11 +166,7 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
       </Card>
 
       {canManage && (
-        <Card
-          title="Déplacer de l’argent"
-          titleId="transfer"
-          icon={ArrowLeftRight}
-        >
+        <FoldCard title="Déplacer de l’argent" icon={ArrowLeftRight}>
           <p className="mb-4 text-ink-muted">
             Pour un dépôt à la banque ou un retrait Mobile Money : l’argent
             change de caisse, il ne sort pas de la boutique.
@@ -179,7 +176,7 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
             accounts={accountOptions(t.accounts)}
             today={t.today.day}
           />
-        </Card>
+        </FoldCard>
       )}
     </>
   );

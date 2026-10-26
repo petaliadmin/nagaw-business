@@ -7,7 +7,12 @@ test.beforeAll(async () => {
   await resetBackend();
 });
 
-const IN_BOTTOM_BAR = ['Accueil', 'Vendre', 'Produits'];
+const IN_BOTTOM_BAR = ['Accueil', 'Ventes', 'Stock'];
+// Same entries in the sidebar, with their full label.
+const SIDEBAR_LABEL: Record<string, string> = {
+  Accueil: 'Tableau de bord',
+  Stock: 'Stock / Produits',
+};
 
 /**
  * Desktop: the sidebar. Phones: the bottom bar, or the « Plus » sheet for
@@ -25,7 +30,9 @@ async function navigate(page: Page, isMobile: boolean, label: string) {
   }
   await page
     .getByRole('navigation', { name: 'Navigation principale' })
-    .getByRole('link', { name: label })
+    .getByRole('link', {
+      name: isMobile ? label : (SIDEBAR_LABEL[label] ?? label),
+    })
     .click();
 }
 
@@ -77,38 +84,52 @@ test('navigation reaches every section and marks the current page', async ({
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace');
 
-  await navigate(page, isMobile, 'Équipe');
+  // Team and history are tabs of « Paramètres ».
+  await navigate(page, isMobile, 'Paramètres');
+  await expect(page).toHaveURL(/\/espace\/parametres$/);
+  const tabs = page.getByRole('navigation', { name: 'Paramètres' });
+  await expect(tabs.getByRole('link', { name: 'Boutique' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+
+  await tabs.getByRole('link', { name: 'Équipe' }).click();
   await expect(page).toHaveURL(/\/espace\/equipe$/);
   const members = page.getByRole('table', { name: 'Équipe de Acme Dakar' });
   await expect(members.getByRole('row')).toHaveCount(3);
   await expect(members).toContainText('moussa@acme.test');
   await expect(members).toContainText('Vendeur');
 
-  await navigate(page, isMobile, 'Historique');
+  await tabs.getByRole('link', { name: 'Historique' }).click();
   await expect(page).toHaveURL(/\/espace\/journal$/);
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(26); // header + 25
   await page.getByRole('link', { name: 'Entrées plus anciennes' }).click();
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(3); // header + 2
   await expect(page.getByRole('table')).toContainText('Boutique créée');
-  // The current page is marked where its link lives.
+  // The tab and the menu entry of its section are both marked.
+  await expect(tabs.getByRole('link', { name: 'Historique' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
   if (isMobile) {
     await page.getByRole('button', { name: 'Plus' }).click();
     await expect(
       page
         .getByRole('dialog', { name: 'Plus' })
-        .getByRole('link', { name: 'Historique' }),
+        .getByRole('link', { name: 'Paramètres' }),
     ).toHaveAttribute('aria-current', 'page');
     await page.keyboard.press('Escape');
   } else {
     await expect(
       page
         .getByRole('navigation', { name: 'Navigation principale' })
-        .getByRole('link', { name: 'Historique' }),
+        .getByRole('link', { name: 'Paramètres' }),
     ).toHaveAttribute('aria-current', 'page');
   }
 
-  await navigate(page, isMobile, 'Paramètres');
-  await expect(page).toHaveURL(/\/espace\/parametres$/);
+  // « Fournisseurs » is marked on its own page, not « Stock / Produits ».
+  await navigate(page, isMobile, 'Fournisseurs');
+  await expect(page).toHaveURL(/\/espace\/produits\/fournisseurs$/);
 
   await navigate(page, isMobile, 'Accueil');
   await expect(page).toHaveURL(/\/espace$/);

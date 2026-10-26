@@ -350,6 +350,9 @@ const server = createServer(async (req, res) => {
   // --- Nagaw API ------------------------------------------------------------
   if (!path.startsWith('/api/v1/'))
     return apiError(res, 404, 'NOT_FOUND', 'Introuvable.');
+  // The offer grid, the same for everyone and public (ADR-029, ADR-034).
+  if (path === '/api/v1/plans' && req.method === 'GET')
+    return send(res, 200, PLANS);
   const user = await authenticate(req);
   if (!user)
     return apiError(res, 401, 'UNAUTHENTICATED', 'Authentification requise.');
@@ -373,9 +376,6 @@ const server = createServer(async (req, res) => {
         Object.fromEntries(url.searchParams),
       ),
     );
-  // The offer grid, the same for everyone (ADR-029).
-  if (path === '/api/v1/plans' && req.method === 'GET')
-    return send(res, 200, PLANS);
   // Platform administration (ADR-030): Binta administers the platform.
   if (path.startsWith('/api/v1/admin/')) {
     if (user.id !== USERS.binta.id)

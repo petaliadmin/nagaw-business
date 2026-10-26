@@ -371,3 +371,13 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - « sans limite » est un plafond **vide** (`null`) dans `plans.max_products` et `organizations.max_products`, jamais un grand nombre présenté comme illimité ; l'API ne vérifie alors rien, l'écran affiche « Produits sans limite », l'administration ne lève pas d'alerte de quota ;
   - chaque boutique prend le plafond de son offre (migration `20261026090000_plan_product_limits.sql`) ; comme pour tout passage à une offre plus petite (ADR-029), **les produits déjà créés sont gardés**, seuls les nouveaux sont refusés au-delà du plafond.
 - **Conséquence** : une boutique Gratuit qui avait plus de 3 produits (ou Essentiel plus de 10) ne peut plus en ajouter sans changer d'offre.
+
+## ADR-034 — Grille des offres publique, affichée sur la page d'accueil
+
+- **Statut** : **Proposée** (demande du propriétaire du 2026-10-26 : « mettre les tarifs sur le landing page »).
+- **Contexte** : la page d'accueil doit montrer les tarifs. Prix et limites sont en base (ADR-029, ADR-033) et ne doivent jamais être écrits dans la page ; `GET /api/v1/plans` demandait une session.
+- **Décision** :
+  - `GET /api/v1/plans` devient **public** (`@Public`) : la grille ne contient que des noms, des prix et des limites, aucune donnée de boutique ; toutes les autres routes de l'abonnement restent protégées ;
+  - la page d'accueil lit la grille **au moment de la requête** (section « Tarifs », sous `<Suspense>`) ; si l'API ne répond pas, elle le dit sans afficher de prix ;
+  - le changement d'offre se demande toujours depuis l'application (ADR-029), sans paiement en ligne.
+- **Conséquence** : un changement de prix en base apparaît sur la page d'accueil sans redéploiement. L'inventaire des routes (`routes.integration-spec.ts`) classe la route comme publique, et un test vérifie que la grille servie sans session est identique à celle servie avec.

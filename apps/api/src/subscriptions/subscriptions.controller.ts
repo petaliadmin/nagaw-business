@@ -12,6 +12,7 @@ import {
   type PlanDto,
   type SubscriptionDto,
 } from '@nagaw/shared';
+import { Public } from '../auth/public.decorator.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import {
@@ -27,7 +28,11 @@ import { SubscriptionsService } from './subscriptions.service.js';
 export class SubscriptionsController {
   constructor(private readonly subscriptions: SubscriptionsService) {}
 
-  /** The offer grid: the same for everyone, any signed-in person. */
+  /**
+   * The offer grid: the same for everyone, and public (ADR-034), so that
+   * the home page shows the prices. No shop data: names, prices and limits.
+   */
+  @Public()
   @Get('plans')
   plans(): Promise<PlanDto[]> {
     return this.subscriptions.plans();

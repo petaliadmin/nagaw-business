@@ -1,9 +1,13 @@
+import { CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { CONTROL } from '@/components/form-field';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { PERIODS, type PeriodKey } from '@/lib/treasury/period';
 
-/** Named periods as links, or two dates chosen by hand. */
+/**
+ * Named periods as links, on one line that scrolls sideways on a phone, and
+ * two dates chosen by hand, folded unless they are the current choice.
+ */
 export function PeriodPicker({
   path,
   current,
@@ -25,7 +29,10 @@ export function PeriodPicker({
     `${path}?${new URLSearchParams({ ...extra, periode })}`;
   return (
     <div className="flex flex-col gap-3">
-      <nav aria-label="Période" className="flex flex-wrap gap-2">
+      <nav
+        aria-label="Période"
+        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0"
+      >
         {PERIODS.map((p) => (
           <Link
             key={p.key}
@@ -33,6 +40,7 @@ export function PeriodPicker({
             aria-current={current === p.key ? 'true' : undefined}
             className={buttonClasses(
               current === p.key ? 'primary' : 'secondary',
+              'shrink-0',
             )}
           >
             {p.label}
@@ -40,38 +48,44 @@ export function PeriodPicker({
         ))}
       </nav>
       {dates && (
-        <form action={path} className="flex flex-wrap items-end gap-2">
-          {Object.entries(extra).map(([name, value]) => (
-            <input key={name} type="hidden" name={name} value={value} />
-          ))}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="period-from" className="text-base font-semibold">
-              Du
-            </label>
-            <input
-              id="period-from"
-              name="du"
-              type="date"
-              defaultValue={from}
-              className={CONTROL}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="period-to" className="text-base font-semibold">
-              Au
-            </label>
-            <input
-              id="period-to"
-              name="au"
-              type="date"
-              defaultValue={to}
-              className={CONTROL}
-            />
-          </div>
-          <button type="submit" className={buttonClasses('secondary')}>
-            Voir
-          </button>
-        </form>
+        <details open={current === 'perso' || undefined} className="group">
+          <summary className="inline-flex min-h-12 cursor-pointer list-none items-center gap-2 font-semibold text-brand-ink underline underline-offset-4 [&::-webkit-details-marker]:hidden">
+            <CalendarDays aria-hidden className="size-5" />
+            Choisir d’autres dates
+          </summary>
+          <form action={path} className="mt-2 flex flex-wrap items-end gap-2">
+            {Object.entries(extra).map(([name, value]) => (
+              <input key={name} type="hidden" name={name} value={value} />
+            ))}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="period-from" className="text-base font-semibold">
+                Du
+              </label>
+              <input
+                id="period-from"
+                name="du"
+                type="date"
+                defaultValue={from}
+                className={CONTROL}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="period-to" className="text-base font-semibold">
+                Au
+              </label>
+              <input
+                id="period-to"
+                name="au"
+                type="date"
+                defaultValue={to}
+                className={CONTROL}
+              />
+            </div>
+            <button type="submit" className={buttonClasses('secondary')}>
+              Voir
+            </button>
+          </form>
+        </details>
       )}
     </div>
   );

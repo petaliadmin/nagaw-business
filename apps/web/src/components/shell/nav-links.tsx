@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Role } from '@nagaw/shared';
-import { isActive, navItemsFor } from './navigation';
+import { activeHref, navItemsFor } from './navigation';
 
 /**
- * Vertical links: the brand-colored sidebar (tablet and desktop), or the
+ * Vertical links: the dark sidebar (tablet and desktop), or the
  * « Plus » sheet on phones (`only="secondary"`: entries not in the bottom bar).
  */
 export function NavLinks({
@@ -19,25 +19,25 @@ export function NavLinks({
   tone?: 'sidebar' | 'sheet';
 }) {
   const pathname = usePathname();
-  const items = navItemsFor(role).filter(
-    (item) => only === 'all' || !item.bottomBar,
-  );
+  const all = navItemsFor(role);
+  const current = activeHref(all, pathname);
+  const items = all.filter((item) => only === 'all' || !item.bottomBar);
   const styles =
     tone === 'sidebar'
       ? {
           link: 'focus-visible:outline-white',
-          active: 'bg-white text-brand-strong shadow-sm',
-          idle: 'text-white hover:bg-white/15',
+          active: 'bg-brand-strong text-white shadow-sm',
+          idle: 'text-white hover:bg-white/10',
         }
       : {
           link: '',
-          active: 'bg-brand-soft text-brand-ink',
+          active: 'bg-brand-strong text-white shadow-sm',
           idle: 'text-ink hover:bg-surface-muted',
         };
   return (
     <ul className="flex flex-col gap-1">
       {items.map(({ href, label, icon: Icon }) => {
-        const active = isActive(href, pathname);
+        const active = href === current;
         return (
           <li key={href}>
             <Link
@@ -60,12 +60,14 @@ export function NavLinks({
 /** Bottom tab bar entries (phones). */
 export function BottomNavLinks({ role }: { role: Role }) {
   const pathname = usePathname();
+  const all = navItemsFor(role);
+  const current = activeHref(all, pathname);
   return (
     <>
-      {navItemsFor(role)
+      {all
         .filter((item) => item.bottomBar)
-        .map(({ href, label, icon: Icon }) => {
-          const active = isActive(href, pathname);
+        .map(({ href, label, shortLabel, icon: Icon }) => {
+          const active = href === current;
           return (
             <li key={href} className="flex-1">
               <Link
@@ -77,12 +79,12 @@ export function BottomNavLinks({ role }: { role: Role }) {
               >
                 <span
                   className={`flex h-8 w-14 items-center justify-center rounded-full ${
-                    active ? 'bg-brand-soft' : ''
+                    active ? 'bg-brand-strong text-white shadow-sm' : ''
                   }`}
                 >
                   <Icon aria-hidden className="size-6" />
                 </span>
-                {label}
+                {shortLabel ?? label}
               </Link>
             </li>
           );

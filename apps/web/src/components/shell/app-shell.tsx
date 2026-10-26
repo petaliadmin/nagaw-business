@@ -1,5 +1,5 @@
 import type { MeDto, OrganizationWithRoleDto } from '@nagaw/shared';
-import { Plus, Store } from 'lucide-react';
+import { Store } from 'lucide-react';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
@@ -17,22 +17,6 @@ import { BottomNavLinks, NavLinks } from './nav-links';
 import { OrganizationSwitcher } from './organization-switcher';
 
 type Tone = 'surface' | 'sidebar';
-
-function NewShopLink({ tone }: { tone: Tone }) {
-  return (
-    <Link
-      href="/espace/nouvelle-boutique"
-      className={`flex min-h-12 items-center gap-2 rounded-xl px-3 text-base font-bold underline-offset-4 hover:underline ${
-        tone === 'sidebar'
-          ? 'text-white focus-visible:outline-white'
-          : 'text-brand-ink'
-      }`}
-    >
-      <Plus aria-hidden className="size-5" />
-      Créer une autre boutique
-    </Link>
-  );
-}
 
 function Account({
   me,
@@ -88,8 +72,9 @@ function CenteredState({ children }: { children: ReactNode }) {
 /**
  * Authenticated application frame. Resolves the session and the active
  * shop once per request (shared with the page through `loadWorkspace`),
- * then renders navigation around the page: a brand-colored sidebar from
- * tablets up, a bottom tab bar with « Plus » on phones (DESIGN.md).
+ * then renders navigation around the page: a dark sidebar from
+ * tablets up; on phones, a white bottom tab bar with « Plus », the
+ * current page marked like in the sidebar (DESIGN.md).
  */
 export async function AppShell({ children }: { children: ReactNode }) {
   await connection();
@@ -150,17 +135,14 @@ export async function AppShell({ children }: { children: ReactNode }) {
       </a>
       <aside
         aria-label="Barre latérale"
-        className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col gap-6 overflow-y-auto bg-brand-strong p-4 text-white md:flex print:hidden"
+        className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col gap-6 overflow-y-auto bg-sidebar p-4 text-white md:flex print:hidden"
       >
         <Logo href="/espace" tone="sidebar" />
-        <div className="flex flex-col gap-1">
-          <OrganizationSwitcher
-            organizations={me.organizations}
-            activeId={organization.id}
-            tone="sidebar"
-          />
-          <NewShopLink tone="sidebar" />
-        </div>
+        <OrganizationSwitcher
+          organizations={me.organizations}
+          activeId={organization.id}
+          tone="sidebar"
+        />
         <nav aria-label="Navigation principale">
           <NavLinks role={organization.role} />
         </nav>
@@ -198,13 +180,10 @@ export async function AppShell({ children }: { children: ReactNode }) {
                 tone="sheet"
               />
             </nav>
-            <div className="flex flex-col gap-1">
-              <OrganizationSwitcher
-                organizations={me.organizations}
-                activeId={organization.id}
-              />
-              <NewShopLink tone="surface" />
-            </div>
+            <OrganizationSwitcher
+              organizations={me.organizations}
+              activeId={organization.id}
+            />
             <Account me={me} organization={organization} tone="surface" />
           </MoreMenu>
         </ul>
