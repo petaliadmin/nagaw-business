@@ -188,7 +188,7 @@ describe('Platform administration', () => {
       .body;
     expect(subscription).toMatchObject({
       plan: { key: 'pro' },
-      limits: { products: 5000 },
+      limits: { products: null },
       pendingRequest: null,
     });
     const history = (
@@ -232,7 +232,7 @@ describe('Platform administration', () => {
     ).body;
     expect(changed).toMatchObject({
       plan: { key: 'essential' },
-      limits: { products: 500, members: 5, devices: 3 },
+      limits: { products: 10, members: 5, devices: 3 },
     });
   });
 

@@ -547,7 +547,7 @@ export class AdminService {
           products: string;
           members: string;
           devices: string;
-          max_products: number;
+          max_products: number | null;
           max_members: number;
           max_devices: number;
         }>`
@@ -585,10 +585,12 @@ export class AdminService {
     for (const q of quotas.rows)
       for (const [used, max, label] of quotaLabels) {
         const n = toNumber(q[used]);
-        if (shareBasisPoints(n, q[max]) >= settings.quota_alert_basis_points)
+        const limit = q[max];
+        if (limit === null) continue; // no limit, nothing to watch
+        if (shareBasisPoints(n, limit) >= settings.quota_alert_basis_points)
           alerts.push({
             kind: 'quota',
-            message: `${n} ${label} sur ${q[max]} permis par l’offre.`,
+            message: `${n} ${label} sur ${limit} permis par l’offre.`,
             shop: { id: q.id, name: q.name },
           });
       }

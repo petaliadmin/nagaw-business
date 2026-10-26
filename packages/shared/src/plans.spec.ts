@@ -7,6 +7,7 @@ describe('offers', () => {
     expect(usagePercent(25, 50)).toBe(50);
     expect(usagePercent(51, 50)).toBe(100);
     expect(usagePercent(0, 0)).toBe(100);
+    expect(usagePercent(5000, null)).toBe(0);
   });
 
   it('reads the offer asked for', () => {

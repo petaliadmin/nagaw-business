@@ -1,7 +1,14 @@
 import { z } from 'zod';
 
-/** Limits an offer gives a shop (ADR-029). */
+/** Limits an offer gives a shop (ADR-029); `null`: no limit (ADR-033). */
 export interface PlanLimits {
+  products: number | null;
+  members: number;
+  devices: number;
+}
+
+/** What a shop uses, counted against its `PlanLimits`. */
+export interface PlanUsage {
   products: number;
   members: number;
   devices: number;
@@ -20,7 +27,7 @@ export interface SubscriptionDto {
   plan: PlanDto;
   startedAt: string;
   /** What the shop uses today, against `limits` (its caps). */
-  usage: PlanLimits;
+  usage: PlanUsage;
   limits: PlanLimits;
   pendingRequest: { id: string; plan: PlanDto; createdAt: string } | null;
 }
@@ -30,8 +37,12 @@ export const planChangeRequestSchema = z
   .strict();
 export type PlanChangeRequestInput = z.infer<typeof planChangeRequestSchema>;
 
-/** Share of a limit used, in percent, for a gauge (capped at 100). */
-export function usagePercent(used: number, limit: number): number {
+/**
+ * Share of a limit used, in percent, for a gauge (capped at 100); 0 when
+ * there is no limit.
+ */
+export function usagePercent(used: number, limit: number | null): number {
+  if (limit === null) return 0;
   if (limit <= 0) return 100;
   return Math.min(100, Math.round((used * 100) / limit));
 }

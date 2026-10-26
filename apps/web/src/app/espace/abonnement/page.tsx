@@ -1,9 +1,7 @@
 import {
-  formatAmount,
   roleHasPermission,
   usagePercent,
   type PlanDto,
-  type PlanLimits,
   type SubscriptionDto,
 } from '@nagaw/shared';
 import { Check, Crown } from 'lucide-react';
@@ -16,38 +14,13 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { formatDateTime } from '@/lib/format';
+import { PLAN_LIMITS, planCount, planPrice } from '@/lib/plans';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { CancelPlanRequestForm, RequestPlanForm } from './plan-forms';
 
 export const metadata: Metadata = { title: 'Abonnement — Nagaw Business' };
 
-const LIMITS: {
-  key: keyof PlanLimits;
-  label: string;
-  unit: [string, string];
-}[] = [
-  { key: 'products', label: 'Produits', unit: ['produit', 'produits'] },
-  {
-    key: 'members',
-    label: 'Personnes dans l’équipe',
-    unit: ['personne', 'personnes'],
-  },
-  {
-    key: 'devices',
-    label: 'Téléphones de caisse',
-    unit: ['téléphone', 'téléphones'],
-  },
-];
-
 const formatNumber = (n: number) => new Intl.NumberFormat('fr').format(n);
-const count = (n: number, [one, many]: [string, string]) =>
-  `${formatNumber(n)} ${n > 1 ? many : one}`;
-
-function price(plan: PlanDto): string {
-  return plan.monthlyPrice === 0
-    ? 'Gratuit'
-    : `${formatAmount(plan.monthlyPrice, plan.currency)} par mois`;
-}
 
 function Gauge({
   label,
@@ -56,8 +29,16 @@ function Gauge({
 }: {
   label: string;
   used: number;
-  limit: number;
+  /** Null: no limit, so no gauge. */
+  limit: number | null;
 }) {
+  if (limit === null)
+    return (
+      <div className="flex flex-wrap justify-between gap-2">
+        <span className="font-semibold">{label}</span>
+        <span className="tabular-nums">{formatNumber(used)} (sans limite)</span>
+      </div>
+    );
   const percent = usagePercent(used, limit);
   const full = used >= limit;
   return (
@@ -134,9 +115,9 @@ async function Subscription() {
       />
 
       <Card title={`Offre ${s.plan.name}`} titleId="current-plan" icon={Crown}>
-        <p className="mb-4 text-lg font-bold">{price(s.plan)}</p>
+        <p className="mb-4 text-lg font-bold">{planPrice(s.plan)}</p>
         <div className="flex flex-col gap-4">
-          {LIMITS.map((l) => (
+          {PLAN_LIMITS.map((l) => (
             <Gauge
               key={l.key}
               label={l.label}
@@ -184,12 +165,12 @@ async function Subscription() {
                   <h3 className="text-lg font-extrabold">{plan.name}</h3>
                   {current && <Badge tone="brand">Votre offre</Badge>}
                 </div>
-                <p className="text-2xl font-extrabold">{price(plan)}</p>
+                <p className="text-2xl font-extrabold">{planPrice(plan)}</p>
                 <ul className="flex flex-col gap-1">
-                  {LIMITS.map((l) => (
+                  {PLAN_LIMITS.map((l) => (
                     <li key={l.key} className="flex items-center gap-2">
                       <Check aria-hidden className="size-5 text-sales-ink" />
-                      {count(plan.limits[l.key], l.unit)}
+                      {planCount(plan.limits[l.key], l.unit)}
                     </li>
                   ))}
                   <li className="flex items-center gap-2">
