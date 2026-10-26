@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
 import { CreateOrganizationForm } from '@/app/espace/create-organization-form';
+import { InstallButton, InstallDialog } from '@/components/pwa/install-app';
 import { SignOutButton } from '@/components/pwa/sign-out-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,7 @@ function Account({
           </Badge>
         </span>
       </div>
+      <InstallButton tone={tone} />
       <FeedbackLink tone={tone} />
       {me.platformAdmin && (
         <Link
@@ -128,6 +130,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
   const { me, organization, accessToken } = workspace;
   return (
     <div className="flex min-h-full flex-1">
+      <InstallDialog />
       <a
         href="#contenu"
         className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-xl focus:bg-surface focus:px-4 focus:py-3 focus:font-bold focus:shadow"
