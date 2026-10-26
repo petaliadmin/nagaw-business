@@ -73,7 +73,7 @@ describe('Offers, subscriptions and quotas', () => {
     await ctx.close();
   });
 
-  it('lists the offers to anyone, signed in or not (ADR-034)', async () => {
+  it('lists the offers to any signed-in person', async () => {
     const plans = (
       await ctx.http().get('/api/v1/plans').set(as(dan)).expect(200)
     ).body;
@@ -100,9 +100,7 @@ describe('Offers, subscriptions and quotas', () => {
         limits: { products: null, members: 20, devices: 10 },
       },
     ]);
-    // Public for the home page: the same grid, and nothing about a shop.
-    const anonymous = (await ctx.http().get('/api/v1/plans').expect(200)).body;
-    expect(anonymous).toEqual(plans);
+    await ctx.http().get('/api/v1/plans').expect(401);
   });
 
   it('starts a new shop on the free offer, with its limits', async () => {
