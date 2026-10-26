@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { captureInstallPrompt } from '@/lib/pwa/install';
 
 /**
  * Registers `/sw.js` in production builds only: in development the worker
@@ -8,6 +9,8 @@ import { useEffect } from 'react';
  */
 export function ServiceWorkerRegistration() {
   useEffect(() => {
+    // Chrome offers the installation once per page load: keep it early.
+    captureInstallPrompt();
     if (process.env.NODE_ENV !== 'production') return;
     if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker

@@ -684,3 +684,15 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Tests modifiés** (règles changées par la décision du propriétaire, pas désactivées) : un vendeur peut enregistrer une entrée de marchandise (`catalog`), lire les factures (`documents`, `permissions`, onglets de navigation).
 - **Problèmes connus** : un push interrompu en cours d'envoi n'est pas renvoyé ; sur iPhone, le push exige l'application installée ; les notifications ne sont pas purgées ; en développement (`next dev`), le service worker n'est pas enregistré, le réglage du push reste donc sur « Vérification… ».
 - **Actions du propriétaire avant la mise en production** : appliquer la migration ; générer les clés VAPID et créer `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` et `CRON_SECRET` sur le projet `nagaw-api` ; tester sur un vrai téléphone Android l'activation du push et la réception d'une alerte de stock.
+
+## Après la Phase 18 — Proposer l'installation de l'application
+
+- **Objectif** : demande du propriétaire du 2026-10-26 : proposer l'installation quand l'application n'est pas installée, puis un bouton dans le menu si la proposition est fermée sans installer.
+- **Statut** : livré sur la branche `claude/installer-app`, en attente de fusion. Aucune migration, aucun endpoint.
+- **Fonctionnement** :
+  - dans l'espace connecté, une boîte de dialogue « Installer Nagaw Business » s'ouvre une fois quand le navigateur peut installer l'application (Chrome, Edge : événement `beforeinstallprompt`, capturé dès le chargement de la page) ; « Installer » ouvre l'installation du navigateur ;
+  - sur iPhone et iPad (Safari, qui n'a pas d'installation automatique), la boîte montre les deux gestes : « Partager », puis « Sur l'écran d'accueil » ;
+  - fermée sans installer (« Plus tard », Échap, ou refus dans la fenêtre du navigateur), elle ne revient plus (choix gardé sur le téléphone) et un bouton « Installer l'application » apparaît dans le menu (barre latérale sur ordinateur, menu « Plus » sur téléphone) ;
+  - rien n'est proposé quand l'application est ouverte depuis l'écran d'accueil ou vient d'être installée.
+- **Tests** : unitaires (détection installée, installation proposée, iPhone Safari, autres navigateurs iOS) ; lint, typecheck, build.
+- **Limites** : après un refus dans la fenêtre du navigateur, Chrome ne repropose l'installation qu'au chargement d'une page suivante (le bouton revient alors) ; non vérifié sur un vrai téléphone.
