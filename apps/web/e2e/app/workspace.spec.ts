@@ -37,11 +37,10 @@ async function navigate(page: Page, isMobile: boolean, label: string) {
 }
 
 /** Where the shop switcher lives: sidebar, or the « Plus » sheet. */
-async function shopSwitcher(page: Page, isMobile: boolean) {
-  if (!isMobile)
-    return page.getByRole('complementary', { name: 'Barre latérale' });
-  await page.getByRole('button', { name: 'Plus' }).click();
-  return page.getByRole('dialog', { name: 'Plus' });
+/** The shop is changed in Paramètres, not in the menu (2026-10-26). */
+async function shopSwitcher(page: Page) {
+  await page.goto('/espace/parametres');
+  return page.getByRole('region', { name: 'Mes boutiques' });
 }
 
 test('redirects to sign-in without a session', async ({ page }) => {
@@ -186,11 +185,15 @@ test('switching shop changes data and permissions', async ({
   page,
   context,
   baseURL,
-  isMobile,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace');
-  const scope = await shopSwitcher(page, isMobile);
+  // Not in the menu any more: in Paramètres (2026-10-26).
+  await expect(
+    page
+      .getByRole('complementary', { name: 'Barre latérale' })
+      .getByLabel('Boutique'),
+  ).toHaveCount(0);
+  const scope = await shopSwitcher(page);
   // Choosing the shop opens it at once; the list says so (WCAG 3.2.2).
   await expect(scope.getByLabel('Boutique')).toHaveAccessibleDescription(
     'La boutique choisie s’ouvre aussitôt.',

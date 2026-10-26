@@ -16,7 +16,6 @@ import { FeedbackLink } from './feedback-link';
 import { MoreMenu } from './mobile-nav';
 import { NotificationBell } from './notification-bell';
 import { BottomNavLinks, NavLinks } from './nav-links';
-import { OrganizationSwitcher } from './organization-switcher';
 
 type Tone = 'surface' | 'sidebar';
 
@@ -149,11 +148,11 @@ export async function AppShell({ children }: { children: ReactNode }) {
             tone="sidebar"
           />
         </div>
-        <OrganizationSwitcher
-          organizations={me.organizations}
-          activeId={organization.id}
-          tone="sidebar"
-        />
+        {/* The shop is changed in Paramètres (owner's choice, 2026-10-26). */}
+        <p className="flex items-center gap-2 text-lg font-extrabold">
+          <Store aria-hidden className="size-5 shrink-0" />
+          <span className="min-w-0 truncate">{organization.name}</span>
+        </p>
         <nav aria-label="Navigation principale">
           <NavLinks role={organization.role} />
         </nav>
@@ -196,10 +195,6 @@ export async function AppShell({ children }: { children: ReactNode }) {
                 tone="sheet"
               />
             </nav>
-            <OrganizationSwitcher
-              organizations={me.organizations}
-              activeId={organization.id}
-            />
             <Account me={me} organization={organization} tone="surface" />
           </MoreMenu>
         </ul>
