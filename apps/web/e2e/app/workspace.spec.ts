@@ -191,9 +191,11 @@ test('switching shop changes data and permissions', async ({
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace');
   const scope = await shopSwitcher(page, isMobile);
+  // Choosing the shop opens it at once; the list says so (WCAG 3.2.2).
+  await expect(scope.getByLabel('Boutique')).toHaveAccessibleDescription(
+    'La boutique choisie s’ouvre aussitôt.',
+  );
   await scope.getByLabel('Boutique').selectOption({ label: 'Globex Sénégal' });
-  // Choosing alone does not reload the page (WCAG 3.2.2): the button does.
-  await scope.getByRole('button', { name: 'Ouvrir' }).click();
 
   const main = page.getByRole('main');
   await expect(
