@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Nunito } from 'next/font/google';
 import { ConnectionBanner } from '@/components/pwa/connection-banner';
 import { ServiceWorkerRegistration } from '@/components/pwa/service-worker-registration';
+import { siteUrl } from '@/lib/env';
+import { allowIndexing, SITE_NAME } from '@/lib/seo';
 import './globals.css';
 
 // Choice of the owner (ADR-021): rounded, very legible, full French accents.
@@ -10,11 +12,28 @@ const nunito = Nunito({
   subsets: ['latin', 'latin-ext'],
 });
 
+const DESCRIPTION =
+  'Gérez votre boutique depuis votre téléphone, même sans connexion : stock, ventes, factures et trésorerie.';
+
 export const metadata: Metadata = {
-  title: 'Nagaw Business',
-  description:
-    'Gérez votre boutique depuis votre téléphone, même sans connexion : stock, ventes, factures et trésorerie.',
-  applicationName: 'Nagaw Business',
+  // Absolute URLs (canonical, Open Graph) are built from the public URL.
+  metadataBase: new URL(siteUrl()),
+  // No title template: every page already names the brand in its title.
+  title: SITE_NAME,
+  description: DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    locale: 'fr_FR',
+    title: SITE_NAME,
+    description: DESCRIPTION,
+  },
+  twitter: { card: 'summary_large_image' },
+  robots: allowIndexing(process.env)
+    ? { index: true, follow: true, 'max-image-preview': 'large' }
+    : { index: false, follow: false },
+  formatDetection: { telephone: false },
   appleWebApp: { capable: true, title: 'Nagaw', statusBarStyle: 'default' },
   icons: {
     icon: [{ url: '/icons/icon.svg', type: 'image/svg+xml' }],
