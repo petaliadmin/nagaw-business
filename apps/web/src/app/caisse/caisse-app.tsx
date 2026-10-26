@@ -39,10 +39,12 @@ type State =
   | { status: 'never-online' }
   | { status: 'signed-out' }
   | { status: 'not-allowed' }
+  | { status: 'device-limit'; message: string }
   | { status: 'ready'; snapshot: ShopSnapshot; fresh: boolean };
 
 interface ServerData {
   organizationId: string;
+  user: { id: string; email: string };
   shop: ShopSnapshot['shop'];
   products: ProductDto[];
   customers: CustomerDto[];
@@ -57,12 +59,106 @@ function deviceLabel(): string {
   return `Appareil enregistré le ${date}`;
 }
 
+type RefreshFailure = 'offline' | 'signed-out' | 'not-allowed' | 'device-limit';
+
+/**
+ * The registration of this browser keeps one operation id per shop and
+ * account, saved before the request: a reload, a second tab or a retry
+ * gets the same device back instead of a new one (the offer's device
+ * limit is not eaten by duplicates).
+ */
+const operationKey = (organizationId: string, userId: string) =>
+  `nagaw:device-op:${organizationId}:${userId}`;
+
+function operationIdFor(key: string): string {
+  try {
+    const kept = localStorage.getItem(key);
+    if (kept) return kept;
+    const created = crypto.randomUUID();
+    localStorage.setItem(key, created);
+    return created;
+  } catch (error) {
+    // Storage refused (private browsing): the in-tab guard still holds.
+    console.warn('Identifiant d’appareil non conservé', error);
+    return crypto.randomUUID();
+  }
+}
+
+function forgetOperationId(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.warn('Identifiant d’appareil non effacé', error);
+  }
+}
+
+type Registration =
+  | { ok: true; device: DeviceDto }
+  | { ok: false; reason: RefreshFailure; message?: string };
+
+const registrations = new Map<string, Promise<Registration>>();
+
+/** One registration at a time per shop and account in this tab. */
+function registerDevice(
+  organizationId: string,
+  userId: string,
+): Promise<Registration> {
+  const key = operationKey(organizationId, userId);
+  let running = registrations.get(key);
+  if (!running) {
+    running = requestDevice(organizationId, key).finally(() =>
+      registrations.delete(key),
+    );
+    registrations.set(key, running);
+  }
+  return running;
+}
+
+async function requestDevice(
+  organizationId: string,
+  key: string,
+): Promise<Registration> {
+  // Twice at most: a removed device or a reused id asks for a new id.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch('/caisse/appareil', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organizationId,
+        label: deviceLabel(),
+        clientOperationId: operationIdFor(key),
+      }),
+    });
+    if (response.status === 401) return { ok: false, reason: 'signed-out' };
+    if (response.status === 403) return { ok: false, reason: 'not-allowed' };
+    if (response.status === 409) {
+      const body = (await response.json().catch(() => null)) as {
+        code?: string;
+        error?: string;
+      } | null;
+      if (body?.code === 'CATALOG_LIMIT_REACHED')
+        return { ok: false, reason: 'device-limit', message: body.error };
+      forgetOperationId(key);
+      continue;
+    }
+    if (!response.ok) return { ok: false, reason: 'offline' };
+    const device = (await response.json()) as DeviceDto;
+    // A device a manager removed is never used again.
+    if (device.revokedAt) {
+      forgetOperationId(key);
+      continue;
+    }
+    return { ok: true, device };
+  }
+  return { ok: false, reason: 'offline' };
+}
+
 /** Fresh data from the server, with this browser's device (registered once). */
 async function refresh(
   previous: ShopSnapshot | null,
 ): Promise<
   | { ok: true; snapshot: ShopSnapshot }
-  | { ok: false; reason: 'offline' | 'signed-out' | 'not-allowed' }
+  | { ok: false; reason: RefreshFailure; message?: string }
 > {
   let response: Response;
   try {
@@ -76,23 +172,16 @@ async function refresh(
   if (!response.ok) return { ok: false, reason: 'offline' };
   const data = (await response.json()) as ServerData;
 
+  // The list holds only this account's devices that are still allowed:
+  // a device of another account, or a removed one, is not reused.
   let device =
     previous?.organizationId === data.organizationId && previous.device
       ? (data.devices.find((d) => d.id === previous.device?.id) ?? null)
       : null;
   if (!device) {
-    const registered = await fetch('/caisse/appareil', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        organizationId: data.organizationId,
-        label: deviceLabel(),
-        clientOperationId: crypto.randomUUID(),
-      }),
-    });
-    if (registered.status === 403) return { ok: false, reason: 'not-allowed' };
-    if (!registered.ok) return { ok: false, reason: 'offline' };
-    device = (await registered.json()) as DeviceDto;
+    const registered = await registerDevice(data.organizationId, data.user.id);
+    if (!registered.ok) return registered;
+    device = registered.device;
   }
   const snapshot = await saveSnapshot({
     organizationId: data.organizationId,
@@ -100,6 +189,7 @@ async function refresh(
     products: data.products,
     customers: data.customers,
     device: { id: device.id, ticketPrefix: device.ticketPrefix },
+    user: data.user,
     rules: data.rules,
   });
   return { ok: true, snapshot };
@@ -181,6 +271,13 @@ export function CaisseApp() {
         setState({ status: 'ready', snapshot: fresh.snapshot, fresh: true });
         void flushOutbox();
         await loadRejected(fresh.snapshot.organizationId);
+      } else if (fresh.reason === 'device-limit') {
+        // Selling on the copy would record on a device that is not this
+        // account's: its sales could never be sent.
+        setState({
+          status: 'device-limit',
+          message: fresh.message ?? 'Limite d’appareils atteinte.',
+        });
       } else if (!cached) {
         setState({
           status:
@@ -247,6 +344,26 @@ export function CaisseApp() {
         <Link href="/espace" className={buttonClasses('secondary')}>
           Revenir à l’accueil
         </Link>
+      </Centered>
+    );
+  if (state.status === 'device-limit')
+    return (
+      <Centered>
+        <Alert tone="warning">
+          Ce téléphone ne peut pas être ajouté comme caisse : {state.message} Le
+          propriétaire ou un gérant peut retirer un ancien appareil dans
+          Paramètres, « Appareils de vente ».
+        </Alert>
+        <Link href="/espace/parametres" className={buttonClasses('primary')}>
+          Ouvrir les paramètres
+        </Link>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className={buttonClasses('secondary')}
+        >
+          Réessayer
+        </button>
       </Centered>
     );
   if (state.status === 'never-online')

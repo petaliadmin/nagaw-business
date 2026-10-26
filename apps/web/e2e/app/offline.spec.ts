@@ -115,6 +115,43 @@ test('a customer created offline buys on credit, both sent together', async ({
   ).toContainText('Ndèye Fall');
 });
 
+test('sales of another account are kept and explained, never stuck in silence', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  // Awa sells offline, then Moussa signs in on the same phone without
+  // Awa signing out: the server refuses Awa's device for Moussa.
+  await signInAs(context, 'awa', baseURL!);
+  await openCheckoutOnline(page);
+  await context.setOffline(true);
+  await addToCart(page, 'Eau minérale 1,5 L');
+  await openPayment(page, isMobile);
+  await page.getByRole('button', { name: /^Valider la vente/ }).click();
+  await expect(page.getByText(/Gardée sur ce téléphone/)).toBeVisible();
+
+  await signInAs(context, 'moussa', baseURL!);
+  await context.setOffline(false);
+  await page.goto('/caisse');
+  // Moussa gets his own device and sells normally.
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Vendre' }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: /avec le compte awa@acme\.test/ }),
+  ).toBeVisible({ timeout: 15_000 });
+
+  // Awa comes back on this phone: her sale leaves.
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/caisse');
+  await expect(
+    page.getByRole('status').filter({ hasText: /awa@acme\.test/ }),
+  ).toHaveCount(0, { timeout: 15_000 });
+});
+
 test('signing out erases what the phone keeps', async ({
   page,
   context,

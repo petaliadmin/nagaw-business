@@ -55,7 +55,9 @@ export function ConnectionBanner() {
 
   const pending = status?.pendingSales ?? 0;
   const rejected = status?.rejected.length ?? 0;
-  if (!offline && pending === 0 && rejected === 0) return null;
+  const blocked = status?.blocked.filter((b) => b.sales > 0) ?? [];
+  if (!offline && pending === 0 && rejected === 0 && blocked.length === 0)
+    return null;
 
   const base =
     'sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-2 text-center text-base font-bold print:hidden';
@@ -68,6 +70,20 @@ export function ConnectionBanner() {
           : 'Pas de connexion internet. Ce qui est affiché reste visible ; le reste reviendra avec le réseau.'}
       </div>
     );
+  // Never « en attente » forever: say why they cannot leave, and what to do.
+  if (blocked.length > 0) {
+    const stuck = blocked.reduce((sum, b) => sum + b.sales, 0);
+    const revoked = blocked.some((b) => b.code === 'DEVICE_REVOKED');
+    const email = blocked.find((b) => b.email)?.email;
+    return (
+      <div role="status" className={`${base} bg-danger-strong text-white`}>
+        <TriangleAlert aria-hidden className="size-5 shrink-0" />
+        {revoked
+          ? `${sales(stuck)} bloquée${stuck > 1 ? 's' : ''} : ce téléphone a été retiré par un gérant. Montrez ce message au propriétaire.`
+          : `${sales(stuck)} faite${stuck > 1 ? 's' : ''} sur ce téléphone avec ${email ? `le compte ${email}` : 'un autre compte'} : reconnectez-vous avec ce compte pour ${stuck > 1 ? 'les' : 'l’'}envoyer.`}
+      </div>
+    );
+  }
   if (rejected > 0)
     return (
       <div role="status" className={`${base} bg-danger-strong text-white`}>

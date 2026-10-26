@@ -26,7 +26,8 @@ export async function POST(request: Request) {
   });
   if (!result.ok)
     return Response.json(
-      { error: result.message },
+      // The code tells the checkout why (limit of the offer, refused).
+      { error: result.message, code: result.code },
       { status: result.status || 502 },
     );
   return Response.json(result.data);

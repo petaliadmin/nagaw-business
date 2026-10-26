@@ -34,6 +34,8 @@ export async function GET() {
   return Response.json(
     {
       organizationId: organization.id,
+      // Whose phone it is now: another account may have sold on it before.
+      user: { id: workspace.me.id, email: workspace.me.email },
       shop: {
         name: organization.name,
         currency: organization.defaultCurrency,
