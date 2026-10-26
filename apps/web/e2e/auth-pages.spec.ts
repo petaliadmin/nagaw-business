@@ -5,7 +5,7 @@ test('home page links to sign-up and sign-in', async ({ page }) => {
   await expect(
     page.getByRole('heading', {
       level: 1,
-      name: 'Votre boutique dans votre téléphone',
+      name: 'Tenez votre boutique au franc près, depuis votre téléphone',
     }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Créer ma boutique' }).first().click();
