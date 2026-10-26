@@ -22,6 +22,8 @@
   --line-strong: #767189;
   --focus: #7c3aed;
   --on-vivid: #111827;
+  /* Sidebar: dark in both themes, white text (16:1). */
+  --sidebar: #1e1b2e;
 
   --brand: #7c3aed;
   --brand-strong: #6d28d9;
@@ -76,6 +78,7 @@
     --line: #3a3648;
     --line-strong: #8d889c;
     --focus: #ddd6fe;
+    --sidebar: #0b0a12;
 
     --brand-soft: #2e1f5e;
     --brand-ink: #ddd6fe;
@@ -102,6 +105,7 @@
 
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
+  --color-sidebar: var(--sidebar);
   --color-surface-muted: var(--surface-muted);
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);

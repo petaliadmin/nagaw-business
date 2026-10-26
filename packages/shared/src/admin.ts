@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { PlanLimits } from './plans.js';
+import type { PlanLimits, PlanUsage } from './plans.js';
 
 /**
  * Platform administration (ADR-030): accounts, offers and aggregates of
@@ -104,7 +104,7 @@ export interface AdminPlanRequestDto {
 export interface AdminShopDto extends AdminShopListItemDto {
   timezone: string;
   currency: string;
-  usage: PlanLimits;
+  usage: PlanUsage;
   limits: PlanLimits;
   suspension: { at: string; reason: string } | null;
   devices: {

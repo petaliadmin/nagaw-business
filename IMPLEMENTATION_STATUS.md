@@ -625,3 +625,10 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - le parcours complet du MVP sur le **backend réel** se fait à la main (étape 5 des préparatifs), les tests de bout en bout automatisés tournant contre un faux backend ;
   - sauvegardes et restauration dépendent du plan Supabase (à activer par le propriétaire).
 - **Prochaine action recommandée** : suivre les préparatifs de `docs/PILOT.md` (sauvegardes, restauration testée, parcours complet sur vrais téléphones) avant d'accueillir la première boutique. Les anciennes phases 8 (approbations), 9 (outils), 10 (documents) et 11 (notifications, planification) sont remplacées par les phases boutique de `docs/ROADMAP.md`.
+
+## Après la Phase 18 — Limites de produits des offres
+
+- **Objectif** : appliquer la nouvelle grille du propriétaire (2026-10-26, ADR-033) : Gratuit 3 produits, Essentiel 10, Pro sans limite.
+- **Statut** : livré sur la branche `claude/offres-limites-produits`, **en attente de validation**. La migration `20261026090000_plan_product_limits.sql` doit être appliquée sur Supabase avant la fusion.
+- **Fonctionnalités terminées** : plafond vide (`null`) pour « sans limite », dans l'offre et dans la boutique ; « Produits sans limite » dans « Abonnement » et l'administration ; pas d'alerte de quota sans plafond ; produits existants gardés.
+- **Tests** : intégration (grille, refus du 4ᵉ produit en Gratuit, 11 produits en Pro), bout en bout (page « Abonnement »).

@@ -49,7 +49,7 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
         <dl className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Stat
             label="Produits"
-            value={`${s.usage.products} / ${s.limits.products}`}
+            value={`${s.usage.products} / ${s.limits.products ?? 'sans limite'}`}
           />
           <Stat
             label="Personnes"

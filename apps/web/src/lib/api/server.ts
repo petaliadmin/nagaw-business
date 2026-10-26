@@ -43,6 +43,15 @@ export async function apiAsUser<T>(
   });
 }
 
+/** Calls a public route of the API (the offer grid), without a session. */
+export async function apiPublic<T>(path: string): Promise<ApiResult<T>> {
+  return callApi<T>({
+    path,
+    baseUrl: apiBaseUrl(),
+    protectionBypass: apiProtectionBypass(),
+  });
+}
+
 /**
  * Binary GET (product photo, document PDF) on behalf of the user. Errors are reduced to
  * their HTTP status: the caller only needs to know whether it can show it.

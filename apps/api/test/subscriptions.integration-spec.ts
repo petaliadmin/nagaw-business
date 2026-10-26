@@ -73,7 +73,7 @@ describe('Offers, subscriptions and quotas', () => {
     await ctx.close();
   });
 
-  it('lists the offers to any signed-in person', async () => {
+  it('lists the offers to anyone, signed in or not (ADR-034)', async () => {
     const plans = (
       await ctx.http().get('/api/v1/plans').set(as(dan)).expect(200)
     ).body;
@@ -83,41 +83,43 @@ describe('Offers, subscriptions and quotas', () => {
         name: 'Gratuit',
         monthlyPrice: 0,
         currency: 'XOF',
-        limits: { products: 50, members: 2, devices: 1 },
+        limits: { products: 3, members: 2, devices: 1 },
       },
       {
         key: 'essential',
         name: 'Essentiel',
         monthlyPrice: 5000,
         currency: 'XOF',
-        limits: { products: 500, members: 5, devices: 3 },
+        limits: { products: 10, members: 5, devices: 3 },
       },
       {
         key: 'pro',
         name: 'Pro',
         monthlyPrice: 15000,
         currency: 'XOF',
-        limits: { products: 5000, members: 20, devices: 10 },
+        limits: { products: null, members: 20, devices: 10 },
       },
     ]);
-    await ctx.http().get('/api/v1/plans').expect(401);
+    // Public for the home page: the same grid, and nothing about a shop.
+    const anonymous = (await ctx.http().get('/api/v1/plans').expect(200)).body;
+    expect(anonymous).toEqual(plans);
   });
 
   it('starts a new shop on the free offer, with its limits', async () => {
     const s = (await get(alice, acmeId, '/subscription').expect(200)).body;
     expect(s).toMatchObject({
       plan: { key: 'free' },
-      limits: { products: 50, members: 2, devices: 1 },
+      limits: { products: 3, members: 2, devices: 1 },
       usage: { products: 0, members: 1, devices: 0 },
       pendingRequest: null,
     });
   });
 
   it('applies the free offer to products, devices and people', async () => {
-    for (let i = 1; i <= 50; i++) await product(`Article ${i}`).expect(201);
-    const refused = await product('Article 51').expect(409);
+    for (let i = 1; i <= 3; i++) await product(`Article ${i}`).expect(201);
+    const refused = await product('Article 4').expect(409);
     expect(refused.body.error.message).toBe(
-      'Limite de 50 produits atteinte. Changez d’offre dans « Abonnement » pour en ajouter.',
+      'Limite de 3 produits atteinte. Changez d’offre dans « Abonnement » pour en ajouter.',
     );
     await device().expect(201);
     expect((await device().expect(409)).body.error.code).toBe(
@@ -131,7 +133,7 @@ describe('Offers, subscriptions and quotas', () => {
     expect(
       (await get(alice, acmeId, '/subscription').expect(200)).body.usage,
     ).toEqual({
-      products: 50,
+      products: 3,
       members: 1,
       devices: 1,
     });
@@ -143,23 +145,36 @@ describe('Offers, subscriptions and quotas', () => {
       (await get(alice, acmeId, '/subscription').expect(200)).body,
     ).toMatchObject({
       plan: { key: 'essential', name: 'Essentiel' },
-      limits: { products: 500, members: 5, devices: 3 },
+      limits: { products: 10, members: 5, devices: 3 },
     });
-    await product('Article 51').expect(201);
+    await product('Article 4').expect(201);
     await device().expect(201);
     await invite('autre@example.test').expect(201);
 
     await ctx.setPlan(acmeId, 'free');
     const s = (await get(alice, acmeId, '/subscription').expect(200)).body;
-    expect(s.usage).toEqual({ products: 51, members: 1, devices: 2 });
-    expect(s.limits).toEqual({ products: 50, members: 2, devices: 1 });
+    expect(s.usage).toEqual({ products: 4, members: 1, devices: 2 });
+    expect(s.limits).toEqual({ products: 3, members: 2, devices: 1 });
     // Nothing is taken away; nothing more can be added.
     expect(
       (await get(alice, acmeId, '/products').expect(200)).body,
-    ).toHaveLength(51);
-    await product('Article 52').expect(409);
+    ).toHaveLength(4);
+    await product('Article 5').expect(409);
     await device().expect(409);
   });
+
+  it('sets no product limit on the Pro offer', async () => {
+    await ctx.setPlan(acmeId, 'pro');
+    const s = (await get(alice, acmeId, '/subscription').expect(200)).body;
+    expect(s.limits).toEqual({ products: null, members: 20, devices: 10 });
+    // Beyond the 10 of Essentiel: 4 already, 7 more.
+    for (let i = 5; i <= 11; i++) await product(`Article ${i}`).expect(201);
+    expect(
+      (await get(alice, acmeId, '/subscription').expect(200)).body.usage
+        .products,
+    ).toBe(11);
+    await ctx.setPlan(acmeId, 'free');
+  }, 60_000);
 
   it('refuses a new member beyond the offer when an invitation is accepted', async () => {
     await ctx.setPlan(acmeId, 'essential');

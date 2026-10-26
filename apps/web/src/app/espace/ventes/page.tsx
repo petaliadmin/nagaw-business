@@ -5,7 +5,7 @@ import {
   type SaleListItemDto,
   type SalesDaySummaryDto,
 } from '@nagaw/shared';
-import { ShoppingCart } from 'lucide-react';
+import { CalendarDays, ShoppingCart } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -71,7 +71,7 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
         description={allSales ? 'Les ventes de la boutique.' : 'Vos ventes.'}
         actions={
           roleHasPermission(organization.role, 'sales.create') ? (
-            <ButtonLink href="/caisse">
+            <ButtonLink href="/caisse" variant="sell">
               <ShoppingCart aria-hidden className="size-5" />
               Vendre
             </ButtonLink>
@@ -99,10 +99,18 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
         >
           Hier
         </Link>
-        <form action="/espace/ventes" className="flex items-end gap-2">
+      </nav>
+      <details
+        open={(day !== today && day !== previousDay(today)) || undefined}
+      >
+        <summary className="inline-flex min-h-12 cursor-pointer list-none items-center gap-2 font-semibold text-brand-ink underline underline-offset-4 [&::-webkit-details-marker]:hidden">
+          <CalendarDays aria-hidden className="size-5" />
+          Voir un autre jour
+        </summary>
+        <form action="/espace/ventes" className="mt-2 flex items-end gap-2">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="sales-day" className="font-semibold">
-              Autre jour
+              Jour
             </label>
             <input
               id="sales-day"
@@ -117,7 +125,7 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
             Voir
           </button>
         </form>
-      </nav>
+      </details>
 
       <Card title={dayLabel} titleId="day-summary">
         {!summary.ok ? (

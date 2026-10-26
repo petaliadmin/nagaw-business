@@ -11,7 +11,7 @@ import { CONTROL } from '@/components/form-field';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { buttonClasses } from '@/components/ui/button-styles';
-import { Card } from '@/components/ui/card';
+import { FoldCard } from '@/components/ui/fold-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
@@ -48,11 +48,7 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
         description="Vos clients habitués, et ce qu’ils vous doivent."
       />
 
-      <form
-        action="/espace/clients"
-        role="search"
-        className="flex flex-col gap-2 sm:flex-row"
-      >
+      <form action="/espace/clients" role="search" className="flex gap-2">
         {owing && <input type="hidden" name="doivent" value="1" />}
         <label htmlFor="customer-search" className="sr-only">
           Chercher un client par nom ou téléphone
@@ -63,7 +59,7 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
           type="search"
           defaultValue={q}
           placeholder="Nom ou téléphone"
-          className={`${CONTROL} flex-1`}
+          className={`${CONTROL} min-w-0 flex-1`}
         />
         <button type="submit" className={buttonClasses('secondary')}>
           <Search aria-hidden className="size-5" />
@@ -129,12 +125,12 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
       )}
 
       {roleHasPermission(organization.role, 'customers.manage') && (
-        <Card title="Ajouter un client" titleId="add-customer" icon={UserPlus}>
+        <FoldCard title="Ajouter un client" icon={UserPlus}>
           <CustomerForm
             organizationId={organization.id}
             currency={organization.defaultCurrency}
           />
-        </Card>
+        </FoldCard>
       )}
     </>
   );

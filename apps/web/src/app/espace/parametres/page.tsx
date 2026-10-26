@@ -5,10 +5,11 @@ import {
   type OrganizationDto,
   type TaxRateDto,
 } from '@nagaw/shared';
-import { FileText, Smartphone, Store, UserRound } from 'lucide-react';
+import { FileText, Plus, Smartphone, Store, UserRound } from 'lucide-react';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
+import { ButtonLink } from '@/components/ui/button-link';
 import { Card, Stat } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
@@ -182,6 +183,20 @@ async function Settings() {
           describe={(tax) => formatRate(tax.rateBasisPoints)}
         />
       </section>
+      <Card title="Mes boutiques" titleId="shops" icon={Store}>
+        <div className="flex flex-col gap-4">
+          <p className="text-ink-muted">
+            Vous avez un autre magasin ? Créez une boutique séparée : ses
+            produits, ses ventes et son équipe restent à part.
+          </p>
+          <div>
+            <ButtonLink href="/espace/nouvelle-boutique" variant="secondary">
+              <Plus aria-hidden className="size-5" />
+              Créer une autre boutique
+            </ButtonLink>
+          </div>
+        </div>
+      </Card>
       <Card title="Mon profil" titleId="profile" icon={UserRound}>
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Stat label="Adresse e-mail" value={me.email} />

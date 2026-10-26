@@ -58,7 +58,7 @@ function Chip({
     <Link
       href={href}
       aria-current={active ? 'true' : undefined}
-      className={`inline-flex min-h-12 shrink-0 items-center rounded-full border-2 px-4 text-base font-bold ${
+      className={`inline-flex min-h-12 shrink-0 items-center rounded-full border-2 px-4 text-base font-bold whitespace-nowrap ${
         active
           ? 'border-stock-strong bg-stock-strong text-white'
           : 'border-line-strong bg-surface text-ink hover:bg-surface-muted'
@@ -119,11 +119,7 @@ async function Products({ searchParams }: PageProps<'/espace/produits'>) {
         }
       />
 
-      <form
-        action="/espace/produits"
-        role="search"
-        className="flex flex-col gap-2 sm:flex-row"
-      >
+      <form action="/espace/produits" role="search" className="flex gap-2">
         {categoryId && (
           <input type="hidden" name="categorie" value={categoryId} />
         )}
@@ -137,7 +133,7 @@ async function Products({ searchParams }: PageProps<'/espace/produits'>) {
           type="search"
           defaultValue={q}
           placeholder="Nom ou code-barres"
-          className={`${CONTROL} flex-1`}
+          className={`${CONTROL} min-w-0 flex-1`}
         />
         <button type="submit" className={buttonClasses('secondary')}>
           <Search aria-hidden className="size-5" />

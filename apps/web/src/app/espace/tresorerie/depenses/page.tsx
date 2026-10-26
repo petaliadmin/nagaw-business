@@ -12,8 +12,8 @@ import { Suspense } from 'react';
 import { PeriodPicker } from '@/components/treasury/period-picker';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FoldCard } from '@/components/ui/fold-card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
@@ -79,7 +79,7 @@ async function Expenses({
       </Link>
 
       {canManage && categories.ok && treasury.ok && (
-        <Card title="Ajouter une dépense" titleId="add-expense" icon={Plus}>
+        <FoldCard title="Ajouter une dépense" icon={Plus}>
           <ExpenseForm
             organizationId={organization.id}
             categories={categories.data
@@ -88,7 +88,7 @@ async function Expenses({
             accounts={accountOptions(treasury.data.accounts)}
             today={treasury.data.today.day}
           />
-        </Card>
+        </FoldCard>
       )}
 
       <PeriodPicker
@@ -189,11 +189,7 @@ async function Expenses({
         </>
       )}
 
-      <Card
-        title="Catégories de dépenses"
-        titleId="expense-categories"
-        icon={Tags}
-      >
+      <FoldCard title="Catégories de dépenses" icon={Tags}>
         {!categories.ok ? (
           <Alert tone="error">
             Catégories indisponibles : {categories.message}
@@ -240,7 +236,7 @@ async function Expenses({
             {canManage && <CategoryForm organizationId={organization.id} />}
           </>
         )}
-      </Card>
+      </FoldCard>
     </>
   );
 }

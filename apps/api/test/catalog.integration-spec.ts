@@ -90,6 +90,9 @@ describe('Catalogue and stock', () => {
         .send({ name: 'Globex' })
         .expect(201)
     ).body.id;
+    // Many products: more than the free offer allows (ADR-033).
+    await ctx.setPlan(acmeId, 'pro');
+    await ctx.setPlan(globexId, 'pro');
     await ctx.admin.query(
       `insert into app.organization_memberships (organization_id, user_id, role)
        values ($1, $2, 'member')`,
@@ -407,7 +410,7 @@ describe('Catalogue and stock', () => {
       const res = await post(bob, globexId, '/products', product()).expect(409);
       expect(res.body.error.code).toBe('CATALOG_LIMIT_REACHED');
       await ctx.admin.query(
-        'update app.organizations set max_products = 5000 where id = $1',
+        'update app.organizations set max_products = null where id = $1',
         [globexId],
       );
     });

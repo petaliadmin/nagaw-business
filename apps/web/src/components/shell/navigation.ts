@@ -1,17 +1,13 @@
 import { roleHasPermission, type Permission, type Role } from '@nagaw/shared';
 import {
-  BookOpen,
+  Banknote,
   ChartColumn,
   Contact,
-  Crown,
-  FileText,
   House,
   Package,
   Receipt,
-  ScrollText,
   Settings,
-  ShoppingCart,
-  Users,
+  Truck,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -19,41 +15,45 @@ import {
 export interface NavItem {
   href: string;
   label: string;
+  /** Label in the phone bottom bar, where 16 px must fit on 360 px. */
+  shortLabel?: string;
   icon: LucideIcon;
   /** Shown in the phone bottom bar; the others live under « Plus ». */
   bottomBar: boolean;
+  /** Other sections shown as tabs of this entry (see SECTION_TABS). */
+  matches?: readonly string[];
   /** Hidden from the roles without it (the API refuses them anyway). */
   permission?: Permission;
 }
 
 /**
- * Every entry points to a page that exists. Shop modules (sales, products,
- * invoices…) are added here only when their page ships (no dead links).
- * The phone bottom bar holds at most three of them next to « Plus », so
- * that labels stay at 16 px on a 360 px screen (DESIGN.md).
+ * Menu in the owner's order (2026-10-25). Every entry points to a page that
+ * exists: « Commandes » and « Achats » join it when their module ships (no
+ * dead links). Invoices, accounting, team, history and subscription are
+ * tabs of their section. The phone bottom bar holds at most three entries
+ * next to « Plus » (DESIGN.md).
  */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { href: '/espace', label: 'Accueil', icon: House, bottomBar: true },
   {
-    // Outside /espace: the checkout also opens offline (ADR-020).
-    href: '/caisse',
-    label: 'Vendre',
-    icon: ShoppingCart,
+    href: '/espace',
+    label: 'Tableau de bord',
+    shortLabel: 'Accueil',
+    icon: House,
     bottomBar: true,
+  },
+  {
+    href: '/espace/ventes',
+    label: 'Ventes',
+    icon: Receipt,
+    bottomBar: true,
+    matches: ['/espace/factures'],
   },
   {
     href: '/espace/produits',
-    label: 'Produits',
+    label: 'Stock / Produits',
+    shortLabel: 'Stock',
     icon: Package,
     bottomBar: true,
-  },
-  { href: '/espace/ventes', label: 'Ventes', icon: Receipt, bottomBar: false },
-  {
-    href: '/espace/factures',
-    label: 'Factures',
-    icon: FileText,
-    bottomBar: false,
-    permission: 'documents.read',
   },
   {
     href: '/espace/clients',
@@ -62,45 +62,39 @@ export const NAV_ITEMS: readonly NavItem[] = [
     bottomBar: false,
   },
   {
-    href: '/espace/statistiques',
-    label: 'Statistiques',
-    icon: ChartColumn,
+    href: '/espace/produits/fournisseurs',
+    label: 'Fournisseurs',
+    icon: Truck,
     bottomBar: false,
-    permission: 'stats.read',
+  },
+  {
+    href: '/espace/tresorerie/depenses',
+    label: 'Dépenses',
+    icon: Banknote,
+    bottomBar: false,
+    permission: 'treasury.read',
   },
   {
     href: '/espace/tresorerie',
-    label: 'Trésorerie',
+    label: 'Trésorerie / Caisse',
     icon: Wallet,
     bottomBar: false,
     permission: 'treasury.read',
   },
   {
-    href: '/espace/comptabilite',
-    label: 'Comptabilité',
-    icon: BookOpen,
+    href: '/espace/statistiques',
+    label: 'Rapports / Statistiques',
+    icon: ChartColumn,
     bottomBar: false,
-    permission: 'accounting.read',
-  },
-  { href: '/espace/equipe', label: 'Équipe', icon: Users, bottomBar: false },
-  {
-    href: '/espace/journal',
-    label: 'Historique',
-    icon: ScrollText,
-    bottomBar: false,
+    matches: ['/espace/comptabilite'],
+    permission: 'stats.read',
   },
   {
     href: '/espace/parametres',
     label: 'Paramètres',
     icon: Settings,
     bottomBar: false,
-  },
-  {
-    href: '/espace/abonnement',
-    label: 'Abonnement',
-    icon: Crown,
-    bottomBar: false,
-    permission: 'subscription.read',
+    matches: ['/espace/equipe', '/espace/journal', '/espace/abonnement'],
   },
 ];
 
@@ -115,4 +109,73 @@ export function navItemsFor(role: Role): NavItem[] {
 export function isActive(href: string, pathname: string): boolean {
   if (href === '/espace') return pathname === '/espace';
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/**
+ * The entry to mark for a path: the most specific match, so that
+ * « Fournisseurs » wins over « Stock / Produits » on its own pages.
+ */
+export function activeHref(
+  items: readonly NavItem[],
+  pathname: string,
+): string | null {
+  let best: { href: string; length: number } | null = null;
+  for (const item of items)
+    for (const path of [item.href, ...(item.matches ?? [])])
+      if (isActive(path, pathname) && (!best || path.length > best.length))
+        best = { href: item.href, length: path.length };
+  return best?.href ?? null;
+}
+
+export interface SectionTab {
+  href: string;
+  label: string;
+  /** Other paths where the tabs show, with this tab marked. */
+  paths?: readonly string[];
+  permission?: Permission;
+}
+
+/** Tabs at the top of the sections that group several pages. */
+export const SECTION_TABS = {
+  ventes: [
+    { href: '/espace/ventes', label: 'Ventes' },
+    {
+      href: '/espace/factures',
+      label: 'Factures et devis',
+      paths: ['/espace/factures/devis'],
+      permission: 'documents.read',
+    },
+  ],
+  rapports: [
+    {
+      href: '/espace/statistiques',
+      label: 'Statistiques',
+      permission: 'stats.read',
+    },
+    {
+      href: '/espace/comptabilite',
+      label: 'Comptabilité',
+      permission: 'accounting.read',
+    },
+  ],
+  parametres: [
+    { href: '/espace/parametres', label: 'Boutique' },
+    { href: '/espace/equipe', label: 'Équipe' },
+    { href: '/espace/journal', label: 'Historique' },
+    {
+      href: '/espace/abonnement',
+      label: 'Abonnement',
+      permission: 'subscription.read',
+    },
+  ],
+} as const satisfies Record<string, readonly SectionTab[]>;
+
+export type Section = keyof typeof SECTION_TABS;
+
+/** Tabs of a section the role may open. */
+export function sectionTabsFor(section: Section, role: Role): SectionTab[] {
+  return SECTION_TABS[section].filter(
+    (tab: SectionTab) =>
+      !tab.permission || roleHasPermission(role, tab.permission),
+  );
 }

@@ -42,7 +42,8 @@ export interface OrganizationsTable {
   default_currency: Generated<string>;
   invitation_ttl_hours: Generated<number>;
   max_pending_invitations: Generated<number>;
-  max_products: Generated<number>;
+  /** Null: no limit (offer without one, ADR-033). */
+  max_products: Generated<number | null>;
   max_product_categories: Generated<number>;
   max_suppliers: Generated<number>;
   max_tax_rates: Generated<number>;
@@ -461,7 +462,8 @@ export interface PlansTable {
   name: string;
   monthly_price: Numeric;
   currency: string;
-  max_products: number;
+  /** Null: no limit (ADR-033). */
+  max_products: number | null;
   max_members: number;
   max_devices: number;
   position: number;

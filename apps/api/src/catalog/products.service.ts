@@ -323,7 +323,7 @@ export class ProductsService {
           .where('organization_id', '=', tenant.organizationId)
           .where('status', '=', 'active')
           .executeTakeFirstOrThrow();
-        if (Number(count) >= org.max_products)
+        if (org.max_products !== null && Number(count) >= org.max_products)
           throw limitReached('produits', org.max_products, true);
         await this.assertReferences(trx, tenant.organizationId, input);
 

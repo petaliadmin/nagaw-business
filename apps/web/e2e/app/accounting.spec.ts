@@ -34,6 +34,7 @@ test('the journal books the day’s sale and expense, and exports them', async (
   await signInAs(context, 'awa', baseURL!);
   await sellWater(page, isMobile);
   await page.goto('/espace/tresorerie/depenses');
+  await page.locator('summary', { hasText: 'Ajouter une dépense' }).click();
   await page.getByLabel('Ce qui a été payé').fill('Sacs plastiques');
   await page.getByLabel('Montant', { exact: true }).fill('150');
   await page

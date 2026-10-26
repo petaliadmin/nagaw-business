@@ -3,9 +3,12 @@ import { expect, test } from '@playwright/test';
 test('home page links to sign-up and sign-in', async ({ page }) => {
   await page.goto('/');
   await expect(
-    page.getByRole('heading', { name: 'Nagaw Business' }),
+    page.getByRole('heading', {
+      level: 1,
+      name: 'Votre boutique dans votre téléphone',
+    }),
   ).toBeVisible();
-  await page.getByRole('link', { name: 'Créer un compte' }).click();
+  await page.getByRole('link', { name: 'Créer ma boutique' }).first().click();
   await expect(page).toHaveURL(/\/inscription$/);
   await expect(
     page.getByRole('heading', { name: 'Créer un compte' }),

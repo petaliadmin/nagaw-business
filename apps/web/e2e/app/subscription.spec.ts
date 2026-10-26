@@ -19,15 +19,20 @@ test('the owner sees the offer, its limits, and asks for another one', async ({
     page.getByRole('heading', { level: 2, name: 'Offre Pro' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('region', { name: 'Offre Pro' }).getByText(/^2 sur 5\s000$/),
+    page
+      .getByRole('region', { name: 'Offre Pro' })
+      .getByText('2 (sans limite)', { exact: true }),
   ).toBeVisible();
   const offers = page.getByRole('list', { name: 'Les offres' });
   await expect(
     offers.getByRole('listitem', { name: 'Offre Gratuit' }),
-  ).toContainText('50 produits');
+  ).toContainText('3 produits');
   await expect(
-    offers.getByRole('listitem', { name: 'Offre Pro' }),
-  ).toContainText('Votre offre');
+    offers.getByRole('listitem', { name: 'Offre Essentiel' }),
+  ).toContainText('10 produits');
+  const pro = offers.getByRole('listitem', { name: 'Offre Pro' });
+  await expect(pro).toContainText('Votre offre');
+  await expect(pro).toContainText('Produits sans limite');
   await expectAccessible(page, 'abonnement');
 
   await offers

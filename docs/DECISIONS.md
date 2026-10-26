@@ -315,7 +315,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 - **Statut** : **Acceptée** (validée par le propriétaire le 2026-10-25, Phase 15). Pas de prestataire de paiement pour l’instant (décision du propriétaire du 2026-10-25).
 - **Contexte** : le modèle économique repose sur des offres par boutique. Le propriétaire a fixé la grille le 2026-10-25 ; il n'a pas encore choisi de prestataire de paiement (Mobile Money), qui ne doit pas être intégré sans sa décision.
 - **Décision** :
-  - **offres en base** (`plans`), modifiables sans déploiement : **Gratuit** (0 F : 50 produits, 2 personnes, 1 téléphone de caisse), **Essentiel** (5 000 F par mois : 500, 5, 3), **Pro** (15 000 F par mois : 5 000, 20, 10). Ventes, factures, trésorerie et comptabilité sont dans toutes les offres ;
+  - **offres en base** (`plans`), modifiables sans déploiement : **Gratuit** (0 F : 50 produits, 2 personnes, 1 téléphone de caisse), **Essentiel** (5 000 F par mois : 500, 5, 3), **Pro** (15 000 F par mois : 5 000, 20, 10) — limites de produits remplacées par l'ADR-033 (3, 10, sans limite). Ventes, factures, trésorerie et comptabilité sont dans toutes les offres ;
   - **un abonnement par boutique** (`subscriptions`) : une nouvelle boutique démarre en Gratuit ; les boutiques créées avant cette phase sont passées en **Pro** (décision du propriétaire : personne ne perd rien) ;
   - **les limites de l'offre deviennent les plafonds de la boutique** (`organizations.max_products`, `max_members`, `max_devices`), recopiés par un trigger à chaque changement d'offre. Les contrôles déjà en place à chaque création s'appliquent donc sans code nouveau ; un nouveau plafond, **`max_members`**, compte les personnes actives (et, à l'invitation, les invitations en attente), vérifié à l'invitation, à l'acceptation et à la réactivation, sous verrou de la boutique ;
   - **passer à une offre plus petite ne retire rien** : ce qui existe reste ; seules les nouvelles créations au-delà de la limite sont refusées, avec un message qui renvoie vers « Abonnement » ;
@@ -361,3 +361,23 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **test de fumée** en lecture seule (`pnpm smoke <site> <API>`) : santé de l'API, routes fermées sans session, pas de documentation en production, pages et en-têtes de sécurité, application installable, aucun secret dans les pages ni le JavaScript téléchargé ; lancé par GitHub quand Vercel signale le déploiement réussi du site sur `main` (statut de commit « Vercel – nagaw-web »), et à la demande ;
   - **plan du pilote et protocole de test utilisateur** dans `docs/PILOT.md`, avec les décisions qui reviennent au propriétaire.
 - **Reporté** : notification de l'équipe à chaque nouvel avis (prestataire d'envoi à choisir) ; pièces jointes (capture d'écran) dans un avis.
+
+## ADR-033 — Limite de produits des offres : 3, 10, sans limite
+
+- **Statut** : **Acceptée** (décision du propriétaire, 2026-10-26).
+- **Contexte** : la grille de l'ADR-029 donnait 50, 500 et 5 000 produits. Le propriétaire la resserre pour que l'offre Gratuit serve à essayer et que l'offre Pro n'ait pas de plafond.
+- **Décision** :
+  - **Gratuit** : 3 produits ; **Essentiel** : 10 produits ; **Pro** : **sans limite**. Les autres limites (personnes, téléphones de caisse) et les prix ne changent pas ;
+  - « sans limite » est un plafond **vide** (`null`) dans `plans.max_products` et `organizations.max_products`, jamais un grand nombre présenté comme illimité ; l'API ne vérifie alors rien, l'écran affiche « Produits sans limite », l'administration ne lève pas d'alerte de quota ;
+  - chaque boutique prend le plafond de son offre (migration `20261026090000_plan_product_limits.sql`) ; comme pour tout passage à une offre plus petite (ADR-029), **les produits déjà créés sont gardés**, seuls les nouveaux sont refusés au-delà du plafond.
+- **Conséquence** : une boutique Gratuit qui avait plus de 3 produits (ou Essentiel plus de 10) ne peut plus en ajouter sans changer d'offre.
+
+## ADR-034 — Grille des offres publique, affichée sur la page d'accueil
+
+- **Statut** : **Proposée** (demande du propriétaire du 2026-10-26 : « mettre les tarifs sur le landing page »).
+- **Contexte** : la page d'accueil doit montrer les tarifs. Prix et limites sont en base (ADR-029, ADR-033) et ne doivent jamais être écrits dans la page ; `GET /api/v1/plans` demandait une session.
+- **Décision** :
+  - `GET /api/v1/plans` devient **public** (`@Public`) : la grille ne contient que des noms, des prix et des limites, aucune donnée de boutique ; toutes les autres routes de l'abonnement restent protégées ;
+  - la page d'accueil lit la grille **au moment de la requête** (section « Tarifs », sous `<Suspense>`) ; si l'API ne répond pas, elle le dit sans afficher de prix ;
+  - le changement d'offre se demande toujours depuis l'application (ADR-029), sans paiement en ligne.
+- **Conséquence** : un changement de prix en base apparaît sur la page d'accueil sans redéploiement. L'inventaire des routes (`routes.integration-spec.ts`) classe la route comme publique, et un test vérifie que la grille servie sans session est identique à celle servie avec.

@@ -96,6 +96,7 @@ test('an expense lowers the drawer until it is cancelled', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/tresorerie/depenses');
+  await page.locator('summary', { hasText: 'Ajouter une dépense' }).click();
   await page.getByLabel('Ce qui a été payé').fill('Ticket de bus');
   await page.getByLabel('Montant', { exact: true }).fill('200');
   await page
@@ -131,6 +132,8 @@ test('money moved to the bank stays in the shop', async ({
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/tresorerie');
   const card = page.getByRole('region', { name: 'Déplacer de l’argent' });
+  // Folded until asked for: the balances come first.
+  await card.locator('summary').click();
   await card.getByLabel('Sortir de').selectOption({ label: 'Caisse' });
   await card.getByLabel('Mettre dans').selectOption({ label: 'Banque' });
   await card.getByLabel('Montant').fill('100');

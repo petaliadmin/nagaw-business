@@ -59,7 +59,7 @@ export function MoreMenu({ children }: { children: ReactNode }) {
       >
         <span
           className={`flex h-8 w-14 items-center justify-center rounded-full ${
-            open ? 'bg-brand-soft' : ''
+            open ? 'bg-brand-strong text-white shadow-sm' : ''
           }`}
         >
           <Ellipsis aria-hidden className="size-6" />

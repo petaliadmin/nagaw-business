@@ -19,8 +19,9 @@ const NOT_SHOP_SCOPED: Record<string, 'public' | 'user' | 'admin'> = {
   'POST /api/v1/organizations': 'user',
   'POST /api/v1/invitations/preview': 'user',
   'POST /api/v1/invitations/accept': 'user',
-  'GET /api/v1/plans': 'user',
   'GET /api/v1/stats/shops': 'user',
+  // The offer grid, shown on the home page (ADR-034).
+  'GET /api/v1/plans': 'public',
 };
 
 /** API documentation: public, and not served in production (Phase 1). */
