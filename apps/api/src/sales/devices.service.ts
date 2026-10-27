@@ -11,7 +11,6 @@ import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import {
   conflict,
-  limitReached,
   notFound,
   UUID_RE,
   type Executor,
@@ -111,8 +110,10 @@ export class DevicesService {
         .where('organization_id', '=', tenant.organizationId)
         .where('revoked_at', 'is', null)
         .executeTakeFirstOrThrow();
-      if (Number(count) >= org.max_devices)
-        throw limitReached('appareils', org.max_devices, true);
+      // The checkout must always open (owner's decision, 2026-10-27): the
+      // offer's device count is watched (subscription page, platform
+      // alerts), never a reason to refuse a phone at the counter.
+      const overLimit = Number(count) >= org.max_devices;
       const { id } = await trx
         .insertInto('app.devices')
         .values({
@@ -136,7 +137,10 @@ export class DevicesService {
         action: 'device.registered',
         targetType: 'device',
         targetId: id,
-        metadata: { label: input.label },
+        metadata: {
+          label: input.label,
+          ...(overLimit ? { overLimit: true, limit: org.max_devices } : {}),
+        },
         requestId,
       });
       const row = await this.select(trx, tenant.organizationId)

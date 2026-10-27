@@ -290,19 +290,22 @@ export function CaisseApp() {
         setState({ status: 'ready', snapshot: fresh.snapshot, fresh: true });
         void flushOutbox();
         await loadRejected(fresh.snapshot.organizationId);
+      } else if (cached) {
+        // The checkout always opens when the phone has a copy (owner's
+        // decision, 2026-10-27), whatever the server said: sales wait on
+        // the phone, and the banner says why if they cannot leave.
+        await loadRejected(cached.organizationId);
       } else if (fresh.reason === 'device-limit') {
-        // Selling on the copy would record on a device that is not this
-        // account's: its sales could never be sent.
         setState({
           status: 'device-limit',
           message: fresh.message ?? 'Limite d’appareils atteinte.',
         });
-      } else if (!cached && fresh.reason === 'server') {
+      } else if (fresh.reason === 'server') {
         setState({
           status: 'server-error',
           message: fresh.message ?? 'erreur inconnue',
         });
-      } else if (!cached) {
+      } else {
         setState({
           status:
             fresh.reason === 'signed-out'
@@ -311,8 +314,6 @@ export function CaisseApp() {
                 ? 'not-allowed'
                 : 'never-online',
         });
-      } else {
-        await loadRejected(cached.organizationId);
       }
     })().catch((error: unknown) => {
       console.error('Ouverture de la caisse impossible', error);
@@ -330,6 +331,23 @@ export function CaisseApp() {
     window.addEventListener(OUTBOX_EVENT, update);
     return () => window.removeEventListener(OUTBOX_EVENT, update);
   }, [state, loadRejected]);
+
+  // Without a copy on the phone, try again by itself: every 15 s and as
+  // soon as the network comes back. Nobody has to find « Réessayer ».
+  const waiting =
+    state.status === 'never-online' ||
+    state.status === 'server-error' ||
+    state.status === 'device-limit';
+  useEffect(() => {
+    if (!waiting) return;
+    const retry = () => window.location.reload();
+    const timer = window.setTimeout(retry, 15_000);
+    window.addEventListener('online', retry);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('online', retry);
+    };
+  }, [waiting]);
 
   // « Nouvelle vente » disappears with the ticket: the focus goes back to
   // the top of the checkout instead of the start of the page (WCAG 2.4.3).
@@ -388,6 +406,9 @@ export function CaisseApp() {
         >
           Réessayer
         </button>
+        <p role="status" className="text-center text-ink-muted">
+          Nouvel essai automatique dans quelques secondes.
+        </p>
       </Centered>
     );
   if (state.status === 'server-error')
@@ -405,6 +426,9 @@ export function CaisseApp() {
         >
           Réessayer
         </button>
+        <p role="status" className="text-center text-ink-muted">
+          Nouvel essai automatique dans quelques secondes.
+        </p>
       </Centered>
     );
   if (state.status === 'never-online')
@@ -421,6 +445,9 @@ export function CaisseApp() {
         >
           Réessayer
         </button>
+        <p role="status" className="text-center text-ink-muted">
+          Nouvel essai automatique dans quelques secondes.
+        </p>
       </Centered>
     );
 
