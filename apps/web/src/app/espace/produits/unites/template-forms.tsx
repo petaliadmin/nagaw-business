@@ -59,7 +59,11 @@ export function TemplateForm({ organizationId }: { organizationId: string }) {
         />
       </div>
       <label className="flex min-h-12 items-center gap-3 font-semibold">
-        <input type="checkbox" name="allowsDecimals" className="size-6" />
+        <input
+          type="checkbox"
+          name="allowsDecimals"
+          className="size-12 shrink-0 accent-brand-strong"
+        />
         Se vend aussi en partie (1,5 par exemple)
       </label>
       <div>

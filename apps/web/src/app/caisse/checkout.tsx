@@ -602,7 +602,7 @@ export function Checkout({
     const count = (Number.isFinite(before) ? before : 0) + 1;
     const unitName = optionName(product, option);
     setAnnouncement(
-      `${product.name} ajouté. ${quantityText(count)} ${unitName} dans le panier.` +
+      `${product.name} ajouté. ${quantityText(count)}${option.key === 'stock' ? '' : ` ${unitName}`} dans le panier.` +
         (product.trackStock &&
         (wanted.get(product.id) ?? 0) + option.factor > product.stockQuantity
           ? ' Attention : stock insuffisant.'

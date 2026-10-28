@@ -78,12 +78,12 @@ export function NotificationSettingsForm({
           'Entre 1 et 365 jours.',
         )}
       </div>
-      <label className="flex min-h-12 items-start gap-3">
+      <label className="flex min-h-12 items-center gap-3">
         <input
           type="checkbox"
           name="sellerCanSellBelowCost"
           defaultChecked={settings.sellerCanSellBelowCost}
-          className="mt-1 size-6 shrink-0"
+          className="size-12 shrink-0 accent-brand-strong"
         />
         <span>
           <span className="block font-semibold">

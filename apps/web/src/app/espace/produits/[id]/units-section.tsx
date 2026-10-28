@@ -229,7 +229,7 @@ function AddUnitForm({
               allowsDecimals: event.currentTarget.checked,
             })
           }
-          className="size-6"
+          className="size-12 shrink-0 accent-brand-strong"
         />
         Se vend aussi en partie (1,5 par exemple)
       </label>
@@ -287,11 +287,13 @@ export function UnitsSection({
                   )}
                 </span>
                 <span className="text-lg font-extrabold tabular-nums">
-                  {option.price !== null
-                    ? money(option.price)
-                    : option.factor < 1
-                      ? `${money(product.salePrice)} le ${stockUnit}`
-                      : `${money(displayPriceOf(option, product.salePrice))} (calculé)`}
+                  {option.key === 'stock'
+                    ? 'Prix de la fiche'
+                    : option.price !== null
+                      ? money(option.price)
+                      : option.factor < 1
+                        ? `au prix du ${stockUnit}`
+                        : `${money(displayPriceOf(option, product.salePrice))} (calculé)`}
                 </span>
               </div>
               {unit && canManage && product.status === 'active' && (
