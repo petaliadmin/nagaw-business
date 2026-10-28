@@ -1,4 +1,9 @@
-import { stockLevel, type ProductDto, type SyncOperation } from '@nagaw/shared';
+import {
+  conversionOf,
+  stockLevel,
+  type ProductDto,
+  type SyncOperation,
+} from '@nagaw/shared';
 
 /** Rounds away floating-point noise on quantities with 3 decimals. */
 const round3 = (value: number) => Math.round(value * 1000) / 1000;
@@ -16,10 +21,27 @@ export function applyPendingStock(
   const change = new Map<string, number>();
   const add = (productId: string, quantity: number) =>
     change.set(productId, (change.get(productId) ?? 0) + quantity);
+  // A selling unit or a conversion takes `factor` stock units (« sac de
+  // 50 kg », « 250 g », ADR-038).
+  const units = new Map(
+    products.flatMap((product) => product.units.map((u) => [u.id, u.factor])),
+  );
+  const stockUnits = new Map(products.map((p) => [p.id, p.unit]));
+  const factorOf = (line: {
+    productId: string;
+    productUnitId: string | null;
+    conversion: string | null;
+  }) => {
+    if (line.productUnitId) return units.get(line.productUnitId) ?? 1;
+    const unit = stockUnits.get(line.productId);
+    return line.conversion && unit
+      ? (conversionOf(unit, line.conversion)?.factor ?? 1)
+      : 1;
+  };
   for (const operation of operations) {
     if (operation.type === 'sale')
       for (const line of operation.data.lines)
-        add(line.productId, -line.quantity);
+        add(line.productId, -line.quantity * factorOf(line));
     else if (operation.type === 'stock_correction')
       add(operation.data.productId, operation.data.quantity);
   }
@@ -33,27 +55,6 @@ export function applyPendingStock(
       stockLevel: stockLevel({ ...product, stockQuantity }),
     };
   });
-}
-
-export interface Shortage {
-  product: ProductDto;
-  /** In the cart. */
-  wanted: number;
-  /** Known by the phone (can be below zero). */
-  known: number;
-}
-
-/** Cart lines asking for more than the phone knows is on the shelf. */
-export function shortagesOf(
-  lines: readonly { product: ProductDto; quantity: number }[],
-): Shortage[] {
-  return lines.flatMap(({ product, quantity }) =>
-    product.trackStock &&
-    Number.isFinite(quantity) &&
-    quantity > product.stockQuantity
-      ? [{ product, wanted: quantity, known: product.stockQuantity }]
-      : [],
-  );
 }
 
 /**

@@ -3,8 +3,11 @@ import { roleHasPermission } from './permissions.js';
 import {
   computeSaleTotals,
   createSaleSchema,
+  describeSaleLine,
+  formatSoldQuantity,
   paymentProblem,
   paymentSchema,
+  reductionBasisPoints,
 } from './sales.js';
 
 const OP = '6f1c1b2e-5d7a-4c3e-9f10-2b3c4d5e6f70';
@@ -164,5 +167,135 @@ describe('sales permissions', () => {
       expect(roleHasPermission(role, 'sales.cancel')).toBe(false);
     expect(roleHasPermission('member', 'sales.read_all')).toBe(false);
     expect(roleHasPermission('viewer', 'sales.read_all')).toBe(true);
+  });
+});
+
+describe('negotiated prices (ADR-038)', () => {
+  it('keeps the catalogue amount and charges the agreed one', () => {
+    const totals = computeSaleTotals(
+      [
+        {
+          unitPrice: 30000,
+          quantity: 2,
+          taxRateBasisPoints: null,
+          agreedTotal: 56000,
+        },
+        { unitPrice: 650, quantity: 1, taxRateBasisPoints: null },
+      ],
+      0,
+    );
+    expect(totals.lines.map((l) => [l.listTotal, l.lineTotal])).toEqual([
+      [60000, 56000],
+      [650, 650],
+    ]);
+    expect(totals).toMatchObject({
+      listSubtotal: 60650,
+      subtotal: 56650,
+      total: 56650,
+    });
+  });
+
+  it('shares the discount over the agreed amounts and taxes what is paid', () => {
+    const totals = computeSaleTotals(
+      [
+        {
+          unitPrice: 11800,
+          quantity: 1,
+          taxRateBasisPoints: 1800,
+          agreedTotal: 10620,
+        },
+        { unitPrice: 1000, quantity: 1, taxRateBasisPoints: null },
+      ],
+      620,
+    );
+    expect(totals.total).toBe(11000);
+    // 566 + 53, the remaining franc on the largest line.
+    expect(totals.lines.map((l) => l.paid)).toEqual([10620 - 567, 1000 - 53]);
+    expect(totals.lines[0]!.taxAmount).toBe(Math.round((10053 * 1800) / 11800));
+  });
+
+  it('sells « for 500 F »: the agreed amount fixes the line', () => {
+    // 500 F of sugar at 650 F the kg: the device sends 0,769 kg for 500 F.
+    const totals = computeSaleTotals(
+      [
+        {
+          unitPrice: 650,
+          quantity: 0.769,
+          taxRateBasisPoints: null,
+          agreedTotal: 500,
+        },
+      ],
+      0,
+    );
+    expect(totals.lines[0]).toMatchObject({ listTotal: 500, lineTotal: 500 });
+  });
+
+  it('measures the reduction against the catalogue amount', () => {
+    expect(reductionBasisPoints(10000, 9000)).toBe(1000);
+    expect(reductionBasisPoints(3000, 2999)).toBe(4); // rounded up
+    expect(reductionBasisPoints(10000, 10500)).toBe(0); // paid more
+    expect(reductionBasisPoints(0, 0)).toBe(0);
+  });
+
+  it('accepts a selling unit and an agreed amount on a sale line', () => {
+    const parsed = createSaleSchema.parse({
+      clientOperationId: OP,
+      lines: [{ productId: PRODUCT, quantity: 2 }],
+      payments: [{ method: 'cash', amount: 1000 }],
+      expectedTotal: 1000,
+    });
+    expect(parsed.lines[0]).toEqual({
+      productId: PRODUCT,
+      productUnitId: null,
+      conversion: null,
+      quantity: 2,
+      agreedTotal: null,
+    });
+  });
+
+  it('names the unit of a line and its price', () => {
+    const money = (value: number) => `${value} F`;
+    const sack = {
+      quantity: 2,
+      unit: 'kg' as const,
+      unitLabel: 'sac de 50 kg',
+      productUnitId: 'u1',
+      priceBasis: 'unit' as const,
+      unitPrice: 30000,
+    };
+    expect(formatSoldQuantity(sack)).toBe('2 × sac de 50 kg');
+    expect(describeSaleLine(sack, money)).toBe('2 × sac de 50 kg × 30000 F');
+    const grams = {
+      quantity: 250,
+      unit: 'kg' as const,
+      unitLabel: 'g',
+      productUnitId: null,
+      priceBasis: 'stock' as const,
+      unitPrice: 650,
+    };
+    expect(describeSaleLine(grams, money)).toBe('250 g à 650 F par kg');
+    expect(
+      formatSoldQuantity({
+        quantity: 2,
+        unit: 'kg',
+        unitLabel: null,
+        productUnitId: null,
+      }),
+    ).toBe('2 kg');
+  });
+});
+
+describe('one unit per line', () => {
+  it('refuses a selling unit and a conversion together', () => {
+    const sale = (line: object) =>
+      createSaleSchema.safeParse({
+        clientOperationId: OP,
+        lines: [{ productId: PRODUCT, quantity: 1, ...line }],
+        payments: [{ method: 'cash', amount: 1 }],
+        expectedTotal: 1,
+      }).success;
+    expect(sale({ conversion: 'g' })).toBe(true);
+    expect(sale({ conversion: 'pouce' })).toBe(false);
+    expect(sale({ conversion: 'g', productUnitId: PRODUCT })).toBe(false);
   });
 });

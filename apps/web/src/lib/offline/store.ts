@@ -20,7 +20,12 @@ export interface ShopSnapshot {
   /** The account the device belongs to (absent in older copies). */
   user?: { id: string; email: string };
   /** Shop rules the checkout applies offline (absent in older copies). */
-  rules?: { stockCorrectionMax: number };
+  rules?: {
+    stockCorrectionMax: number;
+    /** ADR-038; absent in older copies: the strictest choice applies. */
+    sellerCanSellBelowCost?: boolean;
+    maxDiscountBasisPoints?: number | null;
+  };
   /** Next offline ticket number of this device. */
   nextTicket: number;
   refreshedAt: string;
@@ -70,6 +75,12 @@ export interface LocalTicket {
       quantity: number;
       unitPrice: number;
       lineTotal: number;
+      /** ADR-038 (absent in older tickets: the stock unit, no deal). */
+      productUnitId?: string | null;
+      unitLabel?: string | null;
+      unitFactor?: number;
+      priceBasis?: 'unit' | 'stock';
+      listTotal?: number;
     }[];
     subtotal: number;
     discount: number;

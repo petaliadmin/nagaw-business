@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
+  baseQuantityOf,
   computeSaleTotals,
+  conversionOf,
+  pricingOf,
   formatAmount,
   paymentProblem,
-  quantityFitsUnit,
+  reductionBasisPoints,
   roleHasPermission,
   UNITS,
   type CancelSaleInput,
@@ -42,8 +45,15 @@ export interface DeviceSale {
   deviceId: string;
   deviceTicket: string;
   occurredAt: Date;
-  /** Prices the seller saw, line by line. */
+  /** Catalogue prices the seller saw, line by line (see priceBasis). */
   unitPrices: number[];
+}
+
+/** A line sold under its purchase price (ADR-038). */
+export interface BelowCostLine {
+  name: string;
+  /** What the line pays below its cost. */
+  loss: number;
 }
 
 function saleNotFound(): ApiException {
@@ -133,8 +143,14 @@ export class SalesService {
         productId: line.product_id,
         label: line.label,
         unit: line.unit,
+        productUnitId: line.product_unit_id,
+        unitLabel: line.unit_label,
+        unitFactor: toNumber(line.unit_factor),
+        priceBasis: line.price_basis,
         unitPrice: toNumber(line.unit_price),
         quantity: toNumber(line.quantity),
+        baseQuantity: toNumber(line.base_quantity),
+        listTotal: toNumber(line.list_total ?? line.line_total),
         lineTotal: toNumber(line.line_total),
         taxRateBasisPoints: line.tax_rate_basis_points,
         taxAmount: toNumber(line.tax_amount),
@@ -350,7 +366,8 @@ export class SalesService {
         )
         .select(['l.product_id', sql<string>`max(l.label)`.as('label')])
         .select([
-          sql<string>`sum(l.quantity)`.as('quantity'),
+          // In the stock unit: sacks and kilos add up (ADR-038).
+          sql<string>`sum(l.base_quantity)`.as('quantity'),
           sql<string>`sum(l.line_total)`.as('total'),
         ])
         .groupBy('l.product_id')
@@ -407,7 +424,7 @@ export class SalesService {
           .selectFrom('app.organizations')
           .select([
             'next_sale_number',
-            'seller_max_discount_basis_points',
+            'seller_can_sell_below_cost',
             'default_currency',
             'credit_near_limit_percent',
           ])
@@ -458,6 +475,28 @@ export class SalesService {
           .where('p.id', 'in', ids)
           .execute();
         const byId = new Map(products.map((p) => [p.id, p]));
+        // Selling units (ADR-038): « sac de 50 kg » takes 50 kg of stock.
+        const unitIds = [
+          ...new Set(input.lines.flatMap((l) => l.productUnitId ?? [])),
+        ];
+        const units =
+          unitIds.length === 0
+            ? []
+            : await trx
+                .selectFrom('app.product_units')
+                .select([
+                  'id',
+                  'product_id',
+                  'label',
+                  'factor',
+                  'sale_price',
+                  'allows_decimals',
+                  'status',
+                ])
+                .where('organization_id', '=', tenant.organizationId)
+                .where('id', 'in', unitIds)
+                .execute();
+        const unitById = new Map(units.map((u) => [u.id, u]));
         const lines = input.lines.map((line, index) => {
           const product = byId.get(line.productId);
           // Offline, a product archived since the sale is still accepted.
@@ -466,26 +505,95 @@ export class SalesService {
               `lines.${index}.productId`,
               'Produit inconnu ou archivé.',
             );
-          if (!quantityFitsUnit(line.quantity, product.unit))
+          // What the line is sold in: the stock unit, a standard conversion
+          // (« g » of a product counted in kg) or a selling unit.
+          const unit = line.productUnitId
+            ? unitById.get(line.productUnitId)
+            : null;
+          if (
+            unit === undefined ||
+            (unit &&
+              (unit.product_id !== product.id ||
+                (!device && unit.status !== 'active')))
+          )
+            throw invalid(
+              `lines.${index}.productUnitId`,
+              `Unité de vente inconnue ou retirée pour « ${product.name} ».`,
+            );
+          const conversion = line.conversion
+            ? conversionOf(product.unit, line.conversion)
+            : null;
+          if (line.conversion && !conversion)
+            throw invalid(
+              `lines.${index}.conversion`,
+              `« ${product.name} » ne se vend pas en ${line.conversion}.`,
+            );
+          const option = unit
+            ? {
+                label: unit.label,
+                factor: toNumber(unit.factor),
+                allowsDecimals: unit.allows_decimals,
+                price:
+                  unit.sale_price === null ? null : toNumber(unit.sale_price),
+              }
+            : conversion
+              ? {
+                  label: conversion.label,
+                  factor: conversion.factor,
+                  allowsDecimals: conversion.decimals,
+                  price: null,
+                }
+              : {
+                  label: null,
+                  factor: 1,
+                  allowsDecimals: UNITS[product.unit].decimals,
+                  price: toNumber(product.sale_price),
+                };
+          const named = option.label ?? UNITS[product.unit].label;
+          if (!option.allowsDecimals && !Number.isInteger(line.quantity))
             throw invalid(
               `lines.${index}.quantity`,
-              `Nombre entier attendu pour « ${product.name} » (${UNITS[product.unit].label}).`,
+              `Nombre entier attendu pour « ${product.name} » (${named}).`,
             );
-          const catalogPrice = toNumber(product.sale_price);
+          const baseQuantity = baseQuantityOf(line.quantity, option.factor);
+          if (baseQuantity === null)
+            throw invalid(
+              `lines.${index}.quantity`,
+              `Quantité trop précise pour « ${product.name} » (${named}).`,
+            );
+          const pricing = pricingOf(
+            option,
+            toNumber(product.sale_price),
+            line.quantity,
+          );
           return {
             line,
             product,
-            unitPrice: device ? device.unitPrices[index]! : catalogPrice,
-            catalogPrice,
+            unit,
+            label: option.label,
+            factor: option.factor,
+            baseQuantity,
+            basis: pricing.basis,
+            pricedQuantity: pricing.pricedQuantity,
+            unitPrice: device ? device.unitPrices[index]! : pricing.unitPrice,
+            catalogPrice: pricing.unitPrice,
+            // Cost of one stock unit, × base_quantity for the margin.
+            unitCost:
+              product.purchase_price === null
+                ? null
+                : toNumber(product.purchase_price),
           };
         });
+        // A negotiated amount is the seller's choice, not a difference to
+        // check: only catalogue prices are compared (ADR-025, ADR-038).
         const priceReview = lines.some((l) => l.unitPrice !== l.catalogPrice);
 
         const totals = computeSaleTotals(
-          lines.map(({ line, product, unitPrice }) => ({
+          lines.map(({ line, product, unitPrice, pricedQuantity }) => ({
             unitPrice,
-            quantity: line.quantity,
+            quantity: pricedQuantity,
             taxRateBasisPoints: product.rate_basis_points,
+            agreedTotal: line.agreedTotal,
           })),
           input.discount,
         );
@@ -501,16 +609,44 @@ export class SalesService {
             `Les prix ont changé : le total est maintenant de ${formatAmount(totals.total, org.default_currency)}.`,
             [{ path: 'expectedTotal', message: String(totals.total) }],
           );
+        // Negotiated prices and discount together, against the limit of
+        // this person, if the shop set one (ADR-038).
+        const membership = await trx
+          .selectFrom('app.organization_memberships')
+          .select('max_discount_basis_points')
+          .where('organization_id', '=', tenant.organizationId)
+          .where('user_id', '=', user.userId)
+          .executeTakeFirst();
+        const limit = membership?.max_discount_basis_points ?? null;
         if (
-          !roleHasPermission(tenant.role, 'sales.cancel') &&
-          totals.subtotal > 0 &&
-          input.discount * 10000 >
-            totals.subtotal * org.seller_max_discount_basis_points
+          limit !== null &&
+          reductionBasisPoints(totals.listSubtotal, totals.total) > limit
         )
           throw new ApiException(
             HttpStatus.FORBIDDEN,
             'DISCOUNT_NOT_ALLOWED',
-            `Une remise de plus de ${org.seller_max_discount_basis_points / 100} % doit être faite par le propriétaire ou un gérant.`,
+            `Vous ne pouvez pas baisser les prix de plus de ${limit / 100} % : demandez au propriétaire ou à un gérant.`,
+          );
+
+        // Under the purchase price: refused to a seller unless the shop
+        // allows it; the managers are told otherwise (ADR-038).
+        const belowCost: BelowCostLine[] = lines.flatMap(
+          ({ product, unitCost, baseQuantity }, index) => {
+            if (unitCost === null) return [];
+            const loss =
+              Math.round(unitCost * baseQuantity) - totals.lines[index]!.paid;
+            return loss > 0 ? [{ name: product.name, loss }] : [];
+          },
+        );
+        if (
+          belowCost.length > 0 &&
+          !org.seller_can_sell_below_cost &&
+          !roleHasPermission(tenant.role, 'sales.cancel')
+        )
+          throw new ApiException(
+            HttpStatus.FORBIDDEN,
+            'BELOW_COST_NOT_ALLOWED',
+            `« ${belowCost[0]!.name} » serait vendu sous son prix d’achat (${formatAmount(belowCost[0]!.loss, org.default_currency)} de perte) : demandez au propriétaire ou à un gérant.`,
           );
 
         const problem = paymentProblem({
@@ -531,11 +667,11 @@ export class SalesService {
         // made is never refused for it (ADR-024): it is flagged for the
         // managers instead, who are told.
         const sold = new Map<string, number>();
-        for (const { line, product } of lines)
+        for (const { product, baseQuantity } of lines)
           if (product.track_stock)
             sold.set(
               product.id,
-              round3((sold.get(product.id) ?? 0) + line.quantity),
+              round3((sold.get(product.id) ?? 0) + baseQuantity),
             );
         const stockBefore = new Map<string, number>();
         if (sold.size > 0)
@@ -598,21 +734,44 @@ export class SalesService {
         await trx
           .insertInto('app.sale_lines')
           .values(
-            lines.map(({ line, product, unitPrice }, index) => ({
-              organization_id: tenant.organizationId,
-              sale_id: id,
-              position: index + 1,
-              product_id: product.id,
-              label: product.name,
-              unit: product.unit,
-              unit_price: unitPrice,
-              quantity: line.quantity,
-              line_total: totals.lines[index]!.lineTotal,
-              tax_rate_basis_points: product.rate_basis_points,
-              tax_amount: totals.lines[index]!.taxAmount,
-              // Cost at the time of the sale, for the margin (ADR-027).
-              unit_cost: product.purchase_price,
-            })),
+            lines.map(
+              (
+                {
+                  line,
+                  product,
+                  unit,
+                  label,
+                  factor,
+                  basis,
+                  unitPrice,
+                  unitCost,
+                },
+                index,
+              ) => {
+                const { lineTotal, listTotal, taxAmount } =
+                  totals.lines[index]!;
+                return {
+                  organization_id: tenant.organizationId,
+                  sale_id: id,
+                  position: index + 1,
+                  product_id: product.id,
+                  label: product.name,
+                  unit: product.unit,
+                  product_unit_id: unit?.id ?? null,
+                  unit_label: label,
+                  unit_factor: factor,
+                  price_basis: basis,
+                  unit_price: unitPrice,
+                  quantity: line.quantity,
+                  list_total: listTotal === lineTotal ? null : listTotal,
+                  line_total: lineTotal,
+                  tax_rate_basis_points: product.rate_basis_points,
+                  tax_amount: taxAmount,
+                  // Cost at the time of the sale, for the margin (ADR-027).
+                  unit_cost: unitCost,
+                };
+              },
+            ),
           )
           .execute();
         await trx
@@ -635,11 +794,11 @@ export class SalesService {
           await trx
             .insertInto('app.stock_movements')
             .values(
-              tracked.map(({ line, product }) => ({
+              tracked.map(({ product, baseQuantity }) => ({
                 organization_id: tenant.organizationId,
                 product_id: product.id,
                 kind: 'sale' as const,
-                quantity: -line.quantity,
+                quantity: -baseQuantity,
                 sale_id: id,
                 client_operation_id: randomUUID(),
                 created_by: user.userId,
@@ -657,6 +816,10 @@ export class SalesService {
             saleNumber: org.next_sale_number,
             total: totals.total,
             discount: totals.discount,
+            ...(totals.listSubtotal !== totals.subtotal
+              ? { negotiated: totals.listSubtotal - totals.subtotal }
+              : {}),
+            ...(belowCost.length > 0 ? { belowCost } : {}),
             methods: [...new Set(input.payments.map((p) => p.method))],
             ...(device
               ? {
@@ -700,6 +863,7 @@ export class SalesService {
           sellerEmail: sale.seller.email,
           priceReview,
           shortages,
+          belowCost,
           customer,
           nearLimitPercent: org.credit_near_limit_percent,
         });

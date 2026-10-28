@@ -3,6 +3,8 @@
 import {
   createCategorySchema,
   createProductSchema,
+  createProductUnitSchema,
+  createUnitTemplateSchema,
   createStockMovementSchema,
   createSupplierSchema,
   createTaxRateSchema,
@@ -10,6 +12,7 @@ import {
   PRODUCT_PHOTO_TYPES,
   updateCategorySchema,
   updateProductSchema,
+  updateProductUnitSchema,
   updateSupplierSchema,
   updateTaxRateSchema,
   type CategoryDto,
@@ -17,6 +20,7 @@ import {
   type RecordedStockMovementDto,
   type SupplierDto,
   type TaxRateDto,
+  type UnitTemplateDto,
 } from '@nagaw/shared';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -357,4 +361,122 @@ export async function updateReference(
   if (!result.ok) return apiErrorState(result);
   refresh();
   return { status: 'success', message: 'Modification enregistrée.' };
+}
+
+// ---------------------------------------------------------------------------
+// Selling units and unit templates (ADR-038)
+// ---------------------------------------------------------------------------
+
+const checked = (formData: FormData, name: string) =>
+  formData.get(name)?.toString() === 'on';
+
+export async function addProductUnit(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const shop = await shopOf(formData);
+  if (!shop.ok) return shop.error;
+  const productId = text(formData, 'productId');
+  const parsed = parseValues(createProductUnitSchema, {
+    label: text(formData, 'label'),
+    factor: quantityField(formData, 'factor'),
+    salePrice: optionalAmountField(formData, 'salePrice', shop.currency),
+    allowsDecimals: checked(formData, 'allowsDecimals'),
+    barcode: text(formData, 'barcode'),
+    clientOperationId: text(formData, 'clientOperationId'),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<ProductDto>(shop.token, {
+    method: 'POST',
+    path: `/products/${encodeURIComponent(productId)}/units`,
+    organizationId: shop.organizationId,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message: `Unité « ${parsed.data.label} » ajoutée : elle est proposée à la caisse.`,
+  };
+}
+
+/** Changes the price of a selling unit, or takes it off sale. */
+export async function updateProductUnit(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const shop = await shopOf(formData);
+  if (!shop.ok) return shop.error;
+  const productId = text(formData, 'productId');
+  const unitId = text(formData, 'unitId');
+  const archive = text(formData, 'intent') === 'archive';
+  const parsed = parseValues(updateProductUnitSchema, {
+    ...(archive
+      ? { status: 'archived' }
+      : {
+          salePrice: optionalAmountField(formData, 'salePrice', shop.currency),
+        }),
+    version: Number(text(formData, 'version')),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<ProductDto>(shop.token, {
+    method: 'PATCH',
+    path: `/products/${encodeURIComponent(productId)}/units/${encodeURIComponent(unitId)}`,
+    organizationId: shop.organizationId,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message: archive
+      ? 'Unité retirée : elle n’est plus proposée à la caisse.'
+      : 'Prix enregistré.',
+  };
+}
+
+export async function createUnitTemplate(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const shop = await shopOf(formData);
+  if (!shop.ok) return shop.error;
+  const parsed = parseValues(createUnitTemplateSchema, {
+    label: text(formData, 'label'),
+    stockUnit: text(formData, 'stockUnit'),
+    factor: quantityField(formData, 'factor'),
+    allowsDecimals: checked(formData, 'allowsDecimals'),
+    clientOperationId: text(formData, 'clientOperationId'),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<UnitTemplateDto>(shop.token, {
+    method: 'POST',
+    path: '/unit-templates',
+    organizationId: shop.organizationId,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message: `Modèle « ${parsed.data.label} » ajouté.`,
+  };
+}
+
+export async function archiveUnitTemplate(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const shop = await shopOf(formData);
+  if (!shop.ok) return shop.error;
+  const id = text(formData, 'templateId');
+  const result = await apiAsUser<UnitTemplateDto>(shop.token, {
+    method: 'PATCH',
+    path: `/unit-templates/${encodeURIComponent(id)}`,
+    organizationId: shop.organizationId,
+    body: { status: 'archived' },
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return { status: 'success', message: 'Modèle retiré.' };
 }

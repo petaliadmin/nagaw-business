@@ -5,11 +5,14 @@ import {
   quantityFitsUnit,
   stockLevel,
   type CreateProductInput,
+  type CreateProductUnitInput,
   type ProductDto,
   type ProductListQuery,
   type ProductPhotoType,
+  type ProductUnitDto,
   type Unit,
   type UpdateProductInput,
+  type UpdateProductUnitInput,
 } from '@nagaw/shared';
 import { sql, type Transaction } from 'kysely';
 import { AuditService } from '../audit/audit.service.js';
@@ -34,15 +37,48 @@ export function productNotFound(): ApiException {
   return notFound('PRODUCT_NOT_FOUND', 'Produit introuvable.');
 }
 
+function unitNotFound(): ApiException {
+  return notFound('PRODUCT_UNIT_NOT_FOUND', 'Unité de vente introuvable.');
+}
+
+function barcodeTaken(): ApiException {
+  return conflict('BARCODE_TAKEN', 'Un produit porte déjà ce code-barres.');
+}
+
 /** Name or barcode already used by an active product of the shop. */
 function translateUnique(error: unknown): unknown {
   if (pgErrorCode(error) !== UNIQUE_VIOLATION) return error;
   const constraint = (error as { constraint?: string }).constraint ?? '';
-  if (constraint.includes('barcode'))
-    return conflict('BARCODE_TAKEN', 'Un produit porte déjà ce code-barres.');
+  if (constraint.includes('barcode')) return barcodeTaken();
+  if (constraint.includes('label'))
+    return conflict('NAME_TAKEN', 'Ce produit a déjà une unité de ce nom.');
   if (constraint.includes('name'))
     return conflict('NAME_TAKEN', 'Un produit porte déjà ce nom.');
   return error;
+}
+
+interface UnitRow {
+  id: string;
+  label: string;
+  factor: number | string;
+  sale_price: number | string | null;
+  allows_decimals: boolean;
+  barcode: string | null;
+  status: 'active' | 'archived';
+  version: number;
+}
+
+function unitToDto(row: UnitRow): ProductUnitDto {
+  return {
+    id: row.id,
+    label: row.label,
+    factor: toNumber(row.factor),
+    salePrice: toNullableNumber(row.sale_price),
+    allowsDecimals: row.allows_decimals,
+    barcode: row.barcode,
+    status: row.status,
+    version: row.version,
+  };
 }
 
 /** Image type from its first bytes; the declared type is never trusted. */
@@ -129,6 +165,17 @@ export class ProductsService {
         'p.updated_at',
       ])
       .select(sql<string>`coalesce(s.quantity, 0)`.as('stock_quantity'))
+      .select(
+        sql<UnitRow[]>`coalesce((
+          select json_agg(json_build_object(
+                   'id', u.id, 'label', u.label, 'factor', u.factor,
+                   'sale_price', u.sale_price, 'allows_decimals', u.allows_decimals,
+                   'barcode', u.barcode, 'status', u.status, 'version', u.version)
+                 order by u.factor, lower(u.label))
+            from app.product_units u
+           where u.organization_id = p.organization_id and u.product_id = p.id
+             and u.status = 'active'), '[]'::json)`.as('units'),
+      )
       .where('p.organization_id', '=', organizationId);
   }
 
@@ -170,6 +217,7 @@ export class ProductsService {
       status: row.status,
       version: row.version,
       photoVersion: row.photo_sha256?.slice(0, 16) ?? null,
+      units: row.units.map(unitToDto),
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),
     };
@@ -190,6 +238,16 @@ export class ProductsService {
         eb.or([
           eb(sql`lower(p.name)`, 'like', likePattern(text)),
           eb('p.barcode', '=', text),
+          // The barcode of a pack (« paquet », « carton ») finds its product.
+          eb.exists(
+            eb
+              .selectFrom('app.product_units as u')
+              .select('u.id')
+              .whereRef('u.organization_id', '=', 'p.organization_id')
+              .whereRef('u.product_id', '=', 'p.id')
+              .where('u.status', '=', 'active')
+              .where('u.barcode', '=', text),
+          ),
         ]),
       );
     }
@@ -275,6 +333,39 @@ export class ProductsService {
     }
   }
 
+  /**
+   * A barcode names one product or one of its selling units in the shop.
+   * Each table keeps its own barcodes unique; this checks the other one.
+   */
+  private async assertBarcodeFree(
+    executor: Executor,
+    organizationId: string,
+    barcode: string | null | undefined,
+    except: { productId?: string; unitId?: string },
+  ): Promise<void> {
+    if (!barcode) return;
+    let products = executor
+      .selectFrom('app.products')
+      .select('id')
+      .where('organization_id', '=', organizationId)
+      .where('status', '=', 'active')
+      .where('barcode', '=', barcode);
+    if (except.productId)
+      products = products.where('id', '<>', except.productId);
+    let units = executor
+      .selectFrom('app.product_units')
+      .select('id')
+      .where('organization_id', '=', organizationId)
+      .where('status', '=', 'active')
+      .where('barcode', '=', barcode);
+    if (except.unitId) units = units.where('id', '<>', except.unitId);
+    const [product, unit] = await Promise.all([
+      products.executeTakeFirst(),
+      units.executeTakeFirst(),
+    ]);
+    if (product || unit) throw barcodeTaken();
+  }
+
   private assertQuantityFitsUnit(
     path: string,
     quantity: number | null | undefined,
@@ -326,6 +417,12 @@ export class ProductsService {
         if (org.max_products !== null && Number(count) >= org.max_products)
           throw limitReached('produits', org.max_products, true);
         await this.assertReferences(trx, tenant.organizationId, input);
+        await this.assertBarcodeFree(
+          trx,
+          tenant.organizationId,
+          input.barcode,
+          {},
+        );
 
         const { id } = await trx
           .insertInto('app.products')
@@ -415,10 +512,23 @@ export class ProductsService {
             'unit',
             'Le stock actuel n’est pas un nombre entier : faites d’abord un inventaire.',
           );
+        // Selling units count in the stock unit: « sac = 50 » means 50 kg.
+        if (input.unit && input.unit !== before.unit && before.units.length > 0)
+          throw invalid(
+            'unit',
+            'Retirez d’abord les autres unités de vente de ce produit : elles sont comptées dans l’unité actuelle.',
+          );
         await this.assertReferences(trx, tenant.organizationId, {
           categoryId: input.categoryId,
           taxRateId: input.taxRateId,
         });
+        if (input.status !== 'archived')
+          await this.assertBarcodeFree(
+            trx,
+            tenant.organizationId,
+            input.barcode,
+            { productId: id },
+          );
 
         const { version: _version, ...fields } = input;
         const changes: Record<string, { from: unknown; to: unknown }> = {};
@@ -472,6 +582,214 @@ export class ProductsService {
           requestId,
         });
         return this.find(trx, tenant.organizationId, id);
+      });
+    } catch (error) {
+      throw translateUnique(error);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Selling units (ADR-038)
+  // -------------------------------------------------------------------------
+
+  async createUnit(
+    tenant: TenantContext,
+    user: AuthContext,
+    productId: string,
+    input: CreateProductUnitInput,
+    requestId: string | null,
+  ): Promise<{ product: ProductDto; replayed: boolean }> {
+    try {
+      return await this.database.db.transaction().execute(async (trx) => {
+        const product = await this.lock(trx, tenant.organizationId, productId);
+        const existing = await trx
+          .selectFrom('app.product_units')
+          .select('product_id')
+          .where('organization_id', '=', tenant.organizationId)
+          .where('client_operation_id', '=', input.clientOperationId)
+          .executeTakeFirst();
+        if (existing)
+          return {
+            product: await this.find(
+              trx,
+              tenant.organizationId,
+              existing.product_id,
+            ),
+            replayed: true,
+          };
+        if (product.status !== 'active')
+          throw conflict('PRODUCT_ARCHIVED', 'Ce produit est archivé.');
+        if (!quantityFitsUnit(input.factor, product.unit))
+          throw invalid(
+            'factor',
+            'Nombre entier attendu : ce produit est compté à l’unité.',
+          );
+        const { max_product_units } = await trx
+          .selectFrom('app.organizations')
+          .select('max_product_units')
+          .where('id', '=', tenant.organizationId)
+          .executeTakeFirstOrThrow();
+        if (product.units.length >= max_product_units)
+          throw limitReached('unités de vente par produit', max_product_units);
+        await this.assertBarcodeFree(
+          trx,
+          tenant.organizationId,
+          input.barcode,
+          {},
+        );
+
+        const { id } = await trx
+          .insertInto('app.product_units')
+          .values({
+            organization_id: tenant.organizationId,
+            product_id: productId,
+            label: input.label,
+            factor: input.factor,
+            sale_price: input.salePrice,
+            allows_decimals: input.allowsDecimals,
+            barcode: input.barcode,
+            client_operation_id: input.clientOperationId,
+            created_by: user.userId,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await this.audit.record(trx, {
+          organizationId: tenant.organizationId,
+          actorType: 'user',
+          actorId: user.userId,
+          action: 'product.unit_added',
+          targetType: 'product',
+          targetId: productId,
+          metadata: {
+            unitId: id,
+            label: input.label,
+            factor: input.factor,
+            salePrice: input.salePrice,
+          },
+          requestId,
+        });
+        return {
+          product: await this.find(trx, tenant.organizationId, productId),
+          replayed: false,
+        };
+      });
+    } catch (error) {
+      throw translateUnique(error);
+    }
+  }
+
+  async updateUnit(
+    tenant: TenantContext,
+    user: AuthContext,
+    productId: string,
+    unitId: string,
+    input: UpdateProductUnitInput,
+    requestId: string | null,
+  ): Promise<ProductDto> {
+    if (!UUID_RE.test(unitId)) throw unitNotFound();
+    try {
+      return await this.database.db.transaction().execute(async (trx) => {
+        await this.lock(trx, tenant.organizationId, productId);
+        const before = await trx
+          .selectFrom('app.product_units')
+          .select([
+            'id',
+            'label',
+            'factor',
+            'sale_price',
+            'allows_decimals',
+            'barcode',
+            'status',
+            'version',
+          ])
+          .where('organization_id', '=', tenant.organizationId)
+          .where('product_id', '=', productId)
+          .where('id', '=', unitId)
+          .executeTakeFirst();
+        if (!before) throw unitNotFound();
+        if (before.version !== input.version)
+          throw new ApiException(
+            HttpStatus.CONFLICT,
+            'VERSION_CONFLICT',
+            'Cette unité a été modifiée entre-temps. Rechargez la page pour voir la dernière version.',
+          );
+        const status = input.status ?? before.status;
+        if (status === 'active') {
+          await this.assertBarcodeFree(
+            trx,
+            tenant.organizationId,
+            input.barcode === undefined ? before.barcode : input.barcode,
+            { unitId },
+          );
+          if (before.status === 'archived') {
+            const [{ count }, { max_product_units }] = await Promise.all([
+              trx
+                .selectFrom('app.product_units')
+                .select((eb) => eb.fn.countAll<string>().as('count'))
+                .where('organization_id', '=', tenant.organizationId)
+                .where('product_id', '=', productId)
+                .where('status', '=', 'active')
+                .executeTakeFirstOrThrow(),
+              trx
+                .selectFrom('app.organizations')
+                .select('max_product_units')
+                .where('id', '=', tenant.organizationId)
+                .executeTakeFirstOrThrow(),
+            ]);
+            if (Number(count) >= max_product_units)
+              throw limitReached(
+                'unités de vente par produit',
+                max_product_units,
+              );
+          }
+        }
+
+        const { version: _version, ...fields } = input;
+        const current: Record<string, unknown> = {
+          label: before.label,
+          salePrice: toNullableNumber(before.sale_price),
+          allowsDecimals: before.allows_decimals,
+          barcode: before.barcode,
+          status: before.status,
+        };
+        const changes: Record<string, { from: unknown; to: unknown }> = {};
+        for (const [key, to] of Object.entries(fields))
+          if (to !== undefined && to !== current[key])
+            changes[key] = { from: current[key], to };
+        if (Object.keys(changes).length > 0) {
+          await trx
+            .updateTable('app.product_units')
+            .set({
+              label: input.label,
+              sale_price: input.salePrice,
+              allows_decimals: input.allowsDecimals,
+              barcode: input.barcode,
+              status: input.status,
+              version: sql`version + 1`,
+            })
+            .where('organization_id', '=', tenant.organizationId)
+            .where('id', '=', unitId)
+            .execute();
+          await this.audit.record(trx, {
+            organizationId: tenant.organizationId,
+            actorType: 'user',
+            actorId: user.userId,
+            action:
+              changes.status?.to === 'archived'
+                ? 'product.unit_archived'
+                : 'product.unit_updated',
+            targetType: 'product',
+            targetId: productId,
+            metadata: {
+              unitId,
+              label: before.label,
+              factor: toNumber(before.factor),
+              changes,
+            },
+            requestId,
+          });
+        }
+        return this.find(trx, tenant.organizationId, productId);
       });
     } catch (error) {
       throw translateUnique(error);

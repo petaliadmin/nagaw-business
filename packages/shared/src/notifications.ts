@@ -209,6 +209,8 @@ export const updateNotificationSettingsSchema = z
       b.dailySummaryHour.max,
       'h',
     ).optional(),
+    /** A seller may sell under the purchase price (ADR-038). */
+    sellerCanSellBelowCost: z.boolean().optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {
@@ -225,6 +227,7 @@ export interface NotificationSettingsDto {
   creditOverdueDays: number;
   creditNearLimitPercent: number;
   dailySummaryHour: number;
+  sellerCanSellBelowCost: boolean;
 }
 
 // ---------------------------------------------------------------------------

@@ -64,6 +64,18 @@ export function quantityFitsUnit(quantity: number, unit: Unit): boolean {
   return UNITS[unit].decimals || Number.isInteger(quantity);
 }
 
+/**
+ * Stock units taken by `quantity` of a selling unit worth `factor` of them
+ * (ADR-038); null when the result needs more than 3 decimals.
+ */
+export function baseQuantityOf(
+  quantity: number,
+  factor: number,
+): number | null {
+  const base = quantity * factor;
+  return hasAtMostThreeDecimals(base) ? Math.round(base * 1000) / 1000 : null;
+}
+
 export const amountSchema = z
   .number({ error: 'Montant invalide' })
   .int('Montant invalide')
@@ -311,7 +323,9 @@ export interface ProductDto {
   id: string;
   name: string;
   category: { id: string; name: string; color: CategoryColor } | null;
+  /** Stock unit: the stock, the inventory and the purchase price use it. */
   unit: Unit;
+  /** Price of one stock unit. */
   salePrice: number;
   purchasePrice: number | null;
   taxRate: { id: string; name: string; rateBasisPoints: number } | null;
@@ -325,8 +339,226 @@ export interface ProductDto {
   version: number;
   /** Changes with the photo (cache key); null without photo. */
   photoVersion: string | null;
+  /** Other units it is sold in (active ones), smallest first. */
+  units: ProductUnitDto[];
   createdAt: string;
   updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Selling units (ADR-038)
+// ---------------------------------------------------------------------------
+
+const unitLabel = z
+  .string()
+  .trim()
+  .min(1, 'Donnez un nom à cette unité')
+  .max(60, '60 caractères au plus');
+
+/** Stock units in one selling unit, never changed afterwards. */
+const factorSchema = quantitySchema.positive('Le nombre doit être positif');
+
+export const createProductUnitSchema = z
+  .object({
+    label: unitLabel,
+    factor: factorSchema,
+    /** Null: priced from the stock unit (its price × the stock taken). */
+    salePrice: amountSchema.nullable().default(null),
+    allowsDecimals: z.boolean().default(false),
+    barcode: barcode.nullable().default(null),
+    clientOperationId: uuid,
+  })
+  .strict();
+export type CreateProductUnitInput = z.infer<typeof createProductUnitSchema>;
+
+/** The factor cannot change: archive the unit and create another one. */
+export const updateProductUnitSchema = z
+  .object({
+    label: unitLabel.optional(),
+    salePrice: amountSchema.nullable().optional(),
+    allowsDecimals: z.boolean().optional(),
+    barcode: barcode.nullable().optional(),
+    status: archivableStatus.optional(),
+    version: z.number().int().min(1),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 1, {
+    message: 'Aucun champ à modifier',
+  });
+export type UpdateProductUnitInput = z.infer<typeof updateProductUnitSchema>;
+
+export interface ProductUnitDto {
+  id: string;
+  label: string;
+  factor: number;
+  /** Null: priced from the stock unit. */
+  salePrice: number | null;
+  allowsDecimals: boolean;
+  barcode: string | null;
+  status: CatalogStatus;
+  version: number;
+}
+
+// ---------------------------------------------------------------------------
+// Unit templates of the shop (ADR-038)
+// ---------------------------------------------------------------------------
+
+export const createUnitTemplateSchema = z
+  .object({
+    label: unitLabel,
+    stockUnit: z.enum(UNIT_KEYS, { error: 'Unité inconnue' }),
+    factor: factorSchema,
+    allowsDecimals: z.boolean().default(false),
+    clientOperationId: uuid,
+  })
+  .strict()
+  .refine((value) => quantityFitsUnit(value.factor, value.stockUnit), {
+    path: ['factor'],
+    message: 'Nombre entier attendu pour cette unité',
+  });
+export type CreateUnitTemplateInput = z.infer<typeof createUnitTemplateSchema>;
+
+/** A template is copied into products: changing it changes no product. */
+export const updateUnitTemplateSchema = z
+  .object({
+    label: unitLabel.optional(),
+    allowsDecimals: z.boolean().optional(),
+    status: archivableStatus.optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'Aucun champ à modifier',
+  });
+export type UpdateUnitTemplateInput = z.infer<typeof updateUnitTemplateSchema>;
+
+export interface UnitTemplateDto {
+  id: string;
+  label: string;
+  stockUnit: Unit;
+  factor: number;
+  allowsDecimals: boolean;
+  status: CatalogStatus;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// What a product is sold in, at the counter (ADR-038)
+// ---------------------------------------------------------------------------
+
+export interface UnitConversion {
+  code: string;
+  label: string;
+  /** Stock units in one of it. */
+  factor: number;
+  decimals: boolean;
+}
+
+/**
+ * Standard conversions, offered for every product counted in this stock
+ * unit without anything to record, priced from the stock unit.
+ */
+export const UNIT_CONVERSIONS: Partial<
+  Record<Unit, readonly UnitConversion[]>
+> = {
+  kg: [{ code: 'g', label: 'g', factor: 0.001, decimals: false }],
+  g: [{ code: 'kg', label: 'kg', factor: 1000, decimals: true }],
+  litre: [
+    { code: 'cl', label: 'cl', factor: 0.01, decimals: false },
+    { code: 'ml', label: 'ml', factor: 0.001, decimals: false },
+  ],
+  ml: [{ code: 'litre', label: 'litre', factor: 1000, decimals: true }],
+  metre: [{ code: 'cm', label: 'cm', factor: 0.01, decimals: false }],
+};
+
+export const CONVERSION_CODES = [
+  ...new Set(
+    Object.values(UNIT_CONVERSIONS).flatMap((list) =>
+      (list ?? []).map((c) => c.code),
+    ),
+  ),
+] as [string, ...string[]];
+
+export function conversionOf(
+  stockUnit: Unit,
+  code: string,
+): UnitConversion | null {
+  return UNIT_CONVERSIONS[stockUnit]?.find((c) => c.code === code) ?? null;
+}
+
+/** One way to sell a product: its stock unit, a conversion or a unit. */
+export interface SellingOption {
+  /** `stock`, `conversion:g` or `unit:<id>`. */
+  key: string;
+  productUnitId: string | null;
+  conversion: string | null;
+  /** Null for the stock unit (its own label is used). */
+  label: string | null;
+  factor: number;
+  allowsDecimals: boolean;
+  /** Price of one; null: priced from the stock unit. */
+  price: number | null;
+}
+
+/** The stock unit first, then the conversions, then the product's units. */
+export function sellingOptionsOf(
+  product: Pick<ProductDto, 'unit' | 'salePrice' | 'units'>,
+): SellingOption[] {
+  return [
+    {
+      key: 'stock',
+      productUnitId: null,
+      conversion: null,
+      label: null,
+      factor: 1,
+      allowsDecimals: UNITS[product.unit].decimals,
+      price: product.salePrice,
+    },
+    ...(UNIT_CONVERSIONS[product.unit] ?? []).map((c) => ({
+      key: `conversion:${c.code}`,
+      productUnitId: null,
+      conversion: c.code,
+      label: c.label,
+      factor: c.factor,
+      allowsDecimals: c.decimals,
+      price: null,
+    })),
+    ...product.units.map((u) => ({
+      key: `unit:${u.id}`,
+      productUnitId: u.id,
+      conversion: null,
+      label: u.label,
+      factor: u.factor,
+      allowsDecimals: u.allowsDecimals,
+      price: u.salePrice,
+    })),
+  ];
+}
+
+/**
+ * How a line of `quantity` of this option is priced: a unit with its own
+ * price costs that price × quantity; anything else costs the stock unit's
+ * price × the stock it takes (« 250 g » of rice at 650 F the kg).
+ */
+export function pricingOf(
+  option: Pick<SellingOption, 'factor' | 'price'>,
+  stockPrice: number,
+  quantity: number,
+): { basis: 'unit' | 'stock'; unitPrice: number; pricedQuantity: number } {
+  return option.price !== null
+    ? { basis: 'unit', unitPrice: option.price, pricedQuantity: quantity }
+    : {
+        basis: 'stock',
+        unitPrice: stockPrice,
+        pricedQuantity: baseQuantityOf(quantity, option.factor) ?? 0,
+      };
+}
+
+/** Price of one of this option, for display (rounded to the franc). */
+export function displayPriceOf(
+  option: Pick<SellingOption, 'factor' | 'price'>,
+  stockPrice: number,
+): number {
+  return option.price ?? Math.round(stockPrice * option.factor);
 }
 
 export const STOCK_FILTERS = ['low', 'out'] as const;

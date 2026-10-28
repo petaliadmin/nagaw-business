@@ -4,10 +4,21 @@ import { ProductsService } from './products.service.js';
 import { ReferencesController } from './references.controller.js';
 import { ReferencesService } from './references.service.js';
 import { StockService } from './stock.service.js';
+import { UnitTemplatesController } from './unit-templates.controller.js';
+import { UnitTemplatesService } from './unit-templates.service.js';
 
 @Module({
-  controllers: [ReferencesController, ProductsController],
-  providers: [ReferencesService, ProductsService, StockService],
+  controllers: [
+    ReferencesController,
+    ProductsController,
+    UnitTemplatesController,
+  ],
+  providers: [
+    ReferencesService,
+    ProductsService,
+    StockService,
+    UnitTemplatesService,
+  ],
   // The offline checkout sends stock corrections with its sales.
   exports: [StockService],
 })

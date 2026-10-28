@@ -702,3 +702,50 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Statut** : livré sur la branche `claude/caisse-toujours-ouverte`, en attente de fusion. Aucune migration.
 - **Changements** : un nouveau téléphone n'est plus refusé quand l'offre est à son nombre d'appareils (dépassement inscrit dans l'historique) ; la caisse s'ouvre avec la copie du téléphone quelle que soit l'erreur du serveur ; sans copie, nouvel essai automatique toutes les 15 s et au retour du réseau.
 - **Tests** : intégration (abonnements : un téléphone au-delà de l'offre est accepté) ; lint, typecheck, unitaires, build.
+
+## Après la Phase 18 — Unités de vente et prix négocié (ADR-038), étape 1
+
+- **Objectif** : demande du propriétaire du 2026-10-28 : vendre un article dans plusieurs unités (sac et kilo, pièce de tissu et mètre) et garder le prix réellement payé après négociation.
+- **Statut** : étape 1 (base, contrats, API, tests) livrée sur la branche `claude/multi-unites-prix-negocie`, en attente de validation. Étapes 2 (écrans) et 3 (entrées, inventaire, factures et statistiques) à valider.
+- **Migration** : `20261028090000_product_units.sql` : table `product_units` (facteur immuable par trigger), colonnes d'unité et de prix négocié de `sale_lines` (`base_quantity` calculée), `max_product_units` et `seller_can_sell_below_cost` sur `organizations`, `max_discount_basis_points` sur `organization_memberships`, `organizations.seller_max_discount_basis_points` n'est plus lue (gardée pour que l'API en production continue de fonctionner une fois la migration appliquée ; à supprimer par une migration ultérieure). La migration est uniquement additive.
+- **API** :
+  - `POST /products/:id/units`, `PATCH /products/:id/units/:unitId` ; les produits renvoient leurs unités actives ; la recherche par code-barres trouve aussi celui d'une unité ;
+  - une ligne de vente (en ligne et hors ligne) accepte `productUnitId` et `agreedTotal` ; le stock sort dans l'unité de stock ; le coût de la ligne est celui de l'unité ;
+  - limite de réduction par personne (vide = sans limite), réglable par `PATCH /organizations/current/members/:userId` ; vente sous le prix d'achat refusée aux vendeurs sauf réglage, signalée aux gérants ;
+  - statistiques et chiffres du vendeur comptés dans l'unité de stock ; facture d'une vente avec les négociations dans la remise.
+- **Web** : le ticket et le détail d'une vente affichent l'unité de vente (« 2 × sac de 50 kg ») et « Prix convenu avec le client, au lieu de … » ; la caisse envoie les nouveaux champs (unité de stock, sans négociation) et le stock local tient compte du facteur. Aucun écran de saisie dans cette étape.
+- **Tests exécutés** :
+
+  | Commande                                    | Résultat                                                                                                                                                                                                                                                                                                                        |
+  | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `pnpm lint`, `pnpm typecheck`, `pnpm build` | OK                                                                                                                                                                                                                                                                                                                              |
+  | `pnpm test`                                 | OK (shared 75 dont 8 nouveaux : montant convenu, remise répartie, vente pour un montant, mesure de la réduction, conversion d'unité, facteur immuable ; api 49 ; web 139)                                                                                                                                                       |
+  | `pnpm test:integration`                     | 177 tests OK, dont 10 nouveaux (`product-units.integration-spec.ts`) : création et rejeu, nom, code-barres partagé, nombres entiers, plafond, facteur immuable (API et base), isolation entre boutiques, sortie de stock convertie, coût de l'unité, prix convenu, facture, limite par vendeur, vente à perte, vente hors ligne |
+  | `pnpm format:check`                         | fichiers modifiés conformes ; la vérification globale signale les fichiers non touchés en CRLF sur ce poste (`core.autocrlf=true`)                                                                                                                                                                                              |
+
+- **Tests modifiés** (règle changée par la décision du propriétaire, pas désactivés) : la limite de remise de 10 % des vendeurs devient une limite par personne, vide par défaut (`sales`, `sync`).
+- **Actions du propriétaire** : valider l'étape 1 ; appliquer la migration en production à la fusion. Effet immédiat : les vendeurs n'ont plus la limite de 10 % de remise, mais ne peuvent plus vendre sous le prix d'achat.
+
+## Après la Phase 18 — Unités configurables et règles de négociation (ADR-038), étape 2
+
+- **Objectif** : demande du propriétaire du 2026-10-28 : « unités configurables et règles de négociation configurables ; à la vente on peut choisir des sous-multiples, multiples ou autres unités logiques ». Choix : conversions automatiques et modèles de la boutique, prix calculé modifiable, règles par vendeur, écrans compris.
+- **Statut** : livrée sur la branche `claude/multi-unites-prix-negocie` avec l'étape 1, en attente de validation. La migration de l'étape 1, non fusionnée, a été complétée (pas de seconde migration).
+- **Base** : `unit_templates` (plafond `max_unit_templates`) ; `product_units.sale_price` facultatif (prix calculé) ; `sale_lines.price_basis` ; le coût d'une ligne est gardé par unité de stock (× `base_quantity` dans la marge).
+- **API** : conversions standard sur une ligne de vente (`conversion` : `g`, `kg`, `cl`, `ml`, `litre`, `cm`), en ligne et hors ligne ; `GET/POST/PATCH /unit-templates` ; `sellerCanSellBelowCost` dans `/notifications/settings` ; la liste des boutiques d'une personne (`/me`) donne sa propre limite de réduction ; facture d'une ligne au prix calculé reprise dans l'unité de stock.
+- **Web** :
+  - **caisse** : un produit qui a plusieurs unités ouvre le choix de l'unité (« kg », « g », « Sac de 50 kg ») ; une ligne par produit et par unité ; « Changer le prix » sur chaque ligne (montant convenu, « Servir pour ce montant » qui calcule la quantité, « Remettre le prix affiché ») ; prix barré et réduction totale affichés ; la limite de la personne et la règle du prix d'achat sont vérifiées avant la vente, avec le motif ; le stock demandé est additionné sur toutes les unités d'un produit ; le ticket local garde l'unité et le prix convenu ;
+  - **fiche produit** : section « Unités de vente » (unité de stock, conversions automatiques, unités du produit avec prix fixe ou calculé), ajout depuis un modèle, changement de prix, retrait ;
+  - **Produits → Unités** : conversions automatiques et modèles de la boutique (ajout, retrait) ;
+  - **Équipe** : colonne et champ « Baisse de prix maximale (%) », vide = sans limite ;
+  - **Paramètres** : « Les vendeurs peuvent vendre sous le prix d'achat ».
+- **Tests exécutés** :
+
+  | Commande                                    | Résultat                                                                                                                                                                                                                                                                                        |
+  | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `pnpm lint`, `pnpm typecheck`, `pnpm build` | OK                                                                                                                                                                                                                                                                                              |
+  | `pnpm test`                                 | OK (shared 78 : unités proposées, prix fixe ou calculé, une unité par ligne, description d'une ligne ; api 49 ; web 143 : panier multi-unités, quantité pour un montant, limite du vendeur, prix d'achat, stock local en grammes)                                                               |
+  | `pnpm test:integration`                     | 181 tests OK, dont 14 dans `product-units.integration-spec.ts` : en plus de l'étape 1, vente en grammes et sa facture, unité au prix calculé puis fixé, modèles (rejeu, nom, entiers, plafond, droits, isolation entre boutiques, retrait), réglage du prix d'achat, limite lue par la personne |
+  | Playwright                                  | **non exécuté** : sur ce poste, Windows refuse le port 54400 au faux serveur (`EACCES`) ; les parcours de caisse sont à vérifier en CI                                                                                                                                                          |
+
+- **Tests retirés** : `shortagesOf` (stock local) n'est plus utilisé ; le calcul du stock demandé sur toutes les unités d'un produit (`wantedStock`) le remplace et est testé.
+- **Limites** : entrées et inventaire toujours saisis dans l'unité de stock ; devis et factures saisis à la main sans unité de vente (étape 3).

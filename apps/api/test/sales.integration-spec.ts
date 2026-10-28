@@ -233,13 +233,22 @@ describe('Sales and customers', () => {
       expect(foreign.body.error.details[0].message).toBe(
         'Produit inconnu ou archivé.',
       );
-      // Sellers: 10 % at most by default; managers: any.
+      // No limit by default; a limit is set seller by seller (ADR-038).
       const big = {
         lines: [{ productId: service.id, quantity: 1 }],
         discount: 400,
         payments: [{ method: 'cash', amount: 1600 }],
         expectedTotal: 1600,
       };
+      await sell(big, carol).expect(201);
+      const limit = (maxDiscountBasisPoints: number | null) =>
+        ctx
+          .http()
+          .patch(`/api/v1/organizations/current/members/${carol.id}`)
+          .set(as(alice, acmeId))
+          .send({ maxDiscountBasisPoints })
+          .expect(200);
+      expect((await limit(1000)).body.maxDiscountBasisPoints).toBe(1000);
       const refused = await sell(big, carol).expect(403);
       expect(refused.body.error.code).toBe('DISCOUNT_NOT_ALLOWED');
       await sell(
@@ -252,6 +261,7 @@ describe('Sales and customers', () => {
         carol,
       ).expect(201);
       await sell(big, alice).expect(201);
+      await limit(null);
       // The reader never sells.
       await cashSale([{ productId: water.id, quantity: 1 }], 500, dan).expect(
         403,

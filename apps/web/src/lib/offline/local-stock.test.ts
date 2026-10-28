@@ -1,10 +1,6 @@
 import type { ProductDto, SyncOperation } from '@nagaw/shared';
 import { describe, expect, it } from 'vitest';
-import {
-  applyPendingStock,
-  correctionProblem,
-  shortagesOf,
-} from './local-stock';
+import { applyPendingStock, correctionProblem } from './local-stock';
 
 const product = (overrides: Partial<ProductDto> = {}): ProductDto => ({
   id: 'rice',
@@ -22,6 +18,7 @@ const product = (overrides: Partial<ProductDto> = {}): ProductDto => ({
   status: 'active',
   version: 1,
   photoVersion: null,
+  units: [],
   createdAt: '2026-10-26T08:00:00Z',
   updatedAt: '2026-10-26T08:00:00Z',
   ...overrides,
@@ -35,7 +32,16 @@ const sale = (productId: string, quantity: number): SyncOperation => ({
     occurredAt: '2026-10-26T09:00:00Z',
     customerId: null,
     customerOperationId: null,
-    lines: [{ productId, quantity, unitPrice: 1000 }],
+    lines: [
+      {
+        productId,
+        productUnitId: null,
+        conversion: null,
+        quantity,
+        unitPrice: 1000,
+        agreedTotal: null,
+      },
+    ],
     discount: 0,
     payments: [
       { method: 'cash', amount: 1000, provider: null, reference: null },
@@ -65,6 +71,15 @@ describe('applyPendingStock', () => {
     expect(rice).toMatchObject({ stockQuantity: 6, stockLevel: 'ok' });
   });
 
+  it('converts what was sold in another unit (ADR-038)', () => {
+    const grams: SyncOperation = {
+      ...sale('rice', 250),
+    };
+    if (grams.type === 'sale') grams.data.lines[0]!.conversion = 'g';
+    const [rice] = applyPendingStock([product({ unit: 'kg' })], [grams]);
+    expect(rice?.stockQuantity).toBe(4.75);
+  });
+
   it('updates the level shown on the tile', () => {
     expect(applyPendingStock([product()], [sale('rice', 3)])[0]).toMatchObject({
       stockQuantity: 2,
@@ -82,20 +97,6 @@ describe('applyPendingStock', () => {
     const result = applyPendingStock([untracked, other], [sale('service', 3)]);
     expect(result[0]).toBe(untracked);
     expect(result[1]).toBe(other);
-  });
-});
-
-describe('shortagesOf', () => {
-  it('lists the lines asking for more than the known stock', () => {
-    const rice = product();
-    const service = product({ id: 's', trackStock: false, stockQuantity: 0 });
-    expect(
-      shortagesOf([
-        { product: rice, quantity: 7 },
-        { product: service, quantity: 3 },
-        { product: product({ id: 'oil' }), quantity: 5 },
-      ]),
-    ).toEqual([{ product: rice, wanted: 7, known: 5 }]);
   });
 });
 

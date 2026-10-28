@@ -44,7 +44,12 @@ export async function GET() {
       },
       products: products.data,
       customers: customers.data,
-      rules: { stockCorrectionMax: settings.data.sellerStockCorrectionMax },
+      rules: {
+        stockCorrectionMax: settings.data.sellerStockCorrectionMax,
+        sellerCanSellBelowCost: settings.data.sellerCanSellBelowCost,
+        // This person's own limit in this shop (ADR-038).
+        maxDiscountBasisPoints: organization.maxDiscountBasisPoints,
+      },
       devices: devices.data.filter(
         (d) => !d.revokedAt && d.user.userId === workspace.me.id,
       ),

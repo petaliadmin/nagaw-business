@@ -97,6 +97,8 @@ export async function updateNotificationSettings(
     creditOverdueDays: text(formData, 'creditOverdueDays'),
     creditNearLimitPercent: text(formData, 'creditNearLimitPercent'),
     dailySummaryHour: text(formData, 'dailySummaryHour'),
+    // A checkbox: absent when unchecked (ADR-038).
+    sellerCanSellBelowCost: text(formData, 'sellerCanSellBelowCost') === 'on',
   });
   if (!parsed.ok) return parsed.state;
   const result = await apiAsUser<NotificationSettingsDto>(

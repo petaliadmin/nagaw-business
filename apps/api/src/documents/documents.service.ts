@@ -4,6 +4,7 @@ import {
   computeDocumentTotals,
   formatDocumentNumber,
   quantityFitsUnit,
+  UNIT_KEYS,
   UNITS,
   type CancelInvoiceInput,
   type CreateInvoiceInput,
@@ -19,6 +20,7 @@ import {
   type ShopIdentityDto,
   type UpdateInvoiceInput,
   type UpdateQuoteInput,
+  type Unit,
 } from '@nagaw/shared';
 import { sql, type Transaction } from 'kysely';
 import { AuditService } from '../audit/audit.service.js';
@@ -44,6 +46,19 @@ const invoiceNotFound = () =>
   notFound('INVOICE_NOT_FOUND', 'Facture introuvable.');
 
 /** YYYY-MM-DD plus n days (calendar arithmetic, no time zone involved). */
+/**
+ * Unit of an invoice line for a selling unit of the counter (ADR-038):
+ * « sac de 50 kg » reads as « sac », anything else as « pièce ». Null when
+ * the quantity does not fit it (« 1,5 sac »).
+ */
+function documentUnitOf(label: string, quantity: number): Unit | null {
+  const word = label.toLowerCase().split(/\s+/)[0] ?? '';
+  const unit =
+    UNIT_KEYS.find((key) => key === word || UNITS[key].label === word) ??
+    'piece';
+  return quantityFitsUnit(quantity, unit) ? unit : null;
+}
+
 function addDays(day: string, n: number): string {
   const date = new Date(`${day}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() + n);
@@ -874,25 +889,63 @@ export class DocumentsService {
             'product_id',
             'label',
             'unit',
+            'unit_label',
+            'price_basis',
             'unit_price',
             'quantity',
+            'base_quantity',
+            'list_total',
+            'line_total',
             'tax_rate_basis_points',
           ])
           .where('organization_id', '=', tenant.organizationId)
           .where('sale_id', '=', saleId)
           .orderBy('position')
           .execute();
+        // The invoice shows the catalogue prices; the negotiated amounts
+        // (ADR-038) join the discount, so that it totals what was paid.
+        const negotiated = lines.reduce(
+          (sum, line) =>
+            sum +
+            toNumber(line.list_total ?? line.line_total) -
+            toNumber(line.line_total),
+          0,
+        );
+        if (negotiated < 0)
+          throw conflict(
+            'SALE_NOT_INVOICEABLE',
+            'Cette vente a des prix augmentés à la caisse : faites plutôt une facture à part.',
+          );
         return this.insertDraft(trx, tenant, user, {
           customerId,
-          lines: lines.map((line) => ({
-            productId: line.product_id,
-            label: line.label,
-            unit: line.unit,
-            quantity: toNumber(line.quantity),
-            unitPrice: toNumber(line.unit_price),
-            taxRateBasisPoints: line.tax_rate_basis_points,
-          })),
-          discount: toNumber(sale.discount),
+          lines: lines.map((line, index) => {
+            // Priced from the stock unit (« 250 g » at 650 F the kg): the
+            // invoice counts the stock taken, at the price of the stock unit.
+            const byStock = line.price_basis === 'stock';
+            const quantity = toNumber(
+              byStock ? line.base_quantity : line.quantity,
+            );
+            const unit =
+              line.unit_label && !byStock
+                ? documentUnitOf(line.unit_label, quantity)
+                : line.unit;
+            if (!unit)
+              throw conflict(
+                'SALE_NOT_INVOICEABLE',
+                `La ligne ${index + 1} (${line.unit_label}) ne peut pas être reprise telle quelle : faites plutôt une facture à part.`,
+              );
+            return {
+              productId: line.product_id,
+              label: line.unit_label
+                ? `${line.label} (${line.unit_label})`.slice(0, 160)
+                : line.label,
+              unit,
+              quantity,
+              unitPrice: toNumber(line.unit_price),
+              taxRateBasisPoints: line.tax_rate_basis_points,
+            };
+          }),
+          discount: toNumber(sale.discount) + negotiated,
           notes: `Vente n° ${String(sale.sale_number).padStart(6, '0')} réglée en caisse.`,
           dueDate: null,
           clientOperationId: input.clientOperationId,

@@ -64,6 +64,7 @@ export class MembersService {
             'm.user_id',
             'm.role',
             'm.status',
+            'm.max_discount_basis_points',
             'm.created_at',
             'p.email',
             'p.display_name',
@@ -89,12 +90,20 @@ export class MembersService {
 
         const role = input.role ?? target.role;
         const status = input.status ?? target.status;
+        const maxDiscount =
+          input.maxDiscountBasisPoints === undefined
+            ? target.max_discount_basis_points
+            : input.maxDiscountBasisPoints;
         if (target.status === 'disabled' && status === 'active')
           await assertMemberRoom(trx, tenant.organizationId, false);
-        if (role !== target.role || status !== target.status) {
+        if (
+          role !== target.role ||
+          status !== target.status ||
+          maxDiscount !== target.max_discount_basis_points
+        ) {
           await trx
             .updateTable('app.organization_memberships')
-            .set({ role, status })
+            .set({ role, status, max_discount_basis_points: maxDiscount })
             .where('id', '=', target.id)
             .execute();
 
@@ -111,6 +120,17 @@ export class MembersService {
               ...base,
               action: 'member.role_changed',
               metadata: { email: target.email, from: target.role, to: role },
+            });
+          }
+          if (maxDiscount !== target.max_discount_basis_points) {
+            await this.audit.record(trx, {
+              ...base,
+              action: 'member.discount_limit_changed',
+              metadata: {
+                email: target.email,
+                from: target.max_discount_basis_points,
+                to: maxDiscount,
+              },
             });
           }
           if (status !== target.status) {
@@ -131,6 +151,7 @@ export class MembersService {
           displayName: target.display_name,
           role,
           status,
+          maxDiscountBasisPoints: maxDiscount,
           joinedAt: target.created_at.toISOString(),
         };
       });

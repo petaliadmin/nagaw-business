@@ -24,9 +24,20 @@ export const updateMemberSchema = z
   .object({
     role: roleSchema.optional(),
     status: z.enum(MEMBER_STATUSES).optional(),
+    /**
+     * Largest reduction (negotiated prices and discount) this person may
+     * give on a sale, in basis points; null: no limit (ADR-038).
+     */
+    maxDiscountBasisPoints: z
+      .number({ error: 'Limite invalide' })
+      .int('Limite invalide')
+      .min(0, 'La limite ne peut pas être négative')
+      .max(10000, 'La limite ne peut pas dépasser 100 %')
+      .nullable()
+      .optional(),
   })
   .strict()
-  .refine((value) => value.role !== undefined || value.status !== undefined, {
+  .refine((value) => Object.values(value).some((v) => v !== undefined), {
     message: 'Aucun champ à modifier',
   });
 export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;

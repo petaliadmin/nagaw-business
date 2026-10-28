@@ -50,7 +50,7 @@ interface ServerData {
   products: ProductDto[];
   customers: CustomerDto[];
   devices: DeviceDto[];
-  rules: { stockCorrectionMax: number };
+  rules: NonNullable<ShopSnapshot['rules']>;
 }
 
 function deviceLabel(): string {
@@ -233,8 +233,15 @@ function asSale(ticket: LocalTicket): SaleDto {
       productId: '',
       label: line.label,
       unit: line.unit,
+      productUnitId: line.productUnitId ?? null,
+      unitLabel: line.unitLabel ?? null,
+      unitFactor: line.unitFactor ?? 1,
+      priceBasis: line.priceBasis ?? 'unit',
       unitPrice: line.unitPrice,
       quantity: line.quantity,
+      baseQuantity:
+        Math.round(line.quantity * (line.unitFactor ?? 1) * 1000) / 1000,
+      listTotal: line.listTotal ?? line.lineTotal,
       lineTotal: line.lineTotal,
       taxRateBasisPoints: null,
       taxAmount: 0,
@@ -472,11 +479,16 @@ export function CaisseApp() {
             occurredAt: new Date().toISOString(),
             customerId: pendingCustomer ? null : (draft.customer?.id ?? null),
             customerOperationId: pendingCustomer?.pendingOperationId ?? null,
-            lines: draft.lines.map(({ product, quantity }) => ({
-              productId: product.id,
-              quantity,
-              unitPrice: product.salePrice,
-            })),
+            lines: draft.lines.map(
+              ({ product, option, quantity, pricing, agreedTotal }) => ({
+                productId: product.id,
+                productUnitId: option.productUnitId,
+                conversion: option.conversion,
+                quantity,
+                unitPrice: pricing.unitPrice,
+                agreedTotal,
+              }),
+            ),
             discount: draft.totals.discount,
             payments: draft.payments,
             cashReceived: draft.cashReceived,
@@ -490,13 +502,27 @@ export function CaisseApp() {
               occurredAt: operation.data.occurredAt,
               customerName: draft.customer?.name ?? null,
               customerPhone: draft.customer?.phone ?? null,
-              lines: draft.lines.map(({ product, quantity, lineTotal }) => ({
-                label: product.name,
-                unit: product.unit,
-                quantity,
-                unitPrice: product.salePrice,
-                lineTotal,
-              })),
+              lines: draft.lines.map(
+                ({
+                  product,
+                  option,
+                  quantity,
+                  pricing,
+                  lineTotal,
+                  listTotal,
+                }) => ({
+                  label: product.name,
+                  unit: product.unit,
+                  quantity,
+                  unitPrice: pricing.unitPrice,
+                  lineTotal,
+                  productUnitId: option.productUnitId,
+                  unitLabel: option.label,
+                  unitFactor: option.factor,
+                  priceBasis: pricing.basis,
+                  listTotal,
+                }),
+              ),
               subtotal: draft.totals.subtotal,
               discount: draft.totals.discount,
               total: draft.totals.total,
@@ -531,6 +557,12 @@ export function CaisseApp() {
     canCorrect: role !== undefined && roleHasPermission(role, 'stock.correct'),
     manager: role !== undefined && roleHasPermission(role, 'stock.move'),
     max: snapshot.rules?.stockCorrectionMax ?? 0,
+  };
+  // Negotiation rules (ADR-038), checked again by the server.
+  const negotiation = {
+    manager: role !== undefined && roleHasPermission(role, 'sales.cancel'),
+    maxDiscountBasisPoints: snapshot.rules?.maxDiscountBasisPoints ?? null,
+    sellerCanSellBelowCost: snapshot.rules?.sellerCanSellBelowCost ?? false,
   };
 
   async function onCorrectStock(
@@ -690,6 +722,7 @@ export function CaisseApp() {
               products={snapshot.products}
               customers={snapshot.customers}
               stockRights={stockRights}
+              negotiation={negotiation}
               onRecord={onRecord}
               onCreateCustomer={onCreateCustomer}
               onCorrectStock={onCorrectStock}

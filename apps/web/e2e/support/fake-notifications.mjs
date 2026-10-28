@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS = {
   creditOverdueDays: 30,
   creditNearLimitPercent: 80,
   dailySummaryHour: 20,
+  sellerCanSellBelowCost: false,
 };
 
 function seed() {

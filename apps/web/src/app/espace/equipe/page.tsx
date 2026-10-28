@@ -80,6 +80,14 @@ async function Team() {
       cell: (member) => MEMBER_STATUS_LABELS[member.status],
     },
     {
+      // Negotiated prices and discount together (ADR-038).
+      header: 'Baisse de prix',
+      cell: (member) =>
+        member.maxDiscountBasisPoints === null
+          ? 'Sans limite'
+          : `${String(member.maxDiscountBasisPoints / 100).replace('.', ',')} % au plus`,
+    },
+    {
       header: 'Depuis le',
       cell: (member) => formatDate(member.joinedAt, organization.timezone),
     },

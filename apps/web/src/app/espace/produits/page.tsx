@@ -4,7 +4,7 @@ import {
   type CategoryDto,
   type ProductDto,
 } from '@nagaw/shared';
-import { FolderOpen, Plus, Search, Truck } from 'lucide-react';
+import { FolderOpen, Plus, Scale, Search, Truck } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -248,6 +248,10 @@ async function Products({ searchParams }: PageProps<'/espace/produits'>) {
         <ButtonLink href="/espace/produits/categories" variant="secondary">
           <FolderOpen aria-hidden className="size-5" />
           Catégories
+        </ButtonLink>
+        <ButtonLink href="/espace/produits/unites" variant="secondary">
+          <Scale aria-hidden className="size-5" />
+          Unités
         </ButtonLink>
         <ButtonLink href="/espace/produits/fournisseurs" variant="secondary">
           <Truck aria-hidden className="size-5" />
