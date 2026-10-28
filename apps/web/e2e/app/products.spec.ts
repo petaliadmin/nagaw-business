@@ -249,7 +249,13 @@ test('a seller sees products and stock but cannot change them', async ({
   await expect(
     page.getByRole('region', { name: 'Ce qui reste' }),
   ).toBeVisible();
-  await expect(page.getByText('J’ai reçu de la marchandise')).toHaveCount(0);
+  // Sellers record deliveries; losses and inventories stay the
+  // managers' (ADR-036).
+  await expect(page.getByText('J’ai reçu de la marchandise')).toHaveCount(1);
+  await expect(page.getByText('Perte, casse ou produit abîmé')).toHaveCount(0);
+  await expect(
+    page.getByText('J’ai compté ce qui reste (inventaire)'),
+  ).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Modifier' })).toHaveCount(0);
   await page.goto('/espace/produits/nouveau');
   await expect(
