@@ -25,6 +25,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { ReferenceList } from '../produits/reference-page';
+import { OrganizationSwitcher } from '@/components/shell/organization-switcher';
 import { RevokeDeviceButton } from './device-actions';
 import { InvoiceSettingsForm } from './invoice-settings-form';
 import { NotificationSettingsForm } from './notification-settings-form';
@@ -226,6 +227,16 @@ async function Settings() {
       </section>
       <Card title="Mes boutiques" titleId="shops" icon={Store}>
         <div className="flex flex-col gap-4">
+          {me.organizations.length > 1 ? (
+            <OrganizationSwitcher
+              organizations={me.organizations}
+              activeId={active.id}
+            />
+          ) : (
+            <p>
+              Boutique ouverte : <strong>{active.name}</strong>.
+            </p>
+          )}
           <p className="text-ink-muted">
             Vous avez un autre magasin ? Créez une boutique séparée : ses
             produits, ses ventes et son équipe restent à part.
