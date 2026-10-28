@@ -69,7 +69,7 @@ export class StatsService {
          group by d.day order by d.day`.execute(db),
         sql<{ costed_revenue: string; cost: string }>`
         select coalesce(round(sum(l.line_total::numeric * s.total / nullif(s.subtotal, 0))), 0) as costed_revenue,
-               coalesce(round(sum(l.quantity * l.unit_cost)), 0) as cost
+               coalesce(round(sum(l.base_quantity * l.unit_cost)), 0) as cost
           from app.sale_lines l
           join app.sales s on s.organization_id = l.organization_id and s.id = l.sale_id
          where ${inPeriod} and l.unit_cost is not null`.execute(db),
@@ -80,7 +80,7 @@ export class StatsService {
           quantity: string;
           revenue: string;
         }>`
-        select l.product_id, p.name as label, p.unit, sum(l.quantity) as quantity,
+        select l.product_id, p.name as label, p.unit, sum(l.base_quantity) as quantity,
                coalesce(round(sum(l.line_total::numeric * s.total / nullif(s.subtotal, 0))), 0) as revenue
           from app.sale_lines l
           join app.sales s on s.organization_id = l.organization_id and s.id = l.sale_id

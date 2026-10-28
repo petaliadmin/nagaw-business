@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { amountSchema, quantitySchema } from './catalog.js';
-import { createCustomerSchema, paymentSchema } from './sales.js';
+import {
+  createCustomerSchema,
+  oneUnitPerLine,
+  paymentSchema,
+  saleLineFields,
+} from './sales.js';
 
 const uuid = z.uuid('Identifiant invalide');
 
@@ -55,7 +60,8 @@ export interface DeviceDto {
  * A sale recorded on the device. Unlike an online sale, it carries the
  * prices the seller saw: the customer has already paid them. The server
  * recomputes the totals from these prices and flags the sale when they
- * differ from the catalogue (ADR-025).
+ * differ from the catalogue (ADR-025). A negotiated amount (`agreedTotal`)
+ * is a choice of the seller, not a difference to check (ADR-038).
  */
 export const offlineSaleSchema = z
   .object({
@@ -73,10 +79,12 @@ export const offlineSaleSchema = z
         z
           .object({
             productId: uuid,
-            quantity: quantitySchema.positive('La quantité doit être positive'),
+            ...saleLineFields,
+            /** Catalogue price the seller saw (see SaleLineDto.priceBasis). */
             unitPrice: amountSchema,
           })
-          .strict(),
+          .strict()
+          .refine(oneUnitPerLine.check, oneUnitPerLine.message),
       )
       .min(1, 'Le panier est vide')
       .max(200, '200 articles au plus'),

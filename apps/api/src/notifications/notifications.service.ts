@@ -328,6 +328,7 @@ export class NotificationsService {
         'credit_overdue_days',
         'credit_near_limit_percent',
         'daily_summary_hour',
+        'seller_can_sell_below_cost',
       ])
       .where('id', '=', organizationId)
       .executeTakeFirstOrThrow();
@@ -338,6 +339,7 @@ export class NotificationsService {
       creditOverdueDays: row.credit_overdue_days,
       creditNearLimitPercent: row.credit_near_limit_percent,
       dailySummaryHour: row.daily_summary_hour,
+      sellerCanSellBelowCost: row.seller_can_sell_below_cost,
     };
   }
 
@@ -376,6 +378,9 @@ export class NotificationsService {
           }),
           ...(input.dailySummaryHour !== undefined && {
             daily_summary_hour: input.dailySummaryHour,
+          }),
+          ...(input.sellerCanSellBelowCost !== undefined && {
+            seller_can_sell_below_cost: input.sellerCanSellBelowCost,
           }),
         })
         .where('id', '=', tenant.organizationId)

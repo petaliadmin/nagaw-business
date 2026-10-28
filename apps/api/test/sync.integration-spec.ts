@@ -234,6 +234,17 @@ describe('Offline devices and synchronization', () => {
   });
 
   it('still applies seller rules to offline sales', async () => {
+    const limit = (maxDiscountBasisPoints: number | null) =>
+      ctx
+        .http()
+        .patch(`/api/v1/organizations/current/members/${carol.id}`)
+        .set({
+          Authorization: `Bearer ${alice.token}`,
+          'X-Organization-Id': acmeId,
+        })
+        .send({ maxDiscountBasisPoints })
+        .expect(200);
+    await limit(1000);
     const res = await sync([
       offlineSale({
         discount: 500,
@@ -244,6 +255,7 @@ describe('Offline devices and synchronization', () => {
       status: 'rejected',
       error: { code: 'DISCOUNT_NOT_ALLOWED' },
     });
+    await limit(null);
   });
 
   it('only accepts a device of the caller, in this shop, not revoked', async () => {

@@ -1,6 +1,7 @@
 import {
   formatAmount,
   formatRate,
+  describeSaleLine,
   roleHasPermission,
   type CustomerDto,
   type SaleDto,
@@ -15,7 +16,6 @@ import { buttonClasses } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { apiAsUser } from '@/lib/api/server';
-import { formatQuantity } from '@/lib/catalog/labels';
 import { formatDateTime } from '@/lib/format';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 import { ticketLabel, ticketText, whatsappLink } from '@/lib/sales/ticket';
@@ -147,9 +147,15 @@ async function Sale({
             <li key={line.position}>
               <p className="font-semibold">{line.label}</p>
               <Row
-                label={`${formatQuantity(line.quantity, line.unit)} × ${money(line.unitPrice)}`}
+                label={describeSaleLine(line, money)}
                 value={money(line.lineTotal)}
               />
+              {line.lineTotal !== line.listTotal && (
+                <p className="text-ink-muted">
+                  Prix convenu avec le client, au lieu de{' '}
+                  {money(line.listTotal)}
+                </p>
+              )}
             </li>
           ))}
         </ul>

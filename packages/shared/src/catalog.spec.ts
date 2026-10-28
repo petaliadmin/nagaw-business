@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
+  baseQuantityOf,
+  conversionOf,
+  displayPriceOf,
+  pricingOf,
+  sellingOptionsOf,
   createProductSchema,
+  createProductUnitSchema,
   createStockMovementSchema,
   formatRate,
   quantityFitsUnit,
   quantitySchema,
   stockLevel,
   updateProductSchema,
+  updateProductUnitSchema,
 } from './catalog.js';
 import { roleHasPermission } from './permissions.js';
 
@@ -147,5 +154,105 @@ describe('formatting and permissions', () => {
       expect(roleHasPermission(role, 'catalog.manage')).toBe(false);
       expect(roleHasPermission(role, 'stock.move')).toBe(false);
     }
+  });
+});
+
+describe('selling units (ADR-038)', () => {
+  it('converts a quantity to the stock unit, within 3 decimals', () => {
+    expect(baseQuantityOf(2, 50)).toBe(100);
+    expect(baseQuantityOf(1.5, 0.25)).toBe(0.375);
+    expect(baseQuantityOf(0.1, 0.2)).toBe(0.02);
+    expect(baseQuantityOf(0.5, 0.001)).toBeNull();
+  });
+
+  it('never lets the factor of a unit change', () => {
+    const OP = '6f1c1b2e-5d7a-4c3e-9f10-2b3c4d5e6f70';
+    expect(
+      createProductUnitSchema.parse({
+        label: ' Sac de 50 kg ',
+        factor: 50,
+        salePrice: 30000,
+        clientOperationId: OP,
+      }),
+    ).toMatchObject({
+      label: 'Sac de 50 kg',
+      allowsDecimals: false,
+      barcode: null,
+    });
+    expect(
+      createProductUnitSchema.safeParse({
+        label: 'Sac',
+        factor: 0,
+        salePrice: 1,
+        clientOperationId: OP,
+      }).success,
+    ).toBe(false);
+    expect(
+      updateProductUnitSchema.safeParse({ factor: 25, version: 1 }).success,
+    ).toBe(false);
+  });
+});
+
+describe('what a product is sold in (ADR-038)', () => {
+  const rice = {
+    unit: 'kg' as const,
+    salePrice: 650,
+    units: [
+      {
+        id: 'sack',
+        label: 'Sac de 50 kg',
+        factor: 50,
+        salePrice: 30000,
+        allowsDecimals: false,
+        barcode: null,
+        status: 'active' as const,
+        version: 1,
+      },
+      {
+        id: 'half',
+        label: 'Demi-sac',
+        factor: 25,
+        salePrice: null,
+        allowsDecimals: false,
+        barcode: null,
+        status: 'active' as const,
+        version: 1,
+      },
+    ],
+  };
+
+  it('offers the stock unit, its conversions, then its units', () => {
+    expect(sellingOptionsOf(rice).map((o) => o.key)).toEqual([
+      'stock',
+      'conversion:g',
+      'unit:sack',
+      'unit:half',
+    ]);
+    expect(conversionOf('kg', 'g')?.factor).toBe(0.001);
+    expect(conversionOf('piece', 'g')).toBeNull();
+    expect(
+      sellingOptionsOf({ unit: 'piece', salePrice: 100, units: [] }),
+    ).toHaveLength(1);
+  });
+
+  it('prices a unit with its own price, anything else from the stock unit', () => {
+    const [stock, grams, sack, half] = sellingOptionsOf(rice);
+    expect(pricingOf(stock!, 650, 2)).toEqual({
+      basis: 'unit',
+      unitPrice: 650,
+      pricedQuantity: 2,
+    });
+    expect(pricingOf(grams!, 650, 250)).toEqual({
+      basis: 'stock',
+      unitPrice: 650,
+      pricedQuantity: 0.25,
+    });
+    expect(pricingOf(sack!, 650, 2).unitPrice).toBe(30000);
+    expect(pricingOf(half!, 650, 1)).toEqual({
+      basis: 'stock',
+      unitPrice: 650,
+      pricedQuantity: 25,
+    });
+    expect(displayPriceOf(half!, 650)).toBe(16250);
   });
 });

@@ -49,7 +49,9 @@ export interface OrganizationsTable {
   max_product_categories: Generated<number>;
   max_suppliers: Generated<number>;
   max_tax_rates: Generated<number>;
-  seller_max_discount_basis_points: Generated<number>;
+  max_product_units: Generated<number>;
+  max_unit_templates: Generated<number>;
+  seller_can_sell_below_cost: Generated<boolean>;
   max_customers: Generated<number>;
   next_sale_number: Generated<number>;
   max_offline_days: Generated<number>;
@@ -95,6 +97,7 @@ export interface OrganizationMembershipsTable {
   user_id: string;
   role: 'owner' | 'admin' | 'member' | 'viewer';
   status: Generated<'active' | 'disabled'>;
+  max_discount_basis_points: number | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -194,6 +197,37 @@ export interface ProductsTable {
   updated_at: Timestamp;
 }
 
+export interface ProductUnitsTable {
+  id: Generated<string>;
+  organization_id: string;
+  product_id: string;
+  label: string;
+  factor: Numeric;
+  sale_price: NullableNumeric;
+  allows_decimals: Generated<boolean>;
+  barcode: string | null;
+  status: CatalogStatus;
+  version: Generated<number>;
+  client_operation_id: string;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface UnitTemplatesTable {
+  id: Generated<string>;
+  organization_id: string;
+  label: string;
+  stock_unit: Unit;
+  factor: Numeric;
+  allows_decimals: Generated<boolean>;
+  status: CatalogStatus;
+  client_operation_id: string;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 export interface ProductPhotosTable {
   organization_id: string;
   product_id: string;
@@ -285,8 +319,18 @@ export interface SaleLinesTable {
   product_id: string;
   label: string;
   unit: Unit;
+  product_unit_id: string | null;
+  unit_label: string | null;
+  unit_factor: ColumnType<string, number | string | undefined, never>;
+  base_quantity: ColumnType<string, never, never>;
+  price_basis: ColumnType<
+    'unit' | 'stock',
+    'unit' | 'stock' | undefined,
+    never
+  >;
   unit_price: Numeric;
   quantity: Numeric;
+  list_total: NullableNumeric;
   line_total: Numeric;
   tax_rate_basis_points: number | null;
   tax_amount: Numeric;
@@ -613,6 +657,8 @@ export interface Database {
   'app.product_categories': ProductCategoriesTable;
   'app.suppliers': SuppliersTable;
   'app.products': ProductsTable;
+  'app.product_units': ProductUnitsTable;
+  'app.unit_templates': UnitTemplatesTable;
   'app.product_photos': ProductPhotosTable;
   'app.stock_movements': StockMovementsTable;
   'app.customers': CustomersTable;

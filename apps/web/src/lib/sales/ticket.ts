@@ -1,5 +1,4 @@
-import { formatAmount, type SaleDto } from '@nagaw/shared';
-import { formatQuantity } from '@/lib/catalog/labels';
+import { describeSaleLine, formatAmount, type SaleDto } from '@nagaw/shared';
 import { PAYMENT_LABELS, PROVIDER_LABELS, ticketNumber } from './labels';
 
 /**
@@ -34,7 +33,7 @@ export function ticketText(
     '',
     ...sale.lines.map(
       (line) =>
-        `${line.label} : ${formatQuantity(line.quantity, line.unit)} × ${money(line.unitPrice)} = ${money(line.lineTotal)}`,
+        `${line.label} : ${describeSaleLine(line, money)} = ${money(line.lineTotal)}${line.lineTotal !== line.listTotal ? ' (prix convenu)' : ''}`,
     ),
     '',
   ];

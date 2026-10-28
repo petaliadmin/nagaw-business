@@ -1,17 +1,19 @@
 'use client';
 
 import {
-  computeSaleTotals,
+  displayPriceOf,
   formatAmount,
   MOBILE_MONEY_PROVIDERS,
   parseAmount,
   PAYMENT_METHODS,
+  sellingOptionsOf,
   UNITS,
   type CreateSaleInput,
   type CustomerDto,
   type MobileMoneyProvider,
   type PaymentMethod,
   type ProductDto,
+  type SellingOption,
 } from '@nagaw/shared';
 import {
   ArrowLeft,
@@ -23,7 +25,9 @@ import {
   Search,
   ShoppingCart,
   Smartphone,
+  Tag,
   Trash2,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -39,7 +43,22 @@ import { ProductTile } from '@/components/catalog/product-tile';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { formatQuantity, STOCK_LEVEL_LABELS } from '@/lib/catalog/labels';
-import { correctionProblem, shortagesOf } from '@/lib/offline/local-stock';
+import { correctionProblem } from '@/lib/offline/local-stock';
+import {
+  lineKey,
+  negotiationProblem,
+  parseFrancs,
+  parseQuantity,
+  priceCart,
+  quantityError,
+  quantityForAmount,
+  quantityText,
+  totalsOf,
+  wantedStock,
+  type CartLine,
+  type NegotiationRules,
+  type PricedLine,
+} from '@/lib/sales/cart';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 
 const METHOD_ICONS: Record<PaymentMethod, LucideIcon> = {
@@ -49,30 +68,210 @@ const METHOD_ICONS: Record<PaymentMethod, LucideIcon> = {
   credit: HandCoins,
 };
 
-interface CartLine {
-  productId: string;
-  /** As typed (« 1,5 »), so that the field keeps what the seller types. */
-  quantityText: string;
-}
-
 interface SplitRow {
   method: PaymentMethod;
   amountText: string;
   provider: MobileMoneyProvider | null;
 }
 
-const parseQuantity = (text: string): number => {
-  const value = text.replace(/\s/g, '').replace(',', '.');
-  return /^\d+(\.\d+)?$/.test(value) ? Number(value) : Number.NaN;
-};
-const quantityText = (value: number) => String(value).replace('.', ',');
+/** « kg », « Sac de 50 kg », « g ». */
+const optionName = (product: ProductDto, option: SellingOption) =>
+  option.label ?? UNITS[product.unit].label;
 
-/** Why a typed quantity is refused, or null when it is fine. */
-function quantityError(product: ProductDto, quantity: number): string | null {
-  if (!(quantity > 0)) return 'Tapez un nombre plus grand que 0.';
-  if (!UNITS[product.unit].decimals && !Number.isInteger(quantity))
-    return 'Tapez un nombre entier, sans virgule.';
-  return null;
+/** « 650 F le kg », « 30 000 F », « 0,65 F le g » shown as « 650 F le kg ». */
+function optionPrice(
+  product: ProductDto,
+  option: SellingOption,
+  money: (value: number) => string,
+): string {
+  if (option.price !== null) return money(option.price);
+  // Priced by weight or length: the price of the stock unit says more
+  // than a fraction of a franc.
+  const one = displayPriceOf(option, product.salePrice);
+  return option.factor < 1
+    ? `${money(product.salePrice)} le ${UNITS[product.unit].label}`
+    : money(one);
+}
+
+/**
+ * Which unit to sell (ADR-038): « Kilo », « Gramme », « Sac de 50 kg ».
+ * A native modal dialog: the focus stays inside, Escape closes it.
+ */
+function UnitPicker({
+  product,
+  money,
+  onPick,
+  onClose,
+}: {
+  product: ProductDto;
+  money: (value: number) => string;
+  onPick: (option: SellingOption) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby={titleId}
+      onClose={onClose}
+      className="m-auto w-[min(28rem,calc(100%-2rem))] rounded-2xl bg-surface p-0 text-ink shadow-xl backdrop:bg-black/50"
+    >
+      <div className="flex flex-col gap-3 p-4">
+        <div className="flex items-start justify-between gap-2">
+          <h2 id={titleId} className="text-xl font-bold">
+            {product.name} : vendre en…
+          </h2>
+          <button
+            type="button"
+            onClick={() => ref.current?.close()}
+            aria-label="Fermer"
+            className="flex size-12 shrink-0 items-center justify-center rounded-xl hover:bg-surface-muted"
+          >
+            <X aria-hidden className="size-6" />
+          </button>
+        </div>
+        <ul className="flex flex-col gap-2">
+          {sellingOptionsOf(product).map((option) => (
+            <li key={option.key}>
+              <button
+                type="button"
+                onClick={() => {
+                  onPick(option);
+                  ref.current?.close();
+                }}
+                className="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl border-2 border-line-strong bg-surface px-4 text-left text-lg font-bold hover:border-sales"
+              >
+                <span>{optionName(product, option)}</span>
+                <span className="tabular-nums text-sales-ink">
+                  {optionPrice(product, option, money)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </dialog>
+  );
+}
+
+/**
+ * The price agreed with the customer for one line (ADR-038): typed as the
+ * amount of the line, or as « for this amount » when the unit takes
+ * decimals (the quantity is then worked out).
+ */
+function PriceEditor({
+  priced,
+  listTotal,
+  money,
+  onAgree,
+  onAmount,
+}: {
+  priced: PricedLine;
+  listTotal: number;
+  money: (value: number) => string;
+  onAgree: (agreedText: string) => void;
+  onAmount: (quantity: number, amount: number) => void;
+}) {
+  const ids = useId();
+  const [text, setText] = useState(priced.line.agreedText);
+  const [problem, setProblem] = useState<string | null>(null);
+  const forAmount = priced.option.allowsDecimals;
+
+  function read(): number | null {
+    const amount = parseFrancs(text);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setProblem('Tapez un montant en chiffres, par exemple 28000.');
+      return null;
+    }
+    setProblem(null);
+    return amount;
+  }
+
+  return (
+    <details
+      open={priced.agreedTotal !== null || undefined}
+      className="rounded-xl bg-surface-muted p-3"
+    >
+      <summary className="flex min-h-12 cursor-pointer items-center gap-2 font-bold">
+        <Tag aria-hidden className="size-5" />
+        Changer le prix
+      </summary>
+      <div className="mt-2 flex flex-col gap-2">
+        <label htmlFor={`${ids}-amount`} className="font-semibold">
+          Le client paie pour cette ligne (prix affiché : {money(listTotal)})
+        </label>
+        <input
+          id={`${ids}-amount`}
+          inputMode="numeric"
+          value={text}
+          onChange={(event) => setText(event.currentTarget.value)}
+          aria-invalid={problem ? true : undefined}
+          aria-describedby={problem ? `${ids}-problem` : undefined}
+          className={CONTROL}
+        />
+        {problem && (
+          <p id={`${ids}-problem`} className="font-medium text-danger-ink">
+            {problem}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const amount = read();
+              if (amount !== null) onAgree(String(amount));
+            }}
+            className={buttonClasses('primary')}
+          >
+            Appliquer ce prix
+          </button>
+          {forAmount && (
+            <button
+              type="button"
+              onClick={() => {
+                const amount = read();
+                if (amount === null) return;
+                const quantity = quantityForAmount(
+                  priced.option,
+                  priced.product.salePrice,
+                  amount,
+                );
+                if (quantity === null)
+                  return setProblem('Montant trop petit pour cette unité.');
+                onAmount(quantity, amount);
+              }}
+              className={buttonClasses('secondary')}
+            >
+              Servir pour ce montant
+            </button>
+          )}
+          {priced.agreedTotal !== null && (
+            <button
+              type="button"
+              onClick={() => {
+                setText('');
+                setProblem(null);
+                onAgree('');
+              }}
+              className={buttonClasses('secondary')}
+            >
+              Remettre le prix affiché
+            </button>
+          )}
+        </div>
+        {forAmount && (
+          <p className="text-ink-muted">
+            « Servir pour ce montant » calcule la quantité à peser ou à mesurer.
+          </p>
+        )}
+      </div>
+    </details>
+  );
 }
 
 function MethodButton({
@@ -269,8 +468,8 @@ function StockWarning({
 /** What the checkout hands over once the seller confirms the sale. */
 export interface SaleDraft {
   customer: CustomerDto | null;
-  lines: { product: ProductDto; quantity: number; lineTotal: number }[];
-  totals: ReturnType<typeof computeSaleTotals>;
+  lines: (PricedLine & { lineTotal: number; listTotal: number })[];
+  totals: ReturnType<typeof totalsOf>;
   payments: CreateSaleInput['payments'];
   cashReceived: number | null;
 }
@@ -285,6 +484,7 @@ export function Checkout({
   products,
   customers: initialCustomers,
   stockRights,
+  negotiation,
   onRecord,
   onCreateCustomer,
   onCorrectStock,
@@ -293,6 +493,7 @@ export function Checkout({
   products: ProductDto[];
   customers: CustomerDto[];
   stockRights: StockRights;
+  negotiation: NegotiationRules;
   /** Resolves with an error message, or nothing once recorded. */
   onCorrectStock: (
     product: ProductDto,
@@ -313,6 +514,8 @@ export function Checkout({
 
   const [query, setQuery] = useState('');
   const [cart, setCart] = useState<CartLine[]>([]);
+  // The product whose unit is being chosen (ADR-038).
+  const [choosing, setChoosing] = useState<ProductDto | null>(null);
   const [step, setStep] = useState<'cart' | 'pay'>('cart');
   const [discountText, setDiscountText] = useState('');
   const [method, setMethod] = useState<PaymentMethod | 'split'>('cash');
@@ -356,49 +559,70 @@ export function Checkout({
     const text = query.trim().toLowerCase();
     if (!text) return products;
     return products.filter(
-      (p) => p.name.toLowerCase().includes(text) || p.barcode === query.trim(),
+      (p) =>
+        p.name.toLowerCase().includes(text) ||
+        p.barcode === query.trim() ||
+        p.units.some((u) => u.barcode === query.trim()),
     );
   }, [products, query]);
 
-  const lines = cart.flatMap((line) => {
-    const product = byId.get(line.productId);
-    return product
-      ? [{ product, quantity: parseQuantity(line.quantityText), line }]
+  const lines = priceCart(cart, byId);
+  const linesValid = lines.every(
+    ({ option, quantity }) => quantityError(option, quantity) === null,
+  );
+  // Stock asked per product, all units together (« 1 sac + 3 kg »).
+  const wanted = wantedStock(lines);
+  const shortages = [...wanted].flatMap(([productId, quantity]) => {
+    const product = byId.get(productId);
+    return product?.trackStock && quantity > product.stockQuantity
+      ? [{ product, wanted: quantity }]
       : [];
   });
-  const linesValid = lines.every(
-    ({ product, quantity }) => quantityError(product, quantity) === null,
-  );
-  const shortages = shortagesOf(lines);
   const discount =
     discountText.trim() === '' ? 0 : parseAmount(discountText, currency);
-  const totals = computeSaleTotals(
-    lines.map(({ product, quantity }) => ({
-      unitPrice: product.salePrice,
-      quantity: Number.isFinite(quantity) ? quantity : 0,
-      taxRateBasisPoints: product.taxRate?.rateBasisPoints ?? null,
-    })),
-    discount ?? 0,
+  const totals = totalsOf(lines, discount ?? 0);
+  const agreedInvalid = cart.some(
+    (line) =>
+      line.agreedText.trim() !== '' &&
+      !Number.isFinite(parseFrancs(line.agreedText)),
   );
+  const refusal = negotiationProblem(lines, totals, negotiation, currency);
 
-  function add(product: ProductDto) {
+  function updateLine(key: string, change: Partial<CartLine>) {
+    setCart((current) =>
+      current.map((l) => (lineKey(l) === key ? { ...l, ...change } : l)),
+    );
+  }
+
+  function add(product: ProductDto, option: SellingOption) {
     setError(null);
-    const existing = cart.find((line) => line.productId === product.id);
+    const key = lineKey({ productId: product.id, optionKey: option.key });
+    const existing = cart.find((line) => lineKey(line) === key);
     const before = existing ? parseQuantity(existing.quantityText) : 0;
     const count = (Number.isFinite(before) ? before : 0) + 1;
+    const unitName = optionName(product, option);
     setAnnouncement(
-      `${product.name} ajouté. ${quantityText(count)} dans le panier.` +
-        (product.trackStock && count > product.stockQuantity
+      `${product.name} ajouté. ${quantityText(count)} ${unitName} dans le panier.` +
+        (product.trackStock &&
+        (wanted.get(product.id) ?? 0) + option.factor > product.stockQuantity
           ? ' Attention : stock insuffisant.'
           : ''),
     );
     setCart((current) => {
-      const existing = current.find((line) => line.productId === product.id);
-      if (!existing)
-        return [...current, { productId: product.id, quantityText: '1' }];
-      const value = parseQuantity(existing.quantityText);
+      const found = current.find((line) => lineKey(line) === key);
+      if (!found)
+        return [
+          ...current,
+          {
+            productId: product.id,
+            optionKey: option.key,
+            quantityText: '1',
+            agreedText: '',
+          },
+        ];
+      const value = parseQuantity(found.quantityText);
       return current.map((line) =>
-        line === existing
+        line === found
           ? {
               ...line,
               quantityText: quantityText(
@@ -409,20 +633,19 @@ export function Checkout({
       );
     });
   }
-  function adjust(productId: string, delta: number) {
+  /** One tap: the only unit at once, otherwise the choice of the unit. */
+  function tap(product: ProductDto) {
+    const options = sellingOptionsOf(product);
+    if (options.length === 1) add(product, options[0]!);
+    else setChoosing(product);
+  }
+  function adjust(key: string, delta: number) {
     setCart((current) =>
       current.flatMap((line) => {
-        if (line.productId !== productId) return [line];
+        if (lineKey(line) !== key) return [line];
         const value = parseQuantity(line.quantityText);
         const next = (Number.isFinite(value) ? value : 0) + delta;
-        return next <= 0
-          ? []
-          : [
-              {
-                ...line,
-                quantityText: quantityText(Math.round(next * 1000) / 1000),
-              },
-            ];
+        return next <= 0 ? [] : [{ ...line, quantityText: quantityText(next) }];
       }),
     );
   }
@@ -490,7 +713,9 @@ export function Checkout({
   function submit() {
     setError(null);
     if (!linesValid) return setError('Vérifiez les quantités du panier.');
+    if (agreedInvalid) return setError('Vérifiez les prix changés du panier.');
     if (discount === null) return setError('Remise illisible.');
+    if (refusal) return setError(refusal);
     const paid = payments();
     if (typeof paid === 'string') return setError(paid);
     if (usesCredit && !customerId)
@@ -498,10 +723,10 @@ export function Checkout({
     startTransition(async () => {
       const failure = await onRecord({
         customer: customers.find((c) => c.id === customerId) ?? null,
-        lines: lines.map(({ product, quantity }, index) => ({
-          product,
-          quantity,
+        lines: lines.map((priced, index) => ({
+          ...priced,
           lineTotal: totals.lines[index]?.lineTotal ?? 0,
+          listTotal: totals.lines[index]?.listTotal ?? 0,
         })),
         totals,
         payments: paid.payments,
@@ -558,27 +783,46 @@ export function Checkout({
           aria-label="Articles du panier"
           className="flex flex-col divide-y divide-line"
         >
-          {lines.map(({ product, quantity, line }, index) => {
-            const inputId = `${ids}-qty-${product.id}`;
-            const invalid = quantityError(product, quantity);
+          {lines.map((priced, index) => {
+            const { product, option, quantity, line } = priced;
+            const key = lineKey(line);
+            const inputId = `${ids}-qty-${key}`;
+            const invalid = quantityError(option, quantity);
+            const unitName = optionName(product, option);
+            const computed = totals.lines[index];
+            const negotiated =
+              computed !== undefined &&
+              priced.agreedTotal !== null &&
+              computed.lineTotal !== computed.listTotal;
+            // The stock warning goes under the first line of the product.
+            const firstOfProduct =
+              lines.findIndex((l) => l.product.id === product.id) === index;
+            const shortage = shortages.find((s) => s.product.id === product.id);
             return (
-              <li
-                key={product.id}
-                className="flex flex-col gap-2 py-3 first:pt-0"
-              >
+              <li key={key} className="flex flex-col gap-2 py-3 first:pt-0">
                 <div className="flex items-start justify-between gap-2">
                   <label htmlFor={inputId} className="font-semibold">
                     {product.name}
+                    {option.key !== 'stock' && (
+                      <span className="block font-normal text-ink-muted">
+                        en {unitName}
+                      </span>
+                    )}
                   </label>
-                  <span className="font-bold tabular-nums">
-                    {money(totals.lines[index]?.lineTotal ?? 0)}
+                  <span className="text-right font-bold tabular-nums">
+                    {negotiated && (
+                      <s className="block font-normal text-ink-muted">
+                        {money(computed.listTotal)}
+                      </s>
+                    )}
+                    {money(computed?.lineTotal ?? 0)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => adjust(product.id, -1)}
-                    aria-label={`Un de moins : ${product.name}`}
+                    onClick={() => adjust(key, -1)}
+                    aria-label={`Un de moins : ${product.name}, ${unitName}`}
                     className="flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-line-strong"
                   >
                     <Minus aria-hidden className="size-5" />
@@ -587,40 +831,33 @@ export function Checkout({
                     id={inputId}
                     inputMode="decimal"
                     value={line.quantityText}
-                    onChange={(event) => {
-                      const value = event.currentTarget.value;
-                      setCart((current) =>
-                        current.map((l) =>
-                          l.productId === product.id
-                            ? { ...l, quantityText: value }
-                            : l,
-                        ),
-                      );
-                    }}
+                    onChange={(event) =>
+                      updateLine(key, {
+                        quantityText: event.currentTarget.value,
+                      })
+                    }
                     aria-invalid={invalid ? true : undefined}
                     aria-describedby={invalid ? `${inputId}-error` : undefined}
                     className={`${CONTROL.replace('w-full', 'w-24')} shrink-0 text-center text-lg font-bold`}
                   />
                   <button
                     type="button"
-                    onClick={() => adjust(product.id, 1)}
-                    aria-label={`Un de plus : ${product.name}`}
+                    onClick={() => adjust(key, 1)}
+                    aria-label={`Un de plus : ${product.name}, ${unitName}`}
                     className="flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-line-strong"
                   >
                     <Plus aria-hidden className="size-5" />
                   </button>
-                  <span className="text-ink-muted">
-                    {UNITS[product.unit].label}
-                  </span>
+                  <span className="text-ink-muted">{unitName}</span>
                   <button
                     type="button"
                     onClick={() => {
                       setAnnouncement(`${product.name} retiré du panier.`);
                       setCart((current) =>
-                        current.filter((l) => l.productId !== product.id),
+                        current.filter((l) => lineKey(l) !== key),
                       );
                     }}
-                    aria-label={`Retirer ${product.name}`}
+                    aria-label={`Retirer ${product.name}, ${unitName}`}
                     className="ml-auto flex size-12 items-center justify-center rounded-xl text-danger-ink hover:bg-danger-soft"
                   >
                     <Trash2 aria-hidden className="size-5" />
@@ -634,18 +871,30 @@ export function Checkout({
                     {invalid}
                   </p>
                 )}
-                {!invalid &&
-                  product.trackStock &&
-                  quantity > product.stockQuantity && (
-                    <StockWarning
-                      product={product}
-                      wanted={quantity}
-                      rights={stockRights}
-                      onCorrect={(counted, reason) =>
-                        onCorrectStock(product, counted, reason)
-                      }
-                    />
-                  )}
+                {!invalid && (
+                  <PriceEditor
+                    priced={priced}
+                    listTotal={computed?.listTotal ?? 0}
+                    money={money}
+                    onAgree={(agreedText) => updateLine(key, { agreedText })}
+                    onAmount={(next, amount) =>
+                      updateLine(key, {
+                        quantityText: quantityText(next),
+                        agreedText: String(amount),
+                      })
+                    }
+                  />
+                )}
+                {firstOfProduct && shortage && (
+                  <StockWarning
+                    product={product}
+                    wanted={shortage.wanted}
+                    rights={stockRights}
+                    onCorrect={(counted, reason) =>
+                      onCorrectStock(product, counted, reason)
+                    }
+                  />
+                )}
               </li>
             );
           })}
@@ -695,6 +944,13 @@ export function Checkout({
               {money(totals.subtotal)}.
             </p>
           )}
+          {totals.listSubtotal > totals.total && (
+            <p className="text-ink-muted">
+              Prix affichés : {money(totals.listSubtotal)}, soit{' '}
+              {money(totals.listSubtotal - totals.total)} de réduction.
+            </p>
+          )}
+          {refusal && <Alert tone="error">{refusal}</Alert>}
         </>
       )}
     </section>
@@ -966,7 +1222,7 @@ export function Checkout({
       <button
         type="button"
         onClick={submit}
-        disabled={pending || cart.length === 0}
+        disabled={pending || cart.length === 0 || refusal !== null}
         className={buttonClasses('sell', 'min-h-16 w-full text-xl')}
       >
         {pending
@@ -1009,14 +1265,17 @@ export function Checkout({
             className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4"
           >
             {visible.map((product) => {
-              const inCart = cart.find((line) => line.productId === product.id);
+              const inCart = cart.filter(
+                (line) => line.productId === product.id,
+              );
+              const several = sellingOptionsOf(product).length > 1;
               return (
                 <li key={product.id}>
                   <button
                     type="button"
-                    onClick={() => add(product)}
+                    onClick={() => tap(product)}
                     className={`relative flex h-full min-h-40 w-full flex-col items-center gap-2 rounded-2xl border-2 bg-surface p-3 text-center shadow-sm ${
-                      inCart
+                      inCart.length > 0
                         ? 'border-sales-strong'
                         : 'border-line hover:border-sales'
                     }`}
@@ -1029,6 +1288,11 @@ export function Checkout({
                     </span>
                     <span className="text-lg font-extrabold tabular-nums text-sales-ink">
                       {money(product.salePrice)}
+                      {several && (
+                        <span className="block text-base font-semibold text-ink-muted">
+                          le {UNITS[product.unit].label} · autres unités
+                        </span>
+                      )}
                     </span>
                     {product.stockLevel === 'out' && (
                       <span className="text-base text-danger-ink">
@@ -1041,10 +1305,12 @@ export function Checkout({
                         {formatQuantity(product.stockQuantity, product.unit)}
                       </span>
                     )}
-                    {inCart && (
+                    {inCart.length > 0 && (
                       <span className="absolute top-2 right-2 rounded-full bg-sales-strong px-2.5 py-0.5 text-base font-extrabold text-white">
                         <span className="sr-only">, </span>
-                        {inCart.quantityText}
+                        {inCart.length === 1
+                          ? inCart[0]!.quantityText
+                          : `${inCart.length} lignes`}
                         <span className="sr-only"> dans le panier</span>
                       </span>
                     )}
@@ -1087,6 +1353,14 @@ export function Checkout({
             Encaisser — {money(totals.total)}
           </button>
         </div>
+      )}
+      {choosing && (
+        <UnitPicker
+          product={choosing}
+          money={money}
+          onPick={(option) => add(choosing, option)}
+          onClose={() => setChoosing(null)}
+        />
       )}
       <p role="status" className="sr-only">
         {announcement}

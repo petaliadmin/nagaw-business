@@ -5,6 +5,7 @@ import {
   type ProductDto,
   type StockMovementDto,
   type SupplierDto,
+  type UnitTemplateDto,
   UNITS,
 } from '@nagaw/shared';
 import { History, Info, Pencil } from 'lucide-react';
@@ -31,6 +32,7 @@ import { formatDateTime } from '@/lib/format';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { ProductStatusForm } from './status-form';
 import { StockForms } from './stock-forms';
+import { UnitsSection } from './units-section';
 
 export const metadata: Metadata = { title: 'Produit — Nagaw Business' };
 
@@ -95,7 +97,7 @@ async function Product({
   // Sellers record deliveries only (ADR-036).
   const canReceive = roleHasPermission(organization.role, 'stock.receive');
 
-  const [product, movements, suppliers] = await Promise.all([
+  const [product, movements, suppliers, templates] = await Promise.all([
     apiAsUser<ProductDto>(accessToken, {
       path: `/products/${encodeURIComponent(id)}`,
       organizationId: organization.id,
@@ -107,6 +109,12 @@ async function Product({
     canReceive
       ? apiAsUser<SupplierDto[]>(accessToken, {
           path: '/suppliers',
+          organizationId: organization.id,
+        })
+      : null,
+    canManage
+      ? apiAsUser<UnitTemplateDto[]>(accessToken, {
+          path: '/unit-templates',
           organizationId: organization.id,
         })
       : null,
@@ -193,6 +201,14 @@ async function Product({
           </p>
         )}
       </section>
+
+      <UnitsSection
+        organizationId={organization.id}
+        product={p}
+        currency={currency}
+        templates={templates?.ok ? templates.data : []}
+        canManage={canManage}
+      />
 
       {canReceive && p.trackStock && p.status === 'active' && (
         <StockForms

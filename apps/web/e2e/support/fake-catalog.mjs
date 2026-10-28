@@ -156,6 +156,7 @@ export function productDto(p) {
     status: p.status,
     version: p.version,
     photoVersion: p.photo?.sha256.slice(0, 16) ?? null,
+    units: [],
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   };

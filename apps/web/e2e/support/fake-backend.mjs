@@ -123,6 +123,7 @@ function makeState() {
       userId: USERS.awa.id,
       role: 'owner',
       status: 'active',
+      maxDiscountBasisPoints: null,
       joinedAt: created,
     },
     {
@@ -130,6 +131,7 @@ function makeState() {
       userId: USERS.moussa.id,
       role: 'member',
       status: 'active',
+      maxDiscountBasisPoints: null,
       joinedAt: '2026-10-05T09:00:00.000Z',
     },
     {
@@ -137,6 +139,7 @@ function makeState() {
       userId: USERS.awa.id,
       role: 'member',
       status: 'active',
+      maxDiscountBasisPoints: null,
       joinedAt: created,
     },
     {
@@ -144,6 +147,7 @@ function makeState() {
       userId: USERS.moussa.id,
       role: 'owner',
       status: 'active',
+      maxDiscountBasisPoints: null,
       joinedAt: created,
     },
   ];
@@ -328,7 +332,11 @@ function memberChangeRefusal(actor, target, change) {
 const orgsOf = (userId) =>
   state.memberships
     .filter((m) => m.userId === userId && m.status === 'active')
-    .map((m) => ({ ...state.organizations[m.organizationId], role: m.role }))
+    .map((m) => ({
+      ...state.organizations[m.organizationId],
+      role: m.role,
+      maxDiscountBasisPoints: m.maxDiscountBasisPoints ?? null,
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
 const server = createServer(async (req, res) => {
@@ -661,9 +669,14 @@ const server = createServer(async (req, res) => {
       userId: user.id,
       role: 'owner',
       status: 'active',
+      maxDiscountBasisPoints: null,
       joinedAt: now,
     });
-    return send(res, 201, { ...state.organizations[id], role: 'owner' });
+    return send(res, 201, {
+      ...state.organizations[id],
+      role: 'owner',
+      maxDiscountBasisPoints: null,
+    });
   }
 
   if (
@@ -706,6 +719,7 @@ const server = createServer(async (req, res) => {
       userId: user.id,
       role: invitation.role,
       status: 'active',
+      maxDiscountBasisPoints: null,
       joinedAt: new Date().toISOString(),
     });
     recordAudit(
@@ -779,6 +793,7 @@ const server = createServer(async (req, res) => {
             displayName: null,
             role: m.role,
             status: m.status,
+            maxDiscountBasisPoints: m.maxDiscountBasisPoints ?? null,
             joinedAt: m.joinedAt,
           };
         }),

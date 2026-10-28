@@ -111,6 +111,8 @@ export interface OrganizationDto {
 
 export interface OrganizationWithRoleDto extends OrganizationDto {
   role: z.infer<typeof roleSchema>;
+  /** The caller's own limit of reduction on a sale; null: none (ADR-038). */
+  maxDiscountBasisPoints: number | null;
 }
 
 export interface MemberDto {
@@ -119,6 +121,8 @@ export interface MemberDto {
   displayName: string | null;
   role: z.infer<typeof roleSchema>;
   status: MemberStatus;
+  /** Largest reduction this person may give on a sale; null: no limit. */
+  maxDiscountBasisPoints: number | null;
   joinedAt: string;
 }
 

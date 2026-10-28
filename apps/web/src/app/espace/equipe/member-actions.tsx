@@ -7,7 +7,7 @@ import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/auth/schemas';
 import { ROLE_LABELS } from '@/lib/labels';
-import { revokeInvitation, updateMember } from './actions';
+import { revokeInvitation, setDiscountLimit, updateMember } from './actions';
 
 /**
  * Role and access controls for one member. Only rendered when the shared
@@ -30,8 +30,13 @@ export function MemberActions({
     updateMember,
     initialFormState,
   );
+  const [limitState, limitAction] = useActionState(
+    setDiscountLimit,
+    initialFormState,
+  );
   const who = member.displayName ?? member.email;
   const selectId = `role-${member.userId}`;
+  const limitId = `limit-${member.userId}`;
 
   return (
     <div className="flex flex-col gap-2">
@@ -83,6 +88,36 @@ export function MemberActions({
         </SubmitButton>
       </form>
       <FormMessage state={statusState} />
+      <form action={limitAction} className="flex items-end gap-2">
+        <input type="hidden" name="organizationId" value={organizationId} />
+        <input type="hidden" name="userId" value={member.userId} />
+        <div className="flex flex-col gap-1">
+          <label htmlFor={limitId} className="font-semibold">
+            Baisse de prix maximale (%)
+          </label>
+          <input
+            id={limitId}
+            name="percent"
+            inputMode="decimal"
+            placeholder="Sans limite"
+            defaultValue={
+              member.maxDiscountBasisPoints === null
+                ? ''
+                : String(member.maxDiscountBasisPoints / 100).replace('.', ',')
+            }
+            aria-invalid={limitState.fieldErrors?.percent ? true : undefined}
+            className={`${CONTROL.replace('w-full', 'w-32')}`}
+          />
+        </div>
+        <SubmitButton
+          variant="secondary"
+          pendingLabel="…"
+          aria-label={`Enregistrer la baisse de prix maximale de ${who}`}
+        >
+          Enregistrer
+        </SubmitButton>
+      </form>
+      <FormMessage state={limitState} />
     </div>
   );
 }

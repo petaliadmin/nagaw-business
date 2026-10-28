@@ -211,10 +211,21 @@ export class SyncService {
       {
         clientOperationId: operation.clientOperationId,
         customerId,
-        lines: sale.lines.map(({ productId, quantity }) => ({
-          productId,
-          quantity,
-        })),
+        lines: sale.lines.map(
+          ({
+            productId,
+            productUnitId,
+            conversion,
+            quantity,
+            agreedTotal,
+          }) => ({
+            productId,
+            productUnitId,
+            conversion,
+            quantity,
+            agreedTotal,
+          }),
+        ),
         discount: sale.discount,
         payments: sale.payments,
         cashReceived: sale.cashReceived,

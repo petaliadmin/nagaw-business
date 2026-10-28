@@ -15,10 +15,13 @@ import {
 } from '@nestjs/common';
 import {
   createProductSchema,
+  createProductUnitSchema,
   createStockMovementSchema,
   productListQuerySchema,
   updateProductSchema,
+  updateProductUnitSchema,
   type CreateProductInput,
+  type CreateProductUnitInput,
   type CreateStockMovementInput,
   type ProductDto,
   type ProductListQuery,
@@ -26,6 +29,7 @@ import {
   type StockMovementDto,
   type StockSummaryDto,
   type UpdateProductInput,
+  type UpdateProductUnitInput,
 } from '@nagaw/shared';
 import type { Response } from 'express';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
@@ -100,6 +104,43 @@ export class ProductsController {
     @RequestId() requestId: string | null,
   ): Promise<ProductDto> {
     return this.products.update(tenant, user, id, body, requestId);
+  }
+
+  /** Another unit the product is sold in (ADR-038). */
+  @Post('products/:id/units')
+  @RequirePermission('catalog.manage')
+  async createUnit(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(createProductUnitSchema))
+    body: CreateProductUnitInput,
+    @RequestId() requestId: string | null,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<ProductDto> {
+    const { product, replayed } = await this.products.createUnit(
+      tenant,
+      user,
+      id,
+      body,
+      requestId,
+    );
+    res.status(replayed ? HttpStatus.OK : HttpStatus.CREATED);
+    return product;
+  }
+
+  @Patch('products/:id/units/:unitId')
+  @RequirePermission('catalog.manage')
+  updateUnit(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Param('unitId') unitId: string,
+    @Body(new ZodValidationPipe(updateProductUnitSchema))
+    body: UpdateProductUnitInput,
+    @RequestId() requestId: string | null,
+  ): Promise<ProductDto> {
+    return this.products.updateUnit(tenant, user, id, unitId, body, requestId);
   }
 
   @Get('products/:id/photo')

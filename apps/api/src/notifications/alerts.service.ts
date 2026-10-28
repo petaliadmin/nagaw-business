@@ -110,6 +110,8 @@ export class AlertsService {
       priceReview: boolean;
       /** Lines that took more than the stock the server knew. */
       shortages: { name: string; unit: Unit; sold: number; stock: number }[];
+      /** Lines sold under their purchase price (ADR-038). */
+      belowCost: { name: string; loss: number }[];
       customer: {
         id: string;
         name: string;
@@ -130,6 +132,10 @@ export class AlertsService {
     for (const s of sale.shortages)
       reasons.push(
         `${formatQuantity(s.sold, s.unit)} de ${s.name} vendus pour ${formatQuantity(Math.max(s.stock, 0), s.unit)} en stock`,
+      );
+    for (const line of sale.belowCost)
+      reasons.push(
+        `${line.name} vendu ${money(line.loss)} sous son prix d’achat`,
       );
     if (reasons.length > 0)
       await this.notifications.notify(trx, {

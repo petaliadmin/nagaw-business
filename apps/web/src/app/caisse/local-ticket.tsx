@@ -1,11 +1,10 @@
 'use client';
 
-import type { SaleDto } from '@nagaw/shared';
+import { describeSaleLine, type SaleDto } from '@nagaw/shared';
 import { CloudOff, MessageCircle, Printer, ShoppingCart } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
-import { formatQuantity } from '@/lib/catalog/labels';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 import { ticketLabel, ticketText, whatsappLink } from '@/lib/sales/ticket';
 import type { LocalTicket, ShopSnapshot } from '@/lib/offline/store';
@@ -124,7 +123,7 @@ export function LocalTicketView({
             <li key={line.position}>
               <p className="font-semibold">{line.label}</p>
               <Row
-                label={`${formatQuantity(line.quantity, line.unit)} × ${money(line.unitPrice)}`}
+                label={describeSaleLine(line, money)}
                 value={money(line.lineTotal)}
               />
             </li>

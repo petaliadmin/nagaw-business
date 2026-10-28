@@ -70,7 +70,11 @@ export class OrganizationsService {
             requestId,
           });
 
-          return { ...toOrganizationDto(organization), role: 'owner' as Role };
+          return {
+            ...toOrganizationDto(organization),
+            role: 'owner' as Role,
+            maxDiscountBasisPoints: null,
+          };
         });
       } catch (error) {
         const code = pgErrorCode(error);
@@ -155,6 +159,7 @@ export class OrganizationsService {
         'p.display_name',
         'm.role',
         'm.status',
+        'm.max_discount_basis_points',
         'm.created_at',
       ])
       .where('m.organization_id', '=', organizationId)
@@ -166,6 +171,7 @@ export class OrganizationsService {
       displayName: row.display_name,
       role: row.role,
       status: row.status,
+      maxDiscountBasisPoints: row.max_discount_basis_points,
       joinedAt: row.created_at.toISOString(),
     }));
   }
@@ -176,13 +182,17 @@ export class OrganizationsService {
       .selectFrom('app.organization_memberships as m')
       .innerJoin('app.organizations as o', 'o.id', 'm.organization_id')
       .selectAll('o')
-      .select('m.role')
+      .select(['m.role', 'm.max_discount_basis_points'])
       .where('m.user_id', '=', userId)
       .where('m.status', '=', 'active')
       .where('o.status', '=', 'active')
       .orderBy('o.name', 'asc')
       .execute();
-    return rows.map((row) => ({ ...toOrganizationDto(row), role: row.role }));
+    return rows.map((row) => ({
+      ...toOrganizationDto(row),
+      role: row.role,
+      maxDiscountBasisPoints: row.max_discount_basis_points,
+    }));
   }
 }
 

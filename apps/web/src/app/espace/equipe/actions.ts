@@ -104,3 +104,46 @@ export async function updateMember(
   refresh();
   return { status: 'success', message: 'Modification enregistrée.' };
 }
+
+/**
+ * Largest reduction (negotiated prices and discount) a person may give on
+ * a sale, typed in percent; empty: no limit (ADR-038).
+ */
+export async function setDiscountLimit(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const accessToken = await requireToken();
+  const organizationId = takeOrganizationId(formData);
+  const userId = formData.get('userId')?.toString();
+  if (!organizationId || !userId)
+    return { status: 'error', message: 'Membre inconnu.' };
+  const typed = (formData.get('percent')?.toString() ?? '')
+    .replace(/[\s%]/g, '')
+    .replace(',', '.');
+  const percent = typed === '' ? null : Number(typed);
+  if (percent !== null && (!/^\d+(\.\d{1,2})?$/.test(typed) || percent > 100))
+    return {
+      status: 'error',
+      message: 'Tapez un pourcentage entre 0 et 100, ou laissez vide.',
+      fieldErrors: { percent: 'Entre 0 et 100, par exemple 10.' },
+    };
+  const result = await apiAsUser<MemberDto>(accessToken, {
+    method: 'PATCH',
+    path: `/organizations/current/members/${encodeURIComponent(userId)}`,
+    organizationId,
+    body: {
+      maxDiscountBasisPoints:
+        percent === null ? null : Math.round(percent * 100),
+    },
+  });
+  if (!result.ok) return { status: 'error', message: result.message };
+  refresh();
+  return {
+    status: 'success',
+    message:
+      percent === null
+        ? 'Sans limite : cette personne négocie librement.'
+        : `Limite enregistrée : ${typed.replace('.', ',')} % au plus.`,
+  };
+}

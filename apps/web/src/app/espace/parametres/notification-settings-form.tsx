@@ -23,7 +23,7 @@ export function NotificationSettingsForm({
   );
   const errors = state.fieldErrors ?? {};
   const field = (
-    name: keyof NotificationSettingsDto,
+    name: Exclude<keyof NotificationSettingsDto, 'sellerCanSellBelowCost'>,
     label: string,
     hint: string,
   ) => (
@@ -78,6 +78,23 @@ export function NotificationSettingsForm({
           'Entre 1 et 365 jours.',
         )}
       </div>
+      <label className="flex min-h-12 items-start gap-3">
+        <input
+          type="checkbox"
+          name="sellerCanSellBelowCost"
+          defaultChecked={settings.sellerCanSellBelowCost}
+          className="mt-1 size-6 shrink-0"
+        />
+        <span>
+          <span className="block font-semibold">
+            Les vendeurs peuvent vendre sous le prix d’achat
+          </span>
+          <span className="block text-ink-muted">
+            Sinon, une vente à perte doit être faite par vous ou un gérant. Les
+            gérants sont prévenus de chaque vente à perte.
+          </span>
+        </span>
+      </label>
       <div>
         <SubmitButton pendingLabel="Enregistrement…">
           Enregistrer les réglages
