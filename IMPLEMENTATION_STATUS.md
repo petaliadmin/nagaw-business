@@ -696,3 +696,9 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - rien n'est proposé quand l'application est ouverte depuis l'écran d'accueil ou vient d'être installée.
 - **Tests** : unitaires (détection installée, installation proposée, iPhone Safari, autres navigateurs iOS) ; lint, typecheck, build.
 - **Limites** : après un refus dans la fenêtre du navigateur, Chrome ne repropose l'installation qu'au chargement d'une page suivante (le bouton revient alors) ; non vérifié sur un vrai téléphone.
+
+## Après la Phase 18 — La caisse s'ouvre dans toutes les circonstances (ADR-037)
+
+- **Statut** : livré sur la branche `claude/caisse-toujours-ouverte`, en attente de fusion. Aucune migration.
+- **Changements** : un nouveau téléphone n'est plus refusé quand l'offre est à son nombre d'appareils (dépassement inscrit dans l'historique) ; la caisse s'ouvre avec la copie du téléphone quelle que soit l'erreur du serveur ; sans copie, nouvel essai automatique toutes les 15 s et au retour du réseau.
+- **Tests** : intégration (abonnements : un téléphone au-delà de l'offre est accepté) ; lint, typecheck, unitaires, build.

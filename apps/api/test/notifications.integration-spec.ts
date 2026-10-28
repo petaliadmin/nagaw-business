@@ -141,6 +141,12 @@ describe('Notifications, seller access and stock checks (ADR-036)', () => {
        values ($1, $2, 'member'), ($1, $3, 'admin'), ($1, $4, 'viewer')`,
       [acmeId, carol.id, dan.id, erin.id],
     );
+    // No daily notifications until the test about them: opening the
+    // notifications after the summary hour would otherwise prepare them.
+    await ctx.admin.query(
+      "update app.organizations set daily_run_on = '2100-01-01' where id = $1",
+      [acmeId],
+    );
     device = (
       await post(carol, acmeId, '/devices', {
         label: 'Téléphone du comptoir',

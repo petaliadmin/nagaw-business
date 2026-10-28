@@ -122,9 +122,9 @@ describe('Offers, subscriptions and quotas', () => {
       'Limite de 3 produits atteinte. Changez d’offre dans « Abonnement » pour en ajouter.',
     );
     await device().expect(201);
-    expect((await device().expect(409)).body.error.code).toBe(
-      'CATALOG_LIMIT_REACHED',
-    );
+    // Beyond the offer, a phone is still accepted: the checkout must
+    // always open (2026-10-27); the usage shows it over the limit.
+    await device().expect(201);
 
     // Two people: Alice and one invitation already fill the shop.
     danToken = (await invite(dan.email).expect(201)).body.token;
@@ -135,7 +135,7 @@ describe('Offers, subscriptions and quotas', () => {
     ).toEqual({
       products: 3,
       members: 1,
-      devices: 1,
+      devices: 2,
     });
   }, 60_000);
 
@@ -153,14 +153,15 @@ describe('Offers, subscriptions and quotas', () => {
 
     await ctx.setPlan(acmeId, 'free');
     const s = (await get(alice, acmeId, '/subscription').expect(200)).body;
-    expect(s.usage).toEqual({ products: 4, members: 1, devices: 2 });
+    expect(s.usage).toEqual({ products: 4, members: 1, devices: 3 });
     expect(s.limits).toEqual({ products: 3, members: 2, devices: 1 });
-    // Nothing is taken away; nothing more can be added.
+    // Nothing is taken away; no more products can be added.
     expect(
       (await get(alice, acmeId, '/products').expect(200)).body,
     ).toHaveLength(4);
     await product('Article 5').expect(409);
-    await device().expect(409);
+    // A phone is never refused: the checkout always opens (2026-10-27).
+    await device().expect(201);
   });
 
   it('sets no product limit on the Pro offer', async () => {

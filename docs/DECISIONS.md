@@ -411,3 +411,13 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **seuils en base** (`organizations`), modifiables par le propriétaire et les gérants dans Paramètres, audités.
 - **Limites** : un message push réservé puis interrompu (fonction arrêtée pendant l'envoi) n'est pas renvoyé ; sur iPhone, le push exige l'application ajoutée à l'écran d'accueil ; les notifications ne sont pas encore purgées (pas de droit `DELETE`, ADR-013) ; prévision au rythme moyen, sans saisonnalité.
 - **Reporté** : e-mail, SMS et WhatsApp (prestataire à choisir, ADR-015) ; fréquence de planification plus fine (offre Vercel Pro) ; retours partiels.
+
+## ADR-037 — La caisse s'ouvre dans toutes les circonstances
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-27 : « plus de blocage sur l'ouverture de la caisse, elle doit s'ouvrir dans toutes les circonstances »). Modifie ADR-029 pour les appareils.
+- **Contexte** : une boutique arrivée au nombre d'appareils de son offre (doublons créés par la caisse, navigateurs abandonnés) ne pouvait plus enregistrer de nouveau téléphone : la caisse restait fermée.
+- **Décision** :
+  - le nombre d'appareils de l'offre **n'est plus un refus** : un nouveau téléphone est toujours enregistré ; le dépassement est inscrit dans l'historique (`device.registered` avec `overLimit`) et reste visible (page Abonnement, alertes de quota de l'administration). Les limites de produits et de personnes ne changent pas ;
+  - la caisse s'ouvre **toujours avec la copie du téléphone** quand elle existe, quelle que soit la réponse du serveur ; les ventes attendent sur le téléphone et le bandeau dit pourquoi si elles ne peuvent pas partir ;
+  - sans copie (premier passage), elle **réessaie seule** toutes les 15 secondes et au retour du réseau.
+- **Limites** : sans aucune copie et sans serveur joignable, il n'y a rien à vendre (ni produits, ni appareil) : la caisse attend et réessaie ; une personne déconnectée doit se reconnecter avant le premier chargement.
