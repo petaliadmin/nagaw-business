@@ -1,6 +1,5 @@
-import { ShoppingCart, WifiOff } from 'lucide-react';
+import { WifiOff } from 'lucide-react';
 import type { Metadata } from 'next';
-import { ButtonLink } from '@/components/ui/button-link';
 import { Logo } from '@/components/ui/logo';
 import { RetryButton } from './retry-button';
 
@@ -31,13 +30,8 @@ export default function OfflinePage() {
         </p>
         <RetryButton />
         <p className="text-ink-muted">
-          Pour vendre sans connexion, ouvrez la caisse : elle garde vos produits
-          sur ce téléphone.
+          La caisse a aussi besoin d’internet pour enregistrer les ventes.
         </p>
-        <ButtonLink href="/caisse" variant="sell" className="w-full">
-          <ShoppingCart aria-hidden className="size-5" />
-          Ouvrir la caisse
-        </ButtonLink>
       </div>
     </main>
   );

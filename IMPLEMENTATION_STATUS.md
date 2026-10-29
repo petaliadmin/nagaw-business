@@ -801,3 +801,26 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
 - **Correction de tests** : « approves a request… » et « rejects a request… » comptaient toutes les demandes d'offre de la base, y compris celles d'autres fichiers de tests lancés en même temps ; ils ne regardent plus que celles de leur boutique (mêmes vérifications).
 - **Limites** : montants aux prix d'aujourd'hui ; aucun paiement suivi ; jours et mois en UTC ; montants d'activité dans la devise du plus grand nombre de boutiques seulement.
+
+## Après la Phase 18 — Caisse en ligne uniquement, pour l'instant (ADR-042)
+
+- **Objectif** : correctif demandé par le propriétaire le 2026-10-29 : un client bien connecté à internet n'arrivait pas à enregistrer ses ventes, la caisse le croyait hors ligne. Consigne : désactiver pour l'instant la caisse hors ligne, toutes les ventes enregistrées sur internet.
+- **Causes trouvées** :
+  - toute erreur du serveur autre que 401, 403 ou 404 lors de l'envoi des opérations (400, 409, 500, délai) était prise pour une absence de réseau : la vente restait « en attente » sans explication, et un lot refusé bloquait les suivants ;
+  - un échec de l'enregistrement du téléphone comme appareil affichait l'écran « ouvrez la caisse une première fois avec internet ».
+- **Web** :
+  - `POST /caisse/vente` (relaie `POST /api/v1/sales`) et `POST /caisse/client` (relaie `POST /api/v1/customers`), avec la session de l'utilisateur ;
+  - la caisse attend la réponse du serveur : vente enregistrée, puis ticket du serveur ; sinon le message dit « pas de connexion internet : rien n'est enregistré » ou le refus du serveur. Le même panier renvoyé garde son identifiant d'opération (pas de doublon) ;
+  - ouverture avec des données fraîches seulement ; sans réseau, écran « pas de connexion » qui réessaie tout seul ; l'appareil n'est plus nécessaire pour vendre (seulement pour les corrections de stock, envoyées à l'instant) ;
+  - les opérations gardées par une version précédente partent toujours à l'ouverture ;
+  - textes corrigés : page « Pas de connexion », fenêtre d'installation, `llms.txt`. Le ticket local (`local-ticket.tsx`) est supprimé.
+- **Tests** : `e2e/app/offline.spec.ts` décrit le nouveau comportement (vente refusée sans réseau puis enregistrée une seule fois au renvoi, caisse qui ne s'ouvre pas sans réseau). Les tests de ventes gardées sur le téléphone sont retirés avec la fonction.
+
+  | Commande                                    | Résultat                                                    |
+  | ------------------------------------------- | ----------------------------------------------------------- |
+  | `pnpm lint`, `pnpm typecheck`, `pnpm build` | OK                                                          |
+  | `pnpm test`                                 | OK (shared 78, api 49, web 147)                             |
+  | `pnpm test:integration`                     | 184 tests OK                                                |
+  | Playwright                                  | exécuté par la CI (connexion de test en échec sur ce poste) |
+
+- **Limites** : sans internet, on ne vend plus avec l'application. Les textes du site public (accueil, référencement, image de partage) annoncent encore une caisse qui marche sans internet : à décider par le propriétaire.

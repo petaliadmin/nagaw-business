@@ -97,7 +97,7 @@ function InstallSheet({
           </div>
           <p>
             Mettez l’application sur l’écran d’accueil : elle s’ouvre d’un
-            geste, en plein écran, et la caisse marche même sans internet.
+            geste, en plein écran, comme une application.
           </p>
           {state === 'ios' ? (
             <>

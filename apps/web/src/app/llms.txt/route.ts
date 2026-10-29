@@ -25,7 +25,7 @@ export function GET() {
 
 - Application web en français, qui s’ouvre dans le navigateur d’un téléphone ou d’un ordinateur et s’ajoute à l’écran d’accueil ; rien à télécharger dans un magasin d’applications.
 - Caisse : grandes tuiles produits, monnaie à rendre, paiement en espèces, Mobile Money (opérateur et numéro de transaction), carte, crédit ou plusieurs moyens ; ticket imprimable au format 58 mm ou envoyé sur WhatsApp.
-- Hors ligne : la caisse s’ouvre sans connexion, garde les ventes sur le téléphone et les envoie au retour du réseau ; les autres écrans demandent une connexion.
+- Connexion : pour l’instant, la caisse enregistre chaque vente sur le serveur et demande une connexion internet, comme les autres écrans.
 - Stock : entrées de marchandise, pertes, inventaire avec écart, seuil d’alerte par produit ; unités pièce, carton, paquet, sachet, bouteille, sac, kg, g, litre, ml, mètre.
 - Clients : crédit avec plafond par client, liste « Ils me doivent », remboursements.
 - Trésorerie : caisses Caisse, Wave, Orange Money, Free Money, autre Mobile Money et Banque ; soldes calculés, dépenses avec justificatif photo, clôture de caisse. L’application n’est pas reliée aux comptes Wave ou Orange Money : elle calcule le solde attendu à partir de ce qui est enregistré.

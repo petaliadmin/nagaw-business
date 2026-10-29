@@ -472,3 +472,18 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **graphiques faits maison** (CSS, sans bibliothèque), comme ceux des statistiques des boutiques : une seule échelle, une légende dès deux séries, survol pour le détail et **tableau des chiffres** sous chaque graphique ; couleurs de séries `--chart-1` à `--chart-3`, dans un ordre fixe, vérifiées (luminosité, saturation, daltonisme, contraste 3:1) en clair et en sombre ;
   - **présentation** : barre latérale sombre avec la page en cours marquée (comme l'espace des boutiques), tuiles de chiffres clés en couleur, alertes en tête.
 - **Limites** : pas de prix historisés ; pas de suivi des paiements ; jours et mois en UTC.
+
+## ADR-042 — Caisse en ligne uniquement, pour l'instant (suspend en partie ADR-020)
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-29 : un client connecté à internet ne pouvait pas enregistrer ses ventes, la caisse le croyait hors ligne ; « pour l'instant désactiver le mode caisse offline, toutes les ventes sont comptabilisées sur internet »).
+- **Constat** :
+  - la caisse gardait chaque vente sur le téléphone puis l'envoyait. Toute réponse d'erreur du serveur autre que 401, 403 ou 404 (400, 409, 500, délai dépassé) était traitée comme une absence de réseau : la vente restait « en attente d'envoi » sans explication, et une opération refusée en bloc bloquait les suivantes ;
+  - un échec de l'enregistrement du téléphone comme appareil affichait l'écran « ouvrez la caisse une première fois avec internet ».
+- **Décision** :
+  - la caisse **envoie chaque vente au serveur** (`POST /caisse/vente`, qui relaie `POST /api/v1/sales`) et attend sa réponse. La vente n'est présentée comme faite qu'une fois enregistrée ; sinon le vendeur lit la vraie raison : pas de réseau, ou le refus du serveur avec son message ;
+  - un envoi répété de la **même** vente (réseau coupé pendant l'envoi) garde son identifiant d'opération : le serveur ne l'enregistre qu'une fois ;
+  - le nouveau client du comptoir est créé sur le serveur (`POST /caisse/client`), puis choisi ; la correction de stock part au serveur à l'instant, par l'appareil du téléphone ;
+  - la caisse s'ouvre avec des **données fraîches** seulement ; sans réseau, elle le dit et réessaie toute seule ;
+  - l'enregistrement de l'appareil ne bloque plus la vente : il ne sert qu'aux corrections de stock ;
+  - les opérations qu'une version précédente a gardées sur un téléphone partent toujours à l'ouverture de la caisse : rien n'est perdu.
+- **Conséquences** : sans internet, on ne vend pas avec l'application. La base locale, la file d'opérations et `POST /api/v1/sync` restent en place pour revenir au mode hors ligne quand ses erreurs seront traitées une par une. Les textes de l'application qui promettaient la vente sans internet sont corrigés ; ceux du site public (accueil, référencement, image de partage) attendent la décision du propriétaire.
