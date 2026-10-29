@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveSiteUrl } from './site-url';
+import { PRODUCTION_SITE_URL, resolveSiteUrl } from './site-url';
 
 describe('resolveSiteUrl', () => {
   it('prefers SITE_URL, without trailing slash', () => {
@@ -22,5 +22,23 @@ describe('resolveSiteUrl', () => {
       'https://web-abc.vercel.app',
     );
     expect(resolveSiteUrl({})).toBe('http://localhost:3000');
+  });
+
+  it('always uses the canonical domain in production', () => {
+    expect(PRODUCTION_SITE_URL).toBe('https://www.naagaw.com');
+    expect(
+      resolveSiteUrl({
+        VERCEL_ENV: 'production',
+        SITE_URL: 'https://nagaw-web-petalia.vercel.app',
+        VERCEL_URL: 'nagaw-web-abc.vercel.app',
+      }),
+    ).toBe('https://www.naagaw.com');
+    // A preview keeps its own address.
+    expect(
+      resolveSiteUrl({
+        VERCEL_ENV: 'preview',
+        VERCEL_BRANCH_URL: 'web-git-x.vercel.app',
+      }),
+    ).toBe('https://web-git-x.vercel.app');
   });
 });
