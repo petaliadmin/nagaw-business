@@ -336,6 +336,7 @@ const orgsOf = (userId) =>
       ...state.organizations[m.organizationId],
       role: m.role,
       maxDiscountBasisPoints: m.maxDiscountBasisPoints ?? null,
+      platformAccess: false,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -453,6 +454,7 @@ const server = createServer(async (req, res) => {
           : null,
       devices: [],
       requests: state.subscriptions[org.id].pending ? [requestDto(org)] : [],
+      access: null,
     });
     const orgs = Object.values(state.organizations);
     const pending = orgs.filter(
@@ -487,6 +489,71 @@ const server = createServer(async (req, res) => {
             ]
           : [],
       });
+    const lastMonths = (n) => {
+      const today = new Date();
+      return Array.from({ length: n }, (_, i) =>
+        new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - (n - 1 - i)),
+        )
+          .toISOString()
+          .slice(0, 7),
+      );
+    };
+    if (path === '/api/v1/admin/finances') {
+      const active = orgs.filter((o) => o.status === 'active');
+      const byPlan = PLANS.map((p) => {
+        const shops = active.filter(
+          (o) => state.subscriptions[o.id].planKey === p.key,
+        ).length;
+        return {
+          key: p.key,
+          name: p.name,
+          monthlyPrice: p.monthlyPrice,
+          shops,
+          expectedMonthlyRevenue: shops * p.monthlyPrice,
+        };
+      });
+      const expected = byPlan.reduce((t, p) => t + p.expectedMonthlyRevenue, 0);
+      const paying = byPlan
+        .filter((p) => p.monthlyPrice > 0)
+        .reduce((t, p) => t + p.shops, 0);
+      return send(res, 200, {
+        currency: 'XOF',
+        expectedMonthlyRevenue: expected,
+        payingShops: paying,
+        activeShops: active.length,
+        byPlan,
+        pending: { requests: pending.length, expectedMonthlyChange: 0 },
+        months: lastMonths(12).map((month) => ({
+          month,
+          expectedMonthlyRevenue: expected,
+          payingShops: paying,
+          upgrades: 0,
+          downgrades: 0,
+        })),
+      });
+    }
+    if (path === '/api/v1/admin/activity') {
+      const today = new Date();
+      return send(res, 200, {
+        currency: 'XOF',
+        otherCurrencyShops: 0,
+        days: Array.from({ length: 30 }, (_, i) => ({
+          day: new Date(today.getTime() - (29 - i) * 86_400_000)
+            .toISOString()
+            .slice(0, 10),
+          sales: 0,
+          amount: 0,
+        })),
+        shopsSelling: { last7Days: 0, last30Days: 0 },
+        months: lastMonths(12).map((month) => ({
+          month,
+          newShops: 0,
+          newUsers: 0,
+        })),
+        topShops: [],
+      });
+    }
     if (path === '/api/v1/admin/shops')
       return send(res, 200, orgs.map(listItem));
     if (path === '/api/v1/admin/plan-requests')
@@ -676,6 +743,7 @@ const server = createServer(async (req, res) => {
       ...state.organizations[id],
       role: 'owner',
       maxDiscountBasisPoints: null,
+      platformAccess: false,
     });
   }
 

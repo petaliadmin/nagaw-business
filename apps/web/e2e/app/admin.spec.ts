@@ -46,12 +46,12 @@ test('the platform accepts a request to change offer', async ({
   await expect(
     page.getByRole('heading', {
       level: 1,
-      name: 'Tableau de bord de la plateforme',
+      name: 'Tableau de bord',
     }),
   ).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Alertes' })).toContainText(
-    '1 demande(s) de changement d’offre en attente.',
-  );
+  await expect(
+    page.getByRole('list', { name: '1 alerte à regarder' }),
+  ).toContainText('1 demande(s) de changement d’offre en attente.');
   await expectAccessible(page, 'administration');
   await page
     .getByRole('link', { name: 'Traiter les demandes d’offre' })
