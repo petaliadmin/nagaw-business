@@ -105,8 +105,12 @@ test('the platform suspends and reactivates a shop', async ({
   ).toBeVisible();
 
   await page.goto('/admin/synchronisation');
+  // The figures of the chart, in a table under « Voir les chiffres ».
+  await page.getByText('Voir les chiffres en tableau').click();
   await expect(
-    page.getByRole('table', { name: 'Envois par jour' }),
+    page.getByRole('table', {
+      name: 'Opérations acceptées et refusées, par jour',
+    }),
   ).toBeVisible();
   await expectAccessible(page, 'synchronisation');
 });
