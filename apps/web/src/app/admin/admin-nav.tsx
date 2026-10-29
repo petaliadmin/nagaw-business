@@ -60,7 +60,7 @@ export function AdminNav({ tone }: { tone: 'sidebar' | 'bar' }) {
             <Link
               href={href}
               aria-current={on ? 'page' : undefined}
-              className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-bold transition-colors ${styles.link} ${
+              className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-bold ${styles.link} ${
                 on ? styles.on : styles.off
               }`}
             >
