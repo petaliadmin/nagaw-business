@@ -441,3 +441,34 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **facture d'une vente** : prix du catalogue, négociations ajoutées à la remise ; une unité à prix fixe devient « Produit (sac de 50 kg) » comptée en sacs (ou en pièces) ; une unité au prix calculé est reprise dans l'unité de stock (0,25 kg à 650 F).
 - **Découpage** : étape 1 (base, contrats, API, tests) et étape 2 (conversions, prix calculé, modèles, fiche produit, caisse, réglages des règles) livrées ; étape 3 à valider : entrées et inventaire par conditionnement, factures et devis multi-unités, statistiques des négociations.
 - **Limites** : la facture d'une vente dont un prix a été **augmenté**, ou d'« 1,5 sac », est refusée avec un message (faire une facture à part) ; la taxe d'une facture tirée d'une vente négociée peut différer d'un franc de celle du ticket ; les entrées de stock et l'inventaire restent saisis dans l'unité de stock.
+
+## ADR-039 — Un seul administrateur de la plateforme
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-29 : « super admin unique », avec le choix de l'imposer en base). Modifie ADR-030.
+- **Décision** :
+  - `app.platform_admins` contient **au plus une ligne**, imposé par la base (index unique `platform_admins_single`), même en SQL ;
+  - désigner un autre administrateur, c'est **retirer l'actuel puis ajouter le nouveau**, dans l'éditeur SQL (procédure dans `docs/OPERATIONS.md`) ; aucun endpoint ni écran ne le permet, comme avant ;
+  - les droits de l'administrateur ne changent pas (ADR-030) : comptes, offres, agrégats, suspension, jamais de contenu métier ;
+  - le mot de passe du compte est géré par Supabase Auth ; il n'est ni dans le dépôt ni dans une migration, et la migration ne nomme aucun compte.
+- **Conséquence** : si le compte administrateur est perdu, l'accès se rétablit en SQL (retrait puis ajout) ; aucun second administrateur de secours n'est possible.
+
+## ADR-040 — Le super administrateur prend la main sur les comptes
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-29 : « le super admin peut prendre le contrôle de tous les comptes » ; choix du même jour : entrer dans une boutique, se connecter à la place d'un utilisateur et gérer les comptes ; tous les droits du propriétaire ; inscrit dans l'historique de la boutique, sans limite de durée). Modifie ADR-030 : l'administrateur n'est plus tenu à l'écart du contenu métier.
+- **Décision** :
+  - **entrer dans une boutique** : depuis sa fiche dans `/admin`, avec un **motif obligatoire**. Un accès (`platform_shop_accesses`) reste ouvert jusqu'à ce que l'administrateur le ferme ; une boutique suspendue ne s'ouvre pas. Pendant l'accès, `TenantGuard` lui donne **les droits du propriétaire**, sous **sa propre identité** : il n'est pas membre (l'équipe, les quotas et les notifications ne le comptent pas), et cesser d'être administrateur ferme ses accès ;
+  - **traçabilité** : l'entrée (avec le motif) et la sortie sont inscrites dans l'historique de la boutique ; chaque action faite dedans y apparaît au nom de « Nagaw (plateforme) ». Un trigger sur `audit_logs` réécrit en `platform_admin` toute entrée d'un administrateur qui n'est pas membre de la boutique, quel que soit le service qui l'écrit ;
+  - dans l'espace de la boutique, un **bandeau** rappelle en permanence qu'il agit au nom de la plateforme, avec « Quitter la boutique ».
+- **Découpage** : étape 1 (entrer dans une boutique) livrée ; étape 2 (gérer les comptes : bloquer et débloquer un utilisateur, lui envoyer un lien de mot de passe, changer le propriétaire d'une boutique, retirer un membre) et étape 3 (se connecter à la place d'un utilisateur, l'auteur réel restant inscrit dans l'historique) à faire.
+- **Risques acceptés par le propriétaire** : l'administrateur peut lire les ventes, clients et chiffres de toute boutique et y agir ; le propriétaire de la boutique ne l'apprend que par l'historique ; l'accès n'expire pas seul.
+
+## ADR-041 — Tableau de bord, finances et statistiques de la plateforme
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-29 : « améliorer la présentation de l'administration, ajouter des graphiques statistiques, les finances »).
+- **Décision** :
+  - **finances = revenu attendu, jamais argent encaissé** : aucun paiement n'est enregistré dans l'application (ADR-029), donc la page Finances montre ce que les offres des boutiques actives doivent rapporter chaque mois (somme des `plans.monthly_price`), sur un an à ce rythme, le revenu moyen par boutique payante, la part de chaque offre et ce qu'ajouteraient les demandes en attente ; un bandeau le dit sur la page ;
+  - **historique sur 12 mois reconstitué** à partir de l'historique des boutiques (`subscription.plan_changed`, `organization.suspended`, `organization.reactivated`) : l'offre et la suspension de chaque boutique à la fin de chaque mois UTC ; avant le premier changement, l'offre de départ du changement ; sans changement, l'état actuel. **Aux prix d'aujourd'hui** (les prix ne sont pas historisés). Un changement fait directement en SQL, hors historique, n'y apparaît pas ;
+  - **activité** : montant et nombre de ventes de toutes les boutiques par jour sur 30 jours (ventes annulées exclues), boutiques qui ont vendu sur 7 et 30 jours, boutiques et comptes créés par mois, les cinq boutiques qui ont le plus vendu. Les montants ne s'additionnent que dans une devise : celle du plus grand nombre de boutiques ; les autres sont signalées, pas converties. Si les offres ont plusieurs devises, la page Finances le dit (409 `PLANS_MIXED_CURRENCIES`) au lieu d'additionner ;
+  - **graphiques faits maison** (CSS, sans bibliothèque), comme ceux des statistiques des boutiques : une seule échelle, une légende dès deux séries, survol pour le détail et **tableau des chiffres** sous chaque graphique ; couleurs de séries `--chart-1` à `--chart-3`, dans un ordre fixe, vérifiées (luminosité, saturation, daltonisme, contraste 3:1) en clair et en sombre ;
+  - **présentation** : barre latérale sombre avec la page en cours marquée (comme l'espace des boutiques), tuiles de chiffres clés en couleur, alertes en tête.
+- **Limites** : pas de prix historisés ; pas de suivi des paiements ; jours et mois en UTC.

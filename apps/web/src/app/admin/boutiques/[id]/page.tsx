@@ -1,7 +1,9 @@
 import type { AdminShopDto, PlanDto } from '@nagaw/shared';
-import { Ban, Crown, Smartphone } from 'lucide-react';
+import { Ban, Crown, DoorOpen, Smartphone } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { selectOrganization } from '@/app/espace/actions';
+import { SubmitButton } from '@/components/submit-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, Stat } from '@/components/ui/card';
@@ -10,7 +12,8 @@ import { PageHeader } from '@/components/ui/page-header';
 import { requirePlatformAdmin } from '@/lib/admin/load';
 import { apiAsUser } from '@/lib/api/server';
 import { formatDateTime } from '@/lib/format';
-import { SetPlanForm, SuspendForm } from '../../forms';
+import { closeShopAccess } from '../../actions';
+import { OpenAccessForm, SetPlanForm, SuspendForm } from '../../forms';
 
 const REQUEST_STATUS = {
   pending: 'En attente',
@@ -44,6 +47,42 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
         <Alert tone="warning">
           Suspendue le {when(s.suspension.at)} : {s.suspension.reason}
         </Alert>
+      )}
+      {s.status === 'active' && (
+        <Card title="Entrer dans la boutique" titleId="access" icon={DoorOpen}>
+          {s.access ? (
+            <div className="flex flex-col gap-4">
+              <p>
+                Vous y êtes depuis le {when(s.access.openedAt)} :{' '}
+                {s.access.reason}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <form action={selectOrganization}>
+                  <input type="hidden" name="organizationId" value={s.id} />
+                  <SubmitButton pendingLabel="Ouverture…">
+                    Aller dans la boutique
+                  </SubmitButton>
+                </form>
+                <form action={closeShopAccess}>
+                  <input type="hidden" name="shopId" value={s.id} />
+                  <SubmitButton variant="secondary" pendingLabel="Sortie…">
+                    Quitter la boutique
+                  </SubmitButton>
+                </form>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="mb-4 text-ink-muted">
+                Vous verrez et ferez tout comme son propriétaire, jusqu’à ce que
+                vous la quittiez. Le motif, votre entrée, votre sortie et
+                chacune de vos actions sont inscrits dans son historique, au nom
+                de « Nagaw (plateforme) ».
+              </p>
+              <OpenAccessForm shopId={s.id} />
+            </>
+          )}
+        </Card>
       )}
       <Card title={`Offre ${s.plan.name}`} titleId="plan" icon={Crown}>
         <dl className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">

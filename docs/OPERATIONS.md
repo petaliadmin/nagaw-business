@@ -13,20 +13,20 @@
 
 ## Procédures
 
-### Ajouter ou retirer un administrateur de la plateforme
+### Changer l'administrateur de la plateforme
 
-Dans l'éditeur SQL de Supabase (aucun écran ne le permet, ADR-030) :
+La plateforme a **un seul administrateur** (ADR-039), imposé par la base. Dans l'éditeur SQL de Supabase (aucun écran ne le permet, ADR-030), retirer l'actuel puis ajouter le nouveau, en une transaction :
 
 ```sql
--- Ajouter, par l'adresse de son compte :
+begin;
+delete from app.platform_admins;
 insert into app.platform_admins (user_id, note)
 select id, 'Raison de l’accès' from app.user_profiles where lower(email) = lower('personne@exemple.com')
-on conflict (user_id) do nothing returning user_id;
-
--- Retirer :
-delete from app.platform_admins
- where user_id = (select id from app.user_profiles where lower(email) = lower('personne@exemple.com'));
+returning user_id;
+commit;
 ```
+
+Le compte doit exister (inscription faite, ou créé dans **Authentication → Users** de Supabase) ; une insertion qui ne renvoie aucune ligne signifie que l'adresse est inconnue : faire `rollback`.
 
 ### Téléphone de caisse perdu ou volé
 

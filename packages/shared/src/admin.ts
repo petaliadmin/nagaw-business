@@ -3,7 +3,8 @@ import type { PlanLimits, PlanUsage } from './plans.js';
 
 /**
  * Platform administration (ADR-030): accounts, offers and aggregates of
- * the shops, never their business content.
+ * the shops; their business content only through an access opened with a
+ * reason, inside the shop's own space (ADR-040).
  */
 
 const note = z.string().trim().max(500, '500 caractères au plus');
@@ -34,6 +35,17 @@ export const adminSuspendSchema = z
   })
   .strict();
 export type AdminSuspendInput = z.infer<typeof adminSuspendSchema>;
+
+export const adminOpenAccessSchema = z
+  .object({
+    reason: z
+      .string()
+      .trim()
+      .min(1, 'Indiquez pourquoi vous entrez dans la boutique')
+      .max(500, '500 caractères au plus'),
+  })
+  .strict();
+export type AdminOpenAccessInput = z.infer<typeof adminOpenAccessSchema>;
 
 export const adminResolveRequestSchema = z
   .object({ note: note.default('') })
@@ -114,6 +126,56 @@ export interface AdminShopDto extends AdminShopListItemDto {
     revoked: boolean;
   }[];
   requests: AdminPlanRequestDto[];
+  /** The administrator's open access to the shop (ADR-040), if any. */
+  access: { openedAt: string; reason: string } | null;
+}
+
+/**
+ * Money the platform expects from the offers in force (ADR-041): payments
+ * are received outside the application and are not recorded, so nothing
+ * here is money received. Amounts in minor units of `currency`.
+ */
+export interface AdminFinancesDto {
+  currency: string;
+  /** Monthly price of the offers of the active shops. */
+  expectedMonthlyRevenue: number;
+  payingShops: number;
+  activeShops: number;
+  byPlan: {
+    key: string;
+    name: string;
+    monthlyPrice: number;
+    shops: number;
+    expectedMonthlyRevenue: number;
+  }[];
+  /** Offers asked and not yet decided: what they would add each month. */
+  pending: { requests: number; expectedMonthlyChange: number };
+  /**
+   * The last 12 months (UTC), oldest first, rebuilt from the history of
+   * offer changes and suspensions, at today's prices.
+   */
+  months: {
+    month: string;
+    expectedMonthlyRevenue: number;
+    payingShops: number;
+    upgrades: number;
+    downgrades: number;
+  }[];
+}
+
+/** What the shops do on the platform, all together (ADR-041). */
+export interface AdminActivityDto {
+  /** Currency of the most shops; amounts below count only those shops. */
+  currency: string;
+  /** Shops counted in another currency, left out of the amounts. */
+  otherCurrencyShops: number;
+  /** The last 30 days (UTC), oldest first; cancelled sales left out. */
+  days: { day: string; sales: number; amount: number }[];
+  shopsSelling: { last7Days: number; last30Days: number };
+  /** The last 12 months (UTC), oldest first. */
+  months: { month: string; newShops: number; newUsers: number }[];
+  /** The five shops that sold the most over 30 days. */
+  topShops: { id: string; name: string; sales: number; amount: number }[];
 }
 
 export interface AdminSyncDto {

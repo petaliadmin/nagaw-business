@@ -3,9 +3,11 @@ import { Store } from 'lucide-react';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
+import { closeShopAccess } from '@/app/admin/actions';
 import { CreateOrganizationForm } from '@/app/espace/create-organization-form';
 import { InstallButton, InstallDialog } from '@/components/pwa/install-app';
 import { SignOutButton } from '@/components/pwa/sign-out-button';
+import { SubmitButton } from '@/components/submit-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -59,6 +61,35 @@ function Account({
         </Link>
       )}
       <SignOutButton tone={tone} />
+    </div>
+  );
+}
+
+/** Always in view while the platform is inside a shop (ADR-040). */
+function PlatformAccessBanner({
+  shopId,
+  shopName,
+}: {
+  shopId: string;
+  shopName: string;
+}) {
+  return (
+    <div className="print:hidden">
+      <Alert tone="warning">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span>
+            Vous êtes dans « {shopName} » en tant que{' '}
+            <strong>Nagaw (plateforme)</strong> : tout ce que vous faites est
+            inscrit dans son historique.
+          </span>
+          <form action={closeShopAccess}>
+            <input type="hidden" name="shopId" value={shopId} />
+            <SubmitButton variant="secondary" pendingLabel="Sortie…">
+              Quitter la boutique
+            </SubmitButton>
+          </form>
+        </div>
+      </Alert>
     </div>
   );
 }
@@ -178,6 +209,12 @@ export async function AppShell({ children }: { children: ReactNode }) {
           id="contenu"
           className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 pt-4 pb-28 md:p-8 print:p-0"
         >
+          {organization.platformAccess && (
+            <PlatformAccessBanner
+              shopId={organization.id}
+              shopName={organization.name}
+            />
+          )}
           {children}
         </main>
       </div>

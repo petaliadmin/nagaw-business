@@ -74,6 +74,7 @@ export class OrganizationsService {
             ...toOrganizationDto(organization),
             role: 'owner' as Role,
             maxDiscountBasisPoints: null,
+            platformAccess: false,
           };
         });
       } catch (error) {
@@ -176,23 +177,52 @@ export class OrganizationsService {
     }));
   }
 
-  /** Active organizations the user belongs to, with their role. */
+  /**
+   * Active organizations the user belongs to, with their role; after them,
+   * those the platform administrator entered through an open access
+   * (ADR-040), as an owner, the guard granting the same.
+   */
   async listForUser(userId: string): Promise<OrganizationWithRoleDto[]> {
-    const rows = await this.database.db
-      .selectFrom('app.organization_memberships as m')
-      .innerJoin('app.organizations as o', 'o.id', 'm.organization_id')
-      .selectAll('o')
-      .select(['m.role', 'm.max_discount_basis_points'])
-      .where('m.user_id', '=', userId)
-      .where('m.status', '=', 'active')
-      .where('o.status', '=', 'active')
-      .orderBy('o.name', 'asc')
-      .execute();
-    return rows.map((row) => ({
-      ...toOrganizationDto(row),
-      role: row.role,
-      maxDiscountBasisPoints: row.max_discount_basis_points,
-    }));
+    const db = this.database.db;
+    const [memberships, accesses] = await Promise.all([
+      db
+        .selectFrom('app.organization_memberships as m')
+        .innerJoin('app.organizations as o', 'o.id', 'm.organization_id')
+        .selectAll('o')
+        .select(['m.role', 'm.max_discount_basis_points'])
+        .where('m.user_id', '=', userId)
+        .where('m.status', '=', 'active')
+        .where('o.status', '=', 'active')
+        .orderBy('o.name', 'asc')
+        .execute(),
+      db
+        .selectFrom('app.platform_shop_accesses as a')
+        .innerJoin('app.platform_admins as p', 'p.user_id', 'a.admin_id')
+        .innerJoin('app.organizations as o', 'o.id', 'a.organization_id')
+        .selectAll('o')
+        .where('a.admin_id', '=', userId)
+        .where('a.closed_at', 'is', null)
+        .where('o.status', '=', 'active')
+        .orderBy('o.name', 'asc')
+        .execute(),
+    ]);
+    const member = new Set(memberships.map((row) => row.id));
+    return [
+      ...memberships.map((row) => ({
+        ...toOrganizationDto(row),
+        role: row.role,
+        maxDiscountBasisPoints: row.max_discount_basis_points,
+        platformAccess: false,
+      })),
+      ...accesses
+        .filter((row) => !member.has(row.id))
+        .map((row) => ({
+          ...toOrganizationDto(row),
+          role: 'owner' as Role,
+          maxDiscountBasisPoints: null,
+          platformAccess: true,
+        })),
+    ];
   }
 }
 

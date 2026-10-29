@@ -55,6 +55,12 @@ export async function createTestContext() {
     return { id, email, token: await auth.sign(id, { email }) };
   }
 
+  /** The single platform administrator (ADR-039), created by the setup. */
+  async function platformAdmin(): Promise<TestUser> {
+    const { id, email } = inject('platformAdmin');
+    return { id, email, token: await auth.sign(id, { email }) };
+  }
+
   /**
    * Puts a shop on an offer, as the platform does (ADR-029): new shops
    * start on the free offer, too small for tests about teams and devices.
@@ -75,7 +81,16 @@ export async function createTestContext() {
     await admin.end();
   }
 
-  return { app, admin, auth, createUser, setPlan, http, close };
+  return {
+    app,
+    admin,
+    auth,
+    createUser,
+    platformAdmin,
+    setPlan,
+    http,
+    close,
+  };
 }
 
 export type TestContext = Awaited<ReturnType<typeof createTestContext>>;

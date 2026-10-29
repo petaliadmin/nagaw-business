@@ -749,3 +749,55 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
 - **Tests retirés** : `shortagesOf` (stock local) n'est plus utilisé ; le calcul du stock demandé sur toutes les unités d'un produit (`wantedStock`) le remplace et est testé.
 - **Limites** : entrées et inventaire toujours saisis dans l'unité de stock ; devis et factures saisis à la main sans unité de vente (étape 3).
+
+## Après la Phase 18 — Un seul administrateur de la plateforme (ADR-039)
+
+- **Objectif** : demande du propriétaire du 2026-10-29 : un « super admin unique » pour l'administration de la plateforme (l'espace `/admin` existe depuis la Phase 16, ADR-030).
+- **Statut** : livrée sur la branche `claude/super-admin-unique`, en attente de validation. La migration n'est **pas encore appliquée** sur Supabase.
+- **Base** : migration `20261029090000_single_platform_admin.sql`, index unique `platform_admins_single` : au plus un administrateur, même en SQL. Elle ne nomme aucun compte et ne contient aucun mot de passe.
+- **Production (fait le 2026-10-29, à la demande du propriétaire)** : le compte existant `senghor.pape912@hotmail.com` a reçu le mot de passe choisi par le propriétaire (API d'administration de Supabase Auth, e-mail confirmé) et a été ajouté à `app.platform_admins`, seule ligne de la table. Ce compte est aussi propriétaire de la boutique « Habib comptoir », ce qui s'écarte de ADR-030 (« un administrateur n'est membre d'aucune boutique ») : rien ne l'interdit techniquement, à trancher par le propriétaire.
+- **Tests** : l'administrateur des tests d'intégration est créé une fois par la mise en place commune (`platformAdmin()`), partagé par `admin` et `feedback` ; nouveau test « keeps a single platform administrator, even in SQL ».
+- **Procédure** : `docs/OPERATIONS.md`, « Changer l'administrateur de la plateforme ».
+
+## Après la Phase 18 — Le super administrateur prend la main (ADR-040), étape 1
+
+- **Objectif** : demande du propriétaire du 2026-10-29 : « le super admin peut prendre le contrôle de tous les comptes ». Choix : entrer dans une boutique, se connecter à la place d'un utilisateur, gérer les comptes ; droits du propriétaire ; inscrit dans l'historique, sans limite de durée.
+- **Statut** : étape 1 (entrer dans une boutique) livrée sur la branche `claude/super-admin-unique`, en attente de validation ; migration **non appliquée** sur Supabase. Étapes 2 (gérer les comptes) et 3 (se connecter à la place d'un utilisateur) à faire.
+- **Base** : migration `20261029100000_platform_shop_access.sql` : table `platform_shop_accesses` (l'API ne peut que fermer un accès) ; trigger `audit_logs_mark_platform_actor`.
+- **API** : `POST /admin/shops/:id/access` (motif) et `/access/close` ; `TenantGuard` accepte l'administrateur qui a un accès ouvert, avec le rôle propriétaire ; `/me` liste ces boutiques après les siennes, avec `platformAccess: true` ; la fiche d'une boutique donne l'accès ouvert (`access`).
+- **Web** : carte « Entrer dans la boutique » sur la fiche d'administration (motif, puis l'espace de la boutique s'ouvre) ; dans la boutique, bandeau « Vous êtes dans … en tant que Nagaw (plateforme) » avec « Quitter la boutique » ; libellés de l'historique.
+- **Tests exécutés** :
+
+  | Commande                                    | Résultat                                                                                                                                                                                                                                                                           |
+  | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `pnpm lint`, `pnpm typecheck`, `pnpm build` | OK                                                                                                                                                                                                                                                                                 |
+  | `pnpm test`                                 | OK (shared 78, api 49, web 144)                                                                                                                                                                                                                                                    |
+  | `pnpm test:integration`                     | 183 tests OK, dont « enters a shop with a reason… » : refus à un non-administrateur, motif obligatoire, double ouverture, droits du propriétaire dans la seule boutique ouverte (l'autre reste en 404), équipe inchangée, action signée « plateforme », sortie, boutique suspendue |
+  | `pnpm format:check`                         | échoue sur ce poste Windows pour tout le dépôt (fins de ligne CRLF de l'extraction) ; les fichiers modifiés sont conformes                                                                                                                                                         |
+  | Playwright                                  | **non exécuté** sur ce poste (port refusé par Windows, voir plus haut)                                                                                                                                                                                                             |
+
+- **Limites (étape 1)** : seul l'historique est vérifié pour afficher « Nagaw (plateforme) » ; les autres écrans qui nomment un auteur d'après l'équipe de la boutique ne connaissent pas l'administrateur (non vérifié écran par écran) ; l'accès n'expire pas seul (choix du propriétaire).
+
+## Après la Phase 18 — Tableau de bord, finances et statistiques de la plateforme (ADR-041)
+
+- **Objectif** : demande du propriétaire du 2026-10-29 : « améliorer la présentation de l'administration, ajouter des graphiques statistiques, les finances ».
+- **Statut** : livré sur la branche `claude/super-admin-unique`, en attente de validation. Migration `20261029120000_admin_finances_indexes.sql` (deux index, sans changement de données) **non appliquée** sur Supabase : les pages fonctionnent sans elle, elle n'accélère que les calculs.
+- **API** : `GET /admin/finances` (revenu mensuel attendu, par offre, demandes en attente, 12 mois reconstitués d'après l'historique des offres et des suspensions, montées et descentes d'offre) ; `GET /admin/activity` (ventes de toutes les boutiques sur 30 jours, boutiques qui vendent, créations par mois, cinq boutiques qui vendent le plus).
+- **Web** :
+  - **présentation** : barre latérale sombre avec la page en cours marquée (boutons qui passent à la ligne sur téléphone), lien « Mon espace » et déconnexion regroupés ;
+  - **tableau de bord** : alertes en tête (ou « Aucune alerte »), quatre chiffres clés (revenu mensuel prévu et son évolution, boutiques payantes, boutiques qui vendent, ventes sur 30 jours), graphique des ventes par jour, répartition des offres, croissance par mois, boutiques qui vendent le plus, comptes et synchronisation ;
+  - **Finances** (nouvelle page) : bandeau « montants attendus, pas encaissés », chiffres clés (revenu mensuel, sur un an, par boutique payante, part de boutiques payantes), revenu prévu sur 12 mois, revenu par offre, demandes en attente, détail par offre, changements d'offre par mois ;
+  - **Synchronisation** : chiffres clés et graphique empilé acceptées / refusées à la place du long tableau (le tableau reste sous le graphique) ;
+  - composant `ColumnChart` (une série ou plusieurs empilées, une seule échelle, légende, survol, tableau des chiffres) et `ShareBar` ; jetons `--chart-1` à `--chart-3` vérifiés en clair et en sombre.
+- **Tests exécutés** :
+
+  | Commande                                    | Résultat                                                                                                                                                                                                                            |
+  | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `pnpm lint`, `pnpm typecheck`, `pnpm build` | OK                                                                                                                                                                                                                                  |
+  | `pnpm test`                                 | OK (shared 78, api 49, web 147 dont les libellés de jours et de mois)                                                                                                                                                               |
+  | `pnpm test:integration`                     | 184 tests OK, deux fois de suite, dont « expects revenue from the offers, month by month from the history » : une boutique ancienne gratuite, puis Essentiel, suspendue un mois, puis Pro, reconstituée mois par mois au franc près |
+  | Rendu visuel                                | **non vérifié** : l'extension de navigateur n'était pas connectée ; à regarder sur 360 px et sur ordinateur                                                                                                                         |
+  | Playwright                                  | **non exécuté** sur ce poste (port refusé par Windows)                                                                                                                                                                              |
+
+- **Correction de tests** : « approves a request… » et « rejects a request… » comptaient toutes les demandes d'offre de la base, y compris celles d'autres fichiers de tests lancés en même temps ; ils ne regardent plus que celles de leur boutique (mêmes vérifications).
+- **Limites** : montants aux prix d'aujourd'hui ; aucun paiement suivi ; jours et mois en UTC ; montants d'activité dans la devise du plus grand nombre de boutiques seulement.

@@ -10,12 +10,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  adminOpenAccessSchema,
   adminRequestQuerySchema,
   adminResolveRequestSchema,
   adminSetPlanSchema,
   adminShopQuerySchema,
   adminSuspendSchema,
   adminSyncQuerySchema,
+  type AdminActivityDto,
+  type AdminFinancesDto,
+  type AdminOpenAccessInput,
   type AdminOverviewDto,
   type AdminPlanRequestDto,
   type AdminResolveRequestInput,
@@ -35,7 +39,8 @@ import { PlatformAdminGuard } from './platform-admin.guard.js';
 
 /**
  * Platform administration (ADR-030). No active shop: these routes act
- * across shops, for platform administrators only, on accounts and offers.
+ * across shops, for platform administrators only, on accounts and offers,
+ * and open or close the administrator's access to a shop (ADR-040).
  */
 @Controller('admin')
 @UseGuards(PlatformAdminGuard)
@@ -55,8 +60,33 @@ export class AdminController {
   }
 
   @Get('shops/:id')
-  shop(@Param('id') id: string): Promise<AdminShopDto> {
-    return this.admin.shop(id);
+  shop(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+  ): Promise<AdminShopDto> {
+    return this.admin.shop(id, user.userId);
+  }
+
+  @Post('shops/:id/access')
+  @HttpCode(HttpStatus.OK)
+  openAccess(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(adminOpenAccessSchema))
+    body: AdminOpenAccessInput,
+    @RequestId() requestId: string | null,
+  ): Promise<AdminShopDto> {
+    return this.admin.openAccess(user, id, body.reason, requestId);
+  }
+
+  @Post('shops/:id/access/close')
+  @HttpCode(HttpStatus.OK)
+  closeAccess(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @RequestId() requestId: string | null,
+  ): Promise<AdminShopDto> {
+    return this.admin.closeAccess(user, id, requestId);
   }
 
   @Post('shops/:id/plan')
@@ -121,6 +151,16 @@ export class AdminController {
     @RequestId() requestId: string | null,
   ): Promise<AdminPlanRequestDto> {
     return this.admin.resolveRequest(user, id, 'reject', body.note, requestId);
+  }
+
+  @Get('finances')
+  finances(): Promise<AdminFinancesDto> {
+    return this.admin.finances();
+  }
+
+  @Get('activity')
+  activity(): Promise<AdminActivityDto> {
+    return this.admin.activity();
   }
 
   @Get('sync')

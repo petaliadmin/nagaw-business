@@ -9,6 +9,7 @@ import { buttonClasses } from '@/components/ui/button-styles';
 import { initialFormState } from '@/lib/auth/schemas';
 import {
   answerFeedback,
+  openShopAccess,
   reactivateShop,
   resolvePlanRequest,
   setShopPlan,
@@ -98,6 +99,38 @@ export function SuspendForm({
           pendingLabel="Enregistrement…"
         >
           {suspended ? 'Réactiver la boutique' : 'Suspendre la boutique'}
+        </SubmitButton>
+      </div>
+    </ActionForm>
+  );
+}
+
+export function OpenAccessForm({ shopId }: { shopId: string }) {
+  const [state, action, pending] = useActionState(
+    openShopAccess,
+    initialFormState,
+  );
+  return (
+    <ActionForm
+      action={action}
+      pending={pending}
+      noValidate
+      className="flex flex-col gap-4"
+    >
+      <input type="hidden" name="shopId" value={shopId} />
+      <FormMessage state={state} />
+      <FormField
+        label="Pourquoi entrez-vous dans cette boutique ?"
+        name="reason"
+        id="admin-access-reason"
+        maxLength={500}
+        required
+        placeholder="Aide demandée par le propriétaire…"
+        error={state.fieldErrors?.reason}
+      />
+      <div>
+        <SubmitButton pendingLabel="Ouverture…">
+          Entrer dans la boutique
         </SubmitButton>
       </div>
     </ActionForm>

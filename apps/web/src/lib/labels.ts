@@ -30,6 +30,8 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   'task.note_added': 'Note ajoutée à une tâche',
   'organization.suspended': 'Boutique suspendue par la plateforme',
   'organization.reactivated': 'Boutique réactivée par la plateforme',
+  'platform.access_opened': 'La plateforme est entrée dans la boutique',
+  'platform.access_closed': 'La plateforme a quitté la boutique',
   'tax_rate.created': 'Taxe ajoutée',
   'tax_rate.updated': 'Taxe modifiée',
   'category.created': 'Catégorie ajoutée',
