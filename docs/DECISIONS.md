@@ -487,3 +487,13 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - l'enregistrement de l'appareil ne bloque plus la vente : il ne sert qu'aux corrections de stock ;
   - les opérations qu'une version précédente a gardées sur un téléphone partent toujours à l'ouverture de la caisse : rien n'est perdu.
 - **Conséquences** : sans internet, on ne vend pas avec l'application. La base locale, la file d'opérations et `POST /api/v1/sync` restent en place pour revenir au mode hors ligne quand ses erreurs seront traitées une par une. Les textes de l'application qui promettaient la vente sans internet sont corrigés ; ceux du site public (accueil, référencement, image de partage) attendent la décision du propriétaire.
+
+## ADR-043 — Une migration appliquée n'est plus jamais modifiée, même avant sa fusion
+
+- **Statut** : **Acceptée** (incident du 2026-10-29 : « la validation de vente ne passe pas : le serveur a refusé : Une erreur interne est survenue »).
+- **Constat** : la migration `20261028090000_product_units` (ADR-038) a été appliquée à la production dans sa première version, puis complétée dans le même fichier (étape 2) avant la fusion. Supabase la tenait pour appliquée : la production n'avait ni `sale_lines.price_basis`, ni `unit_templates`, ni `organizations.max_unit_templates`. `product_units.sale_price` y restait obligatoire, et `sale_lines_unit_check` était l'ancienne règle. Toutes les ventes, en ligne comme envoyées par les téléphones, échouaient sur `price_basis` depuis le déploiement du 2026-10-28. La caisse hors ligne présentait cette erreur comme une absence de réseau (ADR-042).
+- **Décision** :
+  - dès qu'un fichier de migration est appliqué à une base partagée (production, préproduction), il est figé, fusionné ou non : toute correction passe par une nouvelle migration ;
+  - `20261029200000_product_units_catch_up` ajoute ce qui manque. Chaque instruction est protégée (`if not exists`, `drop … if exists`, bloc conditionnel) : elle ne change rien sur une base déjà conforme (tests, nouvelles bases) et amène la production à l'état final. Elle a été vérifiée sur une base construite comme la production ;
+  - la colonne inutilisée `organizations.seller_max_discount_basis_points` a déjà été supprimée en production par la première version : la future migration qui la retire doit utiliser `drop column if exists`.
+- **Conséquences** : après une migration, comparer le schéma de la production avec celui que construisent les migrations (colonnes, contraintes, index, déclencheurs, politiques, droits).

@@ -824,3 +824,20 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   | Playwright                                  | exécuté par la CI (connexion de test en échec sur ce poste) |
 
 - **Limites** : sans internet, on ne vend plus avec l'application. Les textes du site public (accueil, référencement, image de partage) annoncent encore une caisse qui marche sans internet : à décider par le propriétaire.
+
+## Après la Phase 18 — Correctif : les ventes échouaient avec une erreur interne (ADR-043)
+
+- **Signalement** du propriétaire, le 2026-10-29 : « la validation de vente ne passe pas : le serveur a refusé : Une erreur interne est survenue ».
+- **Cause** : la production avait la première version de la migration `20261028090000_product_units`. Le fichier avait été complété ensuite, sans être réappliqué. La colonne `sale_lines.price_basis`, écrite par chaque vente, manquait : aucune vente n'est enregistrée depuis le 2026-10-27 (dernière vente n° 14). C'était aussi la vraie cause du bug précédent, où la caisse croyait le client hors ligne.
+- **Correctif** : nouvelle migration `20261029200000_product_units_catch_up.sql`, sans modification du code. Elle est protégée instruction par instruction et ajoute :
+  - `sale_lines.price_basis` ;
+  - la nouvelle règle `sale_lines_unit_check` ;
+  - `product_units.sale_price` rendu facultatif ;
+  - la table `unit_templates` avec ses index, son déclencheur, ses droits et sa politique ;
+  - `organizations.max_unit_templates`.
+- **Vérifications** :
+  - appliquée deux fois sur une base complète : rien ne change ;
+  - appliquée deux fois sur une base remise dans l'état de la production : état final attendu ;
+  - comparaison du schéma de la production avec celui des migrations : colonnes, contraintes, index, déclencheurs, politiques et droits. Écarts restants : ceux que la migration corrige, plus `seller_max_discount_basis_points`, absente en production et inutilisée ;
+  - corps des fonctions : tous différents. Probablement des fins de ligne, mais **non vérifié**, la lecture de la production a été refusée.
+- **À faire par le propriétaire** : appliquer la migration (`supabase db push`). Les ventes repassent dès qu'elle est appliquée, sans redéploiement.
