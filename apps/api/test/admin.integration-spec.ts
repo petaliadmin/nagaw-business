@@ -23,6 +23,15 @@ describe('Platform administration', () => {
     ctx.http().get(`/api/v1/admin${path}`).set(bearer(user));
   const adminPost = (path: string, body: object = {}, user = zed) =>
     ctx.http().post(`/api/v1/admin${path}`).set(bearer(user)).send(body);
+  /** The requests of one shop: other files ask offers at the same time. */
+  const requestsOf = async (shopId: string, path: string) =>
+    (
+      (await admin(path).expect(200)).body as {
+        id: string;
+        status: string;
+        shop: { id: string };
+      }[]
+    ).filter((r) => r.shop.id === shopId);
   const post = (
     user: TestUser,
     orgId: string,
@@ -38,7 +47,7 @@ describe('Platform administration', () => {
     [alice, bob, zed] = await Promise.all([
       ctx.createUser(),
       ctx.createUser(),
-      ctx.createUser(),
+      ctx.platformAdmin(),
     ]);
     const createOrg = async (user: TestUser, name: string) =>
       (
@@ -51,10 +60,6 @@ describe('Platform administration', () => {
       ).body.id as string;
     acmeId = await createOrg(alice, 'Acme Dakar');
     globexId = await createOrg(bob, 'Globex');
-    await ctx.admin.query(
-      `insert into app.platform_admins (user_id, note) values ($1, 'test')`,
-      [zed.id],
-    );
     water = (
       await post(alice, acmeId, '/products', {
         name: 'Eau',
@@ -88,6 +93,8 @@ describe('Platform administration', () => {
       `/shops/${acmeId}`,
       '/plan-requests',
       '/sync',
+      '/finances',
+      '/activity',
     ]) {
       const refused = await admin(path, alice).expect(403);
       expect(refused.body.error.code).toBe('PLATFORM_ADMIN_REQUIRED');
@@ -109,6 +116,23 @@ describe('Platform administration', () => {
     // A dozen requests: room for a busy machine, as in the other loops.
   }, 60_000);
 
+  it('keeps a single platform administrator, even in SQL', async () => {
+    await expect(
+      ctx.admin.query(
+        `insert into app.platform_admins (user_id, note) values ($1, 'second')`,
+        [alice.id],
+      ),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'platform_admins_single',
+    });
+    await admin('/overview', alice).expect(403);
+    const { rows } = await ctx.admin.query(
+      'select user_id from app.platform_admins',
+    );
+    expect(rows).toEqual([{ user_id: zed.id }]);
+  });
+
   it('never opens the business content of a shop', async () => {
     // An administrator is not a member: shop routes stay closed.
     await get(zed, acmeId, '/products').expect(404);
@@ -116,6 +140,7 @@ describe('Platform administration', () => {
     const detail = (await admin(`/shops/${acmeId}`).expect(200)).body;
     expect(Object.keys(detail).sort()).toEqual(
       [
+        'access',
         'createdAt',
         'currency',
         'devices',
@@ -138,7 +163,112 @@ describe('Platform administration', () => {
       ownerEmails: [alice.email],
       plan: { key: 'free' },
       usage: { products: 1, members: 1, devices: 1 },
+      access: null,
     });
+  });
+
+  it('enters a shop with a reason, as its owner, signed by the platform, until closed', async () => {
+    const access = (orgId: string, body: object, user = zed) =>
+      adminPost(`/shops/${orgId}/access`, body, user);
+    await access(acmeId, { reason: 'Aide' }, alice).expect(403);
+    await access(acmeId, { reason: '' }).expect(400);
+    await access(randomUUID(), { reason: 'Aide' }).expect(404);
+
+    const opened = (
+      await access(acmeId, { reason: 'Aide à la saisie du stock' }).expect(200)
+    ).body;
+    expect(opened.access).toMatchObject({
+      reason: 'Aide à la saisie du stock',
+    });
+    expect(
+      (await access(acmeId, { reason: 'Encore' }).expect(409)).body.error.code,
+    ).toBe('ACCESS_ALREADY_OPEN');
+
+    // Inside Acme with the rights of an owner; Globex stays closed.
+    await get(zed, acmeId, '/products').expect(200);
+    await get(zed, acmeId, '/organizations/current/members').expect(200);
+    await get(zed, globexId, '/products').expect(404);
+    const shops = (
+      await ctx.http().get('/api/v1/me').set(bearer(zed)).expect(200)
+    ).body.organizations;
+    expect(shops).toEqual([
+      expect.objectContaining({
+        id: acmeId,
+        role: 'owner',
+        platformAccess: true,
+      }),
+    ]);
+    // Not a member: the team of the shop is unchanged.
+    expect(
+      (
+        await get(alice, acmeId, '/organizations/current/members').expect(200)
+      ).body.map((m: { userId: string }) => m.userId),
+    ).toEqual([alice.id]);
+
+    const product = (
+      await post(zed, acmeId, '/products', {
+        name: 'Riz',
+        unit: 'kg',
+        salePrice: 650,
+        categoryId: null,
+        purchasePrice: null,
+        taxRateId: null,
+        barcode: null,
+        lowStockThreshold: null,
+        trackStock: false,
+        clientOperationId: randomUUID(),
+      }).expect(201)
+    ).body;
+
+    await adminPost(`/shops/${acmeId}/access/close`).expect(200);
+    await adminPost(`/shops/${acmeId}/access/close`).expect(409);
+    await get(zed, acmeId, '/products').expect(404);
+    expect(
+      (await ctx.http().get('/api/v1/me').set(bearer(zed)).expect(200)).body
+        .organizations,
+    ).toEqual([]);
+
+    // The owner sees all of it in the history, done by the platform.
+    const history = (
+      await get(alice, acmeId, '/audit-logs?limit=20').expect(200)
+    ).body.data as {
+      actorType: string;
+      actorId: string;
+      action: string;
+      targetId: string | null;
+      metadata: Record<string, unknown>;
+    }[];
+    const byZed = history.filter((e) => e.actorId === zed.id);
+    expect(byZed.map((e) => e.action)).toEqual(
+      expect.arrayContaining([
+        'platform.access_opened',
+        'platform.access_closed',
+      ]),
+    );
+    expect(byZed.find((e) => e.targetId === product.id)).toBeDefined();
+    expect(byZed.every((e) => e.actorType === 'platform_admin')).toBe(true);
+    expect(
+      byZed.find((e) => e.action === 'platform.access_opened')?.metadata,
+    ).toEqual({ reason: 'Aide à la saisie du stock' });
+    const globexHistory = (
+      await get(bob, globexId, '/audit-logs?limit=20').expect(200)
+    ).body.data as { actorId: string }[];
+    expect(globexHistory.some((e) => e.actorId === zed.id)).toBe(false);
+
+    // A suspended shop cannot be entered.
+    await ctx.admin.query(
+      `update app.organizations set status = 'suspended', suspended_at = now(),
+              suspension_reason = 'Test' where id = $1`,
+      [globexId],
+    );
+    expect(
+      (await access(globexId, { reason: 'Voir' }).expect(409)).body.error.code,
+    ).toBe('SHOP_SUSPENDED');
+    await ctx.admin.query(
+      `update app.organizations set status = 'active', suspended_at = null,
+              suspension_reason = null where id = $1`,
+      [globexId],
+    );
   });
 
   it('lists and finds shops by name or owner', async () => {
@@ -164,12 +294,18 @@ describe('Platform administration', () => {
     await post(alice, acmeId, '/subscription/requests', {
       planKey: 'pro',
     }).expect(201);
+    // Other files ask offers at the same time: look at Acme's request.
     const overview = (await admin('/overview').expect(200)).body;
-    expect(overview.pendingRequests).toBe(1);
+    expect(overview.pendingRequests).toBeGreaterThanOrEqual(1);
     expect(overview.alerts).toContainEqual(
       expect.objectContaining({ kind: 'plan_request' }),
     );
-    const [request] = (await admin('/plan-requests').expect(200)).body;
+    const ofAcme = (await requestsOf(acmeId, '/plan-requests')).filter(
+      (r) => r.status === 'pending',
+    );
+    expect(ofAcme).toHaveLength(1);
+    const [request] = ofAcme;
+    if (!request) throw new Error('No pending request for Acme');
     expect(request).toMatchObject({
       shop: { id: acmeId },
       from: { key: 'free' },
@@ -206,7 +342,8 @@ describe('Platform administration', () => {
     await post(alice, acmeId, '/subscription/requests', {
       planKey: 'essential',
     }).expect(201);
-    const [request] = (await admin('/plan-requests').expect(200)).body;
+    const [request] = await requestsOf(acmeId, '/plan-requests');
+    if (!request) throw new Error('No request for Acme');
     const rejected = (
       await adminPost(`/plan-requests/${request.id}/reject`, {
         note: 'Pas de paiement reçu',
@@ -217,8 +354,10 @@ describe('Platform administration', () => {
       (await get(alice, acmeId, '/subscription').expect(200)).body.plan.key,
     ).toBe('pro');
     expect(
-      (await admin('/plan-requests?status=all').expect(200)).body,
-    ).toHaveLength(2);
+      (await requestsOf(acmeId, '/plan-requests?status=all')).map(
+        (r) => r.status,
+      ),
+    ).toEqual(['rejected', 'done']);
 
     await adminPost(`/shops/${globexId}/plan`, { planKey: 'inconnue' }).expect(
       400,
@@ -374,6 +513,104 @@ describe('Platform administration', () => {
         shop: { id: globexId, name: 'Globex' },
       }),
     );
+  });
+
+  it('expects revenue from the offers, month by month from the history', async () => {
+    // A shop opened nine months ago (UTC months): free, then Essentiel,
+    // suspended for a month, then Pro. Other files only create shops now,
+    // so the past months hold this shop alone.
+    const carl = await ctx.createUser();
+    const oldId = (
+      await ctx
+        .http()
+        .post('/api/v1/organizations')
+        .set(bearer(carl))
+        .send({ name: 'Ancienne boutique' })
+        .expect(201)
+    ).body.id as string;
+    const at = (monthsAgo: number, day: number) =>
+      `(date_trunc('month', now() at time zone 'UTC') - interval '${monthsAgo} months' + interval '${day} days') at time zone 'UTC'`;
+    await ctx.admin.query(
+      `update app.organizations set created_at = ${at(9, 2)} where id = $1`,
+      [oldId],
+    );
+    const event = (action: string, when: string, metadata: object) =>
+      ctx.admin.query(
+        `insert into app.audit_logs (organization_id, actor_type, actor_id, action, target_type, target_id, metadata, created_at)
+         values ($1::uuid, 'platform_admin', $2, $3, 'organization', $1::text, $4, ${when})`,
+        [oldId, zed.id, action, JSON.stringify(metadata)],
+      );
+    await event('subscription.plan_changed', at(7, 4), {
+      from: 'free',
+      to: 'essential',
+    });
+    await event('organization.suspended', at(5, 3), { reason: 'Test' });
+    await event('organization.reactivated', at(4, 3), {});
+    await event('subscription.plan_changed', at(3, 1), {
+      from: 'essential',
+      to: 'pro',
+    });
+    await ctx.setPlan(oldId, 'pro');
+
+    const finances = (await admin('/finances').expect(200)).body;
+    expect(finances.currency).toBe('XOF');
+    expect(finances.months).toHaveLength(12);
+    // Months 11 to 1 ago, oldest first; the current month holds every shop.
+    expect(
+      finances.months
+        .slice(0, 11)
+        .map(
+          (m: {
+            expectedMonthlyRevenue: number;
+            payingShops: number;
+            upgrades: number;
+          }) => [m.expectedMonthlyRevenue, m.payingShops, m.upgrades],
+        ),
+    ).toEqual([
+      [0, 0, 0], // 11: not yet open
+      [0, 0, 0], // 10
+      [0, 0, 0], // 9: free, told by the first change
+      [0, 0, 0], // 8
+      [5000, 1, 1], // 7: Essentiel
+      [5000, 1, 0], // 6
+      [0, 0, 0], // 5: suspended at the end of the month
+      [5000, 1, 0], // 4: reactivated
+      [15000, 1, 1], // 3: Pro
+      [15000, 1, 0], // 2
+      [15000, 1, 0], // 1
+    ]);
+    // Today: the offers of the active shops, at their prices.
+    for (const plan of finances.byPlan)
+      expect(plan.expectedMonthlyRevenue).toBe(plan.monthlyPrice * plan.shops);
+    expect(finances.expectedMonthlyRevenue).toBe(
+      finances.byPlan.reduce(
+        (sum: number, p: { expectedMonthlyRevenue: number }) =>
+          sum + p.expectedMonthlyRevenue,
+        0,
+      ),
+    );
+    expect(
+      finances.byPlan.find((p: { key: string }) => p.key === 'pro').shops,
+    ).toBeGreaterThanOrEqual(2); // Acme and the old shop
+
+    // The asked offers: what they would add each month.
+    await post(bob, globexId, '/subscription/requests', {
+      planKey: 'pro',
+    }).expect(201);
+    const asked = (await admin('/finances').expect(200)).body.pending;
+    expect(asked.requests).toBeGreaterThanOrEqual(1);
+    expect(asked.expectedMonthlyChange).toBeGreaterThanOrEqual(10000);
+    await post(bob, globexId, '/subscription/requests/cancel').expect(200);
+
+    const activity = (await admin('/activity').expect(200)).body;
+    expect(activity.currency).toBe('XOF');
+    expect(activity.days).toHaveLength(30);
+    expect(activity.months).toHaveLength(12);
+    expect(activity.months[2]).toMatchObject({ newShops: 1, newUsers: 0 });
+    // Acme sold a bottle of water in the synchronization test.
+    expect(activity.days.at(-1).amount).toBeGreaterThanOrEqual(500);
+    expect(activity.shopsSelling.last7Days).toBeGreaterThanOrEqual(1);
+    expect(activity.topShops.length).toBeLessThanOrEqual(5);
   });
 
   it('keeps what devices sent, even in SQL', async () => {

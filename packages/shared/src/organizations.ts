@@ -113,6 +113,8 @@ export interface OrganizationWithRoleDto extends OrganizationDto {
   role: z.infer<typeof roleSchema>;
   /** The caller's own limit of reduction on a sale; null: none (ADR-038). */
   maxDiscountBasisPoints: number | null;
+  /** Entered by the platform administrator, not a membership (ADR-040). */
+  platformAccess: boolean;
 }
 
 export interface MemberDto {

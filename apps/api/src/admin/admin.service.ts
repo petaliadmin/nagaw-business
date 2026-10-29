@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
   shareBasisPoints,
+  type AdminActivityDto,
   type AdminAlertDto,
+  type AdminFinancesDto,
   type AdminOverviewDto,
   type AdminPlanRequestDto,
   type AdminShopDto,
@@ -41,8 +43,9 @@ interface ShopRow {
 
 /**
  * Platform administration (ADR-030): accounts, offers and aggregates of the
- * shops; never their products, sales or customers. Every change is audited
- * in the shop's own history, as done by the platform.
+ * shops; never their products, sales or customers, which the administrator
+ * sees only inside a shop entered with a reason (ADR-040). Every change is
+ * audited in the shop's own history, as done by the platform.
  */
 @Injectable()
 export class AdminService {
@@ -181,6 +184,7 @@ export class AdminService {
 
   async shop(
     id: string,
+    adminId: string,
     executor: Executor = this.database.db,
   ): Promise<AdminShopDto> {
     if (!UUID_RE.test(id)) throw shopNotFound();
@@ -209,6 +213,13 @@ export class AdminService {
       .orderBy('created_at')
       .execute();
     const active = devices.filter((d) => d.revoked_at === null).length;
+    const access = await executor
+      .selectFrom('app.platform_shop_accesses')
+      .select(['opened_at', 'reason'])
+      .where('organization_id', '=', id)
+      .where('admin_id', '=', adminId)
+      .where('closed_at', 'is', null)
+      .executeTakeFirst();
     return {
       ...this.toListItem(row as ShopRow),
       timezone: row.timezone,
@@ -237,7 +248,93 @@ export class AdminService {
         revoked: d.revoked_at !== null,
       })),
       requests: await this.requestsOf(executor, id, false),
+      access: access
+        ? { openedAt: access.opened_at.toISOString(), reason: access.reason }
+        : null,
     };
+  }
+
+  /**
+   * The administrator enters the shop, with the rights of an owner, until
+   * the access is closed (ADR-040); the reason goes to the shop's history.
+   */
+  async openAccess(
+    admin: AuthContext,
+    id: string,
+    reason: string,
+    requestId: string | null,
+  ): Promise<AdminShopDto> {
+    if (!UUID_RE.test(id)) throw shopNotFound();
+    return this.database.db.transaction().execute(async (trx) => {
+      const shop = await this.lockShop(trx, id);
+      if (shop.status !== 'active')
+        throw conflict(
+          'SHOP_SUSPENDED',
+          'Cette boutique est suspendue : réactivez-la avant d’y entrer.',
+        );
+      const open = await trx
+        .selectFrom('app.platform_shop_accesses')
+        .select('id')
+        .where('organization_id', '=', id)
+        .where('admin_id', '=', admin.userId)
+        .where('closed_at', 'is', null)
+        .executeTakeFirst();
+      if (open)
+        throw conflict(
+          'ACCESS_ALREADY_OPEN',
+          'Vous avez déjà accès à cette boutique.',
+        );
+      const access = await trx
+        .insertInto('app.platform_shop_accesses')
+        .values({ organization_id: id, admin_id: admin.userId, reason })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await this.audit.record(trx, {
+        organizationId: id,
+        actorType: 'platform_admin',
+        actorId: admin.userId,
+        action: 'platform.access_opened',
+        targetType: 'platform_access',
+        targetId: access.id,
+        metadata: { reason },
+        requestId,
+      });
+      return this.shop(id, admin.userId, trx);
+    });
+  }
+
+  async closeAccess(
+    admin: AuthContext,
+    id: string,
+    requestId: string | null,
+  ): Promise<AdminShopDto> {
+    if (!UUID_RE.test(id)) throw shopNotFound();
+    return this.database.db.transaction().execute(async (trx) => {
+      await this.lockShop(trx, id);
+      const closed = await trx
+        .updateTable('app.platform_shop_accesses')
+        .set({ closed_at: new Date() })
+        .where('organization_id', '=', id)
+        .where('admin_id', '=', admin.userId)
+        .where('closed_at', 'is', null)
+        .returning('id')
+        .executeTakeFirst();
+      if (!closed)
+        throw conflict(
+          'NO_OPEN_ACCESS',
+          'Vous n’avez pas d’accès ouvert à cette boutique.',
+        );
+      await this.audit.record(trx, {
+        organizationId: id,
+        actorType: 'platform_admin',
+        actorId: admin.userId,
+        action: 'platform.access_closed',
+        targetType: 'platform_access',
+        targetId: closed.id,
+        requestId,
+      });
+      return this.shop(id, admin.userId, trx);
+    });
   }
 
   private async changePlan(
@@ -314,7 +411,7 @@ export class AdminService {
         .where('status', '=', 'pending')
         .where('plan_key', '=', planKey)
         .execute();
-      return this.shop(id, trx);
+      return this.shop(id, admin.userId, trx);
     });
   }
 
@@ -430,8 +527,215 @@ export class AdminService {
         metadata: suspend ? { reason } : {},
         requestId,
       });
-      return this.shop(id, trx);
+      return this.shop(id, admin.userId, trx);
     });
+  }
+
+  /**
+   * What the offers in force should bring each month (ADR-041); payments
+   * are made outside the application, so none of it is money received.
+   */
+  async finances(): Promise<AdminFinancesDto> {
+    const db = this.database.db;
+    const plans = await db
+      .selectFrom('app.plans')
+      .select(['key', 'name', 'monthly_price', 'currency'])
+      .orderBy('position')
+      .execute();
+    const currencies = new Set(plans.map((p) => p.currency));
+    if (currencies.size !== 1)
+      throw conflict(
+        'PLANS_MIXED_CURRENCIES',
+        'Les offres ne sont pas toutes dans la même devise : les revenus ne peuvent pas être additionnés.',
+      );
+    const [shops, pending, months, movements] = await Promise.all([
+      db
+        .selectFrom('app.subscriptions as s')
+        .innerJoin('app.organizations as o', 'o.id', 's.organization_id')
+        .select(['s.plan_key', (eb) => eb.fn.countAll<string>().as('shops')])
+        .where('o.status', '=', 'active')
+        .groupBy('s.plan_key')
+        .execute(),
+      sql<{ requests: string; change: string | null }>`
+        select count(*) as requests, sum(want.monthly_price - cur.monthly_price) as change
+          from app.plan_change_requests r
+          join app.subscriptions s on s.organization_id = r.organization_id
+          join app.plans cur on cur.key = s.plan_key
+          join app.plans want on want.key = r.plan_key
+         where r.status = 'pending'`.execute(db),
+      // The offer and the suspension of each shop at the end of each month,
+      // read from the history; before any change, the first one tells the
+      // state it started from; without any, the present state holds.
+      sql<{ month: string; revenue: string; paying: string }>`
+        with months as (
+          select m as month,
+                 least((m + interval '1 month') at time zone 'UTC', now()) as month_end
+            from generate_series(date_trunc('month', now() at time zone 'UTC') - interval '11 months',
+                                 date_trunc('month', now() at time zone 'UTC'), interval '1 month') as m
+        ),
+        state as (
+          select mo.month,
+                 coalesce(
+                   (select a.metadata->>'to' from app.audit_logs a
+                     where a.organization_id = o.id and a.action = 'subscription.plan_changed'
+                       and a.created_at < mo.month_end order by a.id desc limit 1),
+                   (select a.metadata->>'from' from app.audit_logs a
+                     where a.organization_id = o.id and a.action = 'subscription.plan_changed'
+                       and a.created_at >= mo.month_end order by a.id limit 1),
+                   s.plan_key) as plan_key,
+                 coalesce(
+                   (select a.action = 'organization.suspended' from app.audit_logs a
+                     where a.organization_id = o.id
+                       and a.action in ('organization.suspended', 'organization.reactivated')
+                       and a.created_at < mo.month_end order by a.id desc limit 1),
+                   (select a.action = 'organization.reactivated' from app.audit_logs a
+                     where a.organization_id = o.id
+                       and a.action in ('organization.suspended', 'organization.reactivated')
+                       and a.created_at >= mo.month_end order by a.id limit 1),
+                   o.status = 'suspended') as suspended
+            from months mo
+            join app.organizations o on o.created_at < mo.month_end
+            join app.subscriptions s on s.organization_id = o.id
+        )
+        select to_char(mo.month, 'YYYY-MM') as month,
+               coalesce(sum(p.monthly_price) filter (where not st.suspended), 0) as revenue,
+               count(st.plan_key) filter (where not st.suspended and p.monthly_price > 0) as paying
+          from months mo
+          left join state st on st.month = mo.month
+          left join app.plans p on p.key = st.plan_key
+         group by mo.month
+         order by mo.month`.execute(db),
+      sql<{ month: string; upgrades: string; downgrades: string }>`
+        select to_char(date_trunc('month', a.created_at at time zone 'UTC'), 'YYYY-MM') as month,
+               count(*) filter (where pt.monthly_price > pf.monthly_price) as upgrades,
+               count(*) filter (where pt.monthly_price < pf.monthly_price) as downgrades
+          from app.audit_logs a
+          join app.plans pf on pf.key = a.metadata->>'from'
+          join app.plans pt on pt.key = a.metadata->>'to'
+         where a.action = 'subscription.plan_changed'
+           and a.created_at >= (date_trunc('month', now() at time zone 'UTC') - interval '11 months') at time zone 'UTC'
+         group by 1`.execute(db),
+    ]);
+
+    const shopsOf = new Map(shops.map((s) => [s.plan_key, toNumber(s.shops)]));
+    const byPlan = plans.map((p) => {
+      const count = shopsOf.get(p.key) ?? 0;
+      const price = toNumber(p.monthly_price);
+      return {
+        key: p.key,
+        name: p.name,
+        monthlyPrice: price,
+        shops: count,
+        expectedMonthlyRevenue: price * count,
+      };
+    });
+    const moves = new Map(movements.rows.map((m) => [m.month, m]));
+    return {
+      currency: plans[0]!.currency,
+      expectedMonthlyRevenue: byPlan.reduce(
+        (sum, p) => sum + p.expectedMonthlyRevenue,
+        0,
+      ),
+      payingShops: byPlan
+        .filter((p) => p.monthlyPrice > 0)
+        .reduce((sum, p) => sum + p.shops, 0),
+      activeShops: byPlan.reduce((sum, p) => sum + p.shops, 0),
+      byPlan,
+      pending: {
+        requests: toNumber(pending.rows[0]!.requests),
+        expectedMonthlyChange: toNumber(pending.rows[0]!.change ?? '0'),
+      },
+      months: months.rows.map((m) => ({
+        month: m.month,
+        expectedMonthlyRevenue: toNumber(m.revenue),
+        payingShops: toNumber(m.paying),
+        upgrades: toNumber(moves.get(m.month)?.upgrades ?? '0'),
+        downgrades: toNumber(moves.get(m.month)?.downgrades ?? '0'),
+      })),
+    };
+  }
+
+  /** The shops all together: sales, new shops and accounts (ADR-041). */
+  async activity(): Promise<AdminActivityDto> {
+    const db = this.database.db;
+    const currencies = await db
+      .selectFrom('app.organizations')
+      .select([
+        'default_currency',
+        (eb) => eb.fn.countAll<string>().as('shops'),
+      ])
+      .where('status', '=', 'active')
+      .groupBy('default_currency')
+      .orderBy(sql`count(*)`, 'desc')
+      .orderBy('default_currency')
+      .execute();
+    // Without any shop, the currency new shops get by default.
+    const currency = currencies[0]?.default_currency ?? 'XOF';
+    const [days, selling, months, top] = await Promise.all([
+      sql<{ day: string; sales: string; amount: string }>`
+        select d::date::text as day, count(x.id) as sales, coalesce(sum(x.total), 0) as amount
+          from generate_series((now() at time zone 'UTC')::date - 29, (now() at time zone 'UTC')::date,
+                               interval '1 day') as d
+          left join (
+            select s.id, s.total, s.occurred_at
+              from app.sales s join app.organizations o on o.id = s.organization_id
+             where s.status = 'completed' and o.default_currency = ${currency}
+               and s.occurred_at >= now() - interval '31 days'
+          ) x on (x.occurred_at at time zone 'UTC')::date = d::date
+         group by d order by d`.execute(db),
+      sql<{ week: string; month: string }>`
+        select count(distinct organization_id) filter (where occurred_at >= now() - interval '7 days') as week,
+               count(distinct organization_id) as month
+          from app.sales
+         where status = 'completed' and occurred_at >= now() - interval '30 days'`.execute(
+        db,
+      ),
+      sql<{ month: string; shops: string; users: string }>`
+        select to_char(m, 'YYYY-MM') as month,
+               (select count(*) from app.organizations o
+                 where o.created_at >= m at time zone 'UTC'
+                   and o.created_at < (m + interval '1 month') at time zone 'UTC') as shops,
+               (select count(*) from app.user_profiles u
+                 where u.created_at >= m at time zone 'UTC'
+                   and u.created_at < (m + interval '1 month') at time zone 'UTC') as users
+          from generate_series(date_trunc('month', now() at time zone 'UTC') - interval '11 months',
+                               date_trunc('month', now() at time zone 'UTC'), interval '1 month') as m
+         order by m`.execute(db),
+      sql<{ id: string; name: string; sales: string; amount: string }>`
+        select o.id, o.name, count(*) as sales, sum(s.total) as amount
+          from app.sales s join app.organizations o on o.id = s.organization_id
+         where s.status = 'completed' and o.default_currency = ${currency}
+           and s.occurred_at >= now() - interval '30 days'
+         group by o.id, o.name
+         order by sum(s.total) desc, o.name
+         limit 5`.execute(db),
+    ]);
+    return {
+      currency,
+      otherCurrencyShops: currencies
+        .slice(1)
+        .reduce((sum, c) => sum + toNumber(c.shops), 0),
+      days: days.rows.map((d) => ({
+        day: d.day,
+        sales: toNumber(d.sales),
+        amount: toNumber(d.amount),
+      })),
+      shopsSelling: {
+        last7Days: toNumber(selling.rows[0]!.week),
+        last30Days: toNumber(selling.rows[0]!.month),
+      },
+      months: months.rows.map((m) => ({
+        month: m.month,
+        newShops: toNumber(m.shops),
+        newUsers: toNumber(m.users),
+      })),
+      topShops: top.rows.map((t) => ({
+        id: t.id,
+        name: t.name,
+        sales: toNumber(t.sales),
+        amount: toNumber(t.amount),
+      })),
+    };
   }
 
   async sync(days: number): Promise<AdminSyncDto> {

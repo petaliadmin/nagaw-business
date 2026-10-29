@@ -57,6 +57,16 @@
   --accounting-soft: #ccfbf1;
   --accounting-ink: #0f766e;
 
+  /*
+   * Categorical chart slots, in this fixed order (platform charts, ADR-041):
+   * validated with the dataviz palette checker against each theme's
+   * surface (lightness, chroma, colorblind and normal-vision separation,
+   * 3:1 contrast). One series uses slot 1.
+   */
+  --chart-1: #2563eb;
+  --chart-2: #c2410c;
+  --chart-3: #6d28d9;
+
   --danger: #dc2626;
   --danger-strong: #b91c1c;
   --danger-soft: #fee2e2;
@@ -91,6 +101,9 @@
     --stats-soft: #4a2410;
     --stats-ink: #fed7aa;
     --stats-chart: #ea580c;
+    --chart-1: #3b82f6;
+    --chart-2: #ea580c;
+    --chart-3: #8b5cf6;
     --accounting-soft: #0d3b37;
     --accounting-ink: #99f6e4;
     --danger-soft: #4c1515;
@@ -135,6 +148,9 @@
   --color-stats-soft: var(--stats-soft);
   --color-stats-ink: var(--stats-ink);
   --color-stats-chart: var(--stats-chart);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
   --color-accounting: var(--accounting);
   --color-accounting-strong: var(--accounting-strong);
   --color-accounting-soft: var(--accounting-soft);

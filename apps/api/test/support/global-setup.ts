@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,7 @@ declare module 'vitest' {
   export interface ProvidedContext {
     databaseUrl: string;
     adminDatabaseUrl: string;
+    platformAdmin: { id: string; email: string };
   }
 }
 
@@ -47,6 +49,20 @@ export default async function setup(project: TestProject) {
   await client.query(
     `alter role nagaw_api with login password '${API_ROLE_PASSWORD}'`,
   );
+  // The platform has a single administrator (ADR-039), shared by the test
+  // files; member of no shop.
+  const platformAdmin = {
+    id: randomUUID(),
+    email: 'platform-admin@example.test',
+  };
+  await client.query('insert into auth.users (id, email) values ($1, $2)', [
+    platformAdmin.id,
+    platformAdmin.email,
+  ]);
+  await client.query(
+    `insert into app.platform_admins (user_id, note) values ($1, 'test')`,
+    [platformAdmin.id],
+  );
   await client.end();
 
   const apiUrl = new URL(testAdminUrl);
@@ -54,6 +70,7 @@ export default async function setup(project: TestProject) {
   apiUrl.password = API_ROLE_PASSWORD;
   project.provide('databaseUrl', apiUrl.toString());
   project.provide('adminDatabaseUrl', testAdminUrl.toString());
+  project.provide('platformAdmin', platformAdmin);
 
   return async () => {
     const cleanup = new pg.Client({ connectionString: adminUrl.toString() });

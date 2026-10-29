@@ -26,6 +26,7 @@ function org(id: string): OrganizationWithRoleDto {
     updatedAt: '2026-10-20T10:00:00.000Z',
     role: 'owner',
     maxDiscountBasisPoints: null,
+    platformAccess: false,
   };
 }
 

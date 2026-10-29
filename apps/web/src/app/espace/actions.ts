@@ -9,23 +9,10 @@ import {
   type OrganizationWithRoleDto,
 } from '@nagaw/shared';
 import { refresh } from 'next/cache';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { apiAsUser, getSession } from '@/lib/api/server';
 import { parseForm, type FormState } from '@/lib/auth/schemas';
-import { ACTIVE_ORGANIZATION_COOKIE } from '@/lib/workspace/active-organization';
-
-const ONE_YEAR = 60 * 60 * 24 * 365;
-
-async function rememberOrganization(organizationId: string) {
-  (await cookies()).set(ACTIVE_ORGANIZATION_COOKIE, organizationId, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: ONE_YEAR,
-  });
-}
+import { rememberOrganization } from '@/lib/workspace/remember';
 
 async function requireSession() {
   const session = await getSession();

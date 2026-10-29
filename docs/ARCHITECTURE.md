@@ -104,4 +104,4 @@ retour du réseau (événement online, ouverture de l'application, bouton « Env
 | Gérer l'équipe et les appareils                    |           ✔            |        ✔         |                    |                    |
 | Abonnement, suppression de la boutique             |           ✔            |                  |                    |                    |
 
-L'administration plateforme utilise une table séparée (`platform_admins`) et des endpoints `/api/v1/admin/*`. Elle ne donne **pas** accès au contenu métier des boutiques.
+L'administration plateforme utilise une table séparée (`platform_admins`, un seul administrateur, ADR-039) et des endpoints `/api/v1/admin/*`, qui ne renvoient pas le contenu métier des boutiques. L'administrateur n'y accède qu'en **entrant dans une boutique** avec un motif (ADR-040) : il y a alors les droits du propriétaire, et ses actions sont inscrites dans l'historique de la boutique au nom de la plateforme.

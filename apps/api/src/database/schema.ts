@@ -560,6 +560,15 @@ export interface PlatformAdminsTable {
   created_at: ColumnType<Date, never, never>;
 }
 
+export interface PlatformShopAccessesTable {
+  id: Generated<string>;
+  organization_id: string;
+  admin_id: string;
+  reason: string;
+  opened_at: ColumnType<Date, never, never>;
+  closed_at: NullableTimestamp;
+}
+
 export interface PlatformSettingsTable {
   id: Generated<boolean>;
   rejection_alert_basis_points: number;
@@ -681,6 +690,7 @@ export interface Database {
   'app.subscriptions': SubscriptionsTable;
   'app.plan_change_requests': PlanChangeRequestsTable;
   'app.platform_admins': PlatformAdminsTable;
+  'app.platform_shop_accesses': PlatformShopAccessesTable;
   'app.platform_settings': PlatformSettingsTable;
   'app.sync_batches': SyncBatchesTable;
   'app.sync_rejections': SyncRejectionsTable;

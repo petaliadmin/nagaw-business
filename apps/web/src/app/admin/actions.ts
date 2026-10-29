@@ -2,6 +2,7 @@
 
 import {
   answerFeedbackSchema,
+  adminOpenAccessSchema,
   adminResolveRequestSchema,
   adminSetPlanSchema,
   adminSuspendSchema,
@@ -15,6 +16,7 @@ import { requirePlatformAdmin } from '@/lib/admin/load';
 import { apiErrorState } from '@/lib/api/form-error';
 import { apiAsUser } from '@/lib/api/server';
 import { parseValues, type FormState } from '@/lib/auth/schemas';
+import { rememberOrganization } from '@/lib/workspace/remember';
 
 /** The API checks the administrator again on every call (ADR-030). */
 async function adminToken() {
@@ -85,6 +87,39 @@ export async function reactivateShop(
   if (!result.ok) return apiErrorState(result);
   refresh();
   return { status: 'success', message: 'Boutique réactivée.' };
+}
+
+/** Enters the shop (ADR-040), then shows it as its owner would see it. */
+export async function openShopAccess(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const parsed = parseValues(adminOpenAccessSchema, {
+    reason: text(formData, 'reason'),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<AdminShopDto>(token, {
+    method: 'POST',
+    path: `/admin/shops/${id(formData, 'shopId')}/access`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  await rememberOrganization(result.data.id);
+  redirect('/espace');
+}
+
+/** Leaves the shop; from its space or from the administration. */
+export async function closeShopAccess(formData: FormData): Promise<void> {
+  const token = await adminToken();
+  const result = await apiAsUser<AdminShopDto>(token, {
+    method: 'POST',
+    path: `/admin/shops/${id(formData, 'shopId')}/access/close`,
+  });
+  // Already closed elsewhere: the administrator is out all the same.
+  if (!result.ok && result.status !== 409)
+    throw new Error(`Impossible de quitter la boutique : ${result.message}`);
+  redirect(`/admin/boutiques/${id(formData, 'shopId')}`);
 }
 
 export async function resolvePlanRequest(

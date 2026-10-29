@@ -44,7 +44,7 @@ describe('Feedback of the pilot shops', () => {
       ctx.createUser(),
       ctx.createUser(),
       ctx.createUser(),
-      ctx.createUser(),
+      ctx.platformAdmin(),
     ]);
     const createOrg = async (user: TestUser, name: string) =>
       (
@@ -62,10 +62,6 @@ describe('Feedback of the pilot shops', () => {
       `insert into app.organization_memberships (organization_id, user_id, role)
        values ($1, $2, 'member'), ($1, $3, 'viewer')`,
       [acmeId, carol.id, dan.id],
-    );
-    await ctx.admin.query(
-      'insert into app.platform_admins (user_id) values ($1)',
-      [zed.id],
     );
   });
 

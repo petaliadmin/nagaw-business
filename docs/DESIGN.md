@@ -34,6 +34,7 @@ Couleurs vives, une par module, pour se repérer d'un coup d'œil. Chaque couleu
 - Texte principal `#111827` sur blanc : 17,74 ; texte secondaire `#4B5563` : 7,56 ; fond d'application `#F8F7FC`.
 - Les teintes **vives** de Ventes, Statistiques, Comptabilité et Attention ne portent **jamais de texte blanc** (contraste inférieur à 4,5) : texte `#111827` dessus.
 - Un mode sombre est prévu dans les jetons mais n'est pas prioritaire : en plein soleil, le mode clair est plus lisible.
+- **Séries de graphiques** (ADR-041) : `--chart-1` (bleu `#2563EB`), `--chart-2` (orange `#C2410C`), `--chart-3` (violet `#6D28D9`), en sombre `#3B82F6`, `#EA580C`, `#8B5CF6`, dans cet ordre fixe ; une série seule prend `--chart-1`. Vérifiées avec l'outil de contrôle de palette (luminosité, saturation, séparation pour les daltoniens et à vue normale, contraste 3:1 sur la surface) ; toute nouvelle couleur de série passe le même contrôle. Une couleur de série ne porte jamais de texte, et chaque graphique a son tableau de chiffres.
 
 Ces valeurs deviennent des jetons CSS (`@theme` de Tailwind 4) dans `apps/web/src/app/globals.css`, avec des noms sémantiques (`--color-sales`, `--color-sales-strong`, `--color-sales-soft`…). Aucun composant n'utilise une couleur en dur.
 

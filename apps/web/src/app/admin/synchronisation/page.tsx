@@ -1,15 +1,23 @@
-import type { AdminSyncDto } from '@nagaw/shared';
-import { Smartphone, TriangleAlert } from 'lucide-react';
+import { shareBasisPoints, type AdminSyncDto } from '@nagaw/shared';
+import {
+  BarChart3,
+  CircleCheck,
+  RefreshCw,
+  Smartphone,
+  TriangleAlert,
+} from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { ColumnChart } from '@/components/charts/column-chart';
+import { KpiTile, percent } from '@/components/dashboard/kpi';
 import { Alert } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { requirePlatformAdmin } from '@/lib/admin/load';
+import { count, dayLabels } from '@/lib/admin/periods';
 import { apiAsUser } from '@/lib/api/server';
-import { formatCalendarDate, formatDateTime } from '@/lib/format';
-import { ScrollRegion } from '@/components/ui/scroll-region';
+import { formatDateTime } from '@/lib/format';
 
 async function Sync() {
   const admin = await requirePlatformAdmin();
@@ -24,62 +32,69 @@ async function Sync() {
       </Alert>
     );
   const s = result.data;
+  const sum = (pick: (d: AdminSyncDto['days'][number]) => number) =>
+    s.days.reduce((total, d) => total + pick(d), 0);
+  const accepted = sum((d) => d.accepted);
+  const rejected = sum((d) => d.rejected);
+  const integer = (n: number) => new Intl.NumberFormat('fr').format(n);
   return (
     <>
       <PageHeader
         title="Synchronisation"
         description="Ce que les téléphones de caisse ont envoyé ces 14 derniers jours (jours UTC)."
       />
-      <Card>
-        <ScrollRegion label="Envois par jour">
-          <table className="w-full text-left">
-            <caption className="mb-2 text-left text-lg font-bold">
-              Envois par jour
-            </caption>
-            <thead>
-              <tr className="border-b border-line">
-                <th scope="col" className="py-2 pr-3">
-                  Jour
-                </th>
-                <th scope="col" className="py-2 pr-3 text-right">
-                  Lots
-                </th>
-                <th scope="col" className="py-2 pr-3 text-right">
-                  Acceptées
-                </th>
-                <th scope="col" className="py-2 pr-3 text-right">
-                  Doublons
-                </th>
-                <th scope="col" className="py-2 text-right">
-                  Refusées
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {s.days.map((d) => (
-                <tr key={d.day} className="border-b border-line">
-                  <th scope="row" className="py-2 pr-3 font-normal">
-                    {formatCalendarDate(d.day)}
-                  </th>
-                  <td className="py-2 pr-3 text-right tabular-nums">
-                    {d.batches}
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">
-                    {d.accepted}
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">
-                    {d.duplicates}
-                  </td>
-                  <td
-                    className={`py-2 text-right tabular-nums ${d.rejected > 0 ? 'font-bold text-danger-ink' : ''}`}
-                  >
-                    {d.rejected}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </ScrollRegion>
+      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiTile
+          label="Lots reçus"
+          value={integer(sum((d) => d.batches))}
+          tone="brand"
+          icon={RefreshCw}
+        />
+        <KpiTile
+          label="Acceptées"
+          value={integer(accepted)}
+          tone="sales"
+          icon={CircleCheck}
+        />
+        <KpiTile
+          label="Refusées"
+          value={integer(rejected)}
+          tone={rejected > 0 ? 'danger' : 'accounting'}
+          icon={TriangleAlert}
+        >
+          <p className="text-base">
+            {percent(shareBasisPoints(rejected, accepted + rejected))} des
+            opérations
+          </p>
+        </KpiTile>
+        <KpiTile
+          label="Téléphones silencieux"
+          value={integer(s.silentDevices.length)}
+          tone={s.silentDevices.length > 0 ? 'warning' : 'accounting'}
+          icon={Smartphone}
+        />
+      </dl>
+      <Card
+        title="Opérations reçues par jour"
+        titleId="per-day"
+        icon={BarChart3}
+      >
+        <ColumnChart
+          title="Opérations acceptées et refusées, par jour"
+          series={[
+            { key: 'accepted', label: 'Acceptées', fill: 'bg-chart-1' },
+            { key: 'rejected', label: 'Refusées', fill: 'bg-chart-2' },
+          ]}
+          points={s.days.map((d) => ({
+            key: d.day,
+            ...dayLabels(d.day),
+            values: [d.accepted, d.rejected],
+            detail: `${count(d.batches, 'lot', 'lots')}, ${count(d.duplicates, 'doublon', 'doublons')}`,
+          }))}
+          format={integer}
+          empty="Aucune opération reçue sur ces 14 jours."
+          detailHeader="Lots et doublons"
+        />
       </Card>
       <Card title="Motifs de refus" titleId="reasons" icon={TriangleAlert}>
         {s.reasons.length === 0 ? (
