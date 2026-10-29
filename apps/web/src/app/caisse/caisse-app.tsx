@@ -1,14 +1,16 @@
 'use client';
 
 import {
-  formatAmount,
   roleHasPermission,
   ROLES,
+  type CreateSaleInput,
   type CustomerDto,
   type DeviceDto,
   type ProductDto,
   type SaleDto,
   type SyncOperation,
+  type SyncResponseDto,
+  type SyncResultDto,
 } from '@nagaw/shared';
 import { ArrowLeft, ShoppingCart, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
@@ -22,26 +24,29 @@ import {
   outboxStatus,
   OUTBOX_EVENT,
   readSnapshot,
-  readTicket,
-  recordLocally,
-  addLocalCustomer,
-  correctStockLocally,
   saveSnapshot,
-  type LocalTicket,
   type RejectedEntry,
   type ShopSnapshot,
 } from '@/lib/offline/store';
 import { Checkout, type SaleDraft } from './checkout';
-import { LocalTicketView } from './local-ticket';
 
+/**
+ * The checkout sells online only for now (ADR-042): every sale is recorded
+ * by the server before the seller sees it as done. The phone still sends
+ * the operations an older version kept on it, so that none is lost.
+ */
 type State =
   | { status: 'loading' }
-  | { status: 'never-online' }
+  | { status: 'offline' }
   | { status: 'server-error'; message: string }
   | { status: 'signed-out' }
   | { status: 'not-allowed' }
-  | { status: 'device-limit'; message: string }
-  | { status: 'ready'; snapshot: ShopSnapshot; fresh: boolean };
+  | {
+      status: 'ready';
+      snapshot: ShopSnapshot;
+      /** Why stock corrections are not available on this phone, if so. */
+      deviceProblem: string | null;
+    };
 
 interface ServerData {
   organizationId: string;
@@ -168,21 +173,31 @@ async function requestDevice(
     }
     return { ok: true, device };
   }
-  return { ok: false, reason: 'offline' };
+  // The server answered twice with a device it would not let us use: a
+  // server problem, never a missing network.
+  return {
+    ok: false,
+    reason: 'server',
+    message: 'ce téléphone n’a pas pu être enregistré comme caisse',
+  };
 }
 
-/** Fresh data from the server, with this browser's device (registered once). */
+/**
+ * Fresh data from the server. The device of this browser (registered once)
+ * only serves the stock corrections now (ADR-042): without it, the
+ * checkout still sells, and says why corrections are not available.
+ */
 async function refresh(
   previous: ShopSnapshot | null,
 ): Promise<
-  | { ok: true; snapshot: ShopSnapshot }
+  | { ok: true; snapshot: ShopSnapshot; deviceProblem: string | null }
   | { ok: false; reason: RefreshFailure; message?: string }
 > {
   let response: Response;
   try {
     response = await fetch('/caisse/donnees', { cache: 'no-store' });
   } catch (error) {
-    console.info('Caisse hors ligne : données locales', error);
+    console.info('Caisse : pas de réseau', error);
     return { ok: false, reason: 'offline' };
   }
   if (response.status === 401) return { ok: false, reason: 'signed-out' };
@@ -197,86 +212,92 @@ async function refresh(
     previous?.organizationId === data.organizationId && previous.device
       ? (data.devices.find((d) => d.id === previous.device?.id) ?? null)
       : null;
+  let deviceProblem: string | null = null;
   if (!device) {
-    const registered = await registerDevice(data.organizationId, data.user.id);
-    if (!registered.ok) return registered;
-    device = registered.device;
+    let registered: Registration;
+    try {
+      registered = await registerDevice(data.organizationId, data.user.id);
+    } catch (error) {
+      console.warn('Appareil non enregistré : pas de réseau', error);
+      registered = { ok: false, reason: 'offline' };
+    }
+    if (registered.ok) device = registered.device;
+    else if (registered.reason === 'signed-out') return registered;
+    else
+      deviceProblem =
+        registered.reason === 'offline'
+          ? 'la connexion a coupé pendant l’enregistrement du téléphone'
+          : (registered.message ?? 'ce téléphone n’est pas enregistré');
   }
   const snapshot = await saveSnapshot({
     organizationId: data.organizationId,
     shop: data.shop,
     products: data.products,
     customers: data.customers,
-    device: { id: device.id, ticketPrefix: device.ticketPrefix },
+    device: device
+      ? { id: device.id, ticketPrefix: device.ticketPrefix }
+      : null,
     user: data.user,
     rules: data.rules,
   });
-  return { ok: true, snapshot };
+  return { ok: true, snapshot, deviceProblem };
 }
 
-/** A local ticket in the shape of a server sale, for printing and sharing. */
-function asSale(ticket: LocalTicket): SaleDto {
-  return {
-    id: ticket.clientOperationId,
-    saleNumber: ticket.saleNumber ?? 0,
-    status: 'completed',
-    customer: ticket.sale.customerName
-      ? {
-          id: '',
-          name: ticket.sale.customerName,
-          phone: ticket.sale.customerPhone ?? '',
-        }
-      : null,
-    seller: { userId: '', email: '' },
-    lines: ticket.sale.lines.map((line, index) => ({
-      position: index + 1,
-      productId: '',
-      label: line.label,
-      unit: line.unit,
-      productUnitId: line.productUnitId ?? null,
-      unitLabel: line.unitLabel ?? null,
-      unitFactor: line.unitFactor ?? 1,
-      priceBasis: line.priceBasis ?? 'unit',
-      unitPrice: line.unitPrice,
-      quantity: line.quantity,
-      baseQuantity:
-        Math.round(line.quantity * (line.unitFactor ?? 1) * 1000) / 1000,
-      listTotal: line.listTotal ?? line.lineTotal,
-      lineTotal: line.lineTotal,
-      taxRateBasisPoints: null,
-      taxAmount: 0,
-    })),
-    payments: ticket.sale.payments.map((p) => ({
-      method: p.method,
-      provider: p.provider,
-      reference: p.reference,
-      amount: p.amount,
-    })),
-    subtotal: ticket.sale.subtotal,
-    discount: ticket.sale.discount,
-    total: ticket.sale.total,
-    taxTotal: ticket.sale.taxTotal,
-    cashReceived: ticket.sale.cashReceived,
-    changeGiven:
-      ticket.sale.cashReceived === null
-        ? null
-        : ticket.sale.cashReceived -
-          ticket.sale.payments
-            .filter((p) => p.method === 'cash')
-            .reduce((s, p) => s + p.amount, 0),
-    occurredAt: ticket.sale.occurredAt,
-    deviceTicket: ticket.deviceTicket,
-    priceReview: false,
-    stockReview: false,
-    cancellation: null,
-  };
+/** Why the server refused, or why it could not be reached, for the seller. */
+async function failureOf(response: Response): Promise<string> {
+  if (response.status === 401)
+    return 'Votre session a expiré : reconnectez-vous, puis refaites la vente.';
+  return `Le serveur a refusé : ${await errorOf(response)}`;
+}
+
+const NO_NETWORK =
+  'Pas de connexion internet : rien n’est enregistré. Vérifiez la connexion, puis appuyez de nouveau.';
+
+/** One operation of the checkout, sent at once through the device. */
+async function sendOperation(
+  organizationId: string,
+  deviceId: string,
+  operation: SyncOperation,
+): Promise<
+  { ok: true; result: SyncResultDto } | { ok: false; message: string }
+> {
+  let response: Response;
+  try {
+    response = await fetch('/caisse/synchroniser', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organizationId,
+        deviceId,
+        operations: [operation],
+      }),
+    });
+  } catch (error) {
+    console.info('Opération non envoyée : pas de réseau', error);
+    return { ok: false, message: NO_NETWORK };
+  }
+  if (!response.ok) return { ok: false, message: await failureOf(response) };
+  const { results } = (await response.json()) as SyncResponseDto;
+  const result = results.find(
+    (r) => r.clientOperationId === operation.clientOperationId,
+  );
+  if (!result)
+    return { ok: false, message: 'Le serveur n’a pas répondu pour ce geste.' };
+  if (result.status === 'rejected')
+    return {
+      ok: false,
+      message: result.error?.message ?? 'Refusé par le serveur.',
+    };
+  return { ok: true, result };
 }
 
 export function CaisseApp() {
   const router = useRouter();
   const [state, setState] = useState<State>({ status: 'loading' });
-  const [ticket, setTicket] = useState<LocalTicket | null>(null);
   const [rejected, setRejected] = useState<RejectedEntry[]>([]);
+  // The same sale sent again (after a cut network) keeps its operation id:
+  // the server records it once (ADR-020).
+  const lastSale = useRef<{ payload: string; id: string } | null>(null);
 
   const loadRejected = useCallback(async (organizationId: string) => {
     const status = await outboxStatus();
@@ -288,26 +309,24 @@ export function CaisseApp() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const cached = await readSnapshot();
-      if (cached && !cancelled)
-        setState({ status: 'ready', snapshot: cached, fresh: false });
+      // Only to find this phone's device again: the checkout sells with
+      // fresh data from the server, never with an old copy (ADR-042).
+      const cached = await readSnapshot().catch((error: unknown) => {
+        console.warn('Copie de la caisse illisible sur ce téléphone', error);
+        return null;
+      });
       const fresh = await refresh(cached);
       if (cancelled) return;
       if (fresh.ok) {
-        setState({ status: 'ready', snapshot: fresh.snapshot, fresh: true });
+        setState({
+          status: 'ready',
+          snapshot: fresh.snapshot,
+          deviceProblem: fresh.deviceProblem,
+        });
+        // Operations an older version kept on the phone leave now.
         void flushOutbox();
         await loadRejected(fresh.snapshot.organizationId);
-      } else if (cached) {
-        // The checkout always opens when the phone has a copy (owner's
-        // decision, 2026-10-27), whatever the server said: sales wait on
-        // the phone, and the banner says why if they cannot leave.
-        await loadRejected(cached.organizationId);
-      } else if (fresh.reason === 'device-limit') {
-        setState({
-          status: 'device-limit',
-          message: fresh.message ?? 'Limite d’appareils atteinte.',
-        });
-      } else if (fresh.reason === 'server') {
+      } else if (fresh.reason === 'server' || fresh.reason === 'device-limit') {
         setState({
           status: 'server-error',
           message: fresh.message ?? 'erreur inconnue',
@@ -319,12 +338,16 @@ export function CaisseApp() {
               ? 'signed-out'
               : fresh.reason === 'not-allowed'
                 ? 'not-allowed'
-                : 'never-online',
+                : 'offline',
         });
       }
     })().catch((error: unknown) => {
       console.error('Ouverture de la caisse impossible', error);
-      if (!cancelled) setState({ status: 'never-online' });
+      if (!cancelled)
+        setState({
+          status: 'server-error',
+          message: error instanceof Error ? error.message : 'erreur inconnue',
+        });
     });
     return () => {
       cancelled = true;
@@ -339,12 +362,9 @@ export function CaisseApp() {
     return () => window.removeEventListener(OUTBOX_EVENT, update);
   }, [state, loadRejected]);
 
-  // Without a copy on the phone, try again by itself: every 15 s and as
-  // soon as the network comes back. Nobody has to find « Réessayer ».
-  const waiting =
-    state.status === 'never-online' ||
-    state.status === 'server-error' ||
-    state.status === 'device-limit';
+  // Without the server, try again by itself: every 15 s and as soon as
+  // the network comes back. Nobody has to find « Réessayer ».
+  const waiting = state.status === 'offline' || state.status === 'server-error';
   useEffect(() => {
     if (!waiting) return;
     const retry = () => window.location.reload();
@@ -355,16 +375,6 @@ export function CaisseApp() {
       window.removeEventListener('online', retry);
     };
   }, [waiting]);
-
-  // « Nouvelle vente » disappears with the ticket: the focus goes back to
-  // the top of the checkout instead of the start of the page (WCAG 2.4.3).
-  const sellTitleRef = useRef<HTMLHeadingElement>(null);
-  const backToSell = useRef(false);
-  useEffect(() => {
-    if (ticket || !backToSell.current) return;
-    backToSell.current = false;
-    sellTitleRef.current?.focus();
-  }, [ticket]);
 
   if (state.status === 'loading')
     return (
@@ -395,29 +405,6 @@ export function CaisseApp() {
         </Link>
       </Centered>
     );
-  if (state.status === 'device-limit')
-    return (
-      <Centered>
-        <Alert tone="warning">
-          Ce téléphone ne peut pas être ajouté comme caisse : {state.message} Le
-          propriétaire ou un gérant peut retirer un ancien appareil dans
-          Paramètres, « Appareils de vente ».
-        </Alert>
-        <Link href="/espace/parametres" className={buttonClasses('primary')}>
-          Ouvrir les paramètres
-        </Link>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className={buttonClasses('secondary')}
-        >
-          Réessayer
-        </button>
-        <p role="status" className="text-center text-ink-muted">
-          Nouvel essai automatique dans quelques secondes.
-        </p>
-      </Centered>
-    );
   if (state.status === 'server-error')
     return (
       <Centered>
@@ -438,12 +425,12 @@ export function CaisseApp() {
         </p>
       </Centered>
     );
-  if (state.status === 'never-online')
+  if (state.status === 'offline')
     return (
       <Centered>
         <Alert tone="warning">
-          Ouvrez la caisse une première fois avec internet : elle garde ensuite
-          vos produits sur ce téléphone pour vendre sans connexion.
+          Pas de connexion internet. La caisse a besoin d’internet pour
+          enregistrer les ventes : vérifiez les données mobiles ou le wifi.
         </Alert>
         <button
           type="button"
@@ -458,95 +445,45 @@ export function CaisseApp() {
       </Centered>
     );
 
-  const { snapshot } = state;
-  const money = (value: number) => formatAmount(value, snapshot.shop.currency);
+  const { snapshot, deviceProblem } = state;
 
+  /** Sends the sale and waits for the server: done only once recorded. */
   async function onRecord(draft: SaleDraft): Promise<string | null> {
-    const pendingCustomer = draft.customer
-      ? snapshot.customers.find(
-          (c) => c.id === draft.customer?.id && c.pendingOperationId,
-        )
-      : undefined;
-    const clientOperationId = crypto.randomUUID();
-    let local: LocalTicket;
+    const sale: Omit<CreateSaleInput, 'clientOperationId'> = {
+      customerId: draft.customer?.id ?? null,
+      lines: draft.lines.map(({ product, option, quantity, agreedTotal }) => ({
+        productId: product.id,
+        productUnitId: option.productUnitId,
+        conversion: option.conversion,
+        quantity,
+        agreedTotal,
+      })),
+      discount: draft.totals.discount,
+      payments: draft.payments,
+      cashReceived: draft.cashReceived,
+      expectedTotal: draft.totals.total,
+    };
+    const payload = JSON.stringify(sale);
+    if (lastSale.current?.payload !== payload)
+      lastSale.current = { payload, id: crypto.randomUUID() };
+    let response: Response;
     try {
-      local = await recordLocally(snapshot.organizationId, (deviceTicket) => {
-        const operation: SyncOperation = {
-          type: 'sale',
-          clientOperationId,
-          data: {
-            deviceTicket,
-            occurredAt: new Date().toISOString(),
-            customerId: pendingCustomer ? null : (draft.customer?.id ?? null),
-            customerOperationId: pendingCustomer?.pendingOperationId ?? null,
-            lines: draft.lines.map(
-              ({ product, option, quantity, pricing, agreedTotal }) => ({
-                productId: product.id,
-                productUnitId: option.productUnitId,
-                conversion: option.conversion,
-                quantity,
-                unitPrice: pricing.unitPrice,
-                agreedTotal,
-              }),
-            ),
-            discount: draft.totals.discount,
-            payments: draft.payments,
-            cashReceived: draft.cashReceived,
-          },
-        };
-        return {
-          operations: [operation],
-          ticket: {
-            clientOperationId,
-            sale: {
-              occurredAt: operation.data.occurredAt,
-              customerName: draft.customer?.name ?? null,
-              customerPhone: draft.customer?.phone ?? null,
-              lines: draft.lines.map(
-                ({
-                  product,
-                  option,
-                  quantity,
-                  pricing,
-                  lineTotal,
-                  listTotal,
-                }) => ({
-                  label: product.name,
-                  unit: product.unit,
-                  quantity,
-                  unitPrice: pricing.unitPrice,
-                  lineTotal,
-                  productUnitId: option.productUnitId,
-                  unitLabel: option.label,
-                  unitFactor: option.factor,
-                  priceBasis: pricing.basis,
-                  listTotal,
-                }),
-              ),
-              subtotal: draft.totals.subtotal,
-              discount: draft.totals.discount,
-              total: draft.totals.total,
-              taxTotal: draft.totals.taxTotal,
-              payments: draft.payments,
-              cashReceived: draft.cashReceived,
-            },
-          },
-        };
+      response = await fetch('/caisse/vente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: snapshot.organizationId,
+          sale: { ...sale, clientOperationId: lastSale.current.id },
+        }),
       });
     } catch (error) {
-      console.error('Vente non enregistrée sur l’appareil', error);
-      return 'La vente n’a pas pu être enregistrée sur ce téléphone. Rechargez la caisse avec internet.';
+      console.info('Vente non envoyée : pas de réseau', error);
+      return NO_NETWORK;
     }
-    // Sent at once when the network allows; otherwise it waits safely.
-    if ((await flushOutbox()) === 'sent') {
-      const sent = await readTicket(clientOperationId);
-      if (sent?.status === 'sent' && sent.saleId) {
-        router.push(`/espace/ventes/${sent.saleId}?nouvelle=1`);
-        return null;
-      }
-      if (sent) local = sent;
-    }
-    setTicket(local);
+    if (!response.ok) return failureOf(response);
+    const recorded = (await response.json()) as SaleDto;
+    lastSale.current = null;
+    router.push(`/espace/ventes/${recorded.id}?nouvelle=1`);
     return null;
   }
 
@@ -570,8 +507,12 @@ export function CaisseApp() {
     counted: number,
     reason: string,
   ): Promise<string | null> {
-    try {
-      const updated = await correctStockLocally(snapshot.organizationId, {
+    if (!snapshot.device)
+      return `Correction impossible sur ce téléphone : ${deviceProblem ?? 'il n’est pas enregistré comme caisse'}. Rechargez la caisse, ou corrigez le stock depuis la fiche du produit.`;
+    const sent = await sendOperation(
+      snapshot.organizationId,
+      snapshot.device.id,
+      {
         type: 'stock_correction',
         clientOperationId: crypto.randomUUID(),
         data: {
@@ -581,47 +522,67 @@ export function CaisseApp() {
           reason,
           occurredAt: new Date().toISOString(),
         },
-      });
-      setState((current) =>
-        current.status === 'ready'
-          ? { ...current, snapshot: updated }
-          : current,
-      );
-    } catch (error) {
-      console.error('Correction de stock non enregistrée', error);
-      return 'La correction n’a pas pu être enregistrée sur ce téléphone. Rechargez la caisse avec internet.';
-    }
-    // Sent with the next sale at the latest; never waits for the network.
-    void flushOutbox();
+      },
+    );
+    if (!sent.ok) return sent.message;
+    const stockQuantity = sent.result.stockQuantity ?? counted;
+    setState((current) =>
+      current.status === 'ready'
+        ? {
+            ...current,
+            snapshot: {
+              ...current.snapshot,
+              products: current.snapshot.products.map((p) =>
+                p.id === product.id ? { ...p, stockQuantity } : p,
+              ),
+            },
+          }
+        : current,
+    );
     return null;
   }
 
-  async function onCreateCustomer(values: { name: string; phone: string }) {
+  /** Created on the server at once, then chosen for the sale. */
+  async function onCreateCustomer(values: {
+    name: string;
+    phone: string;
+  }): Promise<
+    { ok: true; customer: CustomerDto } | { ok: false; message: string }
+  > {
     const name = values.name.trim();
-    if (!name)
-      return { ok: false as const, message: 'Donnez le nom du client.' };
-    const pendingOperationId = crypto.randomUUID();
-    const customer = {
-      id: pendingOperationId,
-      name: name.slice(0, 120),
-      phone: values.phone.trim().slice(0, 30),
-      email: '',
-      address: '',
-      taxId: '',
-      notes: '',
-      creditLimit: null,
-      balance: 0,
-      status: 'active' as const,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      pendingOperationId,
-    };
-    await addLocalCustomer(snapshot.organizationId, customer);
-    setState({
-      ...state,
-      snapshot: { ...snapshot, customers: [...snapshot.customers, customer] },
-    } as State);
-    return { ok: true as const, customer };
+    if (!name) return { ok: false, message: 'Donnez le nom du client.' };
+    let response: Response;
+    try {
+      response = await fetch('/caisse/client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: snapshot.organizationId,
+          customer: {
+            name: name.slice(0, 120),
+            phone: values.phone.trim().slice(0, 30),
+            clientOperationId: crypto.randomUUID(),
+          },
+        }),
+      });
+    } catch (error) {
+      console.info('Client non créé : pas de réseau', error);
+      return { ok: false, message: NO_NETWORK };
+    }
+    if (!response.ok) return { ok: false, message: await failureOf(response) };
+    const customer = (await response.json()) as CustomerDto;
+    setState((current) =>
+      current.status === 'ready'
+        ? {
+            ...current,
+            snapshot: {
+              ...current.snapshot,
+              customers: [...current.snapshot.customers, customer],
+            },
+          }
+        : current,
+    );
+    return { ok: true, customer };
   }
 
   return (
@@ -646,17 +607,6 @@ export function CaisseApp() {
         id="contenu"
         className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 pt-4 pb-40 lg:pb-8"
       >
-        {!state.fresh && (
-          <Alert tone="warning">
-            Données de ce téléphone du{' '}
-            {new Intl.DateTimeFormat('fr', {
-              dateStyle: 'short',
-              timeStyle: 'short',
-              timeZone: snapshot.shop.timeZone,
-            }).format(new Date(snapshot.refreshedAt))}{' '}
-            : les prix peuvent avoir changé depuis.
-          </Alert>
-        )}
         {rejected.length > 0 && (
           <section
             aria-labelledby="rejected-title"
@@ -697,38 +647,17 @@ export function CaisseApp() {
             </p>
           </section>
         )}
-        {ticket ? (
-          <LocalTicketView
-            ticket={ticket}
-            sale={asSale(ticket)}
-            shop={snapshot.shop}
-            money={money}
-            onNext={() => {
-              backToSell.current = true;
-              setTicket(null);
-            }}
-          />
-        ) : (
-          <>
-            <h1
-              ref={sellTitleRef}
-              tabIndex={-1}
-              className="text-2xl font-extrabold focus:outline-none md:text-3xl"
-            >
-              Vendre
-            </h1>
-            <Checkout
-              currency={snapshot.shop.currency}
-              products={snapshot.products}
-              customers={snapshot.customers}
-              stockRights={stockRights}
-              negotiation={negotiation}
-              onRecord={onRecord}
-              onCreateCustomer={onCreateCustomer}
-              onCorrectStock={onCorrectStock}
-            />
-          </>
-        )}
+        <h1 className="text-2xl font-extrabold md:text-3xl">Vendre</h1>
+        <Checkout
+          currency={snapshot.shop.currency}
+          products={snapshot.products}
+          customers={snapshot.customers}
+          stockRights={stockRights}
+          negotiation={negotiation}
+          onRecord={onRecord}
+          onCreateCustomer={onCreateCustomer}
+          onCorrectStock={onCorrectStock}
+        />
       </main>
     </div>
   );

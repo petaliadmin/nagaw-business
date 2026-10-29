@@ -30,10 +30,7 @@ async function openCheckoutOnline(page: Page) {
   );
 }
 
-const banner = (page: Page) =>
-  page.getByRole('status').filter({ hasText: /connexion|attente d’envoi/ });
-
-test('online, a sale from the checkout is sent at once and numbered', async ({
+test('online, a sale from the checkout is recorded by the server at once', async ({
   page,
   context,
   baseURL,
@@ -46,11 +43,13 @@ test('online, a sale from the checkout is sent at once and numbered', async ({
   await page.getByRole('button', { name: /^Valider la vente/ }).click();
   await expect(page).toHaveURL(/\/espace\/ventes\/[^/?]+\?nouvelle=1$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    /Ticket n° \d{6} \([A-Z]-\d{6}\)/,
+    /Ticket n° \d{6}/,
   );
 });
 
-test('offline, sales are kept on the phone and sent when the network returns', async ({
+// ADR-042: the checkout sells online only; a sale without network is
+// never shown as done, and sent again it is recorded once.
+test('without network, the sale is refused at once, then recorded once when sent again', async ({
   page,
   context,
   baseURL,
@@ -64,92 +63,38 @@ test('offline, sales are kept on the phone and sent when the network returns', a
   await openPayment(page, isMobile);
   await page.getByLabel('Somme reçue du client (facultatif)').fill('1000');
   await page.getByRole('button', { name: /^Valider la vente/ }).click();
-  await expect(page.getByText('Vente enregistrée.')).toBeVisible();
-  await expect(page.getByText(/Gardée sur ce téléphone/)).toBeVisible();
-  await expect(page.getByText(/À rendre : 500/)).toBeVisible();
-  const label = await page.getByRole('heading', { level: 1 }).textContent();
-  expect(label).toMatch(/^Ticket [A-Z]-\d{6}$/);
-  await expect(banner(page)).toContainText('1 vente gardée sur ce téléphone');
+  await expect(
+    page.getByText(/Pas de connexion internet : rien n’est enregistré/),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/caisse$/);
 
-  // The checkout reopens without network, from the phone.
+  await context.setOffline(false);
+  await page.getByRole('button', { name: /^Valider la vente/ }).click();
+  await expect(page).toHaveURL(/\/espace\/ventes\/[^/?]+\?nouvelle=1$/);
+  await expect(page.getByText(/À rendre/)).toContainText('500');
+});
+
+test('the checkout does not open without network, and says why', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await openCheckoutOnline(page);
+  await context.setOffline(true);
   await page.reload();
   await expect(
-    page.getByRole('heading', { level: 1, name: 'Vendre' }),
-  ).toBeVisible();
-  await expect(page.getByText(/Données de ce téléphone du/)).toBeVisible();
-
-  await context.setOffline(false);
-  await expect(banner(page)).toHaveCount(0, { timeout: 15_000 });
-
-  await page.goto('/espace/ventes');
-  const ticket = label!.replace('Ticket ', '');
-  await expect(
-    page.getByRole('list', { name: 'Liste des ventes' }),
-  ).toContainText(`(${ticket})`);
-});
-
-test('a customer created offline buys on credit, both sent together', async ({
-  page,
-  context,
-  baseURL,
-  isMobile,
-}) => {
-  test.skip(isMobile, 'Covered once');
-  await signInAs(context, 'awa', baseURL!);
-  await openCheckoutOnline(page);
-  await context.setOffline(true);
-  await addToCart(page, 'Eau minérale 1,5 L', 2);
-  await openPayment(page, isMobile);
-  await page.getByRole('button', { name: 'À crédit', exact: true }).click();
-  await page.getByRole('button', { name: 'Nouveau client' }).click();
-  await page.getByLabel('Nom du nouveau client').fill('Ndèye Fall');
-  await page.getByRole('button', { name: 'Ajouter le client' }).click();
-  await page.getByRole('button', { name: /^Valider la vente/ }).click();
-  await expect(page.getByText(/Gardée sur ce téléphone/)).toBeVisible();
-
-  await context.setOffline(false);
-  await expect(banner(page)).toHaveCount(0, { timeout: 15_000 });
-  await page.goto('/espace/clients?doivent=1');
-  await expect(
-    page.getByRole('list', { name: 'Liste des clients' }),
-  ).toContainText('Ndèye Fall');
-});
-
-test('sales of another account are kept and explained, never stuck in silence', async ({
-  page,
-  context,
-  baseURL,
-  isMobile,
-}) => {
-  // Awa sells offline, then Moussa signs in on the same phone without
-  // Awa signing out: the server refuses Awa's device for Moussa.
-  await signInAs(context, 'awa', baseURL!);
-  await openCheckoutOnline(page);
-  await context.setOffline(true);
-  await addToCart(page, 'Eau minérale 1,5 L');
-  await openPayment(page, isMobile);
-  await page.getByRole('button', { name: /^Valider la vente/ }).click();
-  await expect(page.getByText(/Gardée sur ce téléphone/)).toBeVisible();
-
-  await signInAs(context, 'moussa', baseURL!);
-  await context.setOffline(false);
-  await page.goto('/caisse');
-  // Moussa gets his own device and sells normally.
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Vendre' }),
+    page.getByText(/La caisse a besoin d’internet pour enregistrer les ventes/),
   ).toBeVisible();
   await expect(
-    page
-      .getByRole('status')
-      .filter({ hasText: /avec le compte awa@acme\.test/ }),
-  ).toBeVisible({ timeout: 15_000 });
+    page.getByRole('heading', { level: 1, name: 'Vendre' }),
+  ).toHaveCount(0);
 
-  // Awa comes back on this phone: her sale leaves.
-  await signInAs(context, 'awa', baseURL!);
-  await page.goto('/caisse');
+  // Back online, it opens by itself.
+  await context.setOffline(false);
   await expect(
-    page.getByRole('status').filter({ hasText: /awa@acme\.test/ }),
-  ).toHaveCount(0, { timeout: 15_000 });
+    page.getByRole('heading', { level: 1, name: 'Vendre' }),
+  ).toBeVisible({ timeout: 20_000 });
 });
 
 test('signing out erases what the phone keeps', async ({
