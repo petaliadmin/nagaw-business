@@ -81,7 +81,7 @@ test('the home page shows the essentials of the period', async ({
   expect(text).toMatch(/Panier moyen[\d ]+ F CFA/);
   expect(text).toContain('Comparé à la période d’avant');
   await expect(
-    page.getByRole('list', { name: 'Produits qui rapportent le plus' }),
+    page.getByRole('list', { name: 'Ce qui rapporte le plus' }),
   ).toContainText('Eau minérale 1,5 L');
   await expect(
     page.getByRole('list', { name: 'Paiements par moyen' }),

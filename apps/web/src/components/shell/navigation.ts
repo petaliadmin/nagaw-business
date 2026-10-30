@@ -1,4 +1,10 @@
-import { roleHasPermission, type Permission, type Role } from '@nagaw/shared';
+import {
+  roleHasPermission,
+  sellsGoods,
+  type Permission,
+  type Role,
+  type ShopOffer,
+} from '@nagaw/shared';
 import {
   Banknote,
   ChartColumn,
@@ -11,6 +17,7 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
+import { CATALOG_TITLES } from '@/lib/catalog/offer';
 
 export interface NavItem {
   href: string;
@@ -50,8 +57,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/espace/produits',
-    label: 'Stock / Produits',
-    shortLabel: 'Stock',
+    label: 'Produits et services',
+    shortLabel: 'Produits',
     icon: Package,
     bottomBar: true,
   },
@@ -98,10 +105,20 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
 ];
 
-/** Entries the role may open. */
-export function navItemsFor(role: Role): NavItem[] {
+/** Entries the role may open, named after what the shop sells (ADR-047). */
+export function navItemsFor(role: Role, offer: ShopOffer = 'both'): NavItem[] {
   return NAV_ITEMS.filter(
-    (item) => !item.permission || roleHasPermission(role, item.permission),
+    (item) =>
+      (!item.permission || roleHasPermission(role, item.permission)) &&
+      (sellsGoods(offer) || item.href !== '/espace/produits/fournisseurs'),
+  ).map((item) =>
+    item.href === '/espace/produits' && offer !== 'both'
+      ? {
+          ...item,
+          label: CATALOG_TITLES[offer],
+          shortLabel: CATALOG_TITLES[offer],
+        }
+      : item,
   );
 }
 
@@ -113,7 +130,7 @@ export function isActive(href: string, pathname: string): boolean {
 
 /**
  * The entry to mark for a path: the most specific match, so that
- * « Fournisseurs » wins over « Stock / Produits » on its own pages.
+ * « Fournisseurs » wins over « Produits et services » on its own pages.
  */
 export function activeHref(
   items: readonly NavItem[],
@@ -125,6 +142,21 @@ export function activeHref(
       if (isActive(path, pathname) && (!best || path.length > best.length))
         best = { href: item.href, length: path.length };
   return best?.href ?? null;
+}
+
+/**
+ * Where « Retour » leads on a phone: the page above this one, or nothing on
+ * the pages reached from the menu (a tab of a section counts as one).
+ */
+export function parentPath(pathname: string): string | null {
+  if (pathname === '/espace' || !pathname.startsWith('/espace/')) return null;
+  const tabs = Object.values(SECTION_TABS).flat() as readonly SectionTab[];
+  const topLevel = [
+    ...NAV_ITEMS.map((item) => item.href),
+    ...tabs.flatMap((tab) => [tab.href, ...(tab.paths ?? [])]),
+  ];
+  if (topLevel.includes(pathname)) return null;
+  return pathname.slice(0, pathname.lastIndexOf('/'));
 }
 
 export interface SectionTab {

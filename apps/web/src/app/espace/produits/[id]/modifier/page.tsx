@@ -64,6 +64,7 @@ async function EditProduct({
       <PageHeader title={`Modifier « ${product.data.name} »`} />
       <Card>
         <ProductForm
+          offer={organization.offer}
           organizationId={organization.id}
           currency={organization.defaultCurrency}
           categories={categories.data.filter((c) => c.status === 'active')}

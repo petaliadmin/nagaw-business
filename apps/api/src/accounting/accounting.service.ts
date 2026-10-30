@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import {
   accountOfMovement,
-  ACCOUNTS,
   amountInputValue,
+  computeDocumentTotals,
+  splitSaleReceipt,
   TREASURY_ACCOUNTS,
   type CashAccountKind,
   type CashMovementKind,
   type JournalDto,
   type JournalEntryDto,
   type PeriodQuery,
+  type SaleShare,
   type StatementDto,
 } from '@nagaw/shared';
 import { sql } from 'kysely';
@@ -32,6 +34,7 @@ interface JournalRow {
   kind: CashMovementKind;
   amount: string;
   label: string;
+  source_id: string;
   cash_id: string;
   cash_name: string;
   cash_kind: CashAccountKind;
@@ -105,7 +108,7 @@ export class AccountingService {
   ) {
     const { rows } = await sql<JournalRow>`
       with ${movementsCte(organizationId, timeZone)}
-      select mv.day::text as day, mv.kind, mv.amount, mv.label,
+      select mv.day::text as day, mv.kind, mv.amount, mv.label, mv.source_id,
              a.id as cash_id, a.name as cash_name, a.kind as cash_kind,
              e.number as expense_number, c.account_code, c.name as category_name
         from mv
@@ -122,28 +125,135 @@ export class AccountingService {
     return rows;
   }
 
-  private entry(row: JournalRow): JournalEntryDto {
-    const amount = toNumber(row.amount);
-    const account = accountOfMovement(
-      row.kind,
-      amount,
-      row.account_code
-        ? { code: row.account_code, label: row.category_name ?? '' }
-        : null,
+  /**
+   * What was sold behind each receipt of these rows (ADR-046), by source:
+   * a sale, an invoice, or a customer repaying their credit sales. The
+   * nature read is today's: correcting a product corrects its past sales.
+   */
+  private async saleShares(
+    organizationId: string,
+    rows: JournalRow[],
+  ): Promise<Map<string, SaleShare>> {
+    const ids = (kinds: CashMovementKind[]) => [
+      ...new Set(
+        rows.filter((r) => kinds.includes(r.kind)).map((r) => r.source_id),
+      ),
+    ];
+    const saleIds = ids(['sale', 'sale_cancelled']);
+    const customerIds = ids(['repayment']);
+    const invoiceIds = ids(['invoice_payment']);
+    const db = this.database.db;
+    const [sales, customers, invoices] = await Promise.all([
+      saleIds.length === 0
+        ? null
+        : sql<{ id: string; goods: string; services: string }>`
+            select l.sale_id as id,
+                   coalesce(sum(l.line_total) filter (where p.kind = 'product'), 0) as goods,
+                   coalesce(sum(l.line_total) filter (where p.kind = 'service'), 0) as services
+              from app.sale_lines l
+              join app.products p
+                on p.organization_id = l.organization_id and p.id = l.product_id
+             where l.organization_id = ${organizationId}
+               and l.sale_id = any(${saleIds}::uuid[])
+             group by l.sale_id`.execute(db),
+      customerIds.length === 0
+        ? null
+        : sql<{ id: string; goods: string; services: string }>`
+            select s.customer_id as id,
+                   coalesce(sum(l.line_total) filter (where p.kind = 'product'), 0) as goods,
+                   coalesce(sum(l.line_total) filter (where p.kind = 'service'), 0) as services
+              from app.sales s
+              join app.sale_lines l
+                on l.organization_id = s.organization_id and l.sale_id = s.id
+              join app.products p
+                on p.organization_id = l.organization_id and p.id = l.product_id
+             where s.organization_id = ${organizationId}
+               and s.customer_id = any(${customerIds}::uuid[])
+               and s.status = 'completed'
+               and exists (select 1 from app.sale_payments c
+                            where c.organization_id = s.organization_id
+                              and c.sale_id = s.id and c.method = 'credit')
+             group by s.customer_id`.execute(db),
+      invoiceIds.length === 0
+        ? []
+        : db
+            .selectFrom('app.invoices')
+            .select(['id', 'lines'])
+            .where('organization_id', '=', organizationId)
+            .where('id', 'in', invoiceIds)
+            .execute(),
+    ]);
+
+    const shares = new Map<string, SaleShare>();
+    for (const row of [...(sales?.rows ?? []), ...(customers?.rows ?? [])])
+      shares.set(row.id, {
+        goods: toNumber(row.goods),
+        services: toNumber(row.services),
+      });
+
+    const productIds = [
+      ...new Set(
+        invoices.flatMap((i) => i.lines.flatMap((l) => l.productId ?? [])),
+      ),
+    ];
+    const kinds = new Map(
+      productIds.length === 0
+        ? []
+        : (
+            await db
+              .selectFrom('app.products')
+              .select(['id', 'kind'])
+              .where('organization_id', '=', organizationId)
+              .where('id', 'in', productIds)
+              .execute()
+          ).map((p) => [p.id, p.kind]),
     );
-    return {
+    for (const invoice of invoices) {
+      const { lineTotals } = computeDocumentTotals(invoice.lines, 0);
+      const share: SaleShare = { goods: 0, services: 0 };
+      invoice.lines.forEach((line, index) => {
+        // A free line is what the editor offers for a service.
+        const goods = line.productId && kinds.get(line.productId) === 'product';
+        share[goods ? 'goods' : 'services'] += lineTotals[index] ?? 0;
+      });
+      shares.set(invoice.id, share);
+    }
+    return shares;
+  }
+
+  /** A movement as lines of the journal: a sale may take two accounts. */
+  private entries(
+    row: JournalRow,
+    shares: Map<string, SaleShare>,
+  ): JournalEntryDto[] {
+    const amount = toNumber(row.amount);
+    const parts = SALE_KINDS.includes(row.kind)
+      ? splitSaleReceipt(amount, shares.get(row.source_id) ?? null)
+      : [
+          {
+            amount,
+            account: accountOfMovement(
+              row.kind,
+              amount,
+              row.account_code
+                ? { code: row.account_code, label: row.category_name ?? '' }
+                : null,
+            ),
+          },
+        ];
+    return parts.map((part) => ({
       day: row.day,
       ...describe(row),
       kind: row.kind,
-      account,
+      account: part.account,
       cashAccount: {
         id: row.cash_id,
         name: row.cash_name,
         code: TREASURY_ACCOUNTS[row.cash_kind].code,
       },
-      receipt: Math.max(amount, 0),
-      expense: Math.max(-amount, 0),
-    };
+      receipt: Math.max(part.amount, 0),
+      expense: Math.max(-part.amount, 0),
+    }));
   }
 
   private async period(organizationId: string, query: PeriodQuery) {
@@ -172,7 +282,9 @@ export class AccountingService {
       to,
       JOURNAL_LIMIT + 1,
     );
-    const entries = rows.slice(0, JOURNAL_LIMIT).map((row) => this.entry(row));
+    const kept = rows.slice(0, JOURNAL_LIMIT);
+    const shares = await this.saleShares(tenant.organizationId, kept);
+    const entries = kept.flatMap((row) => this.entries(row, shares));
     return {
       from,
       to,
@@ -197,9 +309,15 @@ export class AccountingService {
     const currency = await this.currency(tenant.organizationId);
     const money = (minor: number) =>
       minor === 0 ? '' : amountInputValue(minor, currency);
-    const entries = (
-      await this.rows(tenant.organizationId, timeZone, from, to, null)
-    ).map((row) => this.entry(row));
+    const rows = await this.rows(
+      tenant.organizationId,
+      timeZone,
+      from,
+      to,
+      null,
+    );
+    const shares = await this.saleShares(tenant.organizationId, rows);
+    const entries = rows.flatMap((row) => this.entries(row, shares));
     return {
       name: `journal-recettes-depenses-${from}-${to}.csv`,
       body: csv([
@@ -248,24 +366,9 @@ export class AccountingService {
     if (from > now) throw invalid('year', 'Cet exercice n’a pas commencé.');
     const to = yearEnd < now ? yearEnd : now;
 
-    const [grouped, balances, accounts, receivables, stock] = await Promise.all(
-      [
-        sql<{
-          kind: CashMovementKind;
-          positive: boolean;
-          code: string | null;
-          name: string | null;
-          amount: string;
-        }>`
-        with ${movementsCte(organizationId, timeZone)}
-        select mv.kind, mv.amount > 0 as positive, c.account_code as code, c.name, sum(mv.amount) as amount
-          from mv
-          left join app.expenses e
-            on mv.kind = 'expense' and e.organization_id = ${organizationId} and e.id = mv.source_id
-          left join app.expense_categories c
-            on c.organization_id = e.organization_id and c.id = e.category_id
-         where mv.day between ${from} and ${to} and mv.kind not in ('transfer_in', 'transfer_out')
-         group by mv.kind, mv.amount > 0, c.account_code, c.name`.execute(db),
+    const [movements, balances, accounts, receivables, stock] =
+      await Promise.all([
+        this.rows(organizationId, timeZone, from, to, null),
         sql<{ account_id: string; start: string; end: string }>`
         with ${movementsCte(organizationId, timeZone)}
         select account_id,
@@ -293,8 +396,7 @@ export class AccountingService {
          where p.organization_id = ${organizationId} and p.track_stock`.execute(
           db,
         ),
-      ],
-    );
+      ]);
 
     const receipts = new Map<
       string,
@@ -313,18 +415,14 @@ export class AccountingService {
       line.amount += amount;
       target.set(account.code, line);
     };
-    for (const g of grouped.rows) {
-      const amount = toNumber(g.amount);
-      if (SALE_KINDS.includes(g.kind)) add(receipts, ACCOUNTS.sales, amount);
-      else if (g.kind === 'closing') {
-        if (g.positive) add(receipts, ACCOUNTS.cashGain, amount);
-        else add(expenses, ACCOUNTS.cashLoss, -amount);
-      } else if (g.kind === 'expense')
-        add(
-          expenses,
-          g.code ? { code: g.code, label: g.name ?? '' } : ACCOUNTS.cashLoss,
-          -amount,
-        );
+    // Built from the journal's own lines: the two always agree to the franc.
+    const shares = await this.saleShares(organizationId, movements);
+    for (const entry of movements.flatMap((row) => this.entries(row, shares))) {
+      if (entry.kind === 'transfer_in' || entry.kind === 'transfer_out')
+        continue;
+      if (SALE_KINDS.includes(entry.kind) || entry.receipt > 0)
+        add(receipts, entry.account, entry.receipt - entry.expense);
+      else add(expenses, entry.account, entry.expense);
     }
     const byCode = (a: { code: string }, b: { code: string }) =>
       a.code.localeCompare(b.code);

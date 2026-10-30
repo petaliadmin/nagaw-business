@@ -41,6 +41,8 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   'product.created': 'Produit ajouté',
   'product.updated': 'Produit modifié',
   'product.archived': 'Produit archivé',
+  'organization.logo_changed': 'Logo de la boutique changé',
+  'organization.logo_removed': 'Logo de la boutique retiré',
   'product.photo_changed': 'Photo d’un produit changée',
   'product.photo_removed': 'Photo d’un produit retirée',
   'product.unit_added': 'Unité de vente ajoutée',

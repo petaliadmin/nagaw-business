@@ -587,7 +587,7 @@ export function CaisseApp() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-line bg-surface px-4 print:hidden">
+      <header className="sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 border-b border-line bg-surface px-4 pt-[env(safe-area-inset-top)] print:hidden">
         <Link
           href="/espace"
           className="flex min-h-12 items-center gap-2 rounded-xl px-2 font-bold text-brand-ink"
@@ -649,6 +649,7 @@ export function CaisseApp() {
         )}
         <h1 className="text-2xl font-extrabold md:text-3xl">Vendre</h1>
         <Checkout
+          noun={snapshot.shop.offer === 'services' ? 'service' : 'produit'}
           currency={snapshot.shop.currency}
           products={snapshot.products}
           customers={snapshot.customers}

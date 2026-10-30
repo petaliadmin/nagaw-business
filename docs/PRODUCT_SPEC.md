@@ -25,22 +25,23 @@ L'application reste **manuelle** au sens d'ADR-017 : pas d'IA, pas d'agent, pas 
 
 ## Concepts
 
-| Concept            | Définition                                                                                                                                                            |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Boutique           | Organisation cliente (tenant, table `organizations`). Toutes les données lui appartiennent et en sont isolées. Un compte peut gérer plusieurs boutiques.              |
-| Membre             | Utilisateur d'une boutique avec un rôle : propriétaire, administrateur (gérant), vendeur (`member`), lecteur (`viewer`, par exemple le comptable).                    |
-| Produit            | Article vendu : nom, photo, catégorie, unité (pièce, kg, litre, carton…), prix de vente, prix d'achat, taux de taxe, code-barres facultatif, seuil d'alerte de stock. |
-| Mouvement de stock | Entrée ou sortie datée et non modifiable : achat, vente, retour, perte, inventaire. Le stock d'un produit est la somme de ses mouvements.                             |
-| Vente              | Encaissement au comptoir : lignes de produits, remise éventuelle, un ou plusieurs paiements, ticket de caisse. Peut être saisie hors ligne.                           |
-| Paiement           | Moyen d'encaissement : espèces, Mobile Money (Wave, Orange Money, Free Money… saisi à la main, sans intégration), carte, ou **crédit client** (vente à crédit).       |
-| Client             | Personne ou entreprise, facultative pour une vente, obligatoire pour une facture, un devis ou une vente à crédit. Solde dû suivi.                                     |
-| Fournisseur        | Origine des achats de marchandises.                                                                                                                                   |
-| Devis              | Proposition chiffrée à un client, avec une validité. Accepté, il se transforme en facture sans ressaisie.                                                             |
-| Facture            | Document numéroté sans trou ni doublon, non modifiable une fois émise (correction par avoir). Peut être payée en plusieurs fois.                                      |
-| Dépense            | Sortie d'argent hors marchandises : loyer, électricité, salaires, transport.                                                                                          |
-| Caisse             | Lieu d'argent : caisse espèces, compte Mobile Money, compte bancaire. La trésorerie est la somme des caisses.                                                         |
-| Écriture comptable | Traduction d'une opération (vente, facture, achat, dépense) dans les comptes SYSCOHADA. Générée par l'opération, jamais saisie par un vendeur.                        |
-| Appareil           | Téléphone ou ordinateur enregistré pour travailler hors ligne. Chaque appareil a son préfixe de numérotation des tickets.                                             |
+| Concept            | Définition                                                                                                                                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Boutique           | Organisation cliente (tenant, table `organizations`). Toutes les données lui appartiennent et en sont isolées. Un compte peut gérer plusieurs boutiques.                                             |
+| Membre             | Utilisateur d'une boutique avec un rôle : propriétaire, administrateur (gérant), vendeur (`member`), lecteur (`viewer`, par exemple le comptable).                                                   |
+| Produit            | Article vendu : nom, photo, catégorie, unité (pièce, kg, litre, carton…), prix de vente, prix d'achat, taux de taxe, code-barres facultatif, seuil d'alerte de stock.                                |
+| Service            | Travail vendu sans stock (coiffure, réparation, conseil), à la prestation, au forfait, à l'heure ou au jour. Il se vend, se facture et s'analyse comme un produit, dans le même catalogue (ADR-045). |
+| Mouvement de stock | Entrée ou sortie datée et non modifiable : achat, vente, retour, perte, inventaire. Le stock d'un produit est la somme de ses mouvements.                                                            |
+| Vente              | Encaissement au comptoir : lignes de produits, remise éventuelle, un ou plusieurs paiements, ticket de caisse. Peut être saisie hors ligne.                                                          |
+| Paiement           | Moyen d'encaissement : espèces, Mobile Money (Wave, Orange Money, Free Money… saisi à la main, sans intégration), carte, ou **crédit client** (vente à crédit).                                      |
+| Client             | Personne ou entreprise, facultative pour une vente, obligatoire pour une facture, un devis ou une vente à crédit. Solde dû suivi.                                                                    |
+| Fournisseur        | Origine des achats de marchandises.                                                                                                                                                                  |
+| Devis              | Proposition chiffrée à un client, avec une validité. Accepté, il se transforme en facture sans ressaisie.                                                                                            |
+| Facture            | Document numéroté sans trou ni doublon, non modifiable une fois émise (correction par avoir). Peut être payée en plusieurs fois.                                                                     |
+| Dépense            | Sortie d'argent hors marchandises : loyer, électricité, salaires, transport.                                                                                                                         |
+| Caisse             | Lieu d'argent : caisse espèces, compte Mobile Money, compte bancaire. La trésorerie est la somme des caisses.                                                                                        |
+| Écriture comptable | Traduction d'une opération (vente, facture, achat, dépense) dans les comptes SYSCOHADA. Générée par l'opération, jamais saisie par un vendeur.                                                       |
+| Appareil           | Téléphone ou ordinateur enregistré pour travailler hors ligne. Chaque appareil a son préfixe de numérotation des tickets.                                                                            |
 
 ## Modules
 

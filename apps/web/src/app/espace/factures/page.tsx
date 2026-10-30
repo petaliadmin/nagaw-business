@@ -14,9 +14,11 @@ import { buttonClasses } from '@/components/ui/button-styles';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
+import { Pagination } from '@/components/ui/pagination';
 import { apiAsUser } from '@/lib/api/server';
 import { documentBadge, documentTitle } from '@/lib/documents/labels';
 import { formatCalendarDate } from '@/lib/format';
+import { pageNumber, pageParams, pageRows } from '@/lib/pagination';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 
 export const metadata: Metadata = { title: 'Factures — Nagaw Business' };
@@ -25,20 +27,32 @@ async function Documents({ searchParams }: PageProps<'/espace/factures'>) {
   const workspace = await requireReadyWorkspace();
   if (!workspace) return null;
   const { organization, accessToken } = workspace;
-  const quotes = (await searchParams).type === 'devis';
-  const documents = await apiAsUser<DocumentListItemDto[]>(accessToken, {
-    path: quotes ? '/quotes' : '/invoices',
-    organizationId: organization.id,
-  });
+  const raw = await searchParams;
+  const quotes = raw.type === 'devis';
+  const page = pageNumber(raw.page);
+  const base = quotes ? '/quotes' : '/invoices';
+  const [documents, invoices] = await Promise.all([
+    apiAsUser<DocumentListItemDto[]>(accessToken, {
+      path: `${base}?${new URLSearchParams(pageParams(page))}`,
+      organizationId: organization.id,
+    }),
+    // What is left to collect counts every invoice, not only this page.
+    quotes
+      ? null
+      : apiAsUser<DocumentListItemDto[]>(accessToken, {
+          path: base,
+          organizationId: organization.id,
+        }),
+  ]);
+  const list = documents.ok ? pageRows(documents.data) : null;
   const money = (value: number) =>
     formatAmount(value, organization.defaultCurrency);
   const canManage = roleHasPermission(organization.role, 'documents.manage');
   // Sellers prepare quotes; invoices stay with the managers (ADR-036).
   const canQuote = roleHasPermission(organization.role, 'quotes.manage');
-  const owed =
-    documents.ok && !quotes
-      ? documents.data.reduce((sum, d) => sum + (d.balance ?? 0), 0)
-      : 0;
+  const owed = invoices?.ok
+    ? invoices.data.reduce((sum, d) => sum + (d.balance ?? 0), 0)
+    : 0;
 
   return (
     <>
@@ -86,7 +100,7 @@ async function Documents({ searchParams }: PageProps<'/espace/factures'>) {
         <Alert tone="error">
           Documents indisponibles : {documents.message}
         </Alert>
-      ) : documents.data.length === 0 ? (
+      ) : !list || list.rows.length === 0 ? (
         <EmptyState
           title={
             quotes
@@ -112,7 +126,7 @@ async function Documents({ searchParams }: PageProps<'/espace/factures'>) {
             aria-label={quotes ? 'Liste des devis' : 'Liste des factures'}
             className="flex flex-col gap-2"
           >
-            {documents.data.map((doc) => {
+            {list.rows.map((doc) => {
               const badge = documentBadge(doc);
               const href =
                 doc.kind === 'quote'
@@ -143,6 +157,12 @@ async function Documents({ searchParams }: PageProps<'/espace/factures'>) {
           </ul>
         </>
       )}
+      <Pagination
+        path="/espace/factures"
+        params={new URLSearchParams(quotes ? { type: 'devis' } : {})}
+        page={page}
+        hasNext={list?.hasNext ?? false}
+      />
     </>
   );
 }

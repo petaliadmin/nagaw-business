@@ -16,6 +16,7 @@ import {
 } from '@nagaw/shared';
 import { sql, type Transaction } from 'kysely';
 import { AuditService } from '../audit/audit.service.js';
+import { pageOf } from '../common/page.js';
 import { ApiException } from '../common/api-exception.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
@@ -156,6 +157,7 @@ export class ProductsService {
         't.name as tax_rate_name',
         't.rate_basis_points',
         'p.barcode',
+        'p.kind',
         'p.track_stock',
         'p.low_stock_threshold',
         'p.status',
@@ -192,6 +194,7 @@ export class ProductsService {
     return {
       id: row.id,
       name: row.name,
+      kind: row.kind,
       category:
         row.category_id && row.category_name && row.category_color
           ? {
@@ -230,8 +233,9 @@ export class ProductsService {
     let q = this.select(this.database.db, organizationId)
       .where('p.status', '=', query.status)
       .orderBy(sql`lower(p.name)`)
-      .limit(500);
+      .orderBy('p.id');
     if (query.categoryId) q = q.where('p.category_id', '=', query.categoryId);
+    if (query.kind) q = q.where('p.kind', '=', query.kind);
     if (query.q) {
       const text = query.q;
       q = q.where((eb) =>
@@ -267,7 +271,9 @@ export class ProductsService {
               ]),
             );
     }
-    return (await q.execute()).map((row) => this.toDto(row));
+    return (await pageOf(q, query, 500).execute()).map((row) =>
+      this.toDto(row),
+    );
   }
 
   async find(
@@ -435,6 +441,7 @@ export class ProductsService {
             purchase_price: input.purchasePrice,
             tax_rate_id: input.taxRateId,
             barcode: input.barcode,
+            kind: input.kind,
             track_stock: input.trackStock,
             low_stock_threshold: input.lowStockThreshold,
             client_operation_id: input.clientOperationId,
@@ -518,6 +525,14 @@ export class ProductsService {
             'unit',
             'Retirez d’abord les autres unités de vente de ce produit : elles sont comptées dans l’unité actuelle.',
           );
+        const service = (input.kind ?? before.kind) === 'service';
+        if (service && input.trackStock)
+          throw invalid('trackStock', 'Un service n’a pas de stock.');
+        if (service && before.units.length > 0)
+          throw invalid(
+            'kind',
+            'Retirez d’abord les autres unités de vente de ce produit : un service n’en a pas.',
+          );
         await this.assertReferences(trx, tenant.organizationId, {
           categoryId: input.categoryId,
           taxRateId: input.taxRateId,
@@ -540,6 +555,7 @@ export class ProductsService {
           purchasePrice: before.purchasePrice,
           taxRateId: before.taxRate?.id ?? null,
           barcode: before.barcode,
+          kind: before.kind,
           trackStock: before.trackStock,
           lowStockThreshold: before.lowStockThreshold,
           status: before.status,
@@ -560,8 +576,10 @@ export class ProductsService {
             purchase_price: input.purchasePrice,
             tax_rate_id: input.taxRateId,
             barcode: input.barcode,
-            track_stock: input.trackStock,
-            low_stock_threshold: input.lowStockThreshold,
+            kind: input.kind,
+            // Becoming a service ends the count of its stock.
+            track_stock: service ? false : input.trackStock,
+            low_stock_threshold: service ? null : input.lowStockThreshold,
             status: input.status,
             version: sql`version + 1`,
           })
@@ -602,6 +620,11 @@ export class ProductsService {
     try {
       return await this.database.db.transaction().execute(async (trx) => {
         const product = await this.lock(trx, tenant.organizationId, productId);
+        if (product.kind === 'service')
+          throw invalid(
+            'label',
+            'Un service n’a pas d’unité de vente : il se vend dans son unité.',
+          );
         const existing = await trx
           .selectFrom('app.product_units')
           .select('product_id')

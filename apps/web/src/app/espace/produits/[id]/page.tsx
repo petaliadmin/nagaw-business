@@ -173,42 +173,51 @@ async function Product({
         )}
       </header>
 
-      <section
-        aria-labelledby="stock-title"
-        className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm md:p-6"
-      >
-        <h2 id="stock-title" className="text-xl font-bold">
-          Ce qui reste
-        </h2>
-        {p.trackStock ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-4xl font-extrabold tabular-nums">
-              {formatQuantity(p.stockQuantity, p.unit)}
+      {p.kind === 'service' ? (
+        <div>
+          <Badge tone="brand">Service</Badge>
+        </div>
+      ) : (
+        <section
+          aria-labelledby="stock-title"
+          className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm md:p-6"
+        >
+          <h2 id="stock-title" className="text-xl font-bold">
+            Ce qui reste
+          </h2>
+          {p.trackStock ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-4xl font-extrabold tabular-nums">
+                {formatQuantity(p.stockQuantity, p.unit)}
+              </p>
+              <Badge tone={STOCK_LEVEL_TONES[p.stockLevel]}>
+                {STOCK_LEVEL_LABELS[p.stockLevel]}
+              </Badge>
+            </div>
+          ) : (
+            <p className="text-ink-muted">
+              Le stock de ce produit n’est pas suivi.
             </p>
-            <Badge tone={STOCK_LEVEL_TONES[p.stockLevel]}>
-              {STOCK_LEVEL_LABELS[p.stockLevel]}
-            </Badge>
-          </div>
-        ) : (
-          <p className="text-ink-muted">
-            Le stock de ce produit n’est pas suivi.
-          </p>
-        )}
-        {p.trackStock && p.lowStockThreshold !== null && (
-          <p className="text-ink-muted">
-            Alerte quand il en reste{' '}
-            {formatQuantity(p.lowStockThreshold, p.unit)} ou moins.
-          </p>
-        )}
-      </section>
+          )}
+          {p.trackStock && p.lowStockThreshold !== null && (
+            <p className="text-ink-muted">
+              Alerte quand il en reste{' '}
+              {formatQuantity(p.lowStockThreshold, p.unit)} ou moins.
+            </p>
+          )}
+        </section>
+      )}
 
-      <UnitsSection
-        organizationId={organization.id}
-        product={p}
-        currency={currency}
-        templates={templates?.ok ? templates.data : []}
-        canManage={canManage}
-      />
+      {/* Selling units convert quantities of stock: not for a service. */}
+      {p.kind === 'product' && (
+        <UnitsSection
+          organizationId={organization.id}
+          product={p}
+          currency={currency}
+          templates={templates?.ok ? templates.data : []}
+          canManage={canManage}
+        />
+      )}
 
       {canReceive && p.trackStock && p.status === 'active' && (
         <StockForms
@@ -256,7 +265,9 @@ async function Product({
       <Card title="Détails" titleId="details" icon={Info}>
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Stat
-            label="Prix d’achat"
+            label={
+              p.kind === 'service' ? 'Ce qu’il vous coûte' : 'Prix d’achat'
+            }
             value={
               p.purchasePrice !== null
                 ? formatAmount(p.purchasePrice, currency)
@@ -268,7 +279,9 @@ async function Product({
             value={
               margin !== null
                 ? formatAmount(margin, currency)
-                : 'Ajoutez le prix d’achat'
+                : p.kind === 'service'
+                  ? 'Ajoutez ce qu’il vous coûte'
+                  : 'Ajoutez le prix d’achat'
             }
           />
           <Stat
@@ -279,7 +292,9 @@ async function Product({
                 : 'Aucune'
             }
           />
-          <Stat label="Code-barres" value={p.barcode ?? 'Aucun'} />
+          {p.kind === 'product' && (
+            <Stat label="Code-barres" value={p.barcode ?? 'Aucun'} />
+          )}
         </dl>
       </Card>
 

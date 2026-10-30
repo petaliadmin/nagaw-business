@@ -2,10 +2,10 @@ import { ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 
 /**
- * « Vendre » floating over the page, always within reach of the thumb:
- * above the phone bottom bar (73 px and the safe area), under the « Plus »
- * sheet (z-40). With its word, not an icon alone (DESIGN.md). The page
- * keeps room under its last block so that the button never hides it.
+ * « Vendre » floating over Accueil and Ventes, always within reach of the
+ * thumb: above the phone bottom bar (73 px and the safe area), under the
+ * « Plus » sheet (z-40). With its word, not an icon alone (DESIGN.md). The
+ * page keeps room under its last block so that the button never hides it.
  */
 export function SellFab() {
   return (

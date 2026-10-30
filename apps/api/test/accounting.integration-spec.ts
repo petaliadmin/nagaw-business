@@ -307,7 +307,7 @@ describe('Accounting (minimal cash system)', () => {
         expect.arrayContaining([
           expect.objectContaining({
             voucher: ticket(saleNumbers[0]!),
-            account: { code: '70', label: 'Ventes' },
+            account: { code: '701', label: 'Ventes de marchandises' },
             cashAccount: expect.objectContaining({
               name: 'Caisse',
               code: '571',
@@ -400,7 +400,8 @@ describe('Accounting (minimal cash system)', () => {
         provisional: day < `${year}-12-31`,
       });
       expect(s.receipts).toEqual([
-        { code: '70', label: 'Ventes', amount: 2200 },
+        { code: '701', label: 'Ventes de marchandises', amount: 1200 },
+        { code: '706', label: 'Services vendus', amount: 1000 },
       ]);
       expect(s.expenses).toEqual([
         { code: '622', label: 'Loyer', amount: 320 },

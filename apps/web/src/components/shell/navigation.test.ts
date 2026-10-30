@@ -1,9 +1,11 @@
+import type { ShopOffer } from '@nagaw/shared';
 import { describe, expect, it } from 'vitest';
 import {
   NAV_ITEMS,
   activeHref,
   isActive,
   navItemsFor,
+  parentPath,
   sectionTabsFor,
   type Section,
 } from './navigation';
@@ -15,7 +17,7 @@ describe('navigation', () => {
     expect(NAV_ITEMS.map((item) => item.label)).toEqual([
       'Tableau de bord',
       'Ventes',
-      'Stock / Produits',
+      'Produits et services',
       'Clients',
       'Fournisseurs',
       'Dépenses',
@@ -88,6 +90,40 @@ describe('navigation', () => {
     expect(tabs('rapports', 'member')).toEqual([]);
     expect(tabs('parametres', 'owner')).toContain('/espace/abonnement');
     expect(tabs('parametres', 'viewer')).not.toContain('/espace/abonnement');
+  });
+
+  it('offers « Retour » everywhere but on the pages of the menu', () => {
+    for (const path of [
+      '/espace',
+      '/espace/ventes',
+      '/espace/produits',
+      '/espace/produits/fournisseurs',
+      '/espace/factures/devis',
+      '/espace/journal',
+      '/caisse',
+    ])
+      expect(parentPath(path), path).toBeNull();
+    expect(parentPath('/espace/produits/12')).toBe('/espace/produits');
+    expect(parentPath('/espace/produits/12/modifier')).toBe(
+      '/espace/produits/12',
+    );
+    expect(parentPath('/espace/ventes/7')).toBe('/espace/ventes');
+    expect(parentPath('/espace/notifications')).toBe('/espace');
+    expect(parentPath('/espace/factures/devis/7')).toBe(
+      '/espace/factures/devis',
+    );
+  });
+
+  it('follows what the shop sells', () => {
+    const catalog = (offer: ShopOffer) =>
+      navItemsFor('owner', offer).find((i) => i.href === '/espace/produits');
+    expect(catalog('both')?.label).toBe('Produits et services');
+    expect(catalog('products')?.shortLabel).toBe('Produits');
+    expect(catalog('services')?.shortLabel).toBe('Services');
+    const hrefs = (offer: ShopOffer) =>
+      navItemsFor('owner', offer).map((item) => item.href);
+    expect(hrefs('services')).not.toContain('/espace/produits/fournisseurs');
+    expect(hrefs('products')).toContain('/espace/produits/fournisseurs');
   });
 
   it('only links to pages of the space', () => {

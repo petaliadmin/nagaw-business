@@ -483,6 +483,49 @@ describe('Sales and customers', () => {
       await get(alice, acmeId, '/sales?day=hier').expect(400);
     });
 
+    it('lists every sale by pages, with no sale twice, in its own shop only', async () => {
+      const list = async (user: TestUser, orgId: string, query: string) =>
+        (await get(user, orgId, `/sales?${query}`).expect(200)).body as {
+          id: string;
+          sellerEmail: string;
+        }[];
+      const everything = await list(alice, acmeId, 'all=true');
+      // Whatever the day: an old day has none of them.
+      expect(await list(alice, acmeId, 'day=2001-01-01')).toEqual([]);
+      expect(everything.length).toBeGreaterThanOrEqual(4);
+
+      const first = await list(alice, acmeId, 'all=true&limit=2&offset=0');
+      const second = await list(alice, acmeId, 'all=true&limit=2&offset=2');
+      expect(first).toHaveLength(2);
+      expect([...first, ...second].map((s) => s.id)).toEqual(
+        everything.slice(0, 4).map((s) => s.id),
+      );
+
+      // A seller's « all » stays their own; another shop sees none of it.
+      for (const sale of await list(carol, acmeId, 'all=true'))
+        expect(sale.sellerEmail).toBe(carol.email);
+      expect(await list(bob, globexId, 'all=true')).toEqual([]);
+
+      await get(alice, acmeId, '/sales?limit=500').expect(400);
+      await get(alice, acmeId, '/sales?offset=-1').expect(400);
+    });
+
+    it('pages the customers, products, invoices and quotes of its own shop', async () => {
+      for (const path of ['/customers', '/products', '/invoices', '/quotes']) {
+        const whole = (await get(alice, acmeId, path).expect(200)).body as {
+          id: string;
+        }[];
+        const page = (await get(alice, acmeId, `${path}?limit=1`).expect(200))
+          .body;
+        expect(page).toHaveLength(Math.min(1, whole.length));
+        const theirs = (
+          await get(bob, globexId, `${path}?limit=100`).expect(200)
+        ).body as { id: string }[];
+        const ours = new Set(whole.map((row) => row.id));
+        expect(theirs.filter((row) => ours.has(row.id))).toEqual([]);
+      }
+    });
+
     it('never shows a sale of another shop', async () => {
       const sale = (
         await cashSale([{ productId: water.id, quantity: 1 }], 500).expect(201)

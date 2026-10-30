@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { pageFields } from './pagination.js';
 import {
   amountSchema,
   CONVERSION_CODES,
@@ -251,6 +252,9 @@ export const saleListQuerySchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date invalide')
       .optional(),
+    /** Every sale the caller may see, whatever the day (newest first). */
+    all: z.enum(['true']).optional(),
+    ...pageFields,
   })
   .strict();
 export type SaleListQuery = z.infer<typeof saleListQuerySchema>;

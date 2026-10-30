@@ -1,6 +1,7 @@
 import {
   formatAmount,
   roleHasPermission,
+  sellsGoods,
   type ShopSummaryDto,
   type StatsSummaryDto,
 } from '@nagaw/shared';
@@ -176,42 +177,44 @@ async function Statistics({ searchParams }: PageProps<'/espace/statistiques'>) {
                 </ol>
               )}
             </Card>
-            <Card
-              title="Ne se vendent pas"
-              titleId="slow-products"
-              icon={PackageX}
-            >
-              {stats.data.slowProducts.length === 0 ? (
-                <EmptyState title="Tout ce qui est en stock s’est vendu sur la période" />
-              ) : (
-                <>
-                  <p className="mb-3 text-ink-muted">
-                    En stock, mais aucune vente sur la période.
-                  </p>
-                  <ul
-                    aria-labelledby="slow-products"
-                    className="flex flex-col divide-y divide-line"
-                  >
-                    {stats.data.slowProducts.map((p) => (
-                      <li
-                        key={p.id}
-                        className="flex justify-between gap-3 py-2 first:pt-0"
-                      >
-                        <Link
-                          href={`/espace/produits/${p.id}`}
-                          className="inline-flex min-h-12 items-center font-semibold underline-offset-4 hover:underline"
+            {sellsGoods(organization.offer) && (
+              <Card
+                title="Ne se vendent pas"
+                titleId="slow-products"
+                icon={PackageX}
+              >
+                {stats.data.slowProducts.length === 0 ? (
+                  <EmptyState title="Tout ce qui est en stock s’est vendu sur la période" />
+                ) : (
+                  <>
+                    <p className="mb-3 text-ink-muted">
+                      En stock, mais aucune vente sur la période.
+                    </p>
+                    <ul
+                      aria-labelledby="slow-products"
+                      className="flex flex-col divide-y divide-line"
+                    >
+                      {stats.data.slowProducts.map((p) => (
+                        <li
+                          key={p.id}
+                          className="flex justify-between gap-3 py-2 first:pt-0"
                         >
-                          {p.name}
-                        </Link>
-                        <span className="text-ink-muted">
-                          {formatQuantity(p.stockQuantity, p.unit)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </Card>
+                          <Link
+                            href={`/espace/produits/${p.id}`}
+                            className="inline-flex min-h-12 items-center font-semibold underline-offset-4 hover:underline"
+                          >
+                            {p.name}
+                          </Link>
+                          <span className="text-ink-muted">
+                            {formatQuantity(p.stockQuantity, p.unit)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </Card>
+            )}
           </div>
         </>
       )}

@@ -42,7 +42,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#6d28d9',
+  // The system bar continues the top bar of the application (--surface).
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#1c1a27' },
+  ],
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',

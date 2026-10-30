@@ -17,7 +17,7 @@ import { loadWorkspace } from '@/lib/workspace/load';
 import { FeedbackLink } from './feedback-link';
 import { MoreMenu } from './mobile-nav';
 import { NotificationBell } from './notification-bell';
-import { BottomNavLinks, NavLinks } from './nav-links';
+import { BottomNavLinks, HeaderStart, NavLinks } from './nav-links';
 
 type Tone = 'surface' | 'sidebar';
 
@@ -148,7 +148,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
           ventes.
         </p>
         <Card>
-          <CreateOrganizationForm />
+          <CreateOrganizationForm ownerName={workspace.me.displayName} />
         </Card>
         <div>
           <SignOutButton />
@@ -185,17 +185,15 @@ export async function AppShell({ children }: { children: ReactNode }) {
           <span className="min-w-0 truncate">{organization.name}</span>
         </p>
         <nav aria-label="Navigation principale">
-          <NavLinks role={organization.role} />
+          <NavLinks role={organization.role} offer={organization.offer} />
         </nav>
         <div className="mt-auto">
           <Account me={me} organization={organization} tone="sidebar" />
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-line bg-surface px-4 md:hidden print:hidden">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-strong text-white">
-            <Store aria-hidden className="size-6" />
-          </span>
+        <header className="sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 border-b border-line bg-surface px-4 pt-[env(safe-area-inset-top)] md:hidden print:hidden">
+          <HeaderStart />
           <span className="min-w-0 flex-1 truncate text-lg font-extrabold">
             {organization.name}
           </span>
@@ -207,7 +205,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
         </header>
         <main
           id="contenu"
-          className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 pt-4 pb-28 md:p-8 print:p-0"
+          className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 pt-4 pb-[calc(7rem+env(safe-area-inset-bottom))] md:p-8 print:p-0"
         >
           {organization.platformAccess && (
             <PlatformAccessBanner
@@ -223,11 +221,12 @@ export async function AppShell({ children }: { children: ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgb(0_0_0/0.06)] md:hidden print:hidden"
       >
         <ul className="mx-auto flex max-w-xl gap-1 px-2 py-1">
-          <BottomNavLinks role={organization.role} />
+          <BottomNavLinks role={organization.role} offer={organization.offer} />
           <MoreMenu>
             <nav aria-label="Autres pages">
               <NavLinks
                 role={organization.role}
+                offer={organization.offer}
                 only="secondary"
                 tone="sheet"
               />

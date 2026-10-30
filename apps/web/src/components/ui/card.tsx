@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { MODULE_TONES, type ModuleTone } from '@/components/dashboard/tones';
+import { Figure } from './figure';
 
 export function Card({
   title,
@@ -46,11 +47,23 @@ export function Card({
 }
 
 /** A labelled figure. Only for values that come from real data. */
-export function Stat({ label, value }: { label: string; value: ReactNode }) {
+export function Stat({
+  label,
+  value,
+  className = '',
+}: {
+  label: string;
+  value: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl bg-surface-muted p-3">
+    <div
+      className={`@container flex min-w-0 flex-col gap-1 rounded-xl bg-surface-muted p-3 ${className}`}
+    >
       <dt className="text-base text-ink-muted">{label}</dt>
-      <dd className="text-2xl font-extrabold tabular-nums">{value}</dd>
+      <dd className="font-extrabold tabular-nums">
+        <Figure value={value} />
+      </dd>
     </div>
   );
 }

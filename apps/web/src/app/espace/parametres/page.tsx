@@ -22,12 +22,14 @@ import { ButtonLink } from '@/components/ui/button-link';
 import { Card, Stat } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
+import { logoUrl } from '@/components/ui/shop-logo';
 import { apiAsUser } from '@/lib/api/server';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { ReferenceList } from '../produits/reference-page';
 import { OrganizationSwitcher } from '@/components/shell/organization-switcher';
 import { RevokeDeviceButton } from './device-actions';
 import { InvoiceSettingsForm } from './invoice-settings-form';
+import { LogoForm } from './logo-form';
 import { NotificationSettingsForm } from './notification-settings-form';
 import { currencyOptions, timeZoneOptions } from './options';
 import { OrganizationSettingsForm } from './organization-settings-form';
@@ -113,7 +115,13 @@ async function Settings() {
             Ces informations sont imprimées sur vos factures et vos devis.
           </p>
           {canUpdate ? (
-            <InvoiceSettingsForm organization={organization.data} />
+            <div className="flex flex-col gap-6">
+              <LogoForm
+                organizationId={organization.data.id}
+                currentUrl={logoUrl(organization.data.logoVersion)}
+              />
+              <InvoiceSettingsForm organization={organization.data} />
+            </div>
           ) : (
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Stat

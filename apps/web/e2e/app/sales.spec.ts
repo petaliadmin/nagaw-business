@@ -223,6 +223,9 @@ test('sales of the day are listed with their totals, and on the home page', asyn
   await expect(list.getByRole('listitem').first()).toBeVisible();
   const summary = page.getByRole('region', { name: 'Aujourd’hui' });
   await expect(summary.getByText('Ventes', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('main').getByRole('link', { name: 'Vendre', exact: true }),
+  ).toBeVisible();
   await page.getByRole('link', { name: 'Hier' }).click();
   await expect(page.getByText('Aucune vente ce jour-là')).toBeVisible();
 

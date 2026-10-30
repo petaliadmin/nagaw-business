@@ -497,3 +497,66 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - `20261029200000_product_units_catch_up` ajoute ce qui manque. Chaque instruction est protégée (`if not exists`, `drop … if exists`, bloc conditionnel) : elle ne change rien sur une base déjà conforme (tests, nouvelles bases) et amène la production à l'état final. Elle a été vérifiée sur une base construite comme la production ;
   - la colonne inutilisée `organizations.seller_max_discount_basis_points` a déjà été supprimée en production par la première version : la future migration qui la retire doit utiliser `drop column if exists`.
 - **Conséquences** : après une migration, comparer le schéma de la production avec celui que construisent les migrations (colonnes, contraintes, index, déclencheurs, politiques, droits).
+
+## ADR-044 — Refonte mobile, listes par pages, identité de la boutique sur ses documents
+
+- **Statut** : **Acceptée** (demandes du propriétaire du 2026-10-30).
+- **Décision** :
+  - **application mobile** : on reste une PWA installée (ADR-020), rendue la plus proche possible d'une application native : barre système dans la couleur de l'en-tête, « Retour » dans l'en-tête des sous-pages, panneaux qui montent du bas et se ferment en les tirant, icône d'onglet allumée dès le toucher, retour visuel au toucher, fondu entre les pages (opacité seule : une transformation emporterait le bouton « Vendre »), raccourcis sur l'icône de l'application. Une publication sur Play Store ou App Store (TWA, Capacitor) serait une autre décision, à prendre par le propriétaire ;
+  - **« Vendre » flottant** sur Accueil et Ventes, et plus de bouton dans l'en-tête de Ventes : une seule action principale par écran ;
+  - **filtres du stock** dans un panneau ouvert par « Filtrer », à côté de la recherche ; le filtre choisi reste visible sur la page et se retire d'un toucher. **Exception à DESIGN.md** : le bouton de recherche est une loupe seule, le mot « Chercher » étant affiché dans le champ, faute de place sur 360 px ;
+  - **chiffres dans leur tuile** : `Intl` joint montant et devise par des espaces insécables, donc rien ne pouvait passer à la ligne. `Figure` autorise la coupure avant la devise, jamais dans les chiffres, et réduit le texte selon sa longueur et la largeur de la tuile (unités de conteneur, sans JavaScript), jusqu'à 16 px. Le reste du texte suit `overflow-wrap: anywhere`, sauf dans les tableaux, qui défilent dans leur zone ;
+  - **pagination** : `limit` et `offset`, facultatifs, sur ventes, produits, clients, factures, devis, dépenses et boutiques (administration). Sans eux, une liste répond comme avant : la caisse et les éditeurs ont besoin de la liste entière. Le tri finit sur l'identifiant pour qu'aucune ligne ne revienne d'une page à l'autre. Le web demande une ligne de plus pour savoir s'il existe une page suivante, sans compter. Les totaux affichés (« Reste à encaisser », « Total à récupérer », total des dépenses) restent calculés sur toute la liste, par une seconde requête ;
+  - **« Toutes » les ventes** : `GET /sales?all=true`, limité par rôle comme le reste : un vendeur n'y voit que ses ventes. Pas de résumé dans cette vue : les totaux restent ceux d'un jour ;
+  - **logo** : table `organization_logos` en base, sur le modèle des photos produits. PNG ou JPEG seulement, les deux formats qu'un PDF sait intégrer : le navigateur redimensionne à 512 px, et l'API essaie l'image dans un PDF avant de l'accepter. Modifiable avec `organization.update` ;
+  - **couleur des documents** : `organizations.document_color`, en `#rrggbb`, appliquée aux PDF de factures et devis et au ticket de vente. `documentPalette` en déduit les teintes : le texte reste à 4,5:1, même sur une couleur très claire ;
+  - **création de boutique** : nom complet et téléphone obligatoires dans le formulaire, facultatifs dans l'API pour ses clients existants. Le nom va sur le profil (`display_name`), le téléphone sur la boutique (`organizations.phone`), donc sur ses documents.
+- **Conséquences** :
+  - appliquer `20261030090000_organization_logos` **avant** de déployer l'API : toute lecture d'une organisation renvoie `logo_sha256` et `document_color` (ADR-043) ;
+  - les pages à totaux font une requête de plus ;
+  - la pagination par `offset` peut décaler une ligne si une vente arrive entre deux pages, ce qui est acceptable pour consulter une liste.
+
+## ADR-045 — Les services dans le catalogue
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-30 : « l'application gère des produits mais aussi des services pour les entreprises de services »).
+- **Constat** : un service existait déjà de fait, sous la forme d'un produit dont le stock n'est pas suivi. La vente, la facturation, les statistiques et la comptabilité fonctionnaient, mais l'écran parlait de stock, de pièces et de code-barres.
+- **Décision** :
+  - `products.kind` vaut `product` ou `service`, dans la même table : une vente, une facture ou une statistique n'a pas à savoir ce qu'elle vend, et une boutique peut vendre les deux. Une table à part aurait dupliqué chaque ligne de vente et de document ;
+  - un service n'a jamais de stock : formulaire, API et contrainte `products_service_without_stock` ;
+  - un service n'a pas d'unités de vente (ADR-038) : elles convertissent des quantités de stock. L'API les refuse, et un produit qui en a ne devient un service qu'après les avoir retirées ;
+  - quatre unités s'ajoutent : prestation, forfait, heure, jour (l'heure et le jour acceptent les décimales) ;
+  - le formulaire demande d'abord « Un produit » ou « Un service », et n'affiche que ce qui s'y rapporte ;
+  - le menu devient « Produits et services » (« Produits » sur la barre du bas), avec un filtre « Type » ;
+  - les produits existants restent des produits : rien ne dit qu'un produit sans stock suivi est un service, le propriétaire change sa nature dans sa fiche ;
+  - les limites de l'offre comptent produits et services ensemble (`max_products`).
+- **Conséquences** :
+  - la séparation entre marchandises (701) et services (706) fait l'objet d'ADR-046 ;
+  - `20261030100000_product_kind` à appliquer avant de déployer l'API.
+
+## ADR-046 — Comptes 701 et 706 : marchandises et services (modifie ADR-028)
+
+- **Statut** : **Acceptée** (choix du propriétaire du 2026-10-30, à la suite d'ADR-045).
+- **Contexte** : le système minimal de trésorerie enregistre l'argent reçu, pas ce qui est vendu. Un encaissement doit donc être rattaché à ce qui l'a provoqué pour être réparti.
+- **Décision** :
+  - les encaissements vont en **701 « Ventes de marchandises »** et **706 « Services vendus »**, en proportion de ce qui a été vendu ; le compte 70 ne garde que ce que rien ne permet de rattacher ;
+  - **vente et annulation** : d'après les lignes de la vente ;
+  - **paiement de facture** : d'après les lignes de la facture ; une **ligne libre compte comme un service**, puisque l'éditeur la propose pour cela (« ligne libre (service…) ») ;
+  - **remboursement d'un crédit** : un remboursement n'est pas lié à une vente précise ; il suit la répartition de toutes les ventes à crédit non annulées du client. C'est exact quand le client n'a acheté qu'une seule nature, approché sinon ;
+  - un paiement partiel se répartit de la même façon, et les parts redonnent le montant au franc près ;
+  - une ligne du journal peut donc devenir deux lignes (même pièce, deux comptes) ; l'état de fin d'exercice est calculé à partir de ces mêmes lignes, pour qu'ils concordent toujours ;
+  - la nature lue est celle d'aujourd'hui, pas celle du jour de la vente : passer en service un produit créé avant ADR-045 corrige aussi ses ventes passées.
+- **Conséquences** :
+  - les exercices passés se réaffichent en 701 et 706 : leur total ne change pas ;
+  - corriger la nature d'un produit modifie la répartition d'un exercice déjà clôturé, jamais son total ;
+  - à faire relire par le comptable du pilote : la règle des lignes libres et celle des remboursements.
+
+## ADR-047 — La boutique dit ce qu'elle vend, ses écrans s'adaptent
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-30).
+- **Décision** :
+  - `organizations.offer` vaut `products`, `services` ou `both`. Il est demandé à la création d'une boutique, avec « Des produits » présélectionné (choix du propriétaire), et se change dans Paramètres. Les boutiques existantes valent `both` : rien ne disparaît de leurs écrans sans qu'elles l'aient choisi. Le défaut passe par une migration à part (ADR-043) ;
+  - `services` : menu et titres « Services », sans Fournisseurs, Unités, filtre de stock, carte Stock ni « Ne se vendent pas » ;
+  - `products` : menu et titres « Produits », sans choix de nature ni filtre de type ;
+  - c'est un **réglage d'affichage, pas une règle** : l'API ne refuse aucune nature selon ce choix, et une boutique qui change d'avis retrouve tout ce qu'elle avait saisi. Ce qui existe déjà reste visible dans la liste ;
+  - la nature d'un article (ADR-045) reste la vérité : la comptabilité (ADR-046) ne dépend pas de ce réglage.
+- **Conséquences** : appliquer `20261030110000_shop_offer` et `20261030120000_shop_offer_default` avant de déployer l'API.

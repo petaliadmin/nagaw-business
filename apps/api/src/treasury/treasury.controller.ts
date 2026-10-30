@@ -21,6 +21,7 @@ import {
   createTransferSchema,
   expectedClosingQuerySchema,
   movementsQuerySchema,
+  expenseListQuerySchema,
   periodQuerySchema,
   updateCashAccountSchema,
   updateExpenseCategorySchema,
@@ -36,6 +37,7 @@ import {
   type ExpenseCategoryDto,
   type ExpenseDto,
   type MovementsQuery,
+  type ExpenseListQuery,
   type PeriodQuery,
   type ShopSummaryDto,
   type StatsSummaryDto,
@@ -227,7 +229,8 @@ export class TreasuryController {
   @RequirePermission('treasury.read')
   listExpenses(
     @CurrentTenant() tenant: TenantContext,
-    @Query(new ZodValidationPipe(periodQuerySchema)) query: PeriodQuery,
+    @Query(new ZodValidationPipe(expenseListQuerySchema))
+    query: ExpenseListQuery,
   ): Promise<ExpenseDto[]> {
     return this.expenses.list(tenant, query);
   }

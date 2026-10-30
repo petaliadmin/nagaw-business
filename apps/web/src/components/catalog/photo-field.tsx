@@ -5,6 +5,7 @@ import { Camera, ImageOff } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 
 const MAX_SIDE = 800;
+const LOGO_SIDE = 512;
 
 function encode(canvas: HTMLCanvasElement, type: string): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, type, 0.82));
@@ -14,9 +15,9 @@ function encode(canvas: HTMLCanvasElement, type: string): Promise<Blob | null> {
  * Phone photos weigh several megabytes: resize to 800 px on the device and
  * re-encode (WebP, or JPEG where WebP encoding is missing) before sending.
  */
-async function shrink(file: File): Promise<File> {
+async function shrink(file: File, maxSide = MAX_SIDE): Promise<File> {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);
@@ -32,11 +33,39 @@ async function shrink(file: File): Promise<File> {
   return new File([blob], `photo.${extension}`, { type: blob.type });
 }
 
+/**
+ * A logo keeps its transparency in PNG; a heavy one goes to JPEG on white.
+ * Both can be drawn on a PDF, unlike WebP.
+ */
+async function shrinkLogo(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, LOGO_SIDE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Canvas 2D indisponible');
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const png = await encode(canvas, 'image/png');
+  if (png && png.size <= PRODUCT_PHOTO_MAX_BYTES) {
+    bitmap.close();
+    return new File([png], 'logo.png', { type: 'image/png' });
+  }
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const jpeg = await encode(canvas, 'image/jpeg');
+  if (!jpeg) throw new Error('Encodage de l’image impossible');
+  return new File([jpeg], 'logo.jpg', { type: 'image/jpeg' });
+}
+
 export function PhotoField({
   currentUrl,
   error,
   legend = 'Photo (facultatif)',
   removable = true,
+  logo = false,
 }: {
   /** Current photo, on the edit form. */
   currentUrl?: string | null;
@@ -44,7 +73,10 @@ export function PhotoField({
   legend?: string;
   /** Offers « Retirer la photo » when there is one. */
   removable?: boolean;
+  /** A shop's logo: chosen from the files, shown whole, never cropped. */
+  logo?: boolean;
 }) {
+  const noun = logo ? 'le logo' : 'la photo';
   const inputId = useId();
   const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(currentUrl ?? null);
@@ -59,7 +91,7 @@ export function PhotoField({
     setBusy(true);
     setMessage(null);
     try {
-      const small = await shrink(original);
+      const small = await (logo ? shrinkLogo : shrink)(original);
       if (small.size > PRODUCT_PHOTO_MAX_BYTES)
         throw new Error(`Photo encore trop lourde (${small.size} octets)`);
       const files = new DataTransfer();
@@ -89,8 +121,8 @@ export function PhotoField({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={preview}
-              alt="Aperçu de la photo"
-              className="size-full object-cover"
+              alt={logo ? 'Aperçu du logo' : 'Aperçu de la photo'}
+              className={`size-full ${logo ? 'object-contain' : 'object-cover'}`}
             />
           ) : (
             <ImageOff aria-hidden className="size-8 text-ink-muted" />
@@ -105,15 +137,17 @@ export function PhotoField({
             {busy
               ? 'Préparation…'
               : preview && !removed
-                ? 'Changer la photo'
-                : 'Prendre ou choisir une photo'}
+                ? `Changer ${noun}`
+                : logo
+                  ? 'Choisir un logo'
+                  : 'Prendre ou choisir une photo'}
             <input
               ref={input}
               id={inputId}
               name="photo"
               type="file"
               accept="image/*"
-              capture="environment"
+              capture={logo ? undefined : 'environment'}
               onChange={onChange}
               aria-describedby={errorId}
               className="sr-only"
@@ -132,7 +166,7 @@ export function PhotoField({
                 }}
                 className="size-6 accent-brand-strong"
               />
-              Retirer la photo
+              Retirer {noun}
             </label>
           )}
         </div>

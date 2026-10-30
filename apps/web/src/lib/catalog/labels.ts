@@ -1,7 +1,9 @@
 import {
   formatQuantity,
+  SERVICE_UNITS,
   UNITS,
   type CategoryColor,
+  type ProductDto,
   type StockLevel,
   type StockMovementKind,
   type Unit,
@@ -63,7 +65,24 @@ export const CATEGORY_TONES: Record<CategoryColor, string> = {
   danger: 'bg-danger-soft text-danger-ink',
 };
 
-export const UNIT_OPTIONS = (Object.keys(UNITS) as Unit[]).map((unit) => ({
-  value: unit,
-  label: UNITS[unit].label,
-}));
+const unitOption = (unit: Unit) => ({ value: unit, label: UNITS[unit].label });
+
+export const UNIT_OPTIONS = (Object.keys(UNITS) as Unit[]).map(unitOption);
+
+export const SERVICE_UNIT_OPTIONS = SERVICE_UNITS.map(unitOption);
+
+export const GOODS_UNIT_OPTIONS = UNIT_OPTIONS.filter(
+  (option) => !(SERVICE_UNITS as readonly Unit[]).includes(option.value),
+);
+
+/** What a product's badge says: a service has no level of stock. */
+export function catalogBadge(
+  product: Pick<ProductDto, 'kind' | 'stockLevel'>,
+): { label: string; tone: (typeof STOCK_LEVEL_TONES)[StockLevel] | 'brand' } {
+  return product.kind === 'service'
+    ? { label: 'Service', tone: 'brand' }
+    : {
+        label: STOCK_LEVEL_LABELS[product.stockLevel],
+        tone: STOCK_LEVEL_TONES[product.stockLevel],
+      };
+}

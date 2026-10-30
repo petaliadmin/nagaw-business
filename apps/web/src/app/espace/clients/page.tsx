@@ -15,7 +15,9 @@ import { FoldCard } from '@/components/ui/fold-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
+import { Pagination } from '@/components/ui/pagination';
 import { apiAsUser } from '@/lib/api/server';
+import { pageNumber, pageParams, pageRows } from '@/lib/pagination';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { CustomerForm } from './customer-forms';
 
@@ -31,14 +33,31 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
   const query = new URLSearchParams();
   if (q) query.set('q', q);
   if (owing) query.set('owing', 'true');
-  const customers = await apiAsUser<CustomerDto[]>(accessToken, {
-    path: `/customers?${query}`,
-    organizationId: organization.id,
-  });
+  const filters = new URLSearchParams();
+  if (q) filters.set('q', q);
+  if (owing) filters.set('doivent', '1');
+  const page = pageNumber(raw.page);
+  const [customers, debtors] = await Promise.all([
+    apiAsUser<CustomerDto[]>(accessToken, {
+      path: `/customers?${new URLSearchParams([
+        ...query,
+        ...Object.entries(pageParams(page)),
+      ])}`,
+      organizationId: organization.id,
+    }),
+    // The total counts everyone, not only the people of this page.
+    owing
+      ? apiAsUser<CustomerDto[]>(accessToken, {
+          path: `/customers?${query}`,
+          organizationId: organization.id,
+        })
+      : null,
+  ]);
+  const list = customers.ok ? pageRows(customers.data) : null;
   const money = (value: number) =>
     formatAmount(value, organization.defaultCurrency);
-  const owed = customers.ok
-    ? customers.data.reduce((sum, c) => sum + Math.max(c.balance, 0), 0)
+  const owed = debtors?.ok
+    ? debtors.data.reduce((sum, c) => sum + Math.max(c.balance, 0), 0)
     : 0;
 
   return (
@@ -85,7 +104,7 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
 
       {!customers.ok ? (
         <Alert tone="error">Clients indisponibles : {customers.message}</Alert>
-      ) : customers.data.length === 0 ? (
+      ) : !list || list.rows.length === 0 ? (
         <EmptyState
           title={
             owing ? 'Personne ne vous doit rien' : 'Aucun client pour le moment'
@@ -93,14 +112,14 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
         />
       ) : (
         <>
-          {owing && (
+          {debtors?.ok && (
             <p className="text-lg font-bold">
               Total à récupérer :{' '}
               <span className="text-warning-ink">{money(owed)}</span>
             </p>
           )}
           <ul aria-label="Liste des clients" className="flex flex-col gap-2">
-            {customers.data.map((customer) => (
+            {list.rows.map((customer) => (
               <li key={customer.id}>
                 <Link
                   href={`/espace/clients/${customer.id}`}
@@ -123,6 +142,12 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
           </ul>
         </>
       )}
+      <Pagination
+        path="/espace/clients"
+        params={filters}
+        page={page}
+        hasNext={list?.hasNext ?? false}
+      />
 
       {roleHasPermission(organization.role, 'customers.manage') && (
         <FoldCard title="Ajouter un client" icon={UserPlus}>

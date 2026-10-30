@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Patch,
+  Post,
+  Put,
+  Res,
+  StreamableFile,
+} from '@nestjs/common';
 import {
   createOrganizationSchema,
   updateOrganizationSchema,
@@ -8,6 +19,7 @@ import {
   type OrganizationWithRoleDto,
   type UpdateOrganizationInput,
 } from '@nagaw/shared';
+import type { Response } from 'express';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import {
@@ -52,6 +64,51 @@ export class OrganizationsController {
       tenant.organizationId,
       user,
       body,
+      requestId,
+    );
+  }
+
+  @Get('current/logo')
+  @RequirePermission('organization.read')
+  async logo(
+    @CurrentTenant() tenant: TenantContext,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const logo = await this.organizations.logo(tenant.organizationId);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.setHeader('ETag', `"${logo.sha256}"`);
+    return new StreamableFile(logo.data, { type: logo.contentType });
+  }
+
+  /** Raw image body (PNG or JPEG), resized on the device. */
+  @Put('current/logo')
+  @RequirePermission('organization.update')
+  setLogo(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Headers('content-type') contentType: string | undefined,
+    @Body() body: unknown,
+    @RequestId() requestId: string | null,
+  ): Promise<OrganizationDto> {
+    return this.organizations.setLogo(
+      tenant.organizationId,
+      user,
+      contentType,
+      body,
+      requestId,
+    );
+  }
+
+  @Delete('current/logo')
+  @RequirePermission('organization.update')
+  removeLogo(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @RequestId() requestId: string | null,
+  ): Promise<OrganizationDto> {
+    return this.organizations.removeLogo(
+      tenant.organizationId,
+      user,
       requestId,
     );
   }

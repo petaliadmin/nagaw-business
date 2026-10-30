@@ -13,6 +13,7 @@ import {
   type DocumentLine,
   type DocumentListItemDto,
   type InvoiceDto,
+  type PageQuery,
   type InvoicePaymentInput,
   type InvoicePaymentState,
   type QuoteDto,
@@ -25,6 +26,7 @@ import {
 import { sql, type Transaction } from 'kysely';
 import { AuditService } from '../audit/audit.service.js';
 import { ApiException } from '../common/api-exception.js';
+import { pageOf } from '../common/page.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { today } from '../common/today.js';
 import { DatabaseService } from '../database/database.service.js';
@@ -32,6 +34,7 @@ import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
 import { takeSequenceNumber } from '../database/sequences.js';
 import type { Database } from '../database/schema.js';
 import { AlertsService } from '../notifications/alerts.service.js';
+import type { DocumentLogo } from './pdf.js';
 import {
   conflict,
   invalid,
@@ -99,6 +102,7 @@ export class DocumentsService {
         'tax_id',
         'trade_register',
         'invoice_footer',
+        'document_color',
         'invoice_due_days',
         'quote_validity_days',
         'timezone',
@@ -106,6 +110,21 @@ export class DocumentsService {
       ])
       .where('id', '=', organizationId)
       .executeTakeFirstOrThrow();
+  }
+
+  /** The shop's current logo, for its PDFs (ADR-044). */
+  async logo(organizationId: string): Promise<DocumentLogo | null> {
+    const row = await this.database.db
+      .selectFrom('app.organizations as o')
+      .innerJoin('app.organization_logos as l', (join) =>
+        join
+          .onRef('l.organization_id', '=', 'o.id')
+          .onRef('l.sha256', '=', 'o.logo_sha256'),
+      )
+      .select(['l.content_type', 'l.data'])
+      .where('o.id', '=', organizationId)
+      .executeTakeFirst();
+    return row ? { contentType: row.content_type, data: row.data } : null;
   }
 
   identity(
@@ -122,6 +141,7 @@ export class DocumentsService {
       invoiceFooter: shop.invoice_footer,
       invoiceDueDays: shop.invoice_due_days,
       quoteValidityDays: shop.quote_validity_days,
+      documentColor: shop.document_color,
     };
   }
 
@@ -280,10 +300,13 @@ export class DocumentsService {
     };
   }
 
-  async listQuotes(organizationId: string): Promise<DocumentListItemDto[]> {
+  async listQuotes(
+    organizationId: string,
+    page: PageQuery,
+  ): Promise<DocumentListItemDto[]> {
     const { timezone } = await this.shop(this.database.db, organizationId);
     const day = today(timezone);
-    const rows = await this.database.db
+    const list = this.database.db
       .selectFrom('app.quotes as q')
       .innerJoin('app.customers as c', (join) =>
         join
@@ -301,8 +324,8 @@ export class DocumentsService {
       .select(sql<string>`q.valid_until::text`.as('valid_day'))
       .where('q.organization_id', '=', organizationId)
       .orderBy('q.created_at', 'desc')
-      .limit(200)
-      .execute();
+      .orderBy('q.id', 'desc');
+    const rows = await pageOf(list, page, 200).execute();
     return rows.map((row) => ({
       id: row.id,
       kind: 'quote',
@@ -650,10 +673,13 @@ export class DocumentsService {
     };
   }
 
-  async listInvoices(organizationId: string): Promise<DocumentListItemDto[]> {
+  async listInvoices(
+    organizationId: string,
+    page: PageQuery,
+  ): Promise<DocumentListItemDto[]> {
     const { timezone } = await this.shop(this.database.db, organizationId);
     const day = today(timezone);
-    const rows = await this.database.db
+    const list = this.database.db
       .selectFrom('app.invoices as i')
       .innerJoin('app.customers as c', (join) =>
         join
@@ -678,8 +704,8 @@ export class DocumentsService {
       )
       .where('i.organization_id', '=', organizationId)
       .orderBy('i.created_at', 'desc')
-      .limit(200)
-      .execute();
+      .orderBy('i.id', 'desc');
+    const rows = await pageOf(list, page, 200).execute();
     return rows.map((row) => {
       const total = toNumber(row.total);
       const paid = toNumber(row.paid);

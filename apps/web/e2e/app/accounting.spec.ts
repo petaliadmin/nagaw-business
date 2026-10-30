@@ -79,7 +79,7 @@ test('the end of year statement gives the result', async ({
   const result = page.getByRole('region', { name: /^Résultat \d{4}$/ });
   await expect(result).toBeVisible();
   await expect(result.getByRole('table', { name: 'Recettes' })).toContainText(
-    '70 Ventes',
+    '701 Ventes de marchandises',
   );
   await expect(result.getByRole('table', { name: 'Dépenses' })).toContainText(
     '658',

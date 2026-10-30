@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { pageFields } from './pagination.js';
 import type { PlanLimits, PlanUsage } from './plans.js';
 
 /**
@@ -13,6 +14,7 @@ export const adminShopQuerySchema = z
   .object({
     q: z.string().trim().max(120).optional(),
     status: z.enum(['active', 'suspended']).optional(),
+    ...pageFields,
   })
   .strict();
 export type AdminShopQuery = z.infer<typeof adminShopQuerySchema>;

@@ -15,7 +15,10 @@ export const TREASURY_ACCOUNTS: Record<
 };
 
 export const ACCOUNTS = {
+  /** A receipt nothing ties to what was sold (ADR-046). */
   sales: { code: '70', label: 'Ventes' },
+  goods: { code: '701', label: 'Ventes de marchandises' },
+  services: { code: '706', label: 'Services vendus' },
   transfer: { code: '585', label: 'Virements de fonds' },
   cashGain: { code: '758', label: 'Produits divers (excédent de caisse)' },
   cashLoss: { code: '658', label: 'Charges diverses (manquant de caisse)' },
@@ -41,6 +44,30 @@ export function accountOfMovement(
     case 'closing':
       return amount >= 0 ? ACCOUNTS.cashGain : ACCOUNTS.cashLoss;
   }
+}
+
+/** What was sold behind a receipt, in amounts. */
+export interface SaleShare {
+  goods: number;
+  services: number;
+}
+
+/**
+ * Splits a sale's receipt between goods and services, in proportion of what
+ * was sold (ADR-046): a partial payment is shared the same way. The parts
+ * add up to the amount exactly. With nothing to go by, it stays on 70.
+ */
+export function splitSaleReceipt(
+  amount: number,
+  share: SaleShare | null,
+): { account: { code: string; label: string }; amount: number }[] {
+  const base = (share?.goods ?? 0) + (share?.services ?? 0);
+  if (!share || base <= 0) return [{ account: ACCOUNTS.sales, amount }];
+  const services = Math.round((amount * share.services) / base);
+  return [
+    { account: ACCOUNTS.goods, amount: amount - services },
+    { account: ACCOUNTS.services, amount: services },
+  ].filter((part) => part.amount !== 0);
 }
 
 export const fiscalYearQuerySchema = z

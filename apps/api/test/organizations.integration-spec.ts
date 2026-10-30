@@ -343,4 +343,141 @@ describe('Organizations, memberships and tenant isolation', () => {
         .expect(400);
     });
   });
+
+  describe('creating a shop', () => {
+    it('keeps the owner’s full name and the phone of the shop', async () => {
+      const dora = await ctx.createUser();
+      const shop = await ctx
+        .http()
+        .post('/api/v1/organizations')
+        .set(as(dora))
+        .send({
+          name: 'Dora',
+          ownerName: 'Dora Faye',
+          phone: '+221 77 000 00 00',
+        })
+        .expect(201);
+      expect(shop.body.phone).toBe('+221 77 000 00 00');
+      const me = await ctx.http().get('/api/v1/me').set(as(dora)).expect(200);
+      expect(me.body.displayName ?? me.body.user?.displayName).toBe(
+        'Dora Faye',
+      );
+    });
+
+    it('sells products by default', async () => {
+      const finn = await ctx.createUser();
+      const shop = await ctx
+        .http()
+        .post('/api/v1/organizations')
+        .set(as(finn))
+        .send({ name: 'Épicerie' })
+        .expect(201);
+      expect(shop.body.offer).toBe('products');
+    });
+
+    it('keeps what the shop sells, to change later by its owner only', async () => {
+      const eve = await ctx.createUser();
+      const shop = await ctx
+        .http()
+        .post('/api/v1/organizations')
+        .set(as(eve))
+        .send({ name: 'Salon', offer: 'services' })
+        .expect(201);
+      expect(shop.body.offer).toBe('services');
+      const id = shop.body.id as string;
+      const changed = await ctx
+        .http()
+        .patch('/api/v1/organizations/current')
+        .set(as(eve, id))
+        .send({ offer: 'both' })
+        .expect(200);
+      expect(changed.body.offer).toBe('both');
+      await ctx
+        .http()
+        .patch('/api/v1/organizations/current')
+        .set(as(eve, id))
+        .send({ offer: 'autre' })
+        .expect(400);
+      await ctx
+        .http()
+        .patch('/api/v1/organizations/current')
+        .set(as(bob, id))
+        .send({ offer: 'products' })
+        .expect(404);
+    });
+
+    it('refuses a phone that is not one', async () => {
+      await ctx
+        .http()
+        .post('/api/v1/organizations')
+        .set(as(alice))
+        .send({ name: 'Faux', phone: 'pas de numéro' })
+        .expect(400);
+    });
+  });
+
+  describe('logo of a shop', () => {
+    /** 1×1 red PNG. */
+    const PNG = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    const put = (user: TestUser, orgId: string, data: Buffer, type: string) =>
+      ctx
+        .http()
+        .put('/api/v1/organizations/current/logo')
+        .set(as(user, orgId))
+        .set('Content-Type', type)
+        .send(data);
+    const logo = (user: TestUser, orgId: string) =>
+      ctx.http().get('/api/v1/organizations/current/logo').set(as(user, orgId));
+
+    it('stores a logo, serves it to the shop, and removes it', async () => {
+      await logo(alice, acmeId).expect(404);
+      const saved = await put(alice, acmeId, PNG, 'image/png').expect(200);
+      expect(saved.body.logoVersion).toMatch(/^[0-9a-f]{16}$/);
+      const served = await logo(carol, acmeId).expect(200);
+      expect(served.headers['content-type']).toContain('image/png');
+      expect(Buffer.compare(served.body as Buffer, PNG)).toBe(0);
+
+      const removed = await ctx
+        .http()
+        .delete('/api/v1/organizations/current/logo')
+        .set(as(alice, acmeId))
+        .expect(200);
+      expect(removed.body.logoVersion).toBeNull();
+      await logo(alice, acmeId).expect(404);
+    });
+
+    it('refuses what is not a readable PNG or JPEG', async () => {
+      await put(alice, acmeId, PNG, 'image/jpeg').expect(400);
+      await put(
+        alice,
+        acmeId,
+        Buffer.concat([PNG.subarray(0, 12), Buffer.alloc(20)]),
+        'image/png',
+      ).expect(400);
+      await put(
+        alice,
+        acmeId,
+        Buffer.alloc(1024 * 1024, 1),
+        'image/png',
+      ).expect(413);
+    });
+
+    it('is the owner’s to change, and stays inside its shop', async () => {
+      await put(alice, acmeId, PNG, 'image/png').expect(200);
+      await put(carol, acmeId, PNG, 'image/png').expect(403);
+      // A stranger to the shop does not even learn that it exists.
+      await put(bob, acmeId, PNG, 'image/png').expect(404);
+      await logo(bob, acmeId).expect(404);
+      await logo(bob, globexId).expect(404);
+      await ctx
+        .http()
+        .delete('/api/v1/organizations/current/logo')
+        .set(as(bob, acmeId))
+        .expect(404);
+      await logo(carol, acmeId).expect(200);
+    });
+  });
 });

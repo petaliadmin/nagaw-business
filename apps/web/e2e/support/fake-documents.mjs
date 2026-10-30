@@ -17,6 +17,7 @@ import {
   updateInvoiceSchema,
   updateQuoteSchema,
 } from '@nagaw/shared';
+import { paged } from './fake-catalog.mjs';
 import { salesState } from './fake-sales.mjs';
 
 function seed() {
@@ -50,7 +51,8 @@ const PDF = Buffer.from(
 
 /** Handles document routes; returns false for other paths. */
 export async function handleDocuments(ctx) {
-  const { req, res, path, orgId, role, organization, send, apiError } = ctx;
+  const { req, res, url, path, orgId, role, organization, send, apiError } =
+    ctx;
   if (!/^\/api\/v1\/(quotes|invoices|documents)(\/|$)/.test(path)) return false;
   const reply = (status, body) => {
     send(res, status, body);
@@ -242,10 +244,9 @@ export async function handleDocuments(ctx) {
   if (path === '/api/v1/quotes' && req.method === 'GET')
     return reply(
       200,
-      state.quotes
-        .filter(mine)
-        .reverse()
-        .map((q) => listItem(quoteDto(q), 'quote')),
+      paged(state.quotes.filter(mine).reverse(), url).map((q) =>
+        listItem(quoteDto(q), 'quote'),
+      ),
     );
   if (path === '/api/v1/quotes' && req.method === 'POST') {
     const parsed = createQuoteSchema.safeParse(body);
@@ -354,10 +355,9 @@ export async function handleDocuments(ctx) {
   if (path === '/api/v1/invoices' && req.method === 'GET')
     return reply(
       200,
-      state.invoices
-        .filter(mine)
-        .reverse()
-        .map((i) => listItem(invoiceDto(i), i.kind)),
+      paged(state.invoices.filter(mine).reverse(), url).map((i) =>
+        listItem(invoiceDto(i), i.kind),
+      ),
     );
   if (path === '/api/v1/invoices' && req.method === 'POST') {
     const parsed = createInvoiceSchema.safeParse(body);

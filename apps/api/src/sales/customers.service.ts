@@ -5,10 +5,12 @@ import type {
   CustomerDetailDto,
   CustomerDto,
   CustomerRepaymentInput,
+  PageQuery,
   UpdateCustomerInput,
 } from '@nagaw/shared';
 import { sql, type Transaction } from 'kysely';
 import { AuditService } from '../audit/audit.service.js';
+import { pageOf } from '../common/page.js';
 import { ApiException } from '../common/api-exception.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
@@ -107,12 +109,12 @@ export class CustomersService {
 
   async list(
     organizationId: string,
-    query: { q?: string; owing?: boolean },
+    query: PageQuery & { q?: string; owing?: boolean },
   ): Promise<CustomerDto[]> {
     let q = this.select(this.database.db, organizationId)
       .where('c.status', '=', 'active')
       .orderBy(sql`lower(c.name)`)
-      .limit(500);
+      .orderBy('c.id');
     if (query.q) {
       const text = `%${query.q.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
       q = q.where((eb) =>
@@ -123,7 +125,9 @@ export class CustomersService {
       );
     }
     if (query.owing) q = q.where(sql<string>`b.balance`, '>', '0');
-    return (await q.execute()).map((row) => this.toDto(row));
+    return (await pageOf(q, query, 500).execute()).map((row) =>
+      this.toDto(row),
+    );
   }
 
   async find(

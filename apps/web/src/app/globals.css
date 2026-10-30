@@ -182,6 +182,13 @@ body {
   font-family: var(--font-sans);
   font-size: 1.125rem;
   line-height: 1.55;
+  /* A long name, e-mail or reference wraps instead of leaving its frame. */
+  overflow-wrap: anywhere;
+}
+
+/* In a table, columns keep their width: the table scrolls in its region. */
+table {
+  overflow-wrap: normal;
 }
 
 @media (min-width: 48rem) {
@@ -193,6 +200,73 @@ body {
 :focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
+}
+
+/*
+ * A figure in a tile (components/ui/figure.tsx). A character of Nunito's
+ * tabular digits is about 0.55 em wide, hence 180 % of the tile divided by
+ * the characters of the longest part: it fits on one line, down to 16 px.
+ */
+.figure {
+  font-size: clamp(
+    1rem,
+    calc(180cqi / var(--figure-chars, 1)),
+    var(--figure-max, 1.5rem)
+  );
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+/* Feels like an installed application on a touch screen (ADR-044). */
+a,
+button,
+summary,
+label,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+@media (hover: none) {
+  a,
+  button,
+  summary {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
+  a:active,
+  button:not(:disabled):active,
+  summary:active {
+    opacity: 0.7;
+  }
+}
+
+.page-enter {
+  animation: fade-in 160ms ease-out;
+}
+
+.sheet[open]::backdrop {
+  animation: fade-in 200ms ease-out;
+}
+
+@media (max-width: 47.99rem) {
+  .sheet[open] {
+    animation: sheet-up 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

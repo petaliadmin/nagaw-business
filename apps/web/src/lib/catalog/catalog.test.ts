@@ -26,6 +26,7 @@ describe('catalogue forms', () => {
       'XOF',
     );
     expect(values).toEqual({
+      kind: 'product',
       name: 'Riz parfumé',
       categoryId: null,
       unit: 'sac',

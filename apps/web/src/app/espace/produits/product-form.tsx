@@ -5,8 +5,11 @@ import {
   formatRate,
   type CategoryDto,
   type ProductDto,
+  type ProductKind,
+  type ShopOffer,
   type TaxRateDto,
 } from '@nagaw/shared';
+import { Package, Wrench } from 'lucide-react';
 import { useActionState, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
 import { FormField, SelectField } from '@/components/form-field';
@@ -15,8 +18,13 @@ import { PhotoField } from '@/components/catalog/photo-field';
 import { productPhotoUrl } from '@/components/catalog/product-tile';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/auth/schemas';
-import { UNIT_OPTIONS } from '@/lib/catalog/labels';
+import { GOODS_UNIT_OPTIONS, SERVICE_UNIT_OPTIONS } from '@/lib/catalog/labels';
 import { createProduct, updateProduct } from './actions';
+
+const KINDS = [
+  { value: 'product', label: 'Un produit', icon: Package },
+  { value: 'service', label: 'Un service', icon: Wrench },
+] as const;
 
 /** `F CFA`, `€`: the symbol shown next to amount fields. */
 export function currencySymbol(currency: string): string {
@@ -31,12 +39,14 @@ const quantityText = (value: number | null) =>
   value === null ? '' : String(value).replace('.', ',');
 
 export function ProductForm({
+  offer,
   organizationId,
   currency,
   categories,
   taxRates,
   product,
 }: {
+  offer: ShopOffer;
   organizationId: string;
   currency: string;
   /** Active categories and tax rates of the shop. */
@@ -52,6 +62,11 @@ export function ProductForm({
   // One id per creation attempt: a double tap never creates two products.
   const [operationId] = useState(() => crypto.randomUUID());
   const [trackStock, setTrackStock] = useState(product?.trackStock ?? true);
+  const [kind, setKind] = useState<ProductKind>(
+    product?.kind ?? (offer === 'services' ? 'service' : 'product'),
+  );
+  const service = kind === 'service';
+  const noun = service ? 'service' : 'produit';
   const symbol = currencySymbol(currency);
   const errors = state.fieldErrors ?? {};
 
@@ -103,10 +118,43 @@ export function ProductForm({
       )}
       <FormMessage state={state} />
 
+      {offer === 'both' ? (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1.5 text-base font-semibold">
+            Que vendez-vous ?
+          </legend>
+          <div className="grid grid-cols-2 gap-2">
+            {KINDS.map(({ value, label, icon: Icon }) => (
+              <label
+                key={value}
+                className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border-2 px-3 py-2 text-base font-bold focus-within:outline-3 focus-within:outline-focus ${
+                  kind === value
+                    ? 'border-stock-strong bg-stock-soft text-stock-ink'
+                    : 'border-line-strong bg-surface'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="kind"
+                  value={value}
+                  checked={kind === value}
+                  onChange={() => setKind(value)}
+                  className="sr-only"
+                />
+                <Icon aria-hidden className="size-5 shrink-0" />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : (
+        <input type="hidden" name="kind" value={kind} />
+      )}
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
           <FormField
-            label="Nom du produit"
+            label={`Nom du ${noun}`}
             name="name"
             defaultValue={product?.name}
             required
@@ -125,11 +173,19 @@ export function ProductForm({
           required
           error={errors.salePrice}
         />
+        {/* A new list of units: the choice starts again with the first. */}
         <SelectField
-          label="Vendu à la"
+          key={kind}
+          label={service ? 'Facturé à' : 'Vendu à la'}
           name="unit"
-          defaultValue={product?.unit ?? 'piece'}
-          options={UNIT_OPTIONS}
+          defaultValue={
+            product?.kind === kind
+              ? product.unit
+              : service
+                ? 'prestation'
+                : 'piece'
+          }
+          options={service ? SERVICE_UNIT_OPTIONS : GOODS_UNIT_OPTIONS}
           error={errors.unit}
         />
         <div className="md:col-span-2">
@@ -148,44 +204,46 @@ export function ProductForm({
         error={errors.photo}
       />
 
-      <fieldset className="flex flex-col gap-4 rounded-2xl bg-surface-muted p-4">
-        <legend className="sr-only">Stock</legend>
-        <label className="flex min-h-12 items-center gap-3 text-base font-semibold">
-          <input
-            type="checkbox"
-            name="trackStock"
-            checked={trackStock}
-            onChange={(event) => setTrackStock(event.currentTarget.checked)}
-            className="size-6 accent-brand-strong"
-          />
-          Suivre le stock de ce produit
-        </label>
-        {trackStock && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {!product && (
-              <FormField
-                label="Quantité en stock aujourd’hui"
-                name="initialStock"
-                inputMode="decimal"
-                placeholder="0"
-                error={errors.initialStock}
-              />
-            )}
-            <FormField
-              label="Me prévenir quand il en reste"
-              name="lowStockThreshold"
-              inputMode="decimal"
-              defaultValue={quantityText(product?.lowStockThreshold ?? null)}
-              error={errors.lowStockThreshold}
+      {!service && (
+        <fieldset className="flex flex-col gap-4 rounded-2xl bg-surface-muted p-4">
+          <legend className="sr-only">Stock</legend>
+          <label className="flex min-h-12 items-center gap-3 text-base font-semibold">
+            <input
+              type="checkbox"
+              name="trackStock"
+              checked={trackStock}
+              onChange={(event) => setTrackStock(event.currentTarget.checked)}
+              className="size-6 accent-brand-strong"
             />
-          </div>
-        )}
-        {!trackStock && (
-          <p className="text-ink-muted">
-            Pour les services ou les produits que vous ne comptez pas.
-          </p>
-        )}
-      </fieldset>
+            Suivre le stock de ce produit
+          </label>
+          {trackStock && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {!product && (
+                <FormField
+                  label="Quantité en stock aujourd’hui"
+                  name="initialStock"
+                  inputMode="decimal"
+                  placeholder="0"
+                  error={errors.initialStock}
+                />
+              )}
+              <FormField
+                label="Me prévenir quand il en reste"
+                name="lowStockThreshold"
+                inputMode="decimal"
+                defaultValue={quantityText(product?.lowStockThreshold ?? null)}
+                error={errors.lowStockThreshold}
+              />
+            </div>
+          )}
+          {!trackStock && (
+            <p className="text-ink-muted">
+              Pour les produits que vous ne comptez pas.
+            </p>
+          )}
+        </fieldset>
+      )}
 
       <details
         className="rounded-2xl border border-line p-4"
@@ -198,7 +256,7 @@ export function ProductForm({
         </summary>
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField
-            label={`Prix d’achat (${symbol})`}
+            label={`${service ? 'Ce qu’il vous coûte' : 'Prix d’achat'} (${symbol})`}
             name="purchasePrice"
             inputMode="decimal"
             defaultValue={
@@ -215,20 +273,22 @@ export function ProductForm({
             options={taxOptions}
             error={errors.taxRateId}
           />
-          <FormField
-            label="Code-barres"
-            name="barcode"
-            inputMode="numeric"
-            autoComplete="off"
-            defaultValue={product?.barcode ?? ''}
-            error={errors.barcode}
-          />
+          {!service && (
+            <FormField
+              label="Code-barres"
+              name="barcode"
+              inputMode="numeric"
+              autoComplete="off"
+              defaultValue={product?.barcode ?? ''}
+              error={errors.barcode}
+            />
+          )}
         </div>
       </details>
 
       <div>
         <SubmitButton pendingLabel="Enregistrement…">
-          {product ? 'Enregistrer les modifications' : 'Enregistrer le produit'}
+          {product ? 'Enregistrer les modifications' : `Enregistrer le ${noun}`}
         </SubmitButton>
       </div>
     </ActionForm>

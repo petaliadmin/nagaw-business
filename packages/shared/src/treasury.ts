@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { amountSchema } from './catalog.js';
 import { MAX_AMOUNT } from './money.js';
+import { pageFields } from './pagination.js';
 import type { MobileMoneyProvider } from './sales.js';
 
 const uuid = z.uuid('Identifiant invalide');
@@ -97,21 +98,34 @@ export interface CashMovementDto {
   sourceId: string | null;
 }
 
-export const periodQuerySchema = z
-  .object({ from: isoDaySchema.optional(), to: isoDaySchema.optional() })
-  .strict()
-  .refine((q) => !q.from || !q.to || q.from <= q.to, {
-    path: ['to'],
-    message: 'La fin est avant le début',
-  })
-  .refine(
-    (q) =>
-      !q.from ||
-      !q.to ||
-      (Date.parse(q.to) - Date.parse(q.from)) / 86_400_000 <= 366,
-    { path: ['to'], message: 'Une période d’un an au plus' },
-  );
+function boundedPeriod<T extends z.ZodType<{ from?: string; to?: string }>>(
+  schema: T,
+) {
+  return schema
+    .refine((q) => !q.from || !q.to || q.from <= q.to, {
+      path: ['to'],
+      message: 'La fin est avant le début',
+    })
+    .refine(
+      (q) =>
+        !q.from ||
+        !q.to ||
+        (Date.parse(q.to) - Date.parse(q.from)) / 86_400_000 <= 366,
+      { path: ['to'], message: 'Une période d’un an au plus' },
+    );
+}
+
+const periodFields = {
+  from: isoDaySchema.optional(),
+  to: isoDaySchema.optional(),
+};
+export const periodQuerySchema = boundedPeriod(z.object(periodFields).strict());
 export type PeriodQuery = z.infer<typeof periodQuerySchema>;
+
+export const expenseListQuerySchema = boundedPeriod(
+  z.object({ ...periodFields, ...pageFields }).strict(),
+);
+export type ExpenseListQuery = z.infer<typeof expenseListQuerySchema>;
 
 export const movementsQuerySchema = z
   .object({

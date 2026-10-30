@@ -11,7 +11,7 @@ import { apiAsUser } from '@/lib/api/server';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 
 export const metadata: Metadata = {
-  title: 'Produits archivés — Nagaw Business',
+  title: 'Produits et services archivés — Nagaw Business',
 };
 
 async function ArchivedProducts() {
@@ -26,18 +26,18 @@ async function ArchivedProducts() {
   return (
     <>
       <PageHeader
-        title="Produits archivés"
+        title="Produits et services archivés"
         description="Ils ne sont plus en vente mais leur historique est gardé. Ouvrez-en un pour le remettre en vente."
       />
       {!products.ok ? (
         <Alert tone="error">Produits indisponibles : {products.message}</Alert>
       ) : products.data.length === 0 ? (
-        <EmptyState title="Aucun produit archivé">
+        <EmptyState title="Rien d’archivé">
           <Link
             href="/espace/produits"
             className="inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4"
           >
-            Revenir aux produits
+            Revenir aux produits et services
           </Link>
         </EmptyState>
       ) : (

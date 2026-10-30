@@ -54,7 +54,9 @@ export function optionalIdField(
 
 /** Product form → values for createProductSchema / updateProductSchema. */
 export function productValues(formData: FormData, currency: string) {
+  const kind = text(formData, 'kind') || 'product';
   return {
+    kind,
     name: text(formData, 'name'),
     categoryId: optionalIdField(formData, 'categoryId'),
     unit: text(formData, 'unit'),
@@ -62,7 +64,7 @@ export function productValues(formData: FormData, currency: string) {
     purchasePrice: optionalAmountField(formData, 'purchasePrice', currency),
     taxRateId: optionalIdField(formData, 'taxRateId'),
     barcode: text(formData, 'barcode'),
-    trackStock: formData.get('trackStock') === 'on',
+    trackStock: kind === 'product' && formData.get('trackStock') === 'on',
     lowStockThreshold: optionalQuantityField(formData, 'lowStockThreshold'),
   };
 }

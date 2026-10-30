@@ -464,6 +464,142 @@ describe('Catalogue and stock', () => {
     });
   });
 
+  describe('services', () => {
+    const create = (body: object, user = alice, orgId = acmeId) =>
+      post(user, orgId, '/products', {
+        categoryId: null,
+        purchasePrice: null,
+        taxRateId: null,
+        barcode: null,
+        lowStockThreshold: null,
+        trackStock: false,
+        clientOperationId: randomUUID(),
+        ...body,
+      });
+
+    it('sells a service without stock, and lists it apart', async () => {
+      const service = (
+        await create({
+          kind: 'service',
+          name: 'Coupe de cheveux',
+          unit: 'prestation',
+          salePrice: 2000,
+        }).expect(201)
+      ).body;
+      expect(service.kind).toBe('service');
+      expect(service.stockLevel).toBe('untracked');
+
+      const services = (
+        await get(alice, acmeId, '/products?kind=service').expect(200)
+      ).body as { id: string; kind: string }[];
+      expect(services.map((s) => s.id)).toContain(service.id);
+      expect(services.every((s) => s.kind === 'service')).toBe(true);
+      const goods = (
+        await get(alice, acmeId, '/products?kind=product').expect(200)
+      ).body as { id: string }[];
+      expect(goods.map((p) => p.id)).not.toContain(service.id);
+
+      // Another shop does not see it.
+      const theirs = (
+        await get(bob, globexId, '/products?kind=service').expect(200)
+      ).body as { id: string }[];
+      expect(theirs.map((s) => s.id)).not.toContain(service.id);
+      await get(bob, globexId, `/products/${service.id}`).expect(404);
+    });
+
+    it('refuses a service with stock', async () => {
+      await create({
+        kind: 'service',
+        name: 'Conseil',
+        unit: 'heure',
+        salePrice: 5000,
+        trackStock: true,
+      }).expect(400);
+      const service = (
+        await create({
+          kind: 'service',
+          name: 'Conseil',
+          unit: 'heure',
+          salePrice: 5000,
+        }).expect(201)
+      ).body;
+      await patch(alice, acmeId, `/products/${service.id}`, {
+        trackStock: true,
+        version: service.version,
+      }).expect(400);
+      await expect(
+        ctx.admin.query(
+          'update app.products set track_stock = true where id = $1',
+          [service.id],
+        ),
+      ).rejects.toThrow(/products_service_without_stock/);
+    });
+
+    it('refuses the selling units of stock on a service', async () => {
+      const service = (
+        await create({
+          kind: 'service',
+          name: 'Massage',
+          unit: 'heure',
+          salePrice: 50000,
+        }).expect(201)
+      ).body;
+      await post(alice, acmeId, `/products/${service.id}/units`, {
+        clientOperationId: randomUUID(),
+        label: 'Demi-journée',
+        factor: 4,
+        salePrice: null,
+        allowsDecimals: false,
+        barcode: null,
+      }).expect(400);
+
+      const rice = (
+        await create({
+          kind: 'product',
+          name: 'Riz au sac',
+          unit: 'kg',
+          salePrice: 650,
+          trackStock: true,
+        }).expect(201)
+      ).body;
+      const sack = (
+        await post(alice, acmeId, `/products/${rice.id}/units`, {
+          clientOperationId: randomUUID(),
+          label: 'sac de 50 kg',
+          factor: 50,
+          salePrice: null,
+          allowsDecimals: false,
+          barcode: null,
+        }).expect(201)
+      ).body;
+      await patch(alice, acmeId, `/products/${rice.id}`, {
+        kind: 'service',
+        version: sack.version ?? rice.version,
+      }).expect(400);
+    });
+
+    it('turns a product into a service, which ends the count of its stock', async () => {
+      const product = (
+        await create({
+          kind: 'product',
+          name: 'Livraison',
+          unit: 'piece',
+          salePrice: 1000,
+          trackStock: true,
+        }).expect(201)
+      ).body;
+      const service = (
+        await patch(alice, acmeId, `/products/${product.id}`, {
+          kind: 'service',
+          unit: 'forfait',
+          version: product.version,
+        }).expect(200)
+      ).body;
+      expect(service.kind).toBe('service');
+      expect(service.trackStock).toBe(false);
+    });
+  });
+
   describe('photos', () => {
     const put = (productId: string, data: Buffer, type: string, user = alice) =>
       ctx

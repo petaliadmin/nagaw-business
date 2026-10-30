@@ -841,3 +841,37 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - comparaison du schéma de la production avec celui des migrations : colonnes, contraintes, index, déclencheurs, politiques et droits. Écarts restants : ceux que la migration corrige, plus `seller_max_discount_basis_points`, absente en production et inutilisée ;
   - corps des fonctions : tous différents. Probablement des fins de ligne, mais **non vérifié**, la lecture de la production a été refusée.
 - **À faire par le propriétaire** : appliquer la migration (`supabase db push`). Les ventes repassent dès qu'elle est appliquée, sans redéploiement.
+
+## Refonte mobile et identité de la boutique (ADR-044)
+
+- **Demandes** du propriétaire du 2026-10-30.
+- **Livré sur la branche `claude/refont-fix`, non fusionné, non déployé** :
+  - « Vendre » flottant sur Accueil et Ventes ;
+  - chiffres et textes qui restent dans leur cadre, avec un audit automatique de 18 écrans à 360 px ;
+  - sensation d'application installée (voir ADR-044) ;
+  - filtres du stock dans un panneau ;
+  - filtre « Toutes » dans Ventes ;
+  - pagination des ventes, produits, clients, factures, devis, dépenses et boutiques (administration) ;
+  - logo de la boutique sur les PDF, les pages de document et le ticket ;
+  - couleur des documents sur les PDF et le ticket ;
+  - nouvelle présentation des PDF ;
+  - nom complet et téléphone à la création de la boutique.
+- **À faire par le propriétaire avant le déploiement** : appliquer `20261030090000_organization_logos`, puis déployer.
+- **Non vérifié** : rendu sur un vrai téléphone (Android, iOS) : animations, geste de fermeture des panneaux, barre système, raccourcis de l'icône. Les tests tournent dans Chromium en émulation Pixel 7.
+- **Non fait** : l'application reste une PWA : pas de publication sur les magasins d'applications (décision du propriétaire).
+- **Tests exécutés** (2026-10-30, build dans les conditions de la CI) : format, lint, types, unitaires (288), intégration (191) et build verts ; e2e ordinateur 146 réussis ; e2e téléphone 142 réussis, 1 échec de délai sur la création d'une taxe, sans lien avec ce lot et réussi au nouveau passage, ainsi que les 2 tests qui le suivaient.
+
+## Services dans le catalogue (ADR-045)
+
+- **Demande** du propriétaire du 2026-10-30. Sur la branche `claude/refont-fix`, non fusionné, non déployé.
+- **Livré** : nature « produit » ou « service », unités prestation, forfait, heure et jour, formulaire adapté, filtre « Type », menu « Produits et services ».
+- **À faire par le propriétaire avant le déploiement** : appliquer `20261030100000_product_kind`.
+- **Comptabilité** : ventes réparties entre 701 et 706 (ADR-046).
+- **Non fait** : reprise automatique des produits existants sans stock.
+- **Tests exécutés** (2026-10-30) : format, lint, types, unitaires (291), intégration (194) et build verts ; e2e publics 36 réussis ; e2e ordinateur et téléphone : aucun échec hors de `products.spec`, qui passe ensuite à 18 sur 18 sur les deux après correction de ses sélecteurs.
+
+## Ce que vend la boutique (ADR-047)
+
+- **Livré** sur la branche `claude/refont-fix`, non fusionné, non déployé : choix « Des produits », « Des services » ou « Les deux » à la création et dans Paramètres ; menu, listes, formulaire, Accueil, statistiques et caisse adaptés.
+- **À faire par le propriétaire avant le déploiement** : appliquer `20261030110000_shop_offer` puis `20261030120000_shop_offer_default`.
+- **Tests exécutés** sur la version finale (2026-10-30, build dans les conditions de la CI) : format, lint, types, unitaires (296), intégration (202) et build verts ; e2e publics 36, ordinateur 148 et téléphone 147 réussis. Des gels de 30 s ont touché l'analyse d'accessibilité sur des pages différentes d'une passe à l'autre, sur une machine chargée, sans se reproduire à la dernière passe : à surveiller en CI.

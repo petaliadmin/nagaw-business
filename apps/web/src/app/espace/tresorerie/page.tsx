@@ -18,6 +18,7 @@ import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { ButtonLink } from '@/components/ui/button-link';
 import { Card, Stat } from '@/components/ui/card';
+import { Figure } from '@/components/ui/figure';
 import { FoldCard } from '@/components/ui/fold-card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
@@ -93,7 +94,9 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
         <h2 id="treasury-total" className="text-lg font-bold">
           Total de la trésorerie
         </h2>
-        <p className="text-4xl font-extrabold tabular-nums">{money(t.total)}</p>
+        <div className="@container font-extrabold tabular-nums [--figure-max:2.25rem]">
+          <Figure value={money(t.total)} />
+        </div>
         <p>
           Aujourd’hui : {money(t.today.moneyIn)} entrés,{' '}
           {money(t.today.moneyOut)} sortis.

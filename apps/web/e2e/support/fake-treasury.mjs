@@ -5,6 +5,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   accountOfMovement,
+  ACCOUNTS,
   accountOfPayment,
   cancelExpenseSchema,
   createClosingSchema,
@@ -13,6 +14,7 @@ import {
   createTransferSchema,
   movementsQuerySchema,
   PAYMENT_METHODS,
+  expenseListQuerySchema,
   periodQuerySchema,
   roleHasPermission,
   shareBasisPoints,
@@ -20,7 +22,7 @@ import {
   TREASURY_ACCOUNTS,
   updateExpenseCategorySchema,
 } from '@nagaw/shared';
-import { catalogState } from './fake-catalog.mjs';
+import { catalogState, paged } from './fake-catalog.mjs';
 import { documentsState } from './fake-documents.mjs';
 import { salesState } from './fake-sales.mjs';
 
@@ -471,13 +473,15 @@ export async function handleTreasury(ctx) {
     const entry = (m) => {
       const e = m.kind === 'expense' ? expenseOf(m.sourceId) : null;
       const cash = s.accounts.find((a) => a.id === m.accountId);
-      const account = accountOfMovement(
+      const booked = accountOfMovement(
         m.kind,
         m.amount,
         e
           ? { code: categoryOf(e).accountCode, label: categoryOf(e).name }
           : null,
       );
+      // The fake sells goods only: 701 (ADR-046).
+      const account = booked.code === '70' ? ACCOUNTS.goods : booked;
       const describe = {
         sale: [`Ticket n° ${m.label}`, 'Vente au comptoir'],
         sale_cancelled: [`Ticket n° ${m.label}`, 'Annulation de la vente'],
@@ -874,16 +878,18 @@ export async function handleTreasury(ctx) {
     return reply(200, category);
   }
   if (path === '/api/v1/expenses' && req.method === 'GET') {
-    const parsed = periodQuerySchema.safeParse(params);
+    const parsed = expenseListQuerySchema.safeParse(params);
     if (!parsed.success) return invalid(parsed.error.issues);
     const to = parsed.data.to ?? today;
     const from = parsed.data.from ?? addDays(to, -30);
     return reply(
       200,
-      s.expenses
-        .filter((e) => e.occurredOn >= from && e.occurredOn <= to)
-        .reverse()
-        .map(expenseDto),
+      paged(
+        s.expenses
+          .filter((e) => e.occurredOn >= from && e.occurredOn <= to)
+          .reverse(),
+        url,
+      ).map(expenseDto),
     );
   }
   if (path === '/api/v1/expenses' && req.method === 'POST') {

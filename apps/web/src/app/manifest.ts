@@ -14,7 +14,28 @@ export default function manifest(): MetadataRoute.Manifest {
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#f8f7fc',
-    theme_color: '#6d28d9',
+    theme_color: '#ffffff',
+    categories: ['business', 'finance', 'productivity'],
+    // From a shortcut or a link: back to the open application, not a second one.
+    launch_handler: { client_mode: 'navigate-existing' },
+    // A long press on the icon of the application.
+    shortcuts: [
+      {
+        name: 'Vendre',
+        url: '/caisse',
+        icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }],
+      },
+      {
+        name: 'Ventes',
+        url: '/espace/ventes',
+        icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }],
+      },
+      {
+        name: 'Produits',
+        url: '/espace/produits',
+        icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }],
+      },
+    ],
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
       { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
