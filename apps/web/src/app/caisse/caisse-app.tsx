@@ -16,6 +16,7 @@ import { ArrowLeft, ShoppingCart, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ShopMark } from '@/components/ui/shop-mark';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
 import {
@@ -595,6 +596,7 @@ export function CaisseApp() {
           <ArrowLeft aria-hidden className="size-6" />
           Accueil
         </Link>
+        <ShopMark version={snapshot.shop.logoVersion} />
         <span className="min-w-0 flex-1 truncate text-lg font-extrabold">
           {snapshot.shop.name}
         </span>

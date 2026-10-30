@@ -115,6 +115,43 @@ describe('logo on a document', () => {
   });
 });
 
+describe('signature and stamp of an invoice', () => {
+  const PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  const mark = { contentType: 'image/png', data: PNG } as const;
+  const images = async (bytes: Uint8Array) =>
+    (await PDFDocument.load(bytes)).context
+      .enumerateIndirectObjects()
+      .filter(([, object]) => String(object).includes('/Subtype /Image'))
+      .length;
+
+  it('prints them on an issued invoice', async () => {
+    const doc = { kind: 'invoice', invoice: invoice(1) } as const;
+    expect(
+      await images(
+        await renderDocumentPdf(shop, 'XOF', doc, null, {
+          signature: mark,
+          stamp: mark,
+        }),
+      ),
+    ).toBeGreaterThan(0);
+  });
+
+  it('never prints them on a draft', async () => {
+    const doc = {
+      kind: 'invoice',
+      invoice: { ...invoice(1), status: 'draft', number: null },
+    } as const;
+    expect(
+      await images(
+        await renderDocumentPdf(shop, 'XOF', doc, null, { signature: mark }),
+      ),
+    ).toBe(0);
+  });
+});
+
 describe('document PDF', () => {
   it('keeps French text and replaces what the standard font cannot draw', () => {
     expect(pdfText('12 500 F CFA')).toBe('12 500 F CFA');

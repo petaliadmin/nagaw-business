@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { expectAccessible } from '../support/a11y';
 import { resetBackend, signInAs } from '../support/session';
 
 test.describe.configure({ mode: 'serial' });
@@ -181,13 +182,38 @@ test('settings validate input before calling the API', async ({
   ).toBeVisible();
 });
 
+test('the name of the shop changes shop, in one touch', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace');
+  await page.waitForLoadState('networkidle');
+  await page.getByRole('button', { name: /changer de boutique$/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Changer de boutique' });
+  await expectAccessible(page, 'changer de boutique');
+  await expect(sheet.getByText('Boutique ouverte')).toBeAttached();
+  await expect(
+    sheet.getByRole('link', { name: 'Créer une boutique' }),
+  ).toBeVisible();
+  await sheet.getByRole('button', { name: /Globex Sénégal/ }).click();
+
+  await expect(
+    page
+      .getByRole('main')
+      .getByRole('heading', { level: 1, name: 'Globex Sénégal' }),
+  ).toBeVisible();
+  await expect(sheet).toBeHidden();
+});
+
 test('switching shop changes data and permissions', async ({
   page,
   context,
   baseURL,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  // Not in the menu any more: in Paramètres (2026-10-26).
+  // Paramètres keeps its list; the sidebar has the name of the shop (ADR-051).
   await expect(
     page
       .getByRole('complementary', { name: 'Barre latérale' })

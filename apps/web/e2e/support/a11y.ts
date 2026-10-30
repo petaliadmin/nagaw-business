@@ -6,6 +6,9 @@ import { expect, type Page } from '@playwright/test';
  * tolerated. Minor and moderate ones are reported by axe but not blocking.
  */
 export async function expectAccessible(page: Page, label: string) {
+  // The title goes for an instant while a Server Action refreshes the page.
+  // A page that really has none still fails here.
+  await expect(page, label).toHaveTitle(/.+/);
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze();

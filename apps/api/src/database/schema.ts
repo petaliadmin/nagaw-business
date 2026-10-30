@@ -11,6 +11,7 @@ import type {
   ProductKind,
   ProductPhotoType,
   ShopLogoType,
+  ShopMarkKind,
   ShopOffer,
   StockMovementKind,
   Unit,
@@ -70,6 +71,8 @@ export interface OrganizationsTable {
   email: Generated<string>;
   tax_id: Generated<string>;
   logo_sha256: Generated<string | null>;
+  signature_sha256: Generated<string | null>;
+  stamp_sha256: Generated<string | null>;
   document_color: Generated<string>;
   offer: Generated<ShopOffer>;
   trade_register: Generated<string>;
@@ -247,6 +250,16 @@ export interface ProductPhotosTable {
 
 export interface OrganizationLogosTable {
   organization_id: string;
+  content_type: ShopLogoType;
+  data: Buffer;
+  sha256: string;
+  updated_by: string;
+  updated_at: Timestamp;
+}
+
+export interface OrganizationMarksTable {
+  organization_id: string;
+  kind: ShopMarkKind;
   content_type: ShopLogoType;
   data: Buffer;
   sha256: string;
@@ -686,6 +699,7 @@ export interface Database {
   'app.unit_templates': UnitTemplatesTable;
   'app.product_photos': ProductPhotosTable;
   'app.organization_logos': OrganizationLogosTable;
+  'app.organization_marks': OrganizationMarksTable;
   'app.stock_movements': StockMovementsTable;
   'app.customers': CustomersTable;
   'app.sales': SalesTable;

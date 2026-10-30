@@ -42,6 +42,7 @@ export async function GET() {
         timeZone: organization.timezone,
         role: organization.role,
         offer: organization.offer,
+        logoVersion: organization.logoVersion,
       },
       products: products.data,
       customers: customers.data,

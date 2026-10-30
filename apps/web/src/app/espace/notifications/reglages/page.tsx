@@ -3,7 +3,6 @@ import { BellRing, ListChecks } from 'lucide-react';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
-import { ButtonLink } from '@/components/ui/button-link';
 import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
@@ -32,11 +31,6 @@ async function Settings() {
       <PageHeader
         title="Ce que je reçois"
         description={`Vos choix pour la boutique ${organization.name}. Chacun choisit pour lui-même.`}
-        actions={
-          <ButtonLink href="/espace/notifications" variant="secondary">
-            Revenir aux notifications
-          </ButtonLink>
-        }
       />
       <Card title="Sur ce téléphone" titleId="push" icon={BellRing}>
         {!push.ok ? (

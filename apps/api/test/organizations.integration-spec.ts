@@ -416,6 +416,51 @@ describe('Organizations, memberships and tenant isolation', () => {
     });
   });
 
+  describe('signature and stamp of a shop', () => {
+    const PNG = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    const url = (kind: string) => `/api/v1/organizations/current/marks/${kind}`;
+    const put = (user: TestUser, orgId: string, kind: string) =>
+      ctx
+        .http()
+        .put(url(kind))
+        .set(as(user, orgId))
+        .set('Content-Type', 'image/png')
+        .send(PNG);
+    const read = (user: TestUser, orgId: string, kind: string) =>
+      ctx.http().get(url(kind)).set(as(user, orgId));
+
+    it('stores each one apart, and removes it', async () => {
+      await read(alice, acmeId, 'stamp').expect(404);
+      const saved = await put(alice, acmeId, 'stamp').expect(200);
+      expect(saved.body.stampVersion).toMatch(/^[0-9a-f]{16}$/);
+      expect(saved.body.signatureVersion).toBeNull();
+      await read(alice, acmeId, 'stamp').expect(200);
+      await read(alice, acmeId, 'signature').expect(404);
+      const removed = await ctx
+        .http()
+        .delete(url('stamp'))
+        .set(as(alice, acmeId))
+        .expect(200);
+      expect(removed.body.stampVersion).toBeNull();
+      await read(alice, acmeId, 'stamp').expect(404);
+    });
+
+    it('keeps the originals from sellers and from other shops', async () => {
+      await put(alice, acmeId, 'signature').expect(200);
+      await read(carol, acmeId, 'signature').expect(403);
+      await put(carol, acmeId, 'signature').expect(403);
+      await read(bob, acmeId, 'signature').expect(404);
+      await read(bob, globexId, 'signature').expect(404);
+    });
+
+    it('refuses an unknown kind', async () => {
+      await read(alice, acmeId, 'tampon').expect(400);
+    });
+  });
+
   describe('logo of a shop', () => {
     /** 1×1 red PNG. */
     const PNG = Buffer.from(

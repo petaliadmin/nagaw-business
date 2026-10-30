@@ -3,7 +3,7 @@ import {
   roleHasPermission,
   type QuoteDto,
 } from '@nagaw/shared';
-import { FileDown, Pencil } from 'lucide-react';
+import { Eye, Pencil } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -11,7 +11,6 @@ import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { ButtonLink } from '@/components/ui/button-link';
-import { buttonClasses } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { ShopLogo } from '@/components/ui/shop-logo';
@@ -68,12 +67,6 @@ async function Quote({ params }: PageProps<'/espace/factures/devis/[id]'>) {
             <Badge tone={badge.tone}>{badge.label}</Badge>
           </div>
         </div>
-        <Link
-          href="/espace/factures?type=devis"
-          className="font-semibold text-brand-ink underline underline-offset-4"
-        >
-          Tous les devis
-        </Link>
       </div>
 
       {quote.expired && (
@@ -123,15 +116,13 @@ async function Quote({ params }: PageProps<'/espace/factures/devis/[id]'>) {
       </Card>
 
       <div className="flex flex-wrap gap-3">
-        <a
-          href={pdfHref}
-          target="_blank"
-          rel="noopener"
-          className={buttonClasses('secondary')}
+        <ButtonLink
+          href={`/espace/factures/devis/${quote.id}/apercu`}
+          variant="secondary"
         >
-          <FileDown aria-hidden className="size-5" />
-          Ouvrir le PDF
-        </a>
+          <Eye aria-hidden className="size-5" />
+          Voir le PDF
+        </ButtonLink>
         <SharePdfButton href={pdfHref} fileName={quote.number} />
         {canQuote && quote.status === 'draft' && (
           <ButtonLink

@@ -7,7 +7,6 @@ import {
 } from '@nagaw/shared';
 import { Plus, Tags } from 'lucide-react';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Suspense } from 'react';
 import { PeriodPicker } from '@/components/treasury/period-picker';
 import { Alert } from '@/components/ui/alert';
@@ -81,12 +80,6 @@ async function Expenses({
         title="Dépenses"
         description="Ce que la boutique paie en dehors de la marchandise vendue."
       />
-      <Link
-        href="/espace/tresorerie"
-        className="inline-flex min-h-12 items-center font-semibold text-brand-ink underline underline-offset-4"
-      >
-        Retour à la trésorerie
-      </Link>
 
       {canManage && categories.ok && treasury.ok && (
         <FoldCard title="Ajouter une dépense" icon={Plus}>

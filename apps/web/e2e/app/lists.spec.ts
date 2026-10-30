@@ -42,6 +42,30 @@ test('all the sales are listed, page by page', async ({
   await expect(list.getByRole('listitem')).toHaveCount(20);
 });
 
+test('« Retour » goes back to the page seen, with its filters', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/produits?stock=out');
+  const back = page.getByRole('link', { name: 'Retour', exact: true });
+  await expect(back).toHaveCount(0); // A page of the menu.
+  await page
+    .getByRole('list', { name: 'Produits' })
+    .getByRole('link')
+    .first()
+    .click();
+  await expect(page).toHaveURL(/produits.[0-9a-f-]{36}$/);
+  await back.click();
+  await expect(page).toHaveURL(/produits[?]stock=out$/);
+
+  // Reached directly, it goes to the page above.
+  await page.goto('/espace/clients/eeeeeeee-0000-4000-8000-000000000001');
+  await back.click();
+  await expect(page).toHaveURL(/espace.clients$/);
+});
+
 test('a short list has no page buttons', async ({ page, context, baseURL }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/produits');
@@ -121,9 +145,48 @@ test('an owner gives the shop a logo, then removes it', async ({
     ),
   ).toBeGreaterThan(0);
 
+  // In front of the name of the shop, on every page.
+  const mark = page.locator('img[src^="/espace/logo"][alt=""]:visible');
+  await expect(mark).toHaveCount(1);
+  await page.goto('/espace/produits');
+  await expect(mark).toHaveCount(1);
+  await page.goto('/espace/parametres');
+  await page.waitForLoadState('networkidle');
+
   await page.getByLabel('Retirer le logo').check();
   await page.getByRole('button', { name: 'Valider le logo' }).click();
   await expect(page.getByLabel('Choisir un logo')).toBeVisible();
+  await expect(mark).toHaveCount(0);
+});
+
+test('an owner adds a stamp and a signature for the invoices', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/parametres');
+  await page.waitForLoadState('networkidle');
+  await page.getByLabel('Choisir un cachet').setInputFiles({
+    name: 'cachet.png',
+    mimeType: 'image/png',
+    buffer: PNG,
+  });
+  await expect(
+    page.getByRole('img', { name: 'Aperçu du cachet' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Valider le cachet' }).click();
+  await expect(page.getByText('Image enregistrée.')).toBeVisible();
+
+  await page.reload();
+  const stamp = page.getByRole('img', { name: 'Aperçu du cachet' });
+  await expect(stamp).toHaveAttribute('src', /image.stamp/);
+  await expect(page.getByLabel('Choisir une signature')).toBeVisible();
+
+  // Neither on a seller's screen nor at the address of the picture.
+  await signInAs(context, 'moussa', baseURL!);
+  const seen = await page.request.get('/espace/parametres/image/stamp');
+  expect(seen.ok()).toBe(false);
 });
 
 test('an owner chooses the colour of the documents', async ({

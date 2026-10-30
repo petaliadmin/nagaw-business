@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 import type { SectionTab } from './navigation';
 
 /**
- * Links between the pages of one menu section (« Ventes » and « Factures et
- * devis »…). Shown on the section's list pages only, not on a detail page.
+ * Links between the pages of one menu section (« Factures », « Devis »…).
+ * Shown on the section's list pages only, not on a detail page.
  */
 export function SectionTabs({
   label,

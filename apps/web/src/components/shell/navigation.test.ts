@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   NAV_ITEMS,
   activeHref,
+  canGoBack,
   isActive,
   navItemsFor,
   parentPath,
   sectionTabsFor,
+  trackPath,
   type Section,
 } from './navigation';
 
@@ -18,6 +20,7 @@ describe('navigation', () => {
       'Tableau de bord',
       'Ventes',
       'Produits et services',
+      'Factures / Devis',
       'Clients',
       'Fournisseurs',
       'Dépenses',
@@ -53,7 +56,8 @@ describe('navigation', () => {
 
   it('marks the section of a page shown as a tab', () => {
     const active = (path: string) => activeHref(NAV_ITEMS, path);
-    expect(active('/espace/factures/7')).toBe('/espace/ventes');
+    expect(active('/espace/factures/7')).toBe('/espace/factures');
+    expect(active('/espace/factures/devis/7')).toBe('/espace/factures');
     expect(active('/espace/comptabilite')).toBe('/espace/statistiques');
     expect(active('/espace/equipe')).toBe('/espace/parametres');
     expect(active('/espace/journal')).toBe('/espace/parametres');
@@ -82,10 +86,11 @@ describe('navigation', () => {
   it('shows each tab only to the roles that may open it', () => {
     const tabs = (section: Section, role: TestRole) =>
       sectionTabsFor(section, role).map((tab) => tab.href);
-    expect(tabs('ventes', 'owner')).toContain('/espace/factures');
-    expect(tabs('ventes', 'viewer')).toContain('/espace/factures');
+    expect(tabs('factures', 'owner')).toContain('/espace/factures');
+    expect(tabs('factures', 'member')).not.toContain('/espace/factures');
+    expect(tabs('factures', 'viewer')).toContain('/espace/factures');
     // Sellers read invoices and prepare quotes (ADR-036).
-    expect(tabs('ventes', 'member')).toContain('/espace/factures');
+    expect(tabs('factures', 'member')).toContain('/espace/factures/liste');
     expect(tabs('rapports', 'viewer')).toContain('/espace/comptabilite');
     expect(tabs('rapports', 'member')).toEqual([]);
     expect(tabs('parametres', 'owner')).toContain('/espace/abonnement');
@@ -98,7 +103,10 @@ describe('navigation', () => {
       '/espace/ventes',
       '/espace/produits',
       '/espace/produits/fournisseurs',
+      '/espace/factures',
+      '/espace/factures/liste',
       '/espace/factures/devis',
+      '/espace/factures/nouveau',
       '/espace/journal',
       '/caisse',
     ])
@@ -112,6 +120,13 @@ describe('navigation', () => {
     expect(parentPath('/espace/factures/devis/7')).toBe(
       '/espace/factures/devis',
     );
+    expect(parentPath('/espace/factures/7')).toBe('/espace/factures/liste');
+    expect(parentPath('/espace/factures/nouvelle')).toBe(
+      '/espace/factures/nouveau',
+    );
+    expect(parentPath('/espace/factures/devis/nouveau')).toBe(
+      '/espace/factures/nouveau',
+    );
   });
 
   it('follows what the shop sells', () => {
@@ -124,6 +139,30 @@ describe('navigation', () => {
       navItemsFor('owner', offer).map((item) => item.href);
     expect(hrefs('services')).not.toContain('/espace/produits/fournisseurs');
     expect(hrefs('products')).toContain('/espace/produits/fournisseurs');
+  });
+
+  it('follows the pages seen, forward and back', () => {
+    let trail = trackPath([], '/espace/produits');
+    trail = trackPath(trail, '/espace/produits/12');
+    expect(trail).toEqual(['/espace/produits', '/espace/produits/12']);
+    expect(trackPath(trail, '/espace/produits/12')).toEqual(trail);
+    expect(trackPath(trail, '/espace/produits')).toEqual(['/espace/produits']);
+  });
+
+  it('goes back to the page seen, never to a form already sent', () => {
+    expect(canGoBack(['/espace/clients/1'])).toBe(false);
+    expect(canGoBack(['/espace/clients/1', '/espace/factures/2'])).toBe(true);
+    for (const form of [
+      '/espace/produits/nouveau',
+      '/espace/factures/nouvelle',
+      '/espace/produits/12/modifier',
+    ])
+      expect(canGoBack([form, '/espace/produits/12'])).toBe(false);
+  });
+
+  it('offers « Retour » in the administration too', () => {
+    expect(parentPath('/admin/boutiques/7')).toBe('/admin/boutiques');
+    expect(parentPath('/admin/boutiques')).toBeNull();
   });
 
   it('only links to pages of the space', () => {

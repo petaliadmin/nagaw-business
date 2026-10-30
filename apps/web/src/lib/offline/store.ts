@@ -20,6 +20,7 @@ export interface ShopSnapshot {
     role: string;
     /** Absent in older copies. */
     offer?: ShopOffer;
+    logoVersion?: string | null;
   };
   products: ProductDto[];
   /** `pendingOperationId`: created on this device, not yet sent. */

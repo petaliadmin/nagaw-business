@@ -30,11 +30,16 @@ import { OrganizationSwitcher } from '@/components/shell/organization-switcher';
 import { RevokeDeviceButton } from './device-actions';
 import { InvoiceSettingsForm } from './invoice-settings-form';
 import { LogoForm } from './logo-form';
+import { MarkForm } from './mark-form';
 import { NotificationSettingsForm } from './notification-settings-form';
 import { currencyOptions, timeZoneOptions } from './options';
 import { OrganizationSettingsForm } from './organization-settings-form';
 
 export const metadata: Metadata = { title: 'Paramètres — Nagaw Business' };
+
+/** Preview in the settings; the version only refreshes the picture. */
+const markUrl = (kind: string, version: string | null) =>
+  version ? `/espace/parametres/image/${kind}?v=${version}` : null;
 
 async function Settings() {
   const workspace = await requireReadyWorkspace();
@@ -120,6 +125,25 @@ async function Settings() {
                 organizationId={organization.data.id}
                 currentUrl={logoUrl(organization.data.logoVersion)}
               />
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <MarkForm
+                  organizationId={organization.data.id}
+                  kind="stamp"
+                  currentUrl={markUrl('stamp', organization.data.stampVersion)}
+                />
+                <MarkForm
+                  organizationId={organization.data.id}
+                  kind="signature"
+                  currentUrl={markUrl(
+                    'signature',
+                    organization.data.signatureVersion,
+                  )}
+                />
+              </div>
+              <p className="text-ink-muted">
+                Le cachet et la signature sont imprimés sur vos factures émises,
+                jamais sur un brouillon.
+              </p>
               <InvoiceSettingsForm organization={organization.data} />
             </div>
           ) : (

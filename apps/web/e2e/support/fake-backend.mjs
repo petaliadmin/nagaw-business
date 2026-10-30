@@ -877,6 +877,34 @@ const server = createServer(async (req, res) => {
     });
     return send(res, 200, org);
   }
+  const markPath =
+    /^\/api\/v1\/organizations\/current\/marks\/(signature|stamp)$/.exec(path);
+  if (markPath) {
+    if (!canManage) return forbidden(res);
+    const org = state.organizations[orgId];
+    const field = `${markPath[1]}Version`;
+    state.marks = state.marks ?? {};
+    const key = `${orgId}:${markPath[1]}`;
+    if (req.method === 'GET') {
+      if (!state.marks[key])
+        return apiError(res, 404, 'MARK_NOT_FOUND', 'Pas d’image.');
+      res.writeHead(200, { 'Content-Type': state.marks[key].type });
+      return res.end(state.marks[key].data);
+    }
+    if (req.method === 'PUT') {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      state.marks[key] = {
+        type: req.headers['content-type'],
+        data: Buffer.concat(chunks),
+      };
+      org[field] = String(Date.now());
+    } else {
+      delete state.marks[key];
+      org[field] = null;
+    }
+    return send(res, 200, org);
+  }
   if (path === '/api/v1/organizations/current/logo') {
     const org = state.organizations[orgId];
     if (req.method === 'GET') {

@@ -1,5 +1,4 @@
 import type { MeDto, OrganizationWithRoleDto } from '@nagaw/shared';
-import { Store } from 'lucide-react';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
@@ -17,7 +16,9 @@ import { loadWorkspace } from '@/lib/workspace/load';
 import { FeedbackLink } from './feedback-link';
 import { MoreMenu } from './mobile-nav';
 import { NotificationBell } from './notification-bell';
-import { BottomNavLinks, HeaderStart, NavLinks } from './nav-links';
+import { ShopSwitcher } from './shop-switcher';
+import { BackLink, NavigationTrail } from './back-link';
+import { BottomNavLinks, NavLinks } from './nav-links';
 
 type Tone = 'surface' | 'sidebar';
 
@@ -161,6 +162,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1">
       <InstallDialog />
+      <NavigationTrail />
       <a
         href="#contenu"
         className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-xl focus:bg-surface focus:px-4 focus:py-3 focus:font-bold focus:shadow"
@@ -179,11 +181,11 @@ export async function AppShell({ children }: { children: ReactNode }) {
             tone="sidebar"
           />
         </div>
-        {/* The shop is changed in Paramètres (owner's choice, 2026-10-26). */}
-        <p className="flex min-h-12 items-center gap-2 rounded-xl bg-white px-3 py-2 text-lg font-extrabold text-brand-strong shadow-sm">
-          <Store aria-hidden className="size-5 shrink-0" />
-          <span className="min-w-0 truncate">{organization.name}</span>
-        </p>
+        <ShopSwitcher
+          organization={organization}
+          organizations={me.organizations}
+          tone="sidebar"
+        />
         <nav aria-label="Navigation principale">
           <NavLinks role={organization.role} offer={organization.offer} />
         </nav>
@@ -193,10 +195,12 @@ export async function AppShell({ children }: { children: ReactNode }) {
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 border-b border-line bg-surface px-4 pt-[env(safe-area-inset-top)] md:hidden print:hidden">
-          <HeaderStart />
-          <span className="min-w-0 flex-1 truncate text-lg font-extrabold">
-            {organization.name}
-          </span>
+          <BackLink className="-ml-2 flex" />
+          <ShopSwitcher
+            organization={organization}
+            organizations={me.organizations}
+            tone="surface"
+          />
           <NotificationBell
             accessToken={accessToken}
             organizationId={organization.id}
@@ -207,6 +211,8 @@ export async function AppShell({ children }: { children: ReactNode }) {
           id="contenu"
           className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 pt-4 pb-[calc(7rem+env(safe-area-inset-bottom))] md:p-8 print:p-0"
         >
+          {/* On a phone, « Retour » is in the top bar. */}
+          <BackLink className="-ml-2 hidden self-start md:flex" />
           {organization.platformAccess && (
             <PlatformAccessBanner
               shopId={organization.id}
