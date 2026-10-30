@@ -1,6 +1,7 @@
 import {
   formatAmount,
   roleHasPermission,
+  sellsGoods,
   shareBasisPoints,
   type AuditLogDto,
   type MemberDto,
@@ -40,6 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import { ButtonLink } from '@/components/ui/button-link';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Figure } from '@/components/ui/figure';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import type { ApiResult } from '@/lib/api/call-api';
@@ -86,7 +88,7 @@ function TodayCard({
       aria-labelledby="today"
       className="flex flex-col gap-4 rounded-3xl bg-sales-strong p-4 text-white shadow-sm md:flex-row md:items-center md:justify-between md:p-6"
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
         <h2
           id="today"
           className="flex items-center gap-2 text-xl font-extrabold"
@@ -99,17 +101,17 @@ function TodayCard({
         {!summary.ok ? (
           <Alert tone="error">Ventes indisponibles : {summary.message}</Alert>
         ) : (
-          <dl className="flex flex-wrap gap-x-8 gap-y-2">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 md:gap-x-8">
             <div>
               <dt className="text-base">Ventes</dt>
               <dd className="text-2xl font-extrabold tabular-nums">
                 {summary.data.count}
               </dd>
             </div>
-            <div>
+            <div className="@container min-w-0">
               <dt className="text-base">Montant des ventes</dt>
-              <dd className="text-2xl font-extrabold tabular-nums">
-                {formatAmount(summary.data.total, currency)}
+              <dd className="font-extrabold tabular-nums">
+                <Figure value={formatAmount(summary.data.total, currency)} />
               </dd>
             </div>
           </dl>
@@ -244,9 +246,11 @@ function Essentials({
 function Details({
   stats,
   currency,
+  countsStock,
 }: {
   stats: StatsSummaryDto;
   currency: string;
+  countsStock: boolean;
 }) {
   const money = (value: number) => formatAmount(value, currency);
   const paid = Object.values(stats.byMethod).reduce((t, v) => t + v, 0);
@@ -258,7 +262,7 @@ function Details({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card
-          title="Produits qui rapportent le plus"
+          title="Ce qui rapporte le plus"
           titleId="top-products"
           icon={Trophy}
           tone="stats"
@@ -267,7 +271,7 @@ function Details({
             <EmptyState title="Aucune vente sur cette période" />
           ) : (
             <BarList
-              label="Produits qui rapportent le plus"
+              label="Ce qui rapporte le plus"
               tone="stats"
               rows={stats.topProducts.slice(0, 5).map((p) => ({
                 key: p.productId,
@@ -293,43 +297,45 @@ function Details({
           </Link>
         </Card>
 
-        <Card
-          title="Ne se vendent pas"
-          titleId="slow-products"
-          icon={PackageX}
-          tone="stock"
-        >
-          {stats.slowProducts.length === 0 ? (
-            <EmptyState title="Tout ce qui est en stock s’est vendu sur la période" />
-          ) : (
-            <>
-              <p className="mb-3 text-ink-muted">
-                En stock, mais aucune vente sur la période.
-              </p>
-              <ul
-                aria-labelledby="slow-products"
-                className="flex flex-col divide-y divide-line"
-              >
-                {stats.slowProducts.slice(0, 5).map((p) => (
-                  <li
-                    key={p.id}
-                    className="flex flex-wrap items-center justify-between gap-x-3 py-1 first:pt-0"
-                  >
-                    <Link
-                      href={`/espace/produits/${p.id}`}
-                      className="inline-flex min-h-12 items-center font-semibold underline-offset-4 hover:underline"
+        {countsStock && (
+          <Card
+            title="Ne se vendent pas"
+            titleId="slow-products"
+            icon={PackageX}
+            tone="stock"
+          >
+            {stats.slowProducts.length === 0 ? (
+              <EmptyState title="Tout ce qui est en stock s’est vendu sur la période" />
+            ) : (
+              <>
+                <p className="mb-3 text-ink-muted">
+                  En stock, mais aucune vente sur la période.
+                </p>
+                <ul
+                  aria-labelledby="slow-products"
+                  className="flex flex-col divide-y divide-line"
+                >
+                  {stats.slowProducts.slice(0, 5).map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex flex-wrap items-center justify-between gap-x-3 py-1 first:pt-0"
                     >
-                      {p.name}
-                    </Link>
-                    <span className="text-ink-muted">
-                      Reste {formatQuantity(p.stockQuantity, p.unit)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </Card>
+                      <Link
+                        href={`/espace/produits/${p.id}`}
+                        className="inline-flex min-h-12 items-center font-semibold underline-offset-4 hover:underline"
+                      >
+                        {p.name}
+                      </Link>
+                      <span className="text-ink-muted">
+                        Reste {formatQuantity(p.stockQuantity, p.unit)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </Card>
+        )}
       </div>
 
       <Card
@@ -494,13 +500,13 @@ function StockCard({
       {!summary.ok ? (
         <Alert tone="error">Stock indisponible : {summary.message}</Alert>
       ) : summary.data.trackedProducts === 0 ? (
-        <EmptyState title="Aucun produit suivi pour le moment">
+        <EmptyState title="Aucun stock suivi pour le moment">
           {canManage ? (
             <Link href="/espace/produits/nouveau" className={LINK}>
-              Ajouter votre premier produit
+              Ajouter un produit ou un service
             </Link>
           ) : (
-            'Le propriétaire ou un gérant peut ajouter les produits.'
+            'Le propriétaire ou un gérant peut ajouter ce que la boutique vend.'
           )}
         </EmptyState>
       ) : (
@@ -565,7 +571,7 @@ function StockCard({
             </ul>
           )}
           <Link href="/espace/produits" className={LINK}>
-            Voir tous les produits
+            Voir les produits et services
           </Link>
         </div>
       )}
@@ -681,15 +687,23 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
 
       {mine && <MyFiguresCard figures={mine} currency={currency} />}
 
-      {stats?.ok && <Details stats={stats.data} currency={currency} />}
+      {stats?.ok && (
+        <Details
+          stats={stats.data}
+          currency={currency}
+          countsStock={sellsGoods(organization.offer)}
+        />
+      )}
 
       {treasury && <MoneyCard treasury={treasury} currency={currency} />}
 
-      <StockCard
-        summary={stock}
-        currency={currency}
-        canManage={roleHasPermission(role, 'catalog.manage')}
-      />
+      {sellsGoods(organization.offer) && (
+        <StockCard
+          summary={stock}
+          currency={currency}
+          canManage={roleHasPermission(role, 'catalog.manage')}
+        />
+      )}
 
       <Card
         title="Activité récente"

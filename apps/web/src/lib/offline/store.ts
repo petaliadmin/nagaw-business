@@ -5,6 +5,7 @@ import {
   type ProductDto,
   type SyncOperation,
   type SyncResponseDto,
+  type ShopOffer,
 } from '@nagaw/shared';
 import { idb, STORES, transact } from './db';
 import { applyPendingStock } from './local-stock';
@@ -12,7 +13,14 @@ import { applyPendingStock } from './local-stock';
 /** Shop data the checkout needs to work offline. */
 export interface ShopSnapshot {
   organizationId: string;
-  shop: { name: string; currency: string; timeZone: string; role: string };
+  shop: {
+    name: string;
+    currency: string;
+    timeZone: string;
+    role: string;
+    /** Absent in older copies. */
+    offer?: ShopOffer;
+  };
   products: ProductDto[];
   /** `pendingOperationId`: created on this device, not yet sent. */
   customers: (CustomerDto & { pendingOperationId?: string })[];

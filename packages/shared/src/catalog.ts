@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MAX_AMOUNT } from './money.js';
+import { pageFields } from './pagination.js';
 
 // ---------------------------------------------------------------------------
 // Units and quantities
@@ -18,9 +19,33 @@ export const UNITS = {
   litre: { label: 'litre', decimals: true },
   ml: { label: 'ml', decimals: false },
   metre: { label: 'mètre', decimals: true },
+  prestation: { label: 'prestation', decimals: false },
+  forfait: { label: 'forfait', decimals: false },
+  heure: { label: 'heure', decimals: true },
+  jour: { label: 'jour', decimals: true },
 } as const;
 export type Unit = keyof typeof UNITS;
 export const UNIT_KEYS = Object.keys(UNITS) as [Unit, ...Unit[]];
+
+/** What a shop sells: goods it may count, or work it does (ADR-045). */
+export const PRODUCT_KINDS = ['product', 'service'] as const;
+export type ProductKind = (typeof PRODUCT_KINDS)[number];
+
+/** The units a service is sold in, first in its form. */
+export const SERVICE_UNITS = [
+  'prestation',
+  'forfait',
+  'heure',
+  'jour',
+] as const;
+
+const FEMININE_UNITS: readonly Unit[] = ['piece', 'bouteille', 'prestation'];
+
+/** « la pièce », « le kg », « l’heure »: after a price. */
+export function perUnit(unit: Unit): string {
+  if (unit === 'heure') return 'l’heure';
+  return `${FEMININE_UNITS.includes(unit) ? 'la' : 'le'} ${UNITS[unit].label}`;
+}
 
 /** Bound of numeric(14,3). */
 export const MAX_QUANTITY = 99_999_999_999;
@@ -259,11 +284,15 @@ const productFields = {
   barcode: barcode.nullable(),
   trackStock: z.boolean(),
   lowStockThreshold: threshold.nullable(),
+  kind: z.enum(PRODUCT_KINDS, { error: 'Nature inconnue' }),
 };
+
+const SERVICE_WITHOUT_STOCK = 'Un service n’a pas de stock';
 
 export const createProductSchema = z
   .object({
     ...productFields,
+    kind: productFields.kind.default('product'),
     /** Stock on hand when the product is added; recorded as a movement. */
     initialStock: quantitySchema
       .positive('Le stock de départ doit être positif')
@@ -277,6 +306,10 @@ export const createProductSchema = z
     path: ['initialStock'],
     message:
       'Pas de stock de départ pour un produit dont le stock n’est pas suivi',
+  })
+  .refine((value) => value.kind === 'product' || !value.trackStock, {
+    path: ['trackStock'],
+    message: SERVICE_WITHOUT_STOCK,
   });
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
@@ -291,6 +324,7 @@ export const updateProductSchema = z
     barcode: productFields.barcode.optional(),
     trackStock: productFields.trackStock.optional(),
     lowStockThreshold: productFields.lowStockThreshold.optional(),
+    kind: productFields.kind.optional(),
     status: archivableStatus.optional(),
     /** Version read before editing: a stale version is a conflict (ADR-020). */
     version: z.number().int().min(1),
@@ -330,6 +364,7 @@ export interface ProductDto {
   purchasePrice: number | null;
   taxRate: { id: string; name: string; rateBasisPoints: number } | null;
   barcode: string | null;
+  kind: ProductKind;
   trackStock: boolean;
   lowStockThreshold: number | null;
   /** Sum of the stock movements. */
@@ -570,6 +605,8 @@ export const productListQuerySchema = z
     /** `low`: running low or out of stock; `out`: out of stock. */
     stock: z.enum(STOCK_FILTERS).optional(),
     status: archivableStatus.default('active'),
+    kind: z.enum(PRODUCT_KINDS).optional(),
+    ...pageFields,
   })
   .strict();
 export type ProductListQuery = z.infer<typeof productListQuerySchema>;
@@ -582,6 +619,10 @@ export const PRODUCT_PHOTO_TYPES = [
   'image/png',
 ] as const;
 export type ProductPhotoType = (typeof PRODUCT_PHOTO_TYPES)[number];
+
+/** A shop's logo goes into PDFs, which only embed these two (ADR-044). */
+export const SHOP_LOGO_TYPES = ['image/png', 'image/jpeg'] as const;
+export type ShopLogoType = (typeof SHOP_LOGO_TYPES)[number];
 
 // ---------------------------------------------------------------------------
 // Stock movements

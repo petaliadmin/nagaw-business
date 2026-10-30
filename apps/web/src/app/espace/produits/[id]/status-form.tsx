@@ -45,7 +45,9 @@ export function ProductStatusForm({
           variant={archiving ? 'secondary' : 'primary'}
           pendingLabel="Enregistrement…"
         >
-          {archiving ? 'Archiver ce produit' : 'Remettre en vente'}
+          {archiving
+            ? `Archiver ce ${product.kind === 'service' ? 'service' : 'produit'}`
+            : 'Remettre en vente'}
         </SubmitButton>
       </div>
     </form>

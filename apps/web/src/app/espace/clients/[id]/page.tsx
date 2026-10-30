@@ -19,6 +19,7 @@ import { Alert } from '@/components/ui/alert';
 import { ButtonLink } from '@/components/ui/button-link';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
+import { Figure } from '@/components/ui/figure';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
@@ -90,11 +91,11 @@ async function Customer({ params }: PageProps<'/espace/clients/[id]'>) {
         <h2 id="balance-title" className="text-xl font-bold">
           Ce que le client doit
         </h2>
-        <p
-          className={`text-4xl font-extrabold tabular-nums ${c.balance > 0 ? 'text-warning-ink' : 'text-sales-ink'}`}
+        <div
+          className={`@container font-extrabold tabular-nums [--figure-max:2.25rem] ${c.balance > 0 ? 'text-warning-ink' : 'text-sales-ink'}`}
         >
-          {money(c.balance)}
-        </p>
+          <Figure value={money(c.balance)} />
+        </div>
         {c.creditLimit !== null && (
           <p className="text-ink-muted">
             Crédit maximum : {money(c.creditLimit)}

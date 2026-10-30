@@ -6,6 +6,7 @@ import {
   pricingOf,
   sellingOptionsOf,
   createProductSchema,
+  perUnit,
   createProductUnitSchema,
   createStockMovementSchema,
   formatRate,
@@ -30,6 +31,53 @@ const product = {
   lowStockThreshold: 5,
   clientOperationId: OP,
 };
+
+describe('perUnit', () => {
+  it('says the unit after a price', () => {
+    expect(perUnit('piece')).toBe('la pièce');
+    expect(perUnit('kg')).toBe('le kg');
+    expect(perUnit('heure')).toBe('l’heure');
+    expect(perUnit('forfait')).toBe('le forfait');
+  });
+});
+
+describe('a service', () => {
+  const base = {
+    name: 'Coupe',
+    categoryId: null,
+    unit: 'prestation',
+    salePrice: 2000,
+    purchasePrice: null,
+    taxRateId: null,
+    barcode: null,
+    lowStockThreshold: null,
+    clientOperationId: '6f1e5a52-1a33-4d6b-9f6a-0f5f2a1c7a10',
+  };
+
+  it('has no stock', () => {
+    expect(
+      createProductSchema.safeParse({
+        ...base,
+        kind: 'service',
+        trackStock: false,
+      }).success,
+    ).toBe(true);
+    expect(
+      createProductSchema.safeParse({
+        ...base,
+        kind: 'service',
+        trackStock: true,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('leaves older clients with products', () => {
+    expect(
+      createProductSchema.parse({ ...base, unit: 'piece', trackStock: true })
+        .kind,
+    ).toBe('product');
+  });
+});
 
 describe('quantities', () => {
   it('accepts up to three decimals', () => {

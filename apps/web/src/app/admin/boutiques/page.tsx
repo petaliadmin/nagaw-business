@@ -9,18 +9,23 @@ import { buttonClasses } from '@/components/ui/button-styles';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
+import { Pagination } from '@/components/ui/pagination';
 import { requirePlatformAdmin } from '@/lib/admin/load';
 import { apiAsUser } from '@/lib/api/server';
 import { formatDateTime } from '@/lib/format';
+import { pageNumber, pageParams, pageRows } from '@/lib/pagination';
 
 async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
   const admin = await requirePlatformAdmin();
   if (!admin) return null;
   const raw = await searchParams;
   const q = typeof raw.q === 'string' ? raw.q.trim() : '';
+  const page = pageNumber(raw.page);
+  const filters = new URLSearchParams(q ? { q } : {});
   const result = await apiAsUser<AdminShopListItemDto[]>(admin.accessToken, {
-    path: `/admin/shops${q ? `?${new URLSearchParams({ q })}` : ''}`,
+    path: `/admin/shops?${new URLSearchParams({ ...(q ? { q } : {}), ...pageParams(page) })}`,
   });
+  const list = result.ok ? pageRows(result.data) : null;
   return (
     <>
       <PageHeader title="Boutiques" />
@@ -47,11 +52,11 @@ async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
       </form>
       {!result.ok ? (
         <Alert tone="error">Boutiques indisponibles : {result.message}</Alert>
-      ) : result.data.length === 0 ? (
+      ) : !list || list.rows.length === 0 ? (
         <EmptyState title="Aucune boutique trouvée" />
       ) : (
         <ul aria-label="Liste des boutiques" className="flex flex-col gap-2">
-          {result.data.map((shop) => (
+          {list.rows.map((shop) => (
             <li key={shop.id}>
               <Link
                 href={`/admin/boutiques/${shop.id}`}
@@ -80,6 +85,12 @@ async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
           ))}
         </ul>
       )}
+      <Pagination
+        path="/admin/boutiques"
+        params={filters}
+        page={page}
+        hasNext={list?.hasNext ?? false}
+      />
     </>
   );
 }

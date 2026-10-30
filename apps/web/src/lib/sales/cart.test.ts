@@ -12,6 +12,7 @@ import {
 
 const rice: ProductDto = {
   id: 'rice',
+  kind: 'product',
   name: 'Riz',
   category: null,
   unit: 'kg',

@@ -6,12 +6,13 @@ import type {
   CreateExpenseInput,
   ExpenseCategoryDto,
   ExpenseDto,
-  PeriodQuery,
+  ExpenseListQuery,
   UpdateExpenseCategoryInput,
 } from '@nagaw/shared';
 import { PRODUCT_PHOTO_MAX_BYTES, type ProductPhotoType } from '@nagaw/shared';
 import { sql } from 'kysely';
 import { AuditService } from '../audit/audit.service.js';
+import { pageOf } from '../common/page.js';
 import { detectImageType } from '../catalog/products.service.js';
 import { ApiException } from '../common/api-exception.js';
 import {
@@ -228,21 +229,23 @@ export class ExpensesService {
       .where('e.organization_id', '=', organizationId);
   }
 
-  async list(tenant: TenantContext, query: PeriodQuery): Promise<ExpenseDto[]> {
+  async list(
+    tenant: TenantContext,
+    query: ExpenseListQuery,
+  ): Promise<ExpenseDto[]> {
     const timeZone = await this.treasury.timeZone(
       this.database.db,
       tenant.organizationId,
     );
     const to = query.to ?? today(timeZone);
     const from = query.from ?? addDays(to, -30);
-    const rows = await this.select(this.database.db, tenant.organizationId)
+    const list = this.select(this.database.db, tenant.organizationId)
       .where('e.occurred_on', '>=', from)
       .where('e.occurred_on', '<=', to)
       .orderBy('e.occurred_on', 'desc')
       .orderBy('e.created_at', 'desc')
-      .limit(500)
-      .execute();
-    return rows.map(toExpenseDto);
+      .orderBy('e.id', 'desc');
+    return (await pageOf(list, query, 500).execute()).map(toExpenseDto);
   }
 
   async create(

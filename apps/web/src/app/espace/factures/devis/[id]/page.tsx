@@ -14,6 +14,7 @@ import { ButtonLink } from '@/components/ui/button-link';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
+import { ShopLogo } from '@/components/ui/shop-logo';
 import { apiAsUser } from '@/lib/api/server';
 import { documentBadge } from '@/lib/documents/labels';
 import { formatCalendarDate } from '@/lib/format';
@@ -59,6 +60,7 @@ async function Quote({ params }: PageProps<'/espace/factures/devis/[id]'>) {
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
+          <ShopLogo version={organization.logoVersion} />
           <h1 className="text-2xl font-extrabold md:text-3xl">
             Devis {quote.number}
           </h1>

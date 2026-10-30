@@ -21,6 +21,7 @@ import {
   UUID_RE,
   type Executor,
 } from '../catalog/catalog.errors.js';
+import { pageOf } from '../common/page.js';
 import type { AuthContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import type { Database } from '../database/schema.js';
@@ -128,7 +129,11 @@ export class AdminService {
         ]),
       );
     }
-    const rows = await q.orderBy('o.created_at', 'desc').limit(200).execute();
+    const rows = await pageOf(
+      q.orderBy('o.created_at', 'desc').orderBy('o.id', 'desc'),
+      query,
+      200,
+    ).execute();
     return rows.map((r) => this.toListItem(r as ShopRow));
   }
 

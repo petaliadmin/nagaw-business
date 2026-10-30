@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { applyPendingStock, correctionProblem } from './local-stock';
 
 const product = (overrides: Partial<ProductDto> = {}): ProductDto => ({
+  kind: 'product',
   id: 'rice',
   name: 'Riz',
   category: null,

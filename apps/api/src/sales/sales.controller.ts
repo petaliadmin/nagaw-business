@@ -15,6 +15,7 @@ import {
   createCustomerSchema,
   createSaleSchema,
   customerRepaymentSchema,
+  pageFields,
   saleListQuerySchema,
   updateCustomerSchema,
   type CancelSaleInput,
@@ -48,6 +49,7 @@ const customerListQuerySchema = z
   .object({
     q: z.string().trim().max(120).optional(),
     owing: z.enum(['true']).optional(),
+    ...pageFields,
   })
   .strict();
 
@@ -70,7 +72,7 @@ export class SalesController {
     @CurrentUser() user: AuthContext,
     @Query(new ZodValidationPipe(saleListQuerySchema)) query: SaleListQuery,
   ): Promise<SaleListItemDto[]> {
-    return this.sales.list(tenant, user, query.day);
+    return this.sales.list(tenant, user, query);
   }
 
   @Get('sales/summary')
@@ -146,6 +148,8 @@ export class SalesController {
     return this.customers.list(tenant.organizationId, {
       q: query.q,
       owing: query.owing === 'true',
+      limit: query.limit,
+      offset: query.offset,
     });
   }
 

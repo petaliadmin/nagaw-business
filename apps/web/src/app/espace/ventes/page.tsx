@@ -5,21 +5,23 @@ import {
   type SaleListItemDto,
   type SalesDaySummaryDto,
 } from '@nagaw/shared';
-import { CalendarDays, ShoppingCart } from 'lucide-react';
+import { CalendarDays } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { SellFab } from '@/components/dashboard/sell-fab';
 import { CONTROL } from '@/components/form-field';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { ButtonLink } from '@/components/ui/button-link';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { Card, Stat } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
+import { Pagination } from '@/components/ui/pagination';
 import { apiAsUser } from '@/lib/api/server';
-import { formatCalendarDate, todayIn } from '@/lib/format';
+import { formatCalendarDate, formatDateTime, todayIn } from '@/lib/format';
+import { pageNumber, pageParams, pageRows } from '@/lib/pagination';
 import { PAYMENT_LABELS } from '@/lib/sales/labels';
 import { ticketLabel } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
@@ -40,7 +42,10 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
   const currency = organization.defaultCurrency;
   const money = (value: number) => formatAmount(value, currency);
   const today = todayIn(organization.timezone);
-  const requested = (await searchParams).jour;
+  const raw = await searchParams;
+  const requested = raw.jour;
+  const everyDay = raw.vue === 'toutes';
+  const page = pageNumber(raw.page);
   const day =
     typeof requested === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(requested)
       ? requested
@@ -49,7 +54,10 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
 
   const [sales, summary] = await Promise.all([
     apiAsUser<SaleListItemDto[]>(accessToken, {
-      path: `/sales?day=${day}`,
+      path: `/sales?${new URLSearchParams({
+        ...(everyDay ? { all: 'true' } : { day }),
+        ...pageParams(page),
+      })}`,
       organizationId: organization.id,
     }),
     apiAsUser<SalesDaySummaryDto>(accessToken, {
@@ -57,6 +65,10 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
       organizationId: organization.id,
     }),
   ]);
+  const list = sales.ok ? pageRows(sales.data) : null;
+  const listParams = new URLSearchParams();
+  if (everyDay) listParams.set('vue', 'toutes');
+  else if (day !== today) listParams.set('jour', day);
   const dayLabel =
     day === today
       ? 'Aujourd’hui'
@@ -69,14 +81,6 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
       <PageHeader
         title="Ventes"
         description={allSales ? 'Les ventes de la boutique.' : 'Vos ventes.'}
-        actions={
-          roleHasPermission(organization.role, 'sales.create') ? (
-            <ButtonLink href="/caisse" variant="sell">
-              <ShoppingCart aria-hidden className="size-5" />
-              Vendre
-            </ButtonLink>
-          ) : undefined
-        }
       />
 
       <nav
@@ -85,23 +89,37 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
       >
         <Link
           href="/espace/ventes"
-          aria-current={day === today ? 'true' : undefined}
-          className={buttonClasses(day === today ? 'primary' : 'secondary')}
+          aria-current={!everyDay && day === today ? 'true' : undefined}
+          className={buttonClasses(
+            !everyDay && day === today ? 'primary' : 'secondary',
+          )}
         >
           Aujourd’hui
         </Link>
         <Link
           href={`/espace/ventes?jour=${previousDay(today)}`}
-          aria-current={day === previousDay(today) ? 'true' : undefined}
+          aria-current={
+            !everyDay && day === previousDay(today) ? 'true' : undefined
+          }
           className={buttonClasses(
-            day === previousDay(today) ? 'primary' : 'secondary',
+            !everyDay && day === previousDay(today) ? 'primary' : 'secondary',
           )}
         >
           Hier
         </Link>
+        <Link
+          href="/espace/ventes?vue=toutes"
+          aria-current={everyDay ? 'true' : undefined}
+          className={buttonClasses(everyDay ? 'primary' : 'secondary')}
+        >
+          Toutes
+        </Link>
       </nav>
       <details
-        open={(day !== today && day !== previousDay(today)) || undefined}
+        open={
+          (!everyDay && day !== today && day !== previousDay(today)) ||
+          undefined
+        }
       >
         <summary className="inline-flex min-h-12 cursor-pointer list-none items-center gap-2 font-semibold text-brand-ink underline underline-offset-4 [&::-webkit-details-marker]:hidden">
           <CalendarDays aria-hidden className="size-5" />
@@ -127,16 +145,20 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
         </form>
       </details>
 
-      <Card title={dayLabel} titleId="day-summary">
-        {!summary.ok ? (
-          <Alert tone="error">Résumé indisponible : {summary.message}</Alert>
-        ) : (
+      {/* A day has its totals; the whole history is only a list. */}
+      {everyDay ? null : !summary.ok ? (
+        <Alert tone="error">Résumé indisponible : {summary.message}</Alert>
+      ) : (
+        <Card title={dayLabel} titleId="day-summary">
           <dl className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-            <Stat label="Ventes" value={summary.data.count} />
+            {/* The total first, on its own line on a phone: the largest
+                figure of the screen (DESIGN.md). */}
             <Stat
               label="Total encaissé et à crédit"
               value={money(summary.data.total)}
+              className="col-span-2 [--figure-max:2rem] lg:col-span-1"
             />
+            <Stat label="Ventes" value={summary.data.count} />
             {PAYMENT_METHODS.filter((m) => summary.data.byMethod[m] > 0).map(
               (m) => (
                 <Stat
@@ -147,16 +169,20 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
               ),
             )}
           </dl>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {!sales.ok ? (
         <Alert tone="error">Ventes indisponibles : {sales.message}</Alert>
-      ) : sales.data.length === 0 ? (
-        <EmptyState title="Aucune vente ce jour-là" />
+      ) : !list || list.rows.length === 0 ? (
+        <EmptyState
+          title={
+            everyDay ? 'Aucune vente pour le moment' : 'Aucune vente ce jour-là'
+          }
+        />
       ) : (
         <ul aria-label="Liste des ventes" className="flex flex-col gap-2">
-          {sales.data.map((sale) => (
+          {list.rows.map((sale) => (
             <li key={sale.id}>
               <Link
                 href={`/espace/ventes/${sale.id}`}
@@ -167,11 +193,13 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
                     Ticket {ticketLabel(sale)}
                     {sale.customerName ? ` — ${sale.customerName}` : ''}
                   </span>
-                  <span className="text-ink-muted">
-                    {new Intl.DateTimeFormat('fr', {
-                      timeStyle: 'short',
-                      timeZone: organization.timezone,
-                    }).format(new Date(sale.occurredAt))}{' '}
+                  <span className="break-words text-ink-muted">
+                    {everyDay
+                      ? formatDateTime(sale.occurredAt, organization.timezone)
+                      : new Intl.DateTimeFormat('fr', {
+                          timeStyle: 'short',
+                          timeZone: organization.timezone,
+                        }).format(new Date(sale.occurredAt))}{' '}
                     · {sale.itemCount} article{sale.itemCount > 1 ? 's' : ''} ·{' '}
                     {sale.methods.map((m) => PAYMENT_LABELS[m]).join(', ')}
                     {allSales ? ` · ${sale.sellerEmail}` : ''}
@@ -198,6 +226,14 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
           ))}
         </ul>
       )}
+      <Pagination
+        path="/espace/ventes"
+        params={listParams}
+        page={page}
+        hasNext={list?.hasNext ?? false}
+      />
+
+      {roleHasPermission(organization.role, 'sales.create') && <SellFab />}
     </>
   );
 }

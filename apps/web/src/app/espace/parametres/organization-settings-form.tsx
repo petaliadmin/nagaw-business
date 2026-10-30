@@ -3,6 +3,7 @@
 import { INVITATION_TTL_HOURS, type OrganizationDto } from '@nagaw/shared';
 import { useActionState } from 'react';
 import { ActionForm } from '@/components/action-form';
+import { OfferField } from '@/components/catalog/offer-field';
 import { FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
@@ -43,6 +44,7 @@ export function OrganizationSettingsForm({
         maxLength={120}
         error={state.fieldErrors?.name}
       />
+      <OfferField value={organization.offer} error={state.fieldErrors?.offer} />
       <SelectField
         label="Fuseau horaire"
         name="timezone"

@@ -1,6 +1,7 @@
 import { shareBasisPoints } from '@nagaw/shared';
 import { Minus, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Figure } from '@/components/ui/figure';
 import { MODULE_TONES, type ModuleTone } from './tones';
 
 const percentFormat = new Intl.NumberFormat('fr', {
@@ -82,7 +83,7 @@ export function KpiTile({
   const colors = MODULE_TONES[tone];
   return (
     <div
-      className={`flex min-w-0 flex-col gap-1.5 rounded-2xl p-3 shadow-sm sm:p-4 ${colors.dark}`}
+      className={`@container flex min-w-0 flex-col gap-1.5 rounded-2xl p-3 shadow-sm sm:p-4 ${colors.dark}`}
     >
       <dt className="flex items-center gap-2 text-base leading-tight font-bold">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/20 sm:size-9 sm:rounded-xl">
@@ -91,9 +92,10 @@ export function KpiTile({
         {label}
       </dt>
       <dd className="flex flex-col gap-1">
-        <span className="text-xl font-extrabold break-words tabular-nums sm:text-2xl">
-          {value}
-        </span>
+        <Figure
+          value={value}
+          className="font-extrabold tabular-nums [--figure-max:1.25rem] sm:[--figure-max:1.5rem]"
+        />
         {children}
       </dd>
     </div>

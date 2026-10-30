@@ -103,6 +103,15 @@ export function resetCatalog() {
   catalog = seed();
 }
 
+/** `limit` and `offset` of a list, as the real API (ADR-044). */
+export function paged(rows, url) {
+  const limit = url.searchParams.get('limit');
+  const offset = Number(url.searchParams.get('offset') ?? 0);
+  return limit === null
+    ? rows.slice(offset)
+    : rows.slice(offset, offset + Number(limit));
+}
+
 /** For the sales part of the fake API (fake-sales.mjs). */
 export const catalogState = () => catalog;
 
@@ -128,6 +137,7 @@ const stockOf = (productId) =>
 
 export function productDto(p) {
   const category = catalog.categories.find((c) => c.id === p.categoryId);
+  const kind = p.kind ?? 'product';
   const taxRate = catalog.taxRates.find((t) => t.id === p.taxRateId);
   const stock = {
     trackStock: p.trackStock,
@@ -135,6 +145,7 @@ export function productDto(p) {
     lowStockThreshold: p.lowStockThreshold,
   };
   return {
+    kind,
     id: p.id,
     name: p.name,
     category: category
@@ -336,10 +347,11 @@ export async function handleCatalog(ctx) {
       Object.fromEntries(url.searchParams),
     );
     if (!query.success) return invalid(query.error.issues);
-    const { q, categoryId, stock, status } = query.data;
+    const { q, categoryId, stock, status, kind } = query.data;
     const list = catalog.products
       .filter((p) => mine(p) && p.status === status)
       .filter((p) => !categoryId || p.categoryId === categoryId)
+      .filter((p) => !kind || (p.kind ?? 'product') === kind)
       .filter(
         (p) =>
           !q ||
@@ -355,7 +367,7 @@ export async function handleCatalog(ctx) {
             : p.stockLevel === 'out' || p.stockLevel === 'low'),
       )
       .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-    send(res, 200, list);
+    send(res, 200, paged(list, url));
     return true;
   }
 

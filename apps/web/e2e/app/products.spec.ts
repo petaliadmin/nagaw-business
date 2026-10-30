@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { expectAccessible } from '../support/a11y';
 import { resetBackend, signInAs } from '../support/session';
 
 test.describe.configure({ mode: 'serial' });
@@ -35,12 +36,22 @@ test('the product list shows prices and what is left', async ({
     productList(page).getByRole('link', { name: /Savon de Marseille/ }),
   ).toContainText('Épuisé');
 
-  await page
+  // The filters wait in a sheet; the one chosen stays in view on the page.
+  await page.getByRole('button', { name: 'Filtrer' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Filtrer les produits' });
+  await expectAccessible(page, 'filtres des produits');
+  await sheet
     .getByRole('navigation', { name: 'Filtrer par stock' })
     .getByRole('link', { name: 'Épuisés', exact: true })
     .click();
+  await expect(sheet).toBeHidden();
   await expect(productList(page).getByRole('listitem')).toHaveCount(1);
   await expect(productList(page)).toContainText('Savon de Marseille');
+  await page.getByRole('link', { name: 'Retirer le filtre Épuisés' }).click();
+  await expect(productList(page).getByRole('listitem')).not.toHaveCount(1);
+  await expect(page.getByRole('list', { name: 'Filtres choisis' })).toHaveCount(
+    0,
+  );
 
   await page.goto('/espace/produits');
   await page
@@ -98,6 +109,45 @@ test('an owner adds a product with its photo and its stock', async ({
   expect(
     await photo.evaluate((img: HTMLImageElement) => img.naturalWidth),
   ).toBe(1);
+});
+
+test('an owner adds a service: no stock, its own units, its own filter', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/produits/nouveau');
+  await page.waitForLoadState('networkidle');
+  await page.locator('label', { hasText: 'Un service' }).click();
+  await expect(page.getByLabel('Quantité en stock aujourd’hui')).toHaveCount(0);
+  await expect(page.getByLabel('Facturé à')).toHaveValue('prestation');
+  await page.getByLabel('Nom du service').fill('Pose de carrelage');
+  await page.getByLabel(/^Prix de vente/).fill('15000');
+  await page.getByLabel('Facturé à').selectOption('heure');
+  await page.getByRole('button', { name: 'Enregistrer le service' }).click();
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Pose de carrelage' }),
+  ).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Ce qui reste' })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole('button', { name: 'Archiver ce service' }),
+  ).toBeVisible();
+  // Nothing about stock on the page of a service.
+  await expect(
+    page.getByRole('main').getByText(/stock/i).filter({ visible: true }),
+  ).toHaveCount(0);
+  await expect(page.getByText('Unités de vente')).toHaveCount(0);
+
+  await page.goto('/espace/produits?type=service');
+  await expect(productList(page).getByRole('listitem')).toHaveCount(1);
+  await expect(productList(page)).toContainText('Service');
+  await expect(
+    page.getByRole('link', { name: 'Retirer le filtre Services' }),
+  ).toBeVisible();
 });
 
 test('stock moves with deliveries, losses and inventories', async ({
@@ -260,7 +310,7 @@ test('a seller sees products and stock but cannot change them', async ({
   await page.goto('/espace/produits/nouveau');
   await expect(
     page.getByText(
-      'Seuls le propriétaire et les gérants ajoutent des produits.',
+      'Seuls le propriétaire et les gérants ajoutent des produits et des services.',
     ),
   ).toBeVisible();
   await page.goto('/espace/produits/categories');

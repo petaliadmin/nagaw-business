@@ -18,3 +18,13 @@ export async function signInAs(
 export async function resetBackend() {
   await fetch(`${BACKEND}/__test/reset`);
 }
+
+/** Gives the shop, its products and customers very long names. */
+export async function useLongNames() {
+  await fetch(`${BACKEND}/__test/long-names`);
+}
+
+/** Adds sales of today of nearly ten billion to Awa's shop. */
+export async function addLargeSale(count = 1) {
+  await fetch(`${BACKEND}/__test/large-sale?count=${count}`);
+}

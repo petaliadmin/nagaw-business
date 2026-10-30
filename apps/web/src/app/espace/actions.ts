@@ -1,8 +1,9 @@
 'use server';
 
 import {
-  createOrganizationSchema,
+  createShopFormSchema,
   invitationTokenSchema,
+  PRODUCT_PHOTO_MAX_BYTES,
   updateOrganizationSchema,
   type MeDto,
   type OrganizationDto,
@@ -25,7 +26,7 @@ export async function createOrganization(
   formData: FormData,
 ): Promise<FormState> {
   const session = await requireSession();
-  const parsed = parseForm(createOrganizationSchema, formData);
+  const parsed = parseForm(createShopFormSchema, formData);
   if (!parsed.ok) return parsed.state;
 
   const result = await apiAsUser<OrganizationWithRoleDto>(session.accessToken, {
@@ -76,6 +77,42 @@ export async function updateOrganization(
   // Re-render the shell too (organization name in the sidebar).
   refresh();
   return { status: 'success', message: 'Paramètres enregistrés.' };
+}
+
+/** Saves or removes the shop's logo, already resized on the device. */
+export async function updateLogo(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await requireSession();
+  const organizationId = formData.get('organizationId')?.toString();
+  if (!organizationId)
+    return { status: 'error', message: 'Boutique inconnue.' };
+  const file = formData.get('photo');
+  const logo = file instanceof File && file.size > 0 ? file : null;
+  if (logo && logo.size > PRODUCT_PHOTO_MAX_BYTES)
+    return {
+      status: 'error',
+      message: 'Logo non enregistré.',
+      fieldErrors: { photo: 'Logo trop lourd : 512 Ko au plus.' },
+    };
+  if (!logo && formData.get('removePhoto') !== 'on')
+    return {
+      status: 'error',
+      message: 'Logo non enregistré.',
+      fieldErrors: { photo: 'Choisissez d’abord une image.' },
+    };
+
+  // The API checks membership and the organization.update permission.
+  const result = await apiAsUser<OrganizationDto>(session.accessToken, {
+    method: logo ? 'PUT' : 'DELETE',
+    path: '/organizations/current/logo',
+    organizationId,
+    ...(logo ? { rawBody: { data: logo, contentType: logo.type } } : {}),
+  });
+  if (!result.ok) return { status: 'error', message: result.message };
+  refresh();
+  return { status: 'success', message: 'Logo enregistré.' };
 }
 
 /** Joins the organization of an invitation, then opens it. */

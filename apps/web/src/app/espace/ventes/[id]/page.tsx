@@ -1,4 +1,5 @@
 import {
+  documentPalette,
   formatAmount,
   formatRate,
   describeSaleLine,
@@ -15,6 +16,7 @@ import { ButtonLink } from '@/components/ui/button-link';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
+import { ShopLogo } from '@/components/ui/shop-logo';
 import { apiAsUser } from '@/lib/api/server';
 import { formatDateTime } from '@/lib/format';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
@@ -64,6 +66,7 @@ async function Sale({
   const s = sale.data;
   const currency = organization.defaultCurrency;
   const money = (value: number) => formatAmount(value, currency);
+  const palette = documentPalette(organization.documentColor);
   const canCancel =
     s.status === 'completed' &&
     roleHasPermission(organization.role, 'sales.cancel');
@@ -136,8 +139,20 @@ async function Sale({
         aria-label={`Ticket ${ticketLabel(s)}`}
         className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-line bg-surface p-5 font-mono text-base shadow-sm print:max-w-none print:border-0 print:p-0 print:text-sm print:shadow-none"
       >
+        <div
+          aria-hidden
+          className="h-2 rounded-full [print-color-adjust:exact]"
+          style={{ background: palette.accent }}
+        />
         <header className="text-center">
-          <p className="text-lg font-bold">{organization.name}</p>
+          {organization.logoVersion && (
+            <div className="mb-2 flex justify-center">
+              <ShopLogo version={organization.logoVersion} />
+            </div>
+          )}
+          <p className="text-lg font-bold" style={{ color: palette.text }}>
+            {organization.name}
+          </p>
           <p>Ticket {ticketLabel(s)}</p>
           <p>{formatDateTime(s.occurredAt, organization.timezone)}</p>
           {s.customer && <p>Client : {s.customer.name}</p>}

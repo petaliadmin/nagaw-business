@@ -8,7 +8,10 @@ import type {
   NotificationCategory,
   NotificationSeverity,
   PaymentMethod,
+  ProductKind,
   ProductPhotoType,
+  ShopLogoType,
+  ShopOffer,
   StockMovementKind,
   Unit,
 } from '@nagaw/shared';
@@ -66,6 +69,9 @@ export interface OrganizationsTable {
   phone: Generated<string>;
   email: Generated<string>;
   tax_id: Generated<string>;
+  logo_sha256: Generated<string | null>;
+  document_color: Generated<string>;
+  offer: Generated<ShopOffer>;
   trade_register: Generated<string>;
   invoice_footer: Generated<string>;
   invoice_due_days: Generated<number>;
@@ -177,6 +183,7 @@ export interface SuppliersTable {
 }
 
 export interface ProductsTable {
+  kind: Generated<ProductKind>;
   id: Generated<string>;
   organization_id: string;
   name: string;
@@ -232,6 +239,15 @@ export interface ProductPhotosTable {
   organization_id: string;
   product_id: string;
   content_type: ProductPhotoType;
+  data: Buffer;
+  sha256: string;
+  updated_by: string;
+  updated_at: Timestamp;
+}
+
+export interface OrganizationLogosTable {
+  organization_id: string;
+  content_type: ShopLogoType;
   data: Buffer;
   sha256: string;
   updated_by: string;
@@ -669,6 +685,7 @@ export interface Database {
   'app.product_units': ProductUnitsTable;
   'app.unit_templates': UnitTemplatesTable;
   'app.product_photos': ProductPhotosTable;
+  'app.organization_logos': OrganizationLogosTable;
   'app.stock_movements': StockMovementsTable;
   'app.customers': CustomersTable;
   'app.sales': SalesTable;

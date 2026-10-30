@@ -7,11 +7,11 @@ test.beforeAll(async () => {
   await resetBackend();
 });
 
-const IN_BOTTOM_BAR = ['Accueil', 'Ventes', 'Stock'];
+const IN_BOTTOM_BAR = ['Accueil', 'Ventes', 'Produits'];
 // Same entries in the sidebar, with their full label.
 const SIDEBAR_LABEL: Record<string, string> = {
   Accueil: 'Tableau de bord',
-  Stock: 'Stock / Produits',
+  Produits: 'Produits et services',
 };
 
 /**
@@ -126,7 +126,7 @@ test('navigation reaches every section and marks the current page', async ({
     ).toHaveAttribute('aria-current', 'page');
   }
 
-  // « Fournisseurs » is marked on its own page, not « Stock / Produits ».
+  // « Fournisseurs » is marked on its own page, not « Produits et services ».
   await navigate(page, isMobile, 'Fournisseurs');
   await expect(page).toHaveURL(/\/espace\/produits\/fournisseurs$/);
 
@@ -252,6 +252,9 @@ test('a user without a shop is guided to create one', async ({
     page.getByRole('heading', { name: 'Créez votre boutique' }),
   ).toBeVisible();
   await page.getByLabel('Nom de la boutique').fill('Binta Conseil');
+  await page.getByLabel('Votre nom complet').fill('Binta Sow');
+  await page.getByLabel('Votre téléphone').fill('78 000 00 00');
+  await page.locator('label', { hasText: 'Des services' }).click();
   await page.getByRole('button', { name: 'Créer la boutique' }).click();
   await expect(
     page

@@ -16,7 +16,7 @@ import {
   roleHasPermission,
   updateCustomerSchema,
 } from '@nagaw/shared';
-import { catalogState } from './fake-catalog.mjs';
+import { catalogState, paged } from './fake-catalog.mjs';
 import { shopSettings } from './fake-notifications.mjs';
 
 const stockOf = (productId) =>
@@ -137,6 +137,27 @@ const deviceDto = (d, userById) => ({
   createdAt: d.createdAt,
 });
 
+/** A sale of today for a very large amount (tiles, on a 360 px phone). */
+export function addLargeSale(organizationId, sellerId, count = 1) {
+  const total = 9_987_654_321;
+  for (let n = 0; n < count; n += 1)
+    state.sales.push({
+      id: `ffffffff-0000-4000-8000-${String(n).padStart(12, '0')}`,
+      organizationId,
+      saleNumber: 900 + n,
+      status: 'completed',
+      sellerId,
+      customerId: null,
+      lines: [],
+      payments: [{ method: 'cash', amount: total }],
+      subtotal: total,
+      discount: 0,
+      total,
+      taxTotal: 0,
+      occurredAt: new Date().toISOString(),
+    });
+}
+
 /**
  * Handles sales and customer routes; returns false for other paths.
  * `ctx` as for handleCatalog, plus `role` and `timeZone`.
@@ -175,26 +196,33 @@ export async function handleSales(ctx) {
 
   if (path === '/api/v1/sales' && req.method === 'GET') {
     const day = url.searchParams.get('day') ?? today(timeZone);
+    const listed = paged(
+      visibleSales()
+        .filter(
+          (s) =>
+            url.searchParams.get('all') === 'true' ||
+            dayOf(s.occurredAt, timeZone) === day,
+        )
+        .reverse(),
+      url,
+    );
     return reply(
       200,
-      visibleSales()
-        .filter((s) => dayOf(s.occurredAt, timeZone) === day)
-        .reverse()
-        .map((s) => ({
-          id: s.id,
-          saleNumber: s.saleNumber,
-          status: s.status,
-          customerName:
-            state.customers.find((c) => c.id === s.customerId)?.name ?? null,
-          sellerEmail: ctx.userById(s.sellerId).email,
-          itemCount: s.lines.length,
-          total: s.total,
-          methods: [...new Set(s.payments.map((p) => p.method))],
-          occurredAt: s.occurredAt,
-          deviceTicket: s.deviceTicket ?? null,
-          priceReview: s.priceReview ?? false,
-          stockReview: s.stockReview ?? false,
-        })),
+      listed.map((s) => ({
+        id: s.id,
+        saleNumber: s.saleNumber,
+        status: s.status,
+        customerName:
+          state.customers.find((c) => c.id === s.customerId)?.name ?? null,
+        sellerEmail: ctx.userById(s.sellerId).email,
+        itemCount: s.lines.length,
+        total: s.total,
+        methods: [...new Set(s.payments.map((p) => p.method))],
+        occurredAt: s.occurredAt,
+        deviceTicket: s.deviceTicket ?? null,
+        priceReview: s.priceReview ?? false,
+        stockReview: s.stockReview ?? false,
+      })),
     );
   }
   if (path === '/api/v1/sales/summary' && req.method === 'GET') {
@@ -631,17 +659,20 @@ export async function handleSales(ctx) {
     const owing = url.searchParams.get('owing') === 'true';
     return reply(
       200,
-      state.customers
-        .filter((c) => mine(c) && c.status === 'active')
-        .filter(
-          (c) =>
-            !q ||
-            c.name.toLowerCase().includes(q) ||
-            c.phone.replace(/\s/g, '').includes(q.replace(/\s/g, '')),
-        )
-        .map(customerDto)
-        .filter((c) => !owing || c.balance > 0)
-        .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+      paged(
+        state.customers
+          .filter((c) => mine(c) && c.status === 'active')
+          .filter(
+            (c) =>
+              !q ||
+              c.name.toLowerCase().includes(q) ||
+              c.phone.replace(/\s/g, '').includes(q.replace(/\s/g, '')),
+          )
+          .map(customerDto)
+          .filter((c) => !owing || c.balance > 0)
+          .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+        url,
+      ),
     );
   }
   if (path === '/api/v1/customers' && req.method === 'POST') {

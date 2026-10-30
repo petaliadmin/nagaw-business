@@ -3,8 +3,45 @@ import {
   accountOfMovement,
   fiscalYearQuerySchema,
   TREASURY_ACCOUNTS,
+  splitSaleReceipt,
 } from './accounting.js';
 import { roleHasPermission } from './permissions.js';
+
+describe('splitSaleReceipt', () => {
+  it('books goods on 701 and services on 706', () => {
+    expect(
+      splitSaleReceipt(1000, { goods: 1000, services: 0 }).map((p) => [
+        p.account.code,
+        p.amount,
+      ]),
+    ).toEqual([['701', 1000]]);
+    expect(
+      splitSaleReceipt(1000, { goods: 0, services: 500 }).map((p) => [
+        p.account.code,
+        p.amount,
+      ]),
+    ).toEqual([['706', 1000]]);
+  });
+
+  it('shares a partial payment, to the exact franc', () => {
+    const parts = splitSaleReceipt(1000, { goods: 1, services: 2 });
+    expect(parts.map((p) => p.amount)).toEqual([333, 667]);
+    expect(parts.reduce((sum, p) => sum + p.amount, 0)).toBe(1000);
+  });
+
+  it('keeps a cancellation negative', () => {
+    expect(
+      splitSaleReceipt(-900, { goods: 1, services: 2 }).map((p) => p.amount),
+    ).toEqual([-300, -600]);
+  });
+
+  it('stays on 70 with nothing to go by', () => {
+    expect(splitSaleReceipt(500, null)[0]?.account.code).toBe('70');
+    expect(
+      splitSaleReceipt(500, { goods: 0, services: 0 })[0]?.account.code,
+    ).toBe('70');
+  });
+});
 
 describe('SYSCOHADA accounts of the minimal cash system', () => {
   it('books sales, expenses, transfers and cash differences', () => {

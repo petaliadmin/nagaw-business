@@ -8,6 +8,7 @@ import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/auth/schemas';
 import { updateOrganization } from '../actions';
+import { DocumentColorField } from './document-color-field';
 
 /** What quotes and invoices print about the shop (ADR-026). */
 export function InvoiceSettingsForm({
@@ -29,6 +30,10 @@ export function InvoiceSettingsForm({
     >
       <input type="hidden" name="organizationId" value={organization.id} />
       <FormMessage state={state} />
+      <DocumentColorField
+        value={organization.documentColor}
+        error={errors.documentColor}
+      />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <FormField
           label="Raison sociale (facultatif)"

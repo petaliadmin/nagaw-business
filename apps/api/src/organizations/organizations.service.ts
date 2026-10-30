@@ -1,14 +1,20 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
-import type {
-  CreateOrganizationInput,
-  MemberDto,
-  OrganizationDto,
-  OrganizationWithRoleDto,
-  Role,
-  UpdateOrganizationInput,
+import { createHash } from 'node:crypto';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  PRODUCT_PHOTO_MAX_BYTES,
+  type CreateOrganizationInput,
+  type MemberDto,
+  type OrganizationDto,
+  type OrganizationWithRoleDto,
+  type Role,
+  type ShopLogoType,
+  type UpdateOrganizationInput,
 } from '@nagaw/shared';
 import type { Selectable } from 'kysely';
+import { PDFDocument } from 'pdf-lib';
 import { AuditService } from '../audit/audit.service.js';
+import { invalid } from '../catalog/catalog.errors.js';
+import { detectImageType } from '../catalog/products.service.js';
 import { ApiException } from '../common/api-exception.js';
 import type { AuthContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
@@ -18,12 +24,15 @@ import {
   UNIQUE_VIOLATION,
 } from '../database/pg-errors.js';
 import type { OrganizationsTable } from '../database/schema.js';
+import { embedLogo } from '../documents/pdf.js';
 import { generateSlug } from './slug.js';
 
 const MAX_SLUG_ATTEMPTS = 3;
 
 @Injectable()
 export class OrganizationsService {
+  private readonly logger = new Logger(OrganizationsService.name);
+
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
@@ -45,10 +54,19 @@ export class OrganizationsService {
               slug: generateSlug(input.name),
               timezone: input.timezone,
               default_currency: input.defaultCurrency,
+              phone: input.phone,
+              offer: input.offer,
               created_by: user.userId,
             })
             .returningAll()
             .executeTakeFirstOrThrow();
+
+          if (input.ownerName)
+            await trx
+              .updateTable('app.user_profiles')
+              .set({ display_name: input.ownerName })
+              .where('id', '=', user.userId)
+              .execute();
 
           await trx
             .insertInto('app.organization_memberships')
@@ -150,6 +168,127 @@ export class OrganizationsService {
     });
   }
 
+  /** The shop's current logo (ADR-044). */
+  async logo(
+    organizationId: string,
+  ): Promise<{ contentType: ShopLogoType; data: Buffer; sha256: string }> {
+    const row = await this.database.db
+      .selectFrom('app.organizations as o')
+      .innerJoin('app.organization_logos as l', (join) =>
+        join
+          .onRef('l.organization_id', '=', 'o.id')
+          .onRef('l.sha256', '=', 'o.logo_sha256'),
+      )
+      .select(['l.content_type', 'l.data', 'l.sha256'])
+      .where('o.id', '=', organizationId)
+      .executeTakeFirst();
+    if (!row)
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'LOGO_NOT_FOUND',
+        'Cette boutique n’a pas de logo.',
+      );
+    return {
+      contentType: row.content_type,
+      data: row.data,
+      sha256: row.sha256,
+    };
+  }
+
+  async setLogo(
+    organizationId: string,
+    user: AuthContext,
+    declaredType: string | undefined,
+    data: unknown,
+    requestId: string | null,
+  ): Promise<OrganizationDto> {
+    const refused = invalid('logo', 'Envoyez une image PNG ou JPEG.');
+    if (!Buffer.isBuffer(data) || data.length === 0) throw refused;
+    if (data.length > PRODUCT_PHOTO_MAX_BYTES)
+      throw new ApiException(
+        HttpStatus.PAYLOAD_TOO_LARGE,
+        'PHOTO_TOO_LARGE',
+        'Logo trop lourd : 512 Ko au plus.',
+      );
+    const contentType = detectImageType(data);
+    if (
+      (contentType !== 'image/png' && contentType !== 'image/jpeg') ||
+      contentType !== declaredType?.split(';')[0]?.trim()
+    )
+      throw refused;
+    // A logo that passes here can be drawn on every PDF of the shop.
+    try {
+      await embedLogo(await PDFDocument.create(), { contentType, data });
+    } catch (error) {
+      this.logger.warn(`Logo refusé, image illisible : ${String(error)}`);
+      throw refused;
+    }
+    const sha256 = createHash('sha256').update(data).digest('hex');
+
+    return this.database.db.transaction().execute(async (trx) => {
+      await trx
+        .insertInto('app.organization_logos')
+        .values({
+          organization_id: organizationId,
+          content_type: contentType,
+          data,
+          sha256,
+          updated_by: user.userId,
+        })
+        .onConflict((oc) =>
+          oc.column('organization_id').doUpdateSet({
+            content_type: contentType,
+            data,
+            sha256,
+            updated_by: user.userId,
+            updated_at: new Date(),
+          }),
+        )
+        .execute();
+      const updated = await trx
+        .updateTable('app.organizations')
+        .set({ logo_sha256: sha256 })
+        .where('id', '=', organizationId)
+        .returningAll()
+        .executeTakeFirstOrThrow();
+      await this.audit.record(trx, {
+        organizationId,
+        actorType: 'user',
+        actorId: user.userId,
+        action: 'organization.logo_changed',
+        targetType: 'organization',
+        targetId: organizationId,
+        requestId,
+      });
+      return toOrganizationDto(updated);
+    });
+  }
+
+  async removeLogo(
+    organizationId: string,
+    user: AuthContext,
+    requestId: string | null,
+  ): Promise<OrganizationDto> {
+    return this.database.db.transaction().execute(async (trx) => {
+      const updated = await trx
+        .updateTable('app.organizations')
+        .set({ logo_sha256: null })
+        .where('id', '=', organizationId)
+        .returningAll()
+        .executeTakeFirstOrThrow();
+      await this.audit.record(trx, {
+        organizationId,
+        actorType: 'user',
+        actorId: user.userId,
+        action: 'organization.logo_removed',
+        targetType: 'organization',
+        targetId: organizationId,
+        requestId,
+      });
+      return toOrganizationDto(updated);
+    });
+  }
+
   async listMembers(organizationId: string): Promise<MemberDto[]> {
     const rows = await this.database.db
       .selectFrom('app.organization_memberships as m')
@@ -239,6 +378,8 @@ const UPDATABLE = {
   taxId: 'tax_id',
   tradeRegister: 'trade_register',
   invoiceFooter: 'invoice_footer',
+  documentColor: 'document_color',
+  offer: 'offer',
   invoiceDueDays: 'invoice_due_days',
   quoteValidityDays: 'quote_validity_days',
 } as const satisfies Partial<
@@ -265,6 +406,9 @@ function toOrganizationDto(
     invoiceFooter: row.invoice_footer,
     invoiceDueDays: row.invoice_due_days,
     quoteValidityDays: row.quote_validity_days,
+    documentColor: row.document_color,
+    offer: row.offer,
+    logoVersion: row.logo_sha256?.slice(0, 16) ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };

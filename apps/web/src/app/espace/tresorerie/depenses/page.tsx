@@ -16,8 +16,10 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { FoldCard } from '@/components/ui/fold-card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
+import { Pagination } from '@/components/ui/pagination';
 import { apiAsUser } from '@/lib/api/server';
 import { formatCalendarDate, todayIn } from '@/lib/format';
+import { pageNumber, pageParams, pageRows } from '@/lib/pagination';
 import { accountOptions } from '@/lib/treasury/labels';
 import { resolvePeriod } from '@/lib/treasury/period';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
@@ -44,26 +46,34 @@ async function Expenses({
         <Alert>Votre rôle ne donne pas accès à l’argent de la boutique.</Alert>
       </>
     );
-  const period = resolvePeriod(
-    await searchParams,
-    todayIn(organization.timezone),
-    'mois',
-  );
+  const raw = await searchParams;
+  const pageParam = raw.page;
+  const period = resolvePeriod(raw, todayIn(organization.timezone), 'mois');
   const call = <T,>(path: string) =>
     apiAsUser<T>(accessToken, { path, organizationId: organization.id });
-  const [expenses, categories, treasury] = await Promise.all([
+  const range = { from: period.from, to: period.to };
+  const page = pageNumber(pageParam);
+  const [expenses, wholePeriod, categories, treasury] = await Promise.all([
     call<ExpenseDto[]>(
-      `/expenses?${new URLSearchParams({ from: period.from, to: period.to })}`,
+      `/expenses?${new URLSearchParams({ ...range, ...pageParams(page) })}`,
     ),
+    // The total counts the whole period, not only this page.
+    call<ExpenseDto[]>(`/expenses?${new URLSearchParams(range)}`),
     call<ExpenseCategoryDto[]>('/expense-categories'),
     call<TreasuryDto>('/treasury'),
   ]);
   const money = (value: number) =>
     formatAmount(value, organization.defaultCurrency);
   const canManage = roleHasPermission(organization.role, 'treasury.manage');
-  const recorded = expenses.ok
-    ? expenses.data.filter((e) => e.status === 'recorded')
+  const recorded = wholePeriod.ok
+    ? wholePeriod.data.filter((e) => e.status === 'recorded')
     : [];
+  const list = expenses.ok ? pageRows(expenses.data) : null;
+  const periodParams = new URLSearchParams(
+    period.key === 'perso'
+      ? { du: period.from, au: period.to }
+      : { periode: period.key },
+  );
 
   return (
     <>
@@ -100,7 +110,7 @@ async function Expenses({
 
       {!expenses.ok ? (
         <Alert tone="error">Dépenses indisponibles : {expenses.message}</Alert>
-      ) : expenses.data.length === 0 ? (
+      ) : !list || list.rows.length === 0 ? (
         <EmptyState title="Aucune dépense sur cette période" />
       ) : (
         <>
@@ -111,7 +121,7 @@ async function Expenses({
             </span>
           </p>
           <ul aria-label="Liste des dépenses" className="flex flex-col gap-2">
-            {expenses.data.map((expense) => (
+            {list.rows.map((expense) => (
               <li
                 key={expense.id}
                 className="flex flex-col gap-2 rounded-2xl border border-line bg-surface px-4 py-3"
@@ -188,6 +198,12 @@ async function Expenses({
           </ul>
         </>
       )}
+      <Pagination
+        path="/espace/tresorerie/depenses"
+        params={periodParams}
+        page={page}
+        hasNext={list?.hasNext ?? false}
+      />
 
       <FoldCard title="Catégories de dépenses" icon={Tags}>
         {!categories.ok ? (

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { documentColorSchema } from './document-colors.js';
 import type { MemberStatus } from './members.js';
 import { roleSchema } from './permissions.js';
 
@@ -24,6 +25,25 @@ const nameSchema = z
   .min(2, 'Le nom doit contenir au moins 2 caractères')
   .max(120, 'Le nom ne peut pas dépasser 120 caractères');
 
+/** What a shop sells: its screens follow (ADR-047). */
+export const SHOP_OFFERS = ['products', 'services', 'both'] as const;
+export type ShopOffer = (typeof SHOP_OFFERS)[number];
+const offerSchema = z.enum(SHOP_OFFERS, { error: 'Choix inconnu' });
+
+export const sellsGoods = (offer: ShopOffer) => offer !== 'services';
+export const sellsServices = (offer: ShopOffer) => offer !== 'products';
+
+const ownerNameSchema = z
+  .string()
+  .trim()
+  .min(2, 'Indiquez votre nom complet')
+  .max(120, '120 caractères au plus');
+
+const phoneSchema = z
+  .string()
+  .trim()
+  .regex(/^\+?[\d\s().-]{8,30}$/, 'Numéro de téléphone invalide');
+
 export const createOrganizationSchema = z
   .object({
     name: nameSchema,
@@ -32,9 +52,21 @@ export const createOrganizationSchema = z
       .string()
       .regex(/^[A-Z]{3}$/, 'Code devise ISO 4217 attendu')
       .optional(),
+    /** Full name of the owner, kept on their profile. */
+    ownerName: ownerNameSchema.optional(),
+    /** Phone of the shop, printed on its documents. */
+    phone: phoneSchema.optional(),
+    offer: offerSchema.optional(),
   })
   .strict();
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
+
+/** The form asks both: the API stays open to its older clients. */
+export const createShopFormSchema = createOrganizationSchema.extend({
+  ownerName: ownerNameSchema,
+  phone: phoneSchema,
+  offer: offerSchema,
+});
 
 /** Bounds mirror the database check constraint. */
 export const INVITATION_TTL_HOURS = { min: 1, max: 720 } as const;
@@ -77,6 +109,8 @@ export const updateOrganizationSchema = z
     taxId: text(40).optional(),
     tradeRegister: text(60).optional(),
     invoiceFooter: text(500).optional(),
+    documentColor: documentColorSchema.optional(),
+    offer: offerSchema.optional(),
     invoiceDueDays: days(0, 365).optional(),
     quoteValidityDays: days(1, 365).optional(),
   })
@@ -105,6 +139,11 @@ export interface OrganizationDto {
   invoiceFooter: string;
   invoiceDueDays: number;
   quoteValidityDays: number;
+  offer: ShopOffer;
+  /** Colour of the shop's documents, `#rrggbb` (ADR-044). */
+  documentColor: string;
+  /** Changes with the logo (cache key); null without logo. */
+  logoVersion: string | null;
   createdAt: string;
   updatedAt: string;
 }

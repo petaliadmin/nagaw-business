@@ -7,6 +7,7 @@ import {
   parseAmount,
   PAYMENT_METHODS,
   sellingOptionsOf,
+  perUnit,
   UNITS,
   type CreateSaleInput,
   type CustomerDto,
@@ -89,7 +90,7 @@ function optionPrice(
   // than a fraction of a franc.
   const one = displayPriceOf(option, product.salePrice);
   return option.factor < 1
-    ? `${money(product.salePrice)} le ${UNITS[product.unit].label}`
+    ? `${money(product.salePrice)} ${perUnit(product.unit)}`
     : money(one);
 }
 
@@ -480,6 +481,7 @@ export interface SaleDraft {
  * its answer.
  */
 export function Checkout({
+  noun,
   currency,
   products,
   customers: initialCustomers,
@@ -489,6 +491,8 @@ export function Checkout({
   onCreateCustomer,
   onCorrectStock,
 }: {
+  /** What the shop sells, in its sentences: « produit », « service ». */
+  noun: string;
   currency: string;
   products: ProductDto[];
   customers: CustomerDto[];
@@ -777,7 +781,7 @@ export function Checkout({
         Panier
       </h2>
       {cart.length === 0 ? (
-        <p className="text-ink-muted">Touchez un produit pour l’ajouter.</p>
+        <p className="text-ink-muted">Touchez un {noun} pour l’ajouter.</p>
       ) : (
         <ul
           aria-label="Articles du panier"
@@ -1241,7 +1245,7 @@ export function Checkout({
       >
         <div className="relative">
           <label htmlFor={`${ids}-search`} className="sr-only">
-            Chercher un produit à vendre
+            Chercher un {noun} à vendre
           </label>
           <Search
             aria-hidden
@@ -1253,12 +1257,12 @@ export function Checkout({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.currentTarget.value)}
-            placeholder="Chercher un produit"
+            placeholder={`Chercher un ${noun}`}
             className={`${CONTROL} pl-12`}
           />
         </div>
         {visible.length === 0 ? (
-          <p className="text-ink-muted">Aucun produit ne correspond.</p>
+          <p className="text-ink-muted">Aucun {noun} ne correspond.</p>
         ) : (
           <ul
             aria-label="Produits à vendre"
@@ -1290,7 +1294,7 @@ export function Checkout({
                       {money(product.salePrice)}
                       {several && (
                         <span className="block text-base font-semibold text-ink-muted">
-                          le {UNITS[product.unit].label} · autres unités
+                          {perUnit(product.unit)} · autres unités
                         </span>
                       )}
                     </span>
@@ -1332,7 +1336,7 @@ export function Checkout({
             className={`${buttonClasses('secondary')} lg:hidden`}
           >
             <ArrowLeft aria-hidden className="size-5" />
-            Ajouter d’autres produits
+            Ajouter d’autres {noun}s
           </button>
         )}
         {cartPanel}

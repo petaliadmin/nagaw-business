@@ -11,10 +11,11 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { CATALOG_NOUNS } from '@/lib/catalog/offer';
 import { ProductForm } from '../product-form';
 
 export const metadata: Metadata = {
-  title: 'Ajouter un produit — Nagaw Business',
+  title: 'Ajouter un produit ou un service — Nagaw Business',
 };
 
 async function NewProduct() {
@@ -23,7 +24,7 @@ async function NewProduct() {
   const { organization, accessToken } = workspace;
   const header = (
     <PageHeader
-      title="Ajouter un produit"
+      title={`Ajouter un ${CATALOG_NOUNS[organization.offer]}`}
       description="Seuls le nom et le prix sont obligatoires. Vous pourrez tout modifier ensuite."
     />
   );
@@ -32,7 +33,8 @@ async function NewProduct() {
       <>
         {header}
         <Alert>
-          Seuls le propriétaire et les gérants ajoutent des produits.
+          Seuls le propriétaire et les gérants ajoutent des produits et des
+          services.
         </Alert>
       </>
     );
@@ -65,6 +67,7 @@ async function NewProduct() {
       {header}
       <Card>
         <ProductForm
+          offer={organization.offer}
           organizationId={organization.id}
           currency={organization.defaultCurrency}
           categories={categories.data.filter((c) => c.status === 'active')}

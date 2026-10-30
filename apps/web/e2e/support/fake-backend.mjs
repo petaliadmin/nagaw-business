@@ -18,7 +18,13 @@ import {
   handlePush,
   resetNotifications,
 } from './fake-notifications.mjs';
-import { handleSales, resetSales } from './fake-sales.mjs';
+import { catalogState, paged } from './fake-catalog.mjs';
+import {
+  addLargeSale,
+  handleSales,
+  resetSales,
+  salesState,
+} from './fake-sales.mjs';
 import {
   handleTreasury,
   resetTreasury,
@@ -100,6 +106,8 @@ function makeState() {
       timezone: 'Africa/Dakar',
       defaultCurrency: 'XOF',
       invitationTtlHours: 168,
+      documentColor: '#6d28d9',
+      offer: 'both',
       ...DOCUMENT_SETTINGS,
       createdAt: created,
       updatedAt: created,
@@ -112,6 +120,8 @@ function makeState() {
       timezone: 'UTC',
       defaultCurrency: 'EUR',
       invitationTtlHours: 168,
+      documentColor: '#6d28d9',
+      offer: 'both',
       ...DOCUMENT_SETTINGS,
       createdAt: created,
       updatedAt: created,
@@ -357,6 +367,22 @@ const server = createServer(async (req, res) => {
     resetNotifications();
     return send(res, 200, { ok: true });
   }
+  if (path === '/__test/long-names') {
+    const long =
+      'Établissements-Commerciaux-Internationaux-Du-Sénégal-Oriental';
+    state.organizations[ACME].name = `${long} ${long}`;
+    for (const product of catalogState().products) product.name += ` ${long}`;
+    for (const customer of salesState().customers) customer.name += ` ${long}`;
+    return send(res, 200, { ok: true });
+  }
+  if (path === '/__test/large-sale') {
+    addLargeSale(
+      ACME,
+      USERS.awa.id,
+      Number(url.searchParams.get('count') ?? 1),
+    );
+    return send(res, 200, { ok: true });
+  }
 
   // --- Supabase Auth --------------------------------------------------------
   if (path === '/auth/v1/.well-known/jwks.json') return send(res, 200, jwks);
@@ -555,7 +581,7 @@ const server = createServer(async (req, res) => {
       });
     }
     if (path === '/api/v1/admin/shops')
-      return send(res, 200, orgs.map(listItem));
+      return send(res, 200, paged(orgs, url).map(listItem));
     if (path === '/api/v1/admin/plan-requests')
       return send(
         res,
@@ -728,6 +754,10 @@ const server = createServer(async (req, res) => {
       status: 'active',
       timezone: body.timezone ?? 'UTC',
       defaultCurrency: body.defaultCurrency ?? 'XOF',
+      phone: body.phone ?? '',
+      logoVersion: null,
+      documentColor: '#6d28d9',
+      offer: body.offer ?? 'products',
       createdAt: now,
       updatedAt: now,
     };
@@ -845,6 +875,32 @@ const server = createServer(async (req, res) => {
       requestId: 'req-patch',
       createdAt: new Date().toISOString(),
     });
+    return send(res, 200, org);
+  }
+  if (path === '/api/v1/organizations/current/logo') {
+    const org = state.organizations[orgId];
+    if (req.method === 'GET') {
+      if (!state.logos?.[orgId])
+        return apiError(res, 404, 'LOGO_NOT_FOUND', 'Pas de logo.');
+      res.writeHead(200, { 'Content-Type': state.logos[orgId].type });
+      return res.end(state.logos[orgId].data);
+    }
+    if (!canManage) return forbidden(res);
+    if (req.method === 'PUT') {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      state.logos = {
+        ...state.logos,
+        [orgId]: {
+          type: req.headers['content-type'],
+          data: Buffer.concat(chunks),
+        },
+      };
+      org.logoVersion = String(Date.now());
+    } else {
+      delete state.logos?.[orgId];
+      org.logoVersion = null;
+    }
     return send(res, 200, org);
   }
   if (path === '/api/v1/organizations/current/members') {
@@ -1031,6 +1087,7 @@ const server = createServer(async (req, res) => {
     await handleDocuments({
       req,
       res,
+      url,
       path,
       orgId,
       role: membership.role,

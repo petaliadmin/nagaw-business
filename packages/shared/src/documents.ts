@@ -300,6 +300,8 @@ export interface ShopIdentityDto {
   invoiceFooter: string;
   invoiceDueDays: number;
   quoteValidityDays: number;
+  /** `#rrggbb`, on all the shop's documents (ADR-044). */
+  documentColor: string;
 }
 
 /** `F-2026-0007`. */

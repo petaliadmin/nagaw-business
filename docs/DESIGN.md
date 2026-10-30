@@ -51,6 +51,11 @@ Ces valeurs deviennent des jetons CSS (`@theme` de Tailwind 4) dans `apps/web/sr
 - **Mobile (< 768 px)** : barre de navigation en bas avec **trois entrées au plus et « Plus »**, pour garder des libellés de 16 px sur 360 px de large. Aujourd'hui : Accueil, Équipe, Historique ; Vendre, Produits et Factures les remplaceront à mesure de leur livraison. Le reste (Paramètres, boutique, compte) est dans le panneau « Plus ».
 - **Tablette et ordinateur (≥ 768 px)** : barre latérale colorée, contenu en grille, écran de vente en deux colonnes (produits à gauche, panier à droite).
 - Marges latérales de 16 px minimum sur mobile ; aucun défilement horizontal.
+- **« Vendre » flottant** sur Accueil et Ventes, au-dessus de la barre du bas, pour qui a le droit de vendre (ADR-044).
+- **Filtres d'une liste** : dans un panneau ouvert par « Filtrer », à côté de la recherche ; le filtre choisi reste visible sur la page et se retire d'un toucher.
+- **Listes longues** : 20 lignes par page, « Précédent », « Page n », « Suivant » dessous ; rien quand tout tient sur une page.
+- **Chiffres en tuile** : composant `Figure` dans un conteneur `@container` : un chiffre ne sort jamais de sa tuile et ne se coupe jamais entre ses chiffres.
+- **Sensation d'application installée** : panneaux depuis le bas (composant `BottomSheet`), « Retour » dans l'en-tête des sous-pages, retour visuel au toucher (ADR-044).
 - Bandeau d'état de connexion permanent mais discret : « Hors ligne — vos ventes sont gardées sur ce téléphone » / « 3 ventes en attente d'envoi » / « Tout est à jour ».
 
 ## Accessibilité (WCAG 2.2 AA minimum)

@@ -16,10 +16,12 @@ import {
   type PaymentMethod,
   type SaleDto,
   type SaleListItemDto,
+  type SaleListQuery,
   type SalesDaySummaryDto,
 } from '@nagaw/shared';
 import { sql } from 'kysely';
 import { AuditService } from '../audit/audit.service.js';
+import { pageOf } from '../common/page.js';
 import { ApiException } from '../common/api-exception.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { today } from '../common/today.js';
@@ -207,11 +209,10 @@ export class SalesService {
   async list(
     tenant: TenantContext,
     user: AuthContext,
-    day?: string,
+    query: SaleListQuery,
   ): Promise<SaleListItemDto[]> {
-    const bounds = await this.dayOf(tenant.organizationId, day);
     const sellerId = sellerScope(tenant, user);
-    let query = this.database.db
+    let rows = this.database.db
       .selectFrom('app.sales as s')
       .innerJoin('app.user_profiles as u', 'u.id', 's.seller_id')
       .leftJoin('app.customers as c', (join) =>
@@ -242,15 +243,18 @@ export class SalesService {
         ),
       ])
       .where('s.organization_id', '=', tenant.organizationId)
-      .where(
+      .orderBy('s.occurred_at', 'desc')
+      .orderBy('s.id', 'desc');
+    if (!query.all) {
+      const bounds = await this.dayOf(tenant.organizationId, query.day);
+      rows = rows.where(
         sql<string>`(s.occurred_at at time zone ${bounds.timezone})::date::text`,
         '=',
         bounds.day,
-      )
-      .orderBy('s.occurred_at', 'desc')
-      .limit(500);
-    if (sellerId) query = query.where('s.seller_id', '=', sellerId);
-    return (await query.execute()).map((row) => ({
+      );
+    }
+    if (sellerId) rows = rows.where('s.seller_id', '=', sellerId);
+    return (await pageOf(rows, query, 500).execute()).map((row) => ({
       id: row.id,
       saleNumber: row.sale_number,
       status: row.status,

@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   Put,
   Res,
   StreamableFile,
@@ -18,12 +19,14 @@ import {
   fromSaleSchema,
   fromSourceSchema,
   invoicePaymentSchema,
+  pageQuerySchema,
   updateInvoiceSchema,
   updateQuoteSchema,
   type CancelInvoiceInput,
   type CreateInvoiceInput,
   type CreateQuoteInput,
   type DocumentListItemDto,
+  type PageQuery,
   type FromSaleInput,
   type InvoiceDto,
   type InvoicePaymentInput,
@@ -83,8 +86,9 @@ export class DocumentsController {
   @RequirePermission('documents.read')
   listQuotes(
     @CurrentTenant() tenant: TenantContext,
+    @Query(new ZodValidationPipe(pageQuerySchema)) page: PageQuery,
   ): Promise<DocumentListItemDto[]> {
-    return this.documents.listQuotes(tenant.organizationId);
+    return this.documents.listQuotes(tenant.organizationId, page);
   }
 
   @Post('quotes')
@@ -177,9 +181,10 @@ export class DocumentsController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
     const db = this.database.db;
-    const [quote, shop] = await Promise.all([
+    const [quote, shop, logo] = await Promise.all([
       this.documents.getQuote(db, tenant.organizationId, id),
       this.documents.shop(db, tenant.organizationId),
+      this.documents.logo(tenant.organizationId),
     ]);
     const data = await renderDocumentPdf(
       this.documents.identity(shop),
@@ -188,6 +193,7 @@ export class DocumentsController {
         kind: 'quote',
         quote,
       },
+      logo,
     );
     return pdfFile(res, data, quote.number);
   }
@@ -198,8 +204,9 @@ export class DocumentsController {
   @RequirePermission('documents.read')
   listInvoices(
     @CurrentTenant() tenant: TenantContext,
+    @Query(new ZodValidationPipe(pageQuerySchema)) page: PageQuery,
   ): Promise<DocumentListItemDto[]> {
-    return this.documents.listInvoices(tenant.organizationId);
+    return this.documents.listInvoices(tenant.organizationId, page);
   }
 
   @Post('invoices')
@@ -322,9 +329,10 @@ export class DocumentsController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
     const db = this.database.db;
-    const [invoice, shop] = await Promise.all([
+    const [invoice, shop, logo] = await Promise.all([
       this.documents.getInvoice(db, tenant.organizationId, id),
       this.documents.shop(db, tenant.organizationId),
+      this.documents.logo(tenant.organizationId),
     ]);
     const data = await renderDocumentPdf(
       this.documents.identity(shop),
@@ -333,6 +341,7 @@ export class DocumentsController {
         kind: 'invoice',
         invoice,
       },
+      logo,
     );
     return pdfFile(res, data, invoice.number ?? 'facture-brouillon');
   }
