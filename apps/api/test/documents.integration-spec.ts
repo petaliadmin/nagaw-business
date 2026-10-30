@@ -139,6 +139,39 @@ describe('Quotes, invoices and credit notes', () => {
     await ctx.close();
   });
 
+  describe('figures of the section', () => {
+    it('counts the documents of the shop, and of no other', async () => {
+      const before = (await get(alice, acmeId, '/documents/stats').expect(200))
+        .body;
+      const invoice = await issuedInvoice();
+      const after = (await get(alice, acmeId, '/documents/stats').expect(200))
+        .body;
+      expect(after.invoices.count).toBe(before.invoices.count + 1);
+      expect(after.invoices.total - before.invoices.total).toBe(
+        invoice.totals.total,
+      );
+      expect(after.invoices.balance - before.invoices.balance).toBe(
+        invoice.totals.total,
+      );
+      await pay(invoice.id, 500).expect(201);
+      const paid = (await get(alice, acmeId, '/documents/stats').expect(200))
+        .body;
+      expect(paid.invoices.paid - after.invoices.paid).toBe(500);
+      expect(paid.invoices.balance).toBe(after.invoices.balance - 500);
+
+      const theirs = (await get(bob, globexId, '/documents/stats').expect(200))
+        .body;
+      expect(theirs.invoices.count).toBe(0);
+      expect(theirs.quotes.count).toBe(0);
+      await get(bob, acmeId, '/documents/stats').expect(404);
+    });
+
+    it('keeps the totals of the shop from the sellers', async () => {
+      await get(carol, acmeId, '/documents/stats').expect(403);
+      await get(dan, acmeId, '/documents/stats').expect(200);
+    });
+  });
+
   describe('quotes', () => {
     it('numbers a quote, prices it with the tax detailed and answers a replay', async () => {
       const clientOperationId = randomUUID();

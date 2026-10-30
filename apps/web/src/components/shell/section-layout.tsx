@@ -4,7 +4,7 @@ import { sectionTabsFor, type Section } from './navigation';
 import { SectionTabs } from './section-tabs';
 
 const LABELS: Record<Section, string> = {
-  ventes: 'Ventes et factures',
+  factures: 'Factures et devis',
   rapports: 'Rapports',
   parametres: 'Paramètres',
 };

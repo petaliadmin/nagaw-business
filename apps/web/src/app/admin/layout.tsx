@@ -2,6 +2,7 @@ import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense, type ReactNode } from 'react';
+import { BackLink, NavigationTrail } from '@/components/shell/back-link';
 import { SignOutButton } from '@/components/pwa/sign-out-button';
 import { Alert } from '@/components/ui/alert';
 import { Logo } from '@/components/ui/logo';
@@ -93,6 +94,8 @@ async function AdminFrame({ children }: { children: ReactNode }) {
           id="contenu"
           className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 md:p-8"
         >
+          <NavigationTrail />
+          <BackLink className="-ml-2 flex self-start" />
           {children}
         </main>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-surface px-4 py-3 md:hidden print:hidden">

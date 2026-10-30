@@ -511,6 +511,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **logo** : table `organization_logos` en base, sur le modèle des photos produits. PNG ou JPEG seulement, les deux formats qu'un PDF sait intégrer : le navigateur redimensionne à 512 px, et l'API essaie l'image dans un PDF avant de l'accepter. Modifiable avec `organization.update` ;
   - **couleur des documents** : `organizations.document_color`, en `#rrggbb`, appliquée aux PDF de factures et devis et au ticket de vente. `documentPalette` en déduit les teintes : le texte reste à 4,5:1, même sur une couleur très claire ;
   - **création de boutique** : nom complet et téléphone obligatoires dans le formulaire, facultatifs dans l'API pour ses clients existants. Le nom va sur le profil (`display_name`), le téléphone sur la boutique (`organizations.phone`), donc sur ses documents.
+  - **logo devant le nom** : barre latérale, en-tête mobile et caisse affichent le logo, ou l'icône par défaut sans logo ou s'il ne se charge pas (caisse sans réseau) ;
 - **Conséquences** :
   - appliquer `20261030090000_organization_logos` **avant** de déployer l'API : toute lecture d'une organisation renvoie `logo_sha256` et `document_color` (ADR-043) ;
   - les pages à totaux font une requête de plus ;
@@ -560,3 +561,47 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - c'est un **réglage d'affichage, pas une règle** : l'API ne refuse aucune nature selon ce choix, et une boutique qui change d'avis retrouve tout ce qu'elle avait saisi. Ce qui existe déjà reste visible dans la liste ;
   - la nature d'un article (ADR-045) reste la vérité : la comptabilité (ADR-046) ne dépend pas de ce réglage.
 - **Conséquences** : appliquer `20261030110000_shop_offer` et `20261030120000_shop_offer_default` avant de déployer l'API.
+
+## ADR-048 — Factures et devis ont leur entrée de menu
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-30).
+- **Décision** :
+  - « Factures / Devis » quitte les onglets de Ventes et devient une entrée du menu, après « Produits et services », dans « Plus » sur téléphone (trois entrées au plus dans la barre du bas, DESIGN.md) ;
+  - quatre onglets : **Résumé** (`/espace/factures`), **Factures** (`/liste`), **Devis** (`/devis`), **Nouveau** (`/nouveau`) ; `?type=devis` redirige vers la nouvelle adresse ;
+  - les chiffres viennent de `GET /documents/stats`, calculés par la base sur tous les documents : les listes sont paginées et plafonnées, elles ne peuvent pas les fournir ;
+  - ce sont les totaux de la boutique : ils demandent `stats.read`. Un vendeur (ADR-036) n'a pas le Résumé ni « Reste à encaisser » : il arrive sur la liste et prépare ses devis ;
+  - les factures annulées, les avoirs et les brouillons ne comptent pas dans le facturé ; un devis envoyé dont la date est passée compte comme expiré, pas en attente.
+
+## ADR-049 — Visionneuse de PDF dans l'application
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-30).
+- **Décision** : factures et devis se lisent dans une page d'aperçu (`…/apercu`) qui dessine le PDF avec **pdf.js** (`pdfjs-dist`), avec Réduire, Agrandir et Télécharger. Un cadre (`iframe`) ou le lecteur du navigateur ne conviennent pas : les navigateurs Android n'affichent pas un PDF intégré à une page. La version _legacy_ de pdf.js sert les anciens navigateurs des téléphones d'entrée de gamme. Le module est chargé à la demande, sur cette page seulement.
+- **Sécurité** : le fichier vient toujours de la route web `…/pdf`, qui transmet le jeton de l'utilisateur à l'API ; rien n'est public. L'aperçu d'un document d'une autre boutique répond « Introuvable ».
+- **Conséquences** : une dépendance de plus, à maintenir à jour. Si le dessin échoue, la page le dit et propose le téléchargement.
+
+## ADR-052 — Cachet et signature sur les factures
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-30).
+- **Décision** :
+  - le cachet et la signature se déposent dans Paramètres, dans « Factures et devis », sur le modèle du logo : PNG ou JPEG, 512 Ko au plus, essayés dans un PDF avant d'être acceptés ;
+  - ils sont imprimés en bas à droite des **factures et des avoirs**, jamais sur un brouillon, qui n'a pas de valeur ; pas sur les devis, la demande portant sur les factures ;
+  - les images d'origine ne se lisent qu'avec `organization.update` : un vendeur voit une facture imprimée, mais ne peut pas récupérer le fichier pour signer autre chose ;
+  - leur image est lue au moment de produire le PDF : la changer change aussi le PDF des factures déjà émises.
+- **Conséquences** :
+  - appliquer `20261030130000_shop_marks` **avant** de déployer l'API ;
+  - le document imprimé reste copiable : le cachet est une image, pas une signature électronique ayant valeur de preuve. Le propriétaire le signe sous sa responsabilité.
+
+## ADR-051 — Changer de boutique depuis son nom
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-30). Remplace le choix du 2026-10-26, qui gardait ce changement dans Paramètres.
+- **Décision** : avec plusieurs boutiques, le nom de la boutique, dans la barre latérale et l'en-tête mobile, ouvre un panneau : la liste des boutiques du compte avec le rôle dans chacune, et « Créer une boutique ». Un toucher ouvre la boutique. Le choix reste dans Paramètres. Il vaut pour tout compte de plusieurs boutiques, propriétaire ou non : un gérant ou un vendeur en a autant besoin. La vérification reste côté serveur : `selectOrganization` ne retient qu'une boutique listée par l'API pour ce compte, et le cookie n'est qu'une préférence, jamais une autorisation.
+- **Limite** : seule la boutique ouverte montre son logo, celui des autres n'étant pas accessible depuis la boutique active.
+
+## ADR-050 — Un seul « Retour », géré par l'application
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-30).
+- **Décision** :
+  - `BackLink` est le seul « Retour » : dans la barre du haut sur téléphone, au-dessus du contenu sur ordinateur et dans l'administration. Les liens posés page par page (« Toutes les factures », « Toutes les caisses »…) disparaissent ;
+  - il revient à la page vue juste avant, avec ses filtres et sa position ; sans page précédente (lien direct, rechargement), il va à la page du dessus (`parentPath`) ;
+  - il ne revient jamais sur un formulaire : après l'envoi, il va à la page du dessus ;
+  - les pages du menu n'ont pas de « Retour » : elles s'atteignent depuis le menu, comme les onglets d'une application. La caisse garde son lien « Accueil ».

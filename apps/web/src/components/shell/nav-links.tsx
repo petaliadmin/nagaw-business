@@ -1,31 +1,10 @@
 'use client';
 
-import { ChevronLeft, Store } from 'lucide-react';
 import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { Role, ShopOffer } from '@nagaw/shared';
-import { activeHref, navItemsFor, parentPath } from './navigation';
-
-/** Start of the phone header: « Retour » on a sub-page, the shop otherwise. */
-export function HeaderStart() {
-  const parent = parentPath(usePathname());
-  if (parent)
-    return (
-      <Link
-        href={parent}
-        className="-ml-2 flex min-h-12 shrink-0 items-center gap-0.5 rounded-xl pr-2 text-base font-bold text-brand-ink"
-      >
-        <ChevronLeft aria-hidden className="size-7" />
-        Retour
-      </Link>
-    );
-  return (
-    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-strong text-white">
-      <Store aria-hidden className="size-6" />
-    </span>
-  );
-}
+import { activeHref, navItemsFor } from './navigation';
 
 /**
  * Vertical links: the dark sidebar (tablet and desktop), or the

@@ -66,6 +66,7 @@ export function PhotoField({
   legend = 'Photo (facultatif)',
   removable = true,
   logo = false,
+  words,
 }: {
   /** Current photo, on the edit form. */
   currentUrl?: string | null;
@@ -75,8 +76,10 @@ export function PhotoField({
   removable?: boolean;
   /** A shop's logo: chosen from the files, shown whole, never cropped. */
   logo?: boolean;
+  /** Its words, for an image of the shop other than the logo. */
+  words?: { the: string; preview: string; choose: string };
 }) {
-  const noun = logo ? 'le logo' : 'la photo';
+  const noun = words?.the ?? (logo ? 'le logo' : 'la photo');
   const inputId = useId();
   const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(currentUrl ?? null);
@@ -121,7 +124,10 @@ export function PhotoField({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={preview}
-              alt={logo ? 'Aperçu du logo' : 'Aperçu de la photo'}
+              alt={
+                words?.preview ??
+                (logo ? 'Aperçu du logo' : 'Aperçu de la photo')
+              }
               className={`size-full ${logo ? 'object-contain' : 'object-cover'}`}
             />
           ) : (
@@ -138,9 +144,11 @@ export function PhotoField({
               ? 'Préparation…'
               : preview && !removed
                 ? `Changer ${noun}`
-                : logo
-                  ? 'Choisir un logo'
-                  : 'Prendre ou choisir une photo'}
+                : words
+                  ? words.choose
+                  : logo
+                    ? 'Choisir un logo'
+                    : 'Prendre ou choisir une photo'}
             <input
               ref={input}
               id={inputId}

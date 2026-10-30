@@ -288,6 +288,35 @@ export interface DocumentListItemDto {
   date: string;
 }
 
+/** Figures of the « Factures / Devis » section, over all the documents. */
+export interface DocumentStatsDto {
+  invoices: {
+    /** Issued invoices, cancelled ones and credit notes left out. */
+    count: number;
+    total: number;
+    /** Issued this calendar month. */
+    monthTotal: number;
+    paid: number;
+    /** Left to collect. */
+    balance: number;
+    overdueCount: number;
+    overdueAmount: number;
+    drafts: number;
+  };
+  quotes: {
+    count: number;
+    /** Sent and still valid: awaiting the customer's answer. */
+    pendingCount: number;
+    pendingAmount: number;
+    acceptedCount: number;
+    acceptedAmount: number;
+    refusedCount: number;
+    /** Sent, and their date passed without an answer. */
+    expiredCount: number;
+    drafts: number;
+  };
+}
+
 /** Shop identity printed on documents (ADR-026). */
 export interface ShopIdentityDto {
   name: string;

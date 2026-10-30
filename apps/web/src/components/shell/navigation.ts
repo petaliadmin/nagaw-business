@@ -9,6 +9,7 @@ import {
   Banknote,
   ChartColumn,
   Contact,
+  FileText,
   House,
   Package,
   Receipt,
@@ -36,8 +37,8 @@ export interface NavItem {
 /**
  * Menu in the owner's order (2026-10-25). Every entry points to a page that
  * exists: « Commandes » and « Achats » join it when their module ships (no
- * dead links). Invoices, accounting, team, history and subscription are
- * tabs of their section. The phone bottom bar holds at most three entries
+ * dead links). Accounting, team, history and subscription are tabs of
+ * their section. The phone bottom bar holds at most three entries
  * next to « Plus » (DESIGN.md).
  */
 export const NAV_ITEMS: readonly NavItem[] = [
@@ -53,7 +54,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Ventes',
     icon: Receipt,
     bottomBar: true,
-    matches: ['/espace/factures'],
   },
   {
     href: '/espace/produits',
@@ -61,6 +61,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
     shortLabel: 'Produits',
     icon: Package,
     bottomBar: true,
+  },
+  {
+    href: '/espace/factures',
+    label: 'Factures / Devis',
+    icon: FileText,
+    bottomBar: false,
+    permission: 'documents.read',
   },
   {
     href: '/espace/clients',
@@ -149,6 +156,7 @@ export function activeHref(
  * the pages reached from the menu (a tab of a section counts as one).
  */
 export function parentPath(pathname: string): string | null {
+  if (/^\/admin\/boutiques\/[^/]+$/.test(pathname)) return '/admin/boutiques';
   if (pathname === '/espace' || !pathname.startsWith('/espace/')) return null;
   const tabs = Object.values(SECTION_TABS).flat() as readonly SectionTab[];
   const topLevel = [
@@ -156,7 +164,34 @@ export function parentPath(pathname: string): string | null {
     ...tabs.flatMap((tab) => [tab.href, ...(tab.paths ?? [])]),
   ];
   if (topLevel.includes(pathname)) return null;
+  // A new document or an invoice comes from a tab, not from its parent path.
+  if (/^\/espace\/factures\/(nouvelle|devis\/nouveau)$/.test(pathname))
+    return '/espace/factures/nouveau';
+  if (/^\/espace\/factures\/[^/]+$/.test(pathname))
+    return '/espace/factures/liste';
   return pathname.slice(0, pathname.lastIndexOf('/'));
+}
+
+/** Pages that send a form: going back to one would show it again. */
+const FORM_PAGE = /\/(nouveau|nouvelle|modifier)$/;
+
+/**
+ * The pages seen in this tab, after a move to `pathname`: going back, with
+ * « Retour » or the browser's button, takes the last page off.
+ */
+export function trackPath(
+  trail: readonly string[],
+  pathname: string,
+): string[] {
+  if (trail.at(-1) === pathname) return [...trail];
+  if (trail.at(-2) === pathname) return trail.slice(0, -1);
+  return [...trail, pathname].slice(-50);
+}
+
+/** Whether « Retour » may go to the page seen just before. */
+export function canGoBack(trail: readonly string[]): boolean {
+  const previous = trail.at(-2);
+  return previous !== undefined && !FORM_PAGE.test(previous);
 }
 
 export interface SectionTab {
@@ -169,13 +204,14 @@ export interface SectionTab {
 
 /** Tabs at the top of the sections that group several pages. */
 export const SECTION_TABS = {
-  ventes: [
-    { href: '/espace/ventes', label: 'Ventes' },
+  factures: [
+    { href: '/espace/factures', label: 'Résumé', permission: 'stats.read' },
+    { href: '/espace/factures/liste', label: 'Factures' },
+    { href: '/espace/factures/devis', label: 'Devis' },
     {
-      href: '/espace/factures',
-      label: 'Factures et devis',
-      paths: ['/espace/factures/devis'],
-      permission: 'documents.read',
+      href: '/espace/factures/nouveau',
+      label: 'Nouveau',
+      permission: 'quotes.manage',
     },
   ],
   rapports: [

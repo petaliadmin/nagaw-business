@@ -875,3 +875,11 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Livré** sur la branche `claude/refont-fix`, non fusionné, non déployé : choix « Des produits », « Des services » ou « Les deux » à la création et dans Paramètres ; menu, listes, formulaire, Accueil, statistiques et caisse adaptés.
 - **À faire par le propriétaire avant le déploiement** : appliquer `20261030110000_shop_offer` puis `20261030120000_shop_offer_default`.
 - **Tests exécutés** sur la version finale (2026-10-30, build dans les conditions de la CI) : format, lint, types, unitaires (296), intégration (202) et build verts ; e2e publics 36, ordinateur 148 et téléphone 147 réussis. Des gels de 30 s ont touché l'analyse d'accessibilité sur des pages différentes d'une passe à l'autre, sur une machine chargée, sans se reproduire à la dernière passe : à surveiller en CI.
+
+## Menu Factures / Devis (ADR-048)
+
+- **Livré** sur la branche `claude/menu-factures-devis` : entrée de menu, pages Résumé, Factures, Devis et Nouveau, endpoint `GET /documents/stats` avec test d'isolation. Corrige aussi le bouton « Retour » d'une fiche de devis, qui menait à une page inexistante.
+- **Visionneuse de PDF** (ADR-049) : aperçu des factures et devis dans l'application, avec pdf.js.
+- **Retour global** (ADR-050) : un seul bouton pour toute l'application, ordinateur, téléphone et administration.
+- **Changer de boutique** (ADR-051) : depuis le nom de la boutique, en un toucher.
+- **Cachet et signature** (ADR-052) : dans Paramètres, imprimés sur les factures émises. Migration `20261030130000_shop_marks` à appliquer avant de déployer.

@@ -26,6 +26,7 @@ import {
   type CreateInvoiceInput,
   type CreateQuoteInput,
   type DocumentListItemDto,
+  type DocumentStatsDto,
   type PageQuery,
   type FromSaleInput,
   type InvoiceDto,
@@ -78,6 +79,13 @@ export class DocumentsController {
     return this.documents.identity(
       await this.documents.shop(this.database.db, tenant.organizationId),
     );
+  }
+
+  /** The shop's totals: never for sellers (ADR-036). */
+  @Get('documents/stats')
+  @RequirePermission('stats.read')
+  stats(@CurrentTenant() tenant: TenantContext): Promise<DocumentStatsDto> {
+    return this.documents.stats(tenant.organizationId);
   }
 
   // Quotes -------------------------------------------------------------------
@@ -329,10 +337,11 @@ export class DocumentsController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
     const db = this.database.db;
-    const [invoice, shop, logo] = await Promise.all([
+    const [invoice, shop, logo, marks] = await Promise.all([
       this.documents.getInvoice(db, tenant.organizationId, id),
       this.documents.shop(db, tenant.organizationId),
       this.documents.logo(tenant.organizationId),
+      this.documents.marks(tenant.organizationId),
     ]);
     const data = await renderDocumentPdf(
       this.documents.identity(shop),
@@ -342,6 +351,7 @@ export class DocumentsController {
         invoice,
       },
       logo,
+      marks,
     );
     return pdfFile(res, data, invoice.number ?? 'facture-brouillon');
   }

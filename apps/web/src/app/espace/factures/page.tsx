@@ -1,176 +1,201 @@
 import {
   formatAmount,
   roleHasPermission,
-  type DocumentListItemDto,
+  type DocumentStatsDto,
 } from '@nagaw/shared';
-import { FilePlus2, FileText } from 'lucide-react';
+import {
+  Banknote,
+  CalendarDays,
+  CircleCheck,
+  Clock,
+  FilePlus2,
+  FileText,
+  HandCoins,
+  TriangleAlert,
+} from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
+import { KpiTile } from '@/components/dashboard/kpi';
 import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { ButtonLink } from '@/components/ui/button-link';
-import { buttonClasses } from '@/components/ui/button-styles';
-import { EmptyState } from '@/components/ui/empty-state';
+import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
-import { Pagination } from '@/components/ui/pagination';
 import { apiAsUser } from '@/lib/api/server';
-import { documentBadge, documentTitle } from '@/lib/documents/labels';
-import { formatCalendarDate } from '@/lib/format';
-import { pageNumber, pageParams, pageRows } from '@/lib/pagination';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 
-export const metadata: Metadata = { title: 'Factures — Nagaw Business' };
+export const metadata: Metadata = {
+  title: 'Factures et devis — Nagaw Business',
+};
 
-async function Documents({ searchParams }: PageProps<'/espace/factures'>) {
+const LINK =
+  'inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4';
+
+const documents = (count: number, word: string) =>
+  `${count} ${word}${count > 1 ? 's' : ''}`;
+
+/** Figures of all the invoices and quotes, computed by the API. */
+async function Summary({ searchParams }: PageProps<'/espace/factures'>) {
+  // Former address of the list of quotes.
+  if ((await searchParams).type === 'devis') redirect('/espace/factures/devis');
   const workspace = await requireReadyWorkspace();
   if (!workspace) return null;
   const { organization, accessToken } = workspace;
-  const raw = await searchParams;
-  const quotes = raw.type === 'devis';
-  const page = pageNumber(raw.page);
-  const base = quotes ? '/quotes' : '/invoices';
-  const [documents, invoices] = await Promise.all([
-    apiAsUser<DocumentListItemDto[]>(accessToken, {
-      path: `${base}?${new URLSearchParams(pageParams(page))}`,
-      organizationId: organization.id,
-    }),
-    // What is left to collect counts every invoice, not only this page.
-    quotes
-      ? null
-      : apiAsUser<DocumentListItemDto[]>(accessToken, {
-          path: base,
-          organizationId: organization.id,
-        }),
-  ]);
-  const list = documents.ok ? pageRows(documents.data) : null;
+  // The shop's totals are not for sellers (ADR-036): their list instead.
+  if (!roleHasPermission(organization.role, 'stats.read'))
+    redirect('/espace/factures/liste');
+  const stats = await apiAsUser<DocumentStatsDto>(accessToken, {
+    path: '/documents/stats',
+    organizationId: organization.id,
+  });
   const money = (value: number) =>
     formatAmount(value, organization.defaultCurrency);
   const canManage = roleHasPermission(organization.role, 'documents.manage');
-  // Sellers prepare quotes; invoices stay with the managers (ADR-036).
   const canQuote = roleHasPermission(organization.role, 'quotes.manage');
-  const owed = invoices?.ok
-    ? invoices.data.reduce((sum, d) => sum + (d.balance ?? 0), 0)
-    : 0;
 
   return (
     <>
       <PageHeader
         title="Factures et devis"
-        description="Des documents propres, numérotés, à envoyer à vos clients."
+        description="Ce que vous avez facturé, ce qu’on vous doit, et vos devis en cours."
         actions={
-          canQuote && (
-            <div className="flex flex-wrap gap-2">
-              {canManage && (
-                <ButtonLink href="/espace/factures/nouvelle">
-                  <FilePlus2 aria-hidden className="size-5" />
-                  Nouvelle facture
-                </ButtonLink>
-              )}
-              <ButtonLink
-                href="/espace/factures/devis/nouveau"
-                variant={canManage ? 'secondary' : 'primary'}
-              >
-                <FileText aria-hidden className="size-5" />
-                Nouveau devis
-              </ButtonLink>
-            </div>
-          )
+          canManage ? (
+            <ButtonLink href="/espace/factures/nouvelle">
+              <FilePlus2 aria-hidden className="size-5" />
+              Nouvelle facture
+            </ButtonLink>
+          ) : canQuote ? (
+            <ButtonLink href="/espace/factures/devis/nouveau">
+              <FileText aria-hidden className="size-5" />
+              Nouveau devis
+            </ButtonLink>
+          ) : undefined
         }
       />
-      <nav aria-label="Type de document" className="flex flex-wrap gap-2">
-        <Link
-          href="/espace/factures"
-          aria-current={!quotes ? 'true' : undefined}
-          className={buttonClasses(!quotes ? 'primary' : 'secondary')}
-        >
-          Factures
-        </Link>
-        <Link
-          href="/espace/factures?type=devis"
-          aria-current={quotes ? 'true' : undefined}
-          className={buttonClasses(quotes ? 'primary' : 'secondary')}
-        >
-          Devis
-        </Link>
-      </nav>
-
-      {!documents.ok ? (
-        <Alert tone="error">
-          Documents indisponibles : {documents.message}
-        </Alert>
-      ) : !list || list.rows.length === 0 ? (
-        <EmptyState
-          title={
-            quotes
-              ? 'Aucun devis pour le moment'
-              : 'Aucune facture pour le moment'
-          }
-        >
-          {quotes && canQuote
-            ? 'Un devis donne un prix à un client avant qu’il commande.'
-            : !quotes && canManage
-              ? 'Créez une facture ici, ou depuis une vente avec le bouton « Faire une facture ».'
-              : 'Les documents de la boutique apparaîtront ici.'}
-        </EmptyState>
+      {!stats.ok ? (
+        <Alert tone="error">Chiffres indisponibles : {stats.message}</Alert>
       ) : (
         <>
-          {!quotes && owed > 0 && (
-            <p className="text-lg font-bold">
-              Reste à encaisser :{' '}
-              <span className="text-warning-ink">{money(owed)}</span>
-            </p>
-          )}
-          <ul
-            aria-label={quotes ? 'Liste des devis' : 'Liste des factures'}
-            className="flex flex-col gap-2"
+          <Card
+            title="Factures"
+            titleId="invoice-figures"
+            icon={FilePlus2}
+            tone="invoices"
           >
-            {list.rows.map((doc) => {
-              const badge = documentBadge(doc);
-              const href =
-                doc.kind === 'quote'
-                  ? `/espace/factures/devis/${doc.id}`
-                  : `/espace/factures/${doc.id}`;
-              return (
-                <li key={doc.id}>
-                  <Link
-                    href={href}
-                    className="flex min-h-16 flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3"
-                  >
-                    <span className="flex flex-col">
-                      <span className="font-bold">{documentTitle(doc)}</span>
-                      <span className="text-ink-muted">
-                        {doc.customerName} · {formatCalendarDate(doc.date)}
-                      </span>
-                    </span>
-                    <span className="flex flex-col items-end gap-1">
-                      <span className="font-bold tabular-nums">
-                        {money(doc.total)}
-                      </span>
-                      <Badge tone={badge.tone}>{badge.label}</Badge>
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+            <div className="flex flex-col gap-4">
+              <dl className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+                <KpiTile
+                  label="Facturé"
+                  value={money(stats.data.invoices.total)}
+                  tone="invoices"
+                  icon={FileText}
+                >
+                  <p className="text-base">
+                    {documents(stats.data.invoices.count, 'facture')}
+                  </p>
+                </KpiTile>
+                <KpiTile
+                  label="Ce mois-ci"
+                  value={money(stats.data.invoices.monthTotal)}
+                  tone="stats"
+                  icon={CalendarDays}
+                />
+                <KpiTile
+                  label="Encaissé"
+                  value={money(stats.data.invoices.paid)}
+                  tone="sales"
+                  icon={Banknote}
+                />
+                <KpiTile
+                  label="Reste à encaisser"
+                  value={money(stats.data.invoices.balance)}
+                  tone="stock"
+                  icon={HandCoins}
+                />
+              </dl>
+              {stats.data.invoices.overdueCount > 0 && (
+                <Alert tone="warning">
+                  <TriangleAlert
+                    aria-hidden
+                    className="mr-2 inline size-5 align-text-bottom"
+                  />
+                  {documents(stats.data.invoices.overdueCount, 'facture')} en
+                  retard : {money(stats.data.invoices.overdueAmount)} à
+                  relancer.
+                </Alert>
+              )}
+              {stats.data.invoices.drafts > 0 && (
+                <p className="text-ink-muted">
+                  {documents(stats.data.invoices.drafts, 'brouillon')} à
+                  terminer.
+                </p>
+              )}
+              <Link href="/espace/factures/liste" className={LINK}>
+                Voir toutes les factures
+              </Link>
+            </div>
+          </Card>
+
+          <Card
+            title="Devis"
+            titleId="quote-figures"
+            icon={FileText}
+            tone="invoices"
+          >
+            <div className="flex flex-col gap-4">
+              <dl className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
+                <KpiTile
+                  label="En attente de réponse"
+                  value={money(stats.data.quotes.pendingAmount)}
+                  tone="stock"
+                  icon={Clock}
+                >
+                  <p className="text-base">
+                    {stats.data.quotes.pendingCount} devis
+                  </p>
+                </KpiTile>
+                <KpiTile
+                  label="Acceptés"
+                  value={money(stats.data.quotes.acceptedAmount)}
+                  tone="sales"
+                  icon={CircleCheck}
+                >
+                  <p className="text-base">
+                    {stats.data.quotes.acceptedCount} devis
+                  </p>
+                </KpiTile>
+                <KpiTile
+                  label="Refusés"
+                  value={stats.data.quotes.refusedCount}
+                  tone="accounting"
+                  icon={TriangleAlert}
+                />
+              </dl>
+              {stats.data.quotes.expiredCount > 0 && (
+                <p className="text-ink-muted">
+                  {stats.data.quotes.expiredCount} devis expiré
+                  {stats.data.quotes.expiredCount > 1 ? 's' : ''} sans réponse.
+                </p>
+              )}
+              <Link href="/espace/factures/devis" className={LINK}>
+                Voir tous les devis
+              </Link>
+            </div>
+          </Card>
         </>
       )}
-      <Pagination
-        path="/espace/factures"
-        params={new URLSearchParams(quotes ? { type: 'devis' } : {})}
-        page={page}
-        hasNext={list?.hasNext ?? false}
-      />
     </>
   );
 }
 
-export default function DocumentsPage(props: PageProps<'/espace/factures'>) {
+export default function DocumentsSummaryPage(
+  props: PageProps<'/espace/factures'>,
+) {
   return (
     <Suspense fallback={<PageFallback />}>
-      <Documents {...props} />
+      <Summary {...props} />
     </Suspense>
   );
 }

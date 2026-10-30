@@ -4,10 +4,12 @@ import {
   createShopFormSchema,
   invitationTokenSchema,
   PRODUCT_PHOTO_MAX_BYTES,
+  SHOP_MARKS,
   updateOrganizationSchema,
   type MeDto,
   type OrganizationDto,
   type OrganizationWithRoleDto,
+  type ShopMarkKind,
 } from '@nagaw/shared';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -113,6 +115,43 @@ export async function updateLogo(
   if (!result.ok) return { status: 'error', message: result.message };
   refresh();
   return { status: 'success', message: 'Logo enregistré.' };
+}
+
+/** Saves or removes the signature or the stamp of the invoices. */
+export async function updateMark(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await requireSession();
+  const organizationId = formData.get('organizationId')?.toString();
+  const kind = formData.get('kind')?.toString();
+  if (!organizationId || !SHOP_MARKS.includes(kind as ShopMarkKind))
+    return { status: 'error', message: 'Demande incomplète.' };
+  const file = formData.get('photo');
+  const image = file instanceof File && file.size > 0 ? file : null;
+  if (image && image.size > PRODUCT_PHOTO_MAX_BYTES)
+    return {
+      status: 'error',
+      message: 'Image non enregistrée.',
+      fieldErrors: { photo: 'Image trop lourde : 512 Ko au plus.' },
+    };
+  if (!image && formData.get('removePhoto') !== 'on')
+    return {
+      status: 'error',
+      message: 'Image non enregistrée.',
+      fieldErrors: { photo: 'Choisissez d’abord une image.' },
+    };
+
+  // The API checks membership and the organization.update permission.
+  const result = await apiAsUser<OrganizationDto>(session.accessToken, {
+    method: image ? 'PUT' : 'DELETE',
+    path: `/organizations/current/marks/${kind}`,
+    organizationId,
+    ...(image ? { rawBody: { data: image, contentType: image.type } } : {}),
+  });
+  if (!result.ok) return { status: 'error', message: result.message };
+  refresh();
+  return { status: 'success', message: 'Image enregistrée.' };
 }
 
 /** Joins the organization of an invitation, then opens it. */

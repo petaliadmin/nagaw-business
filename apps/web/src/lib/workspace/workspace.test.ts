@@ -25,6 +25,8 @@ function org(id: string): OrganizationWithRoleDto {
     documentColor: '#6d28d9',
     offer: 'both',
     logoVersion: null,
+    signatureVersion: null,
+    stampVersion: null,
     createdAt: '2026-10-20T10:00:00.000Z',
     updatedAt: '2026-10-20T10:00:00.000Z',
     role: 'owner',

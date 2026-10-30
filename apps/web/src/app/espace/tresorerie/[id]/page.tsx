@@ -6,7 +6,6 @@ import {
 } from '@nagaw/shared';
 import { Calculator, Settings } from 'lucide-react';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { PeriodPicker } from '@/components/treasury/period-picker';
@@ -79,12 +78,6 @@ async function Account({
           )
         }
       />
-      <Link
-        href="/espace/tresorerie"
-        className="inline-flex min-h-12 items-center font-semibold text-brand-ink underline underline-offset-4"
-      >
-        Toutes les caisses
-      </Link>
       <PeriodPicker
         path={`/espace/tresorerie/${s.account.id}`}
         current={period.key}

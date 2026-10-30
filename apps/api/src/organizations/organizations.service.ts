@@ -8,9 +8,10 @@ import {
   type OrganizationWithRoleDto,
   type Role,
   type ShopLogoType,
+  type ShopMarkKind,
   type UpdateOrganizationInput,
 } from '@nagaw/shared';
-import type { Selectable } from 'kysely';
+import type { Selectable, Transaction } from 'kysely';
 import { PDFDocument } from 'pdf-lib';
 import { AuditService } from '../audit/audit.service.js';
 import { invalid } from '../catalog/catalog.errors.js';
@@ -23,7 +24,7 @@ import {
   pgErrorCode,
   UNIQUE_VIOLATION,
 } from '../database/pg-errors.js';
-import type { OrganizationsTable } from '../database/schema.js';
+import type { Database, OrganizationsTable } from '../database/schema.js';
 import { embedLogo } from '../documents/pdf.js';
 import { generateSlug } from './slug.js';
 
@@ -168,6 +169,157 @@ export class OrganizationsService {
     });
   }
 
+  /**
+   * A PNG or JPEG that can be drawn on every PDF of the shop: it is tried in
+   * one before being accepted.
+   */
+  private async checkedImage(
+    field: string,
+    name: string,
+    declaredType: string | undefined,
+    data: unknown,
+  ): Promise<{ image: Buffer; contentType: ShopLogoType }> {
+    const refused = invalid(field, 'Envoyez une image PNG ou JPEG.');
+    if (!Buffer.isBuffer(data) || data.length === 0) throw refused;
+    if (data.length > PRODUCT_PHOTO_MAX_BYTES)
+      throw new ApiException(
+        HttpStatus.PAYLOAD_TOO_LARGE,
+        'PHOTO_TOO_LARGE',
+        `${name} trop lourd : 512 Ko au plus.`,
+      );
+    const contentType = detectImageType(data);
+    if (
+      (contentType !== 'image/png' && contentType !== 'image/jpeg') ||
+      contentType !== declaredType?.split(';')[0]?.trim()
+    )
+      throw refused;
+    try {
+      await embedLogo(await PDFDocument.create(), { contentType, data });
+    } catch (error) {
+      this.logger.warn(`${name} refusé, image illisible : ${String(error)}`);
+      throw refused;
+    }
+    return { image: data, contentType };
+  }
+
+  /** The shop's signature or stamp (ADR-052). */
+  async mark(
+    organizationId: string,
+    kind: ShopMarkKind,
+  ): Promise<{ contentType: ShopLogoType; data: Buffer; sha256: string }> {
+    const row = await this.database.db
+      .selectFrom('app.organizations as o')
+      .innerJoin('app.organization_marks as m', (join) =>
+        join
+          .onRef('m.organization_id', '=', 'o.id')
+          .onRef(
+            'm.sha256',
+            '=',
+            kind === 'signature' ? 'o.signature_sha256' : 'o.stamp_sha256',
+          ),
+      )
+      .select(['m.content_type', 'm.data', 'm.sha256'])
+      .where('o.id', '=', organizationId)
+      .where('m.kind', '=', kind)
+      .executeTakeFirst();
+    if (!row)
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'MARK_NOT_FOUND',
+        'Cette image n’existe pas.',
+      );
+    return {
+      contentType: row.content_type,
+      data: row.data,
+      sha256: row.sha256,
+    };
+  }
+
+  async setMark(
+    organizationId: string,
+    user: AuthContext,
+    kind: ShopMarkKind,
+    declaredType: string | undefined,
+    data: unknown,
+    requestId: string | null,
+  ): Promise<OrganizationDto> {
+    const { image, contentType } = await this.checkedImage(
+      kind,
+      'Image',
+      declaredType,
+      data,
+    );
+    const sha256 = createHash('sha256').update(image).digest('hex');
+    return this.database.db.transaction().execute(async (trx) => {
+      await trx
+        .insertInto('app.organization_marks')
+        .values({
+          organization_id: organizationId,
+          kind,
+          content_type: contentType,
+          data: image,
+          sha256,
+          updated_by: user.userId,
+        })
+        .onConflict((oc) =>
+          oc.columns(['organization_id', 'kind']).doUpdateSet({
+            content_type: contentType,
+            data: image,
+            sha256,
+            updated_by: user.userId,
+            updated_at: new Date(),
+          }),
+        )
+        .execute();
+      return this.pointMark(trx, organizationId, user, kind, sha256, requestId);
+    });
+  }
+
+  async removeMark(
+    organizationId: string,
+    user: AuthContext,
+    kind: ShopMarkKind,
+    requestId: string | null,
+  ): Promise<OrganizationDto> {
+    return this.database.db
+      .transaction()
+      .execute((trx) =>
+        this.pointMark(trx, organizationId, user, kind, null, requestId),
+      );
+  }
+
+  private async pointMark(
+    trx: Transaction<Database>,
+    organizationId: string,
+    user: AuthContext,
+    kind: ShopMarkKind,
+    sha256: string | null,
+    requestId: string | null,
+  ): Promise<OrganizationDto> {
+    const updated = await trx
+      .updateTable('app.organizations')
+      .set(
+        kind === 'signature'
+          ? { signature_sha256: sha256 }
+          : { stamp_sha256: sha256 },
+      )
+      .where('id', '=', organizationId)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    await this.audit.record(trx, {
+      organizationId,
+      actorType: 'user',
+      actorId: user.userId,
+      action: sha256
+        ? `organization.${kind}_changed`
+        : `organization.${kind}_removed`,
+      targetType: 'organization',
+      targetId: organizationId,
+      requestId,
+    });
+    return toOrganizationDto(updated);
+  }
+
   /** The shop's current logo (ADR-044). */
   async logo(
     organizationId: string,
@@ -202,28 +354,13 @@ export class OrganizationsService {
     data: unknown,
     requestId: string | null,
   ): Promise<OrganizationDto> {
-    const refused = invalid('logo', 'Envoyez une image PNG ou JPEG.');
-    if (!Buffer.isBuffer(data) || data.length === 0) throw refused;
-    if (data.length > PRODUCT_PHOTO_MAX_BYTES)
-      throw new ApiException(
-        HttpStatus.PAYLOAD_TOO_LARGE,
-        'PHOTO_TOO_LARGE',
-        'Logo trop lourd : 512 Ko au plus.',
-      );
-    const contentType = detectImageType(data);
-    if (
-      (contentType !== 'image/png' && contentType !== 'image/jpeg') ||
-      contentType !== declaredType?.split(';')[0]?.trim()
-    )
-      throw refused;
-    // A logo that passes here can be drawn on every PDF of the shop.
-    try {
-      await embedLogo(await PDFDocument.create(), { contentType, data });
-    } catch (error) {
-      this.logger.warn(`Logo refusé, image illisible : ${String(error)}`);
-      throw refused;
-    }
-    const sha256 = createHash('sha256').update(data).digest('hex');
+    const { image, contentType } = await this.checkedImage(
+      'logo',
+      'Logo',
+      declaredType,
+      data,
+    );
+    const sha256 = createHash('sha256').update(image).digest('hex');
 
     return this.database.db.transaction().execute(async (trx) => {
       await trx
@@ -231,14 +368,14 @@ export class OrganizationsService {
         .values({
           organization_id: organizationId,
           content_type: contentType,
-          data,
+          data: image,
           sha256,
           updated_by: user.userId,
         })
         .onConflict((oc) =>
           oc.column('organization_id').doUpdateSet({
             content_type: contentType,
-            data,
+            data: image,
             sha256,
             updated_by: user.userId,
             updated_at: new Date(),
@@ -409,6 +546,8 @@ function toOrganizationDto(
     documentColor: row.document_color,
     offer: row.offer,
     logoVersion: row.logo_sha256?.slice(0, 16) ?? null,
+    signatureVersion: row.signature_sha256?.slice(0, 16) ?? null,
+    stampVersion: row.stamp_sha256?.slice(0, 16) ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };

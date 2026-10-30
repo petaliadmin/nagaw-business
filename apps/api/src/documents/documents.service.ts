@@ -12,6 +12,7 @@ import {
   type DocumentCustomerDto,
   type DocumentLine,
   type DocumentListItemDto,
+  type DocumentStatsDto,
   type InvoiceDto,
   type PageQuery,
   type InvoicePaymentInput,
@@ -34,7 +35,7 @@ import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
 import { takeSequenceNumber } from '../database/sequences.js';
 import type { Database } from '../database/schema.js';
 import { AlertsService } from '../notifications/alerts.service.js';
-import type { DocumentLogo } from './pdf.js';
+import type { DocumentLogo, DocumentMarks } from './pdf.js';
 import {
   conflict,
   invalid,
@@ -125,6 +126,27 @@ export class DocumentsService {
       .where('o.id', '=', organizationId)
       .executeTakeFirst();
     return row ? { contentType: row.content_type, data: row.data } : null;
+  }
+
+  /** The current signature and stamp, for an invoice (ADR-052). */
+  async marks(organizationId: string): Promise<DocumentMarks> {
+    const rows = await this.database.db
+      .selectFrom('app.organizations as o')
+      .innerJoin('app.organization_marks as m', (join) =>
+        join.onRef('m.organization_id', '=', 'o.id'),
+      )
+      .select(['m.kind', 'm.content_type', 'm.data'])
+      .where('o.id', '=', organizationId)
+      .where(
+        sql<boolean>`m.sha256 = case m.kind when 'signature' then o.signature_sha256 else o.stamp_sha256 end`,
+      )
+      .execute();
+    return Object.fromEntries(
+      rows.map((row) => [
+        row.kind,
+        { contentType: row.content_type, data: row.data },
+      ]),
+    );
   }
 
   identity(
@@ -297,6 +319,72 @@ export class DocumentsService {
       invoice: invoice ? { id: invoice.id, number: invoice.number } : null,
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),
+    };
+  }
+
+  /** Computed by the database, over every document of the shop. */
+  async stats(organizationId: string): Promise<DocumentStatsDto> {
+    const db = this.database.db;
+    const { timezone } = await this.shop(db, organizationId);
+    const day = today(timezone);
+    const month = `${day.slice(0, 7)}-01`;
+    const [invoices, quotes] = await Promise.all([
+      sql<Record<string, string>>`
+        with issued as (
+          select i.total, i.issue_date, i.due_date,
+                 coalesce((select sum(p.amount) from app.invoice_payments p
+                            where p.organization_id = i.organization_id
+                              and p.invoice_id = i.id), 0) as paid
+            from app.invoices i
+           where i.organization_id = ${organizationId}
+             and i.kind = 'invoice' and i.status = 'issued'
+        )
+        select count(*) as count,
+               coalesce(sum(total), 0) as total,
+               coalesce(sum(total) filter (where issue_date >= ${month}::date), 0) as month_total,
+               coalesce(sum(least(paid, total)), 0) as paid,
+               coalesce(sum(greatest(total - paid, 0)), 0) as balance,
+               count(*) filter (where total > paid and due_date < ${day}::date) as overdue_count,
+               coalesce(sum(total - paid) filter (where total > paid and due_date < ${day}::date), 0) as overdue_amount,
+               (select count(*) from app.invoices d
+                 where d.organization_id = ${organizationId} and d.status = 'draft') as drafts
+          from issued`.execute(db),
+      sql<Record<string, string>>`
+        select count(*) as count,
+               count(*) filter (where status = 'draft') as drafts,
+               count(*) filter (where status = 'sent' and valid_until >= ${day}::date) as pending_count,
+               coalesce(sum(total) filter (where status = 'sent' and valid_until >= ${day}::date), 0) as pending_amount,
+               count(*) filter (where status = 'sent' and valid_until < ${day}::date) as expired_count,
+               count(*) filter (where status = 'accepted') as accepted_count,
+               coalesce(sum(total) filter (where status = 'accepted'), 0) as accepted_amount,
+               count(*) filter (where status = 'refused') as refused_count
+          from app.quotes
+         where organization_id = ${organizationId}`.execute(db),
+    ]);
+    const i = invoices.rows[0]!;
+    const q = quotes.rows[0]!;
+    const n = (value: string | undefined) => toNumber(value ?? '0');
+    return {
+      invoices: {
+        count: n(i.count),
+        total: n(i.total),
+        monthTotal: n(i.month_total),
+        paid: n(i.paid),
+        balance: n(i.balance),
+        overdueCount: n(i.overdue_count),
+        overdueAmount: n(i.overdue_amount),
+        drafts: n(i.drafts),
+      },
+      quotes: {
+        count: n(q.count),
+        pendingCount: n(q.pending_count),
+        pendingAmount: n(q.pending_amount),
+        acceptedCount: n(q.accepted_count),
+        acceptedAmount: n(q.accepted_amount),
+        refusedCount: n(q.refused_count),
+        expiredCount: n(q.expired_count),
+        drafts: n(q.drafts),
+      },
     };
   }
 

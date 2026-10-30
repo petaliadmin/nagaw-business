@@ -240,6 +240,48 @@ export async function handleDocuments(ctx) {
       quoteValidityDays: organization.quoteValidityDays,
     });
 
+  if (path === '/api/v1/documents/stats' && req.method === 'GET') {
+    if (role === 'member')
+      return fail(403, 'PERMISSION_DENIED', 'Votre rôle ne permet pas cela.');
+    const day = new Date().toISOString().slice(0, 10);
+    const issued = state.invoices
+      .filter(mine)
+      .map(invoiceDto)
+      .filter((i) => i.kind === 'invoice' && i.status === 'issued');
+    const sum = (list, pick) => list.reduce((t, x) => t + pick(x), 0);
+    const quotes = state.quotes.filter(mine).map(quoteDto);
+    const late = issued.filter((i) => i.overdue);
+    const quotesIn = (test) => quotes.filter(test);
+    const pending = quotesIn((q) => q.status === 'sent' && !q.expired);
+    const accepted = quotesIn((q) => q.status === 'accepted');
+    return reply(200, {
+      invoices: {
+        count: issued.length,
+        total: sum(issued, (i) => i.totals.total),
+        monthTotal: sum(
+          issued.filter((i) => i.issueDate?.slice(0, 7) === day.slice(0, 7)),
+          (i) => i.totals.total,
+        ),
+        paid: sum(issued, (i) => i.paid),
+        balance: sum(issued, (i) => i.balance),
+        overdueCount: late.length,
+        overdueAmount: sum(late, (i) => i.balance),
+        drafts: state.invoices.filter(mine).filter((i) => i.status === 'draft')
+          .length,
+      },
+      quotes: {
+        count: quotes.length,
+        pendingCount: pending.length,
+        pendingAmount: sum(pending, (q) => q.totals.total),
+        acceptedCount: accepted.length,
+        acceptedAmount: sum(accepted, (q) => q.totals.total),
+        refusedCount: quotesIn((q) => q.status === 'refused').length,
+        expiredCount: quotesIn((q) => q.status === 'sent' && q.expired).length,
+        drafts: quotesIn((q) => q.status === 'draft').length,
+      },
+    });
+  }
+
   // Quotes ------------------------------------------------------------------
   if (path === '/api/v1/quotes' && req.method === 'GET')
     return reply(

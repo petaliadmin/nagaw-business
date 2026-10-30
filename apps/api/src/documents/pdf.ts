@@ -102,7 +102,14 @@ export interface DocumentLogo {
   data: Uint8Array;
 }
 
+/** Signature and stamp of an invoice (ADR-052). */
+export interface DocumentMarks {
+  signature?: DocumentLogo;
+  stamp?: DocumentLogo;
+}
+
 const LOGO_BOX = { width: 150, height: 60 };
+const MARK_BOX = { width: 110, height: 70 };
 
 /** Embeds a logo; throws when the image cannot be read. */
 export async function embedLogo(
@@ -225,6 +232,7 @@ export async function renderDocumentPdf(
   currency: string,
   doc: Document,
   logo: DocumentLogo | null = null,
+  marks: DocumentMarks = {},
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
@@ -478,6 +486,42 @@ export async function renderDocumentPdf(
       w.text(line, MARGIN, { size: 9, color: MUTED });
       w.y -= 11;
     }
+  }
+
+  // Stamp and signature, on the right: only on an invoice really issued.
+  const shown = [marks.stamp, marks.signature].filter(
+    (mark) => mark !== undefined,
+  );
+  if (
+    doc.kind === 'invoice' &&
+    doc.invoice.status !== 'draft' &&
+    shown.length > 0
+  ) {
+    w.ensure(MARK_BOX.height + 34);
+    w.y -= 18;
+    w.text('Cachet et signature', RIGHT, {
+      size: 9,
+      bold: true,
+      color: MUTED,
+      align: 'right',
+    });
+    w.y -= 6;
+    let right = RIGHT;
+    for (const mark of [...shown].reverse()) {
+      const image = await embedLogo(pdf, mark);
+      const { width, height } = image.scaleToFit(
+        MARK_BOX.width,
+        MARK_BOX.height,
+      );
+      w.page.drawImage(image, {
+        x: right - width,
+        y: w.y - height,
+        width,
+        height,
+      });
+      right -= width + 12;
+    }
+    w.y -= MARK_BOX.height;
   }
 
   const pages = pdf.getPages();

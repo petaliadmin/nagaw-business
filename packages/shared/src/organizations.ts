@@ -25,6 +25,10 @@ const nameSchema = z
   .min(2, 'Le nom doit contenir au moins 2 caractères')
   .max(120, 'Le nom ne peut pas dépasser 120 caractères');
 
+/** Signature and stamp, printed on issued invoices (ADR-052). */
+export const SHOP_MARKS = ['signature', 'stamp'] as const;
+export type ShopMarkKind = (typeof SHOP_MARKS)[number];
+
 /** What a shop sells: its screens follow (ADR-047). */
 export const SHOP_OFFERS = ['products', 'services', 'both'] as const;
 export type ShopOffer = (typeof SHOP_OFFERS)[number];
@@ -144,6 +148,9 @@ export interface OrganizationDto {
   documentColor: string;
   /** Changes with the logo (cache key); null without logo. */
   logoVersion: string | null;
+  /** Same for the signature and the stamp of the invoices (ADR-052). */
+  signatureVersion: string | null;
+  stampVersion: string | null;
   createdAt: string;
   updatedAt: string;
 }
