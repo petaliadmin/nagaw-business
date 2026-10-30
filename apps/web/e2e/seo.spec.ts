@@ -44,8 +44,8 @@ test('the home page links to the guides and describes the product', async ({
 
 test('the guides list every article, grouped by theme', async ({ page }) => {
   await page.goto('/blog');
-  // One featured guide and nineteen cards.
-  await expect(page.locator('main article')).toHaveCount(20);
+  // One featured guide and the cards of all the others.
+  await expect(page.locator('main article')).toHaveCount(40);
   await expect(
     page.getByRole('heading', { level: 2, name: 'Stock' }),
   ).toBeVisible();
@@ -115,7 +115,7 @@ test('the sitemap lists the home page and every guide', async ({ request }) => {
   const text = await (await request.get('/sitemap.xml')).text();
   expect(text).toContain('/blog/cloture-de-caisse</loc>');
   expect(text).toContain('/blog/logiciel-gestion-boutique</loc>');
-  expect(text.match(/\/blog\/[a-z0-9-]+<\/loc>/g)).toHaveLength(20);
+  expect(text.match(/\/blog\/[a-z0-9-]+<\/loc>/g)).toHaveLength(40);
   expect(text).not.toContain('/espace');
 });
 

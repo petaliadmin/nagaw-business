@@ -883,3 +883,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Retour global** (ADR-050) : un seul bouton pour toute l'application, ordinateur, téléphone et administration.
 - **Changer de boutique** (ADR-051) : depuis le nom de la boutique, en un toucher.
 - **Cachet et signature** (ADR-052) : dans Paramètres, imprimés sur les factures émises. Migration `20261030130000_shop_marks` à appliquer avant de déployer.
+
+## Blog : 20 articles de plus
+
+- **Livré** sur la branche `claude/blog-20-articles` : 40 articles au total, dont les métiers de services, les factures et les chiffres du commerçant. Aucun seuil, taux ou coût officiel n'y figure : les sources trouvées se contredisent, et ces articles renvoient aux services compétents.
