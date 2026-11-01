@@ -23,6 +23,8 @@ export interface ShopSnapshot {
     /** Absent in older copies. */
     offer?: ShopOffer;
     logoVersion?: string | null;
+    /** Absent in older copies: the default country applies. */
+    phoneCountryCode?: string;
   };
   products: ProductDto[];
   /** `pendingOperationId`: created on this device, not yet sent. */

@@ -645,6 +645,15 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **à vérifier sur de vrais Android d'entrée de gamme**, sur la production, pendant le pilote.
 - **Conséquences** : appliquer `20261101090000_device_users` **avant** de déployer l'API. Les routes `/caisse/vente` et `/caisse/client` disparaissent.
 
+## ADR-055 — Indicatif du pays et pages légales
+
+- **Statut** : **Acceptée** (validation du lot 1 par le propriétaire, 2026-11-01).
+- **Décision** :
+  - **`organizations.phone_country_code`** (`221` par défaut, réglable dans Paramètres) : un lien `wa.me` exige un numéro international, et les commerçants saisissent des numéros locaux. `internationalPhone` (`packages/shared`) ajoute l'indicatif à un numéro local, garde ceux écrits avec `+`, `00` ou l'indicatif, et ne met aucun numéro dans le lien s'il compte moins de 8 chiffres. Les numéros restent stockés tels que saisis ;
+  - **`/conditions` et `/confidentialite`**, publiques, liées depuis le pied de page et l'inscription. Éditeur : BNS Digital ; contact : +221 76 905 58 52, fournis par le propriétaire. Elles décrivent seulement ce que fait l'application, y compris les données non chiffrées gardées sur le téléphone (ADR-053). Les prix n'y sont pas écrits : elles renvoient aux tarifs (ADR-034).
+- **Limites** : aucune case à cocher ni preuve d'acceptation enregistrée ; la démarche CDP est reportée par le propriétaire ; **ces textes n'ont pas été relus par un juriste**. Une suppression de compte reste traitée à la main (ADR-030).
+- **Conséquences** : appliquer `20261101120000_phone_country_code` **avant** de déployer l'API.
+
 ## ADR-054 — Limite de produits des offres : 10, 50, sans limite (modifie ADR-033)
 
 - **Statut** : **Acceptée** (décision du propriétaire, 2026-11-01).

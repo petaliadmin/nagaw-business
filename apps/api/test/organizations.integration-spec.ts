@@ -358,6 +358,7 @@ describe('Organizations, memberships and tenant isolation', () => {
         })
         .expect(201);
       expect(shop.body.phone).toBe('+221 77 000 00 00');
+      expect(shop.body.phoneCountryCode).toBe('221');
       const me = await ctx.http().get('/api/v1/me').set(as(dora)).expect(200);
       expect(me.body.displayName ?? me.body.user?.displayName).toBe(
         'Dora Faye',

@@ -13,6 +13,8 @@
 ## Décisions déjà prises
 
 - **Wolof** : en attente. Le lot 4 n'en dépend que pour la traduction de l'interface.
+- **Free Money** : le nom reste tel quel (2026-11-01).
+- **CDP et hébergement à Paris** : démarche reportée (2026-11-01). La politique de confidentialité dit où sont les données, sans annoncer d'autorisation.
 - **Play Store** : pas pour l'instant. L'impression sur petites imprimantes Bluetooth reste donc bloquée (ADR-022).
 
 ## Lot 1 — Avant le pilote (corrections courtes)
@@ -23,11 +25,10 @@ Objectif : plus rien de faux ni de cassé devant un commerçant.
 | --- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------ |
 | 1.1 | Corriger `whatsappLink` et normaliser les numéros (indicatif 221 par défaut, réglable par boutique) | `wa.me/771234567` n'est pas un numéro international               | S      |
 | 1.2 | Corriger la FAQ « invitez-les par e-mail » : les invitations passent par un lien                    | Texte faux                                                        | S      |
-| 1.3 | Remplacer « Free Money » par « Mixx by Yas », en gardant les ventes déjà enregistrées               | Marque changée depuis fin 2024                                    | S      |
 | 1.4 | Publier les conditions d'utilisation et la politique de confidentialité                             | Aucune page n'existe, et l'application garde téléphones et dettes | M      |
-| 1.5 | Faire confirmer par un juriste la démarche auprès de la CDP pour l'hébergement à Paris              | La loi 2008-12 prévoit en principe une autorisation de transfert  | M      |
-| 1.6 | Vérifier le SMTP dédié, les sauvegardes et la restauration (`docs/PILOT.md`)                        | Requis avant toute ouverture                                      | S      |
-| 1.7 | Tester le mode avion sur un vrai Android d'entrée de gamme                                          | Rien n'a été vérifié sur un vrai téléphone                        | S      |
+
+| 1.6 | Vérifier le SMTP dédié, les sauvegardes et la restauration (`docs/PILOT.md`) | Requis avant toute ouverture | S |
+| 1.7 | Tester le mode avion sur un vrai Android d'entrée de gamme | Rien n'a été vérifié sur un vrai téléphone | S |
 
 ## Lot 2 — Pilote
 

@@ -1,4 +1,9 @@
-import { describeSaleLine, formatAmount, type SaleDto } from '@nagaw/shared';
+import {
+  describeSaleLine,
+  formatAmount,
+  internationalPhone,
+  type SaleDto,
+} from '@nagaw/shared';
 import { PAYMENT_LABELS, PROVIDER_LABELS, ticketNumber } from './labels';
 
 /**
@@ -54,8 +59,16 @@ export function ticketText(
   return lines.join('\n');
 }
 
-/** WhatsApp link with the ticket (to the customer's number when known). */
-export function whatsappLink(text: string, phone?: string | null): string {
-  const digits = (phone ?? '').replace(/\D/g, '');
-  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+/**
+ * WhatsApp link with the ticket, to the customer's number when known. A
+ * local number goes out with the country code of the shop: without it,
+ * WhatsApp finds nobody.
+ */
+export function whatsappLink(
+  text: string,
+  phone?: string | null,
+  countryCode?: string,
+): string {
+  const number = internationalPhone(phone, countryCode) ?? '';
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 }

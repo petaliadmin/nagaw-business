@@ -43,6 +43,7 @@ export async function GET() {
         role: organization.role,
         offer: organization.offer,
         logoVersion: organization.logoVersion,
+        phoneCountryCode: organization.phoneCountryCode,
       },
       products: products.data,
       customers: customers.data,

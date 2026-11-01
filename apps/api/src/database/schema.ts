@@ -68,6 +68,7 @@ export interface OrganizationsTable {
   legal_name: Generated<string>;
   address: Generated<string>;
   phone: Generated<string>;
+  phone_country_code: Generated<string>;
   email: Generated<string>;
   tax_id: Generated<string>;
   logo_sha256: Generated<string | null>;

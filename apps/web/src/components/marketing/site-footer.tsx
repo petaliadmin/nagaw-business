@@ -7,6 +7,8 @@ const LINKS = [
   ['/#questions', 'Questions'],
   ['/inscription', 'Créer un compte'],
   ['/connexion', 'Se connecter'],
+  ['/conditions', 'Conditions d’utilisation'],
+  ['/confidentialite', 'Confidentialité'],
 ] as const;
 
 /** Footer of the public pages: home page and guides. */

@@ -33,6 +33,6 @@ export async function proxy(request: NextRequest) {
 // share images) skip the proxy: no Supabase round trip before they render.
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|blog(?:/|$)|robots\\.txt|sitemap\\.xml|llms\\.txt|opengraph-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|blog(?:/|$)|conditions$|confidentialite$|robots\\.txt|sitemap\\.xml|llms\\.txt|opengraph-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

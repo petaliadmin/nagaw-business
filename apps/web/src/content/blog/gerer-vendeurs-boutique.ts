@@ -87,7 +87,7 @@ Avec un logiciel en ligne, vous voyez depuis votre téléphone les ventes du jou
 
 ## Les vendeurs dans Nagaw Business
 
-Dans Nagaw Business, vous invitez vos vendeurs par e-mail, chacun avec son compte et son rôle (propriétaire, gérant, vendeur, lecteur). Un vendeur encaisse et ne voit que ses propres ventes ; l’argent, les statistiques et les factures lui sont masqués. Les **remises des vendeurs sont plafonnées** (au-delà, c’est un gérant qui encaisse), une vente s’annule par un gérant avec un motif, et l’**historique** garde chaque action. Un téléphone perdu peut être retiré à distance dans Paramètres.
+Dans Nagaw Business, vous invitez vos vendeurs avec un lien à leur envoyer, chacun avec son compte et son rôle (propriétaire, gérant, vendeur, lecteur). Un vendeur encaisse et ne voit que ses propres ventes ; l’argent, les statistiques et les factures lui sont masqués. Les **remises des vendeurs sont plafonnées** (au-delà, c’est un gérant qui encaisse), une vente s’annule par un gérant avec un motif, et l’**historique** garde chaque action. Un téléphone perdu peut être retiré à distance dans Paramètres.
 
 Voir aussi [comment éviter les vols et les pertes](/blog/eviter-vols-pertes-boutique).
 `,

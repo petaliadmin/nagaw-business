@@ -162,7 +162,11 @@ export function LocalTicketView({
           Imprimer le ticket
         </button>
         <a
-          href={whatsappLink(share, sale.customer?.phone)}
+          href={whatsappLink(
+            share,
+            sale.customer?.phone,
+            shop.phoneCountryCode,
+          )}
           target="_blank"
           rel="noopener noreferrer"
           className={buttonClasses('secondary')}

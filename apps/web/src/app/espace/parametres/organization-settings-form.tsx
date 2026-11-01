@@ -60,6 +60,15 @@ export function OrganizationSettingsForm({
         error={state.fieldErrors?.defaultCurrency}
       />
       <FormField
+        label="Indicatif du pays (221 pour le Sénégal)"
+        name="phoneCountryCode"
+        inputMode="numeric"
+        maxLength={3}
+        defaultValue={organization.phoneCountryCode}
+        required
+        error={state.fieldErrors?.phoneCountryCode}
+      />
+      <FormField
         label="Durée de validité des invitations (heures)"
         name="invitationTtlHours"
         type="number"
