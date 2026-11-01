@@ -1,4 +1,6 @@
 import {
+  formatAmount,
+  paymentReference,
   roleHasPermission,
   usagePercent,
   type PlanDto,
@@ -69,6 +71,45 @@ function Gauge({
   );
 }
 
+/** How to pay an offer by hand, until online payment exists (ADR-056). */
+function PaymentSteps({ subscription: s }: { subscription: SubscriptionDto }) {
+  const request = s.pendingRequest;
+  if (!request) return null;
+  const { wave, orangeMoney } = s.payment;
+  if (request.plan.monthlyPrice === 0 || (!wave && !orangeMoney))
+    return (
+      <>
+        L’équipe Nagaw traite la demande et vous contacte si besoin. L’offre
+        change dès que c’est fait.
+      </>
+    );
+  return (
+    <span className="mt-2 flex flex-col gap-2">
+      <span>
+        Pour activer l’offre, envoyez{' '}
+        <strong>
+          {formatAmount(request.plan.monthlyPrice, request.plan.currency)}
+        </strong>{' '}
+        pour un mois :
+      </span>
+      {wave && (
+        <span>
+          par Wave au <strong>{wave}</strong>
+        </span>
+      )}
+      {orangeMoney && (
+        <span>
+          par Orange Money au <strong>{orangeMoney}</strong>
+        </span>
+      )}
+      <span>
+        Indiquez la référence <strong>{paymentReference(request.id)}</strong>.
+        L’offre change dès que l’équipe a reçu le paiement.
+      </span>
+    </span>
+  );
+}
+
 async function Subscription() {
   const workspace = await requireReadyWorkspace();
   if (!workspace) return null;
@@ -134,9 +175,7 @@ async function Subscription() {
             Demande de passage à l’offre {s.pendingRequest.plan.name} envoyée le{' '}
             {formatDateTime(s.pendingRequest.createdAt, organization.timezone)}.
           </span>
-          Le paiement en ligne n’est pas encore ouvert : l’équipe Nagaw traite
-          la demande et vous contacte pour le règlement. L’offre change dès que
-          c’est fait.
+          <PaymentSteps subscription={s} />
           {isOwner && (
             <span className="mt-3 block">
               <CancelPlanRequestForm organizationId={organization.id} />

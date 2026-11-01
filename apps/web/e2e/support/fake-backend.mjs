@@ -1192,6 +1192,7 @@ const server = createServer(async (req, res) => {
         devices: 0,
       },
       limits: plan(subscription.planKey).limits,
+      payment: { wave: '76 905 58 52', orangeMoney: null },
       pendingRequest:
         subscription.pending && !subscription.pending.status
           ? {

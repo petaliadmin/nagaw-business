@@ -604,6 +604,8 @@ export interface PlatformSettingsTable {
   rejection_alert_basis_points: number;
   quota_alert_basis_points: number;
   silent_device_days: number;
+  payment_wave_number: string | null;
+  payment_orange_money_number: string | null;
   updated_at: ColumnType<Date, never, never>;
 }
 

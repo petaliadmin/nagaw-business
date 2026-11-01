@@ -59,6 +59,15 @@ export function ticketText(
   return lines.join('\n');
 }
 
+/** A courteous reminder, sent by the shop itself from its own WhatsApp. */
+export function creditReminderText(
+  customerName: string,
+  shopName: string,
+  amount: string,
+): string {
+  return `Bonjour ${customerName}, ici ${shopName}. Il reste ${amount} à régler sur vos achats. Merci de passer quand vous pouvez. Bonne journée !`;
+}
+
 /**
  * WhatsApp link with the ticket, to the customer's number when known. A
  * local number goes out with the country code of the shop: without it,

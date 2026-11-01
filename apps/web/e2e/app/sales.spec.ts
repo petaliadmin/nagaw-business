@@ -136,6 +136,12 @@ test('a sale on credit shows on the customer, who pays back later', async ({
   await expect(
     page.getByRole('region', { name: 'Ce que le client doit' }),
   ).toContainText(/1\s000/);
+  await expect(
+    page.getByRole('link', { name: 'Relancer sur WhatsApp' }),
+  ).toHaveAttribute(
+    'href',
+    /^https:\/\/wa\.me\/221771112233\?text=Bonjour%20Fatou/,
+  );
   await page.getByLabel(/Montant reçu/).fill('400');
   await page
     .getByRole('button', { name: 'Enregistrer le remboursement' })

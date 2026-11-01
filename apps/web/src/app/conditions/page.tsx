@@ -44,9 +44,10 @@ export default function ConditionsPage() {
         >
           page des tarifs
         </Link>
-        . Passer à une offre payante se demande depuis l’application, et le
-        règlement se fait avec l’équipe : le paiement en ligne n’est pas encore
-        ouvert. Passer à une offre plus petite ne retire rien de ce qui existe.
+        . Passer à une offre payante se demande depuis l’application, qui
+        indique comment payer. L’offre change dès que le paiement est reçu : le
+        paiement en ligne n’est pas encore ouvert. Passer à une offre plus
+        petite ne retire rien de ce qui existe.
       </p>
 
       <h2>Vos données</h2>

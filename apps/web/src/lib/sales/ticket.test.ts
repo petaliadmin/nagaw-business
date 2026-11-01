@@ -1,6 +1,11 @@
 import type { SaleDto } from '@nagaw/shared';
 import { describe, expect, it } from 'vitest';
-import { ticketLabel, ticketText, whatsappLink } from './ticket';
+import {
+  creditReminderText,
+  ticketLabel,
+  ticketText,
+  whatsappLink,
+} from './ticket';
 
 const sale: SaleDto = {
   id: 's1',
@@ -74,6 +79,12 @@ describe('ticket text', () => {
     expect(text).toContain('Espèces : 1 500 F CFA');
     expect(text).toContain('Rendu : 500 F CFA');
     expect(text).not.toContain('ANNULÉE');
+  });
+
+  it('writes a courteous credit reminder', () => {
+    const text = creditReminderText('Awa', 'Boutique Ndiaye', '12 500 F');
+    expect(text).toContain('Bonjour Awa, ici Boutique Ndiaye.');
+    expect(text).toContain('Il reste 12 500 F à régler');
   });
 
   it('builds a WhatsApp link to the customer when the number is known', () => {

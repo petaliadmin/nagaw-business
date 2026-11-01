@@ -654,6 +654,16 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 - **Limites** : aucune case à cocher ni preuve d'acceptation enregistrée ; la démarche CDP est reportée par le propriétaire ; **ces textes n'ont pas été relus par un juriste**. Une suppression de compte reste traitée à la main (ADR-030).
 - **Conséquences** : appliquer `20261101120000_phone_country_code` **avant** de déployer l'API.
 
+## ADR-056 — Relance du crédit et paiement manuel de l'abonnement
+
+- **Statut** : **Acceptée** (lot 3 lancé par le propriétaire, 2026-11-01 ; numéro Wave donné le même jour).
+- **Décision** :
+  - **relance** : sur la fiche d'un client qui doit de l'argent, « Relancer sur WhatsApp » ouvre WhatsApp avec un message courtois prêt, pour qui a `customers.manage`. C'est le commerçant qui envoie, depuis son WhatsApp : aucun prestataire, aucune donnée ne part vers un tiers à notre initiative. Rien n'est enregistré sur la relance ;
+  - **paiement** : une demande d'offre payante affiche le prix du mois, le numéro et une **référence** `NGW-XXXXXX`, tirée de l'identifiant de la demande et visible dans **Administration → Demandes**. L'équipe accepte la demande à réception du paiement ;
+  - **numéros en base** (`platform_settings.payment_wave_number`, `payment_orange_money_number`), modifiables sans déploiement, en SQL comme les autres réglages de la plateforme. Vide : ce moyen n'est pas proposé. Sans aucun numéro, l'écran dit que l'équipe contacte la boutique.
+- **Limites** : **aucun renouvellement** : une offre acceptée reste active sans échéance, ni rappel mensuel, ni contrôle du paiement suivant. Aucun rapprochement automatique avec Wave : l'équipe vérifie à la main. La référence ne prouve pas le paiement.
+- **Conséquences** : appliquer `20261101130000_subscription_payment` **avant** de déployer l'API : `GET /subscription` lit ces colonnes.
+
 ## ADR-054 — Limite de produits des offres : 10, 50, sans limite (modifie ADR-033)
 
 - **Statut** : **Acceptée** (décision du propriétaire, 2026-11-01).

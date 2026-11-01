@@ -30,6 +30,13 @@ export interface SubscriptionDto {
   usage: PlanUsage;
   limits: PlanLimits;
   pendingRequest: { id: string; plan: PlanDto; createdAt: string } | null;
+  /** Where to pay an offer; null: not offered (ADR-056). */
+  payment: { wave: string | null; orangeMoney: string | null };
+}
+
+/** What a shop writes with its payment, so that the team finds its request. */
+export function paymentReference(requestId: string): string {
+  return `NGW-${requestId.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
 }
 
 export const planChangeRequestSchema = z
