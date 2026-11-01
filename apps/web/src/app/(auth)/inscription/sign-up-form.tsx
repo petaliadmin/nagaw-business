@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Suspense, useActionState } from 'react';
 import { ActionForm } from '@/components/action-form';
 import { FormField } from '@/components/form-field';
@@ -48,6 +49,23 @@ export function SignUpForm() {
         required
         error={state.fieldErrors?.confirmation}
       />
+      <p className="text-ink-muted">
+        En créant un compte, vous acceptez les{' '}
+        <Link
+          href="/conditions"
+          className="font-semibold text-brand-ink underline underline-offset-4"
+        >
+          conditions d’utilisation
+        </Link>{' '}
+        et la{' '}
+        <Link
+          href="/confidentialite"
+          className="font-semibold text-brand-ink underline underline-offset-4"
+        >
+          politique de confidentialité
+        </Link>
+        .
+      </p>
       <SubmitButton pendingLabel="Création…">Créer mon compte</SubmitButton>
     </ActionForm>
   );

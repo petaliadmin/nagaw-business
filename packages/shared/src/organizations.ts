@@ -102,6 +102,14 @@ export const updateOrganizationSchema = z
     legalName: text(160).optional(),
     address: text(300).optional(),
     phone: text(30).optional(),
+    phoneCountryCode: z
+      .string()
+      .trim()
+      .regex(
+        /^[1-9]\d{0,2}$/,
+        'Indiquez l’indicatif sans + ni 00, par exemple 221',
+      )
+      .optional(),
     email: z
       .string()
       .trim()
@@ -125,6 +133,8 @@ export const updateOrganizationSchema = z
 export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
 
 export interface OrganizationDto {
+  /** Added to local phone numbers for WhatsApp links. */
+  phoneCountryCode: string;
   id: string;
   name: string;
   slug: string;

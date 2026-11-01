@@ -216,7 +216,11 @@ async function Sale({
       <div className="flex flex-wrap justify-center gap-3 print:hidden">
         <PrintButton />
         <a
-          href={whatsappLink(share, s.customer?.phone)}
+          href={whatsappLink(
+            share,
+            s.customer?.phone,
+            organization.phoneCountryCode,
+          )}
           target="_blank"
           rel="noopener noreferrer"
           className={buttonClasses('secondary')}

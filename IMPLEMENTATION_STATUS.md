@@ -888,6 +888,14 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
 - **Livré** sur la branche `claude/blog-20-articles` : 40 articles au total, dont les métiers de services, les factures et les chiffres du commerçant. Aucun seuil, taux ou coût officiel n'y figure : les sources trouvées se contredisent, et ces articles renvoient aux services compétents.
 
+## Lot 1 du plan d'amélioration (ADR-055)
+
+- **Validé** par le propriétaire le 2026-11-01. Sur la branche `claude/lot-1-avant-pilote`, non fusionné, non déployé. « Free Money » reste, et la démarche CDP est reportée.
+- **Livré** : liens WhatsApp en numéro international avec indicatif réglable, FAQ et guide corrigés (invitation par lien), conditions d'utilisation et politique de confidentialité.
+- **Constat de vérification** (`supabase backups list`, 2026-11-01) : **aucune sauvegarde, PITR désactivé** sur `nagaw-business`. Le pilote ne doit pas démarrer ainsi (`docs/PILOT.md`). SMTP non vérifiable depuis ce poste.
+- **À faire par le propriétaire avant le déploiement** : appliquer `20261101120000_phone_country_code`.
+- **Tests exécutés** (2026-11-01, build dans les conditions de la CI) : lint, types, unitaires (371), intégration (215) et build verts ; e2e 372 réussis, 6 ignorés volontairement. Textes légaux non relus par un juriste.
+
 ## Hors ligne réactivé : l'appareil est la référence (ADR-053) et nouvelles limites (ADR-054)
 
 - **Décision** du propriétaire du 2026-11-01. Sur la branche `claude/hors-ligne-appareil`, à fusionner après application des migrations en production.

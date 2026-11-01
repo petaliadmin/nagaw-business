@@ -25,5 +25,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     })),
     { url: `${base}/inscription`, changeFrequency: 'yearly', priority: 0.5 },
+    { url: `${base}/conditions`, changeFrequency: 'yearly', priority: 0.2 },
+    {
+      url: `${base}/confidentialite`,
+      changeFrequency: 'yearly',
+      priority: 0.2,
+    },
   ];
 }

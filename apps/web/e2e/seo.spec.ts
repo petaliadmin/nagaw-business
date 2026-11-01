@@ -11,6 +11,29 @@ async function structuredData(page: Page) {
   });
 }
 
+test('conditions and privacy are public, linked and name who publishes', async ({
+  page,
+}) => {
+  await page.goto('/inscription');
+  await page.getByRole('link', { name: 'conditions d’utilisation' }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Conditions d’utilisation' }),
+  ).toBeVisible();
+  await expect(page.getByRole('main')).toContainText('BNS Digital');
+  await page
+    .getByRole('contentinfo')
+    .getByRole('link', { name: 'Confidentialité' })
+    .click();
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: 'Politique de confidentialité',
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole('main')).toContainText('+221 76 905 58 52');
+  await expect(page.getByRole('main')).toContainText('France (Paris)');
+});
+
 test('the home page links to the guides and describes the product', async ({
   page,
 }) => {

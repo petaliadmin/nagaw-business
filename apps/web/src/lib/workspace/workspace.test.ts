@@ -12,6 +12,7 @@ function org(id: string): OrganizationWithRoleDto {
     status: 'active',
     timezone: 'UTC',
     defaultCurrency: 'XOF',
+    phoneCountryCode: '221',
     invitationTtlHours: 168,
     legalName: '',
     address: '',

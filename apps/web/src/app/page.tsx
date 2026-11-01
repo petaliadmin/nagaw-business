@@ -252,7 +252,7 @@ const FAQ: { question: string; answer: string }[] = [
   {
     question: 'Mes vendeurs peuvent-ils l’utiliser ?',
     answer:
-      'Oui, invitez-les par e-mail. Un vendeur encaisse et voit ses ventes. L’argent, les chiffres et les factures restent réservés au propriétaire et aux gérants, et tout est noté dans l’historique.',
+      'Oui. Créez pour chacun un lien d’invitation et envoyez-le, par WhatsApp par exemple. Un vendeur encaisse et voit ses ventes. L’argent, les chiffres et les factures restent réservés au propriétaire et aux gérants, et tout est noté dans l’historique.',
   },
   {
     question: 'Puis-je imprimer un ticket ?',

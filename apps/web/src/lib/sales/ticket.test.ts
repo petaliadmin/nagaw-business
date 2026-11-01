@@ -78,7 +78,10 @@ describe('ticket text', () => {
 
   it('builds a WhatsApp link to the customer when the number is known', () => {
     expect(whatsappLink('Merci', '77 123 45 67')).toBe(
-      'https://wa.me/771234567?text=Merci',
+      'https://wa.me/221771234567?text=Merci',
+    );
+    expect(whatsappLink('Merci', '07 00 11 22 33', '225')).toBe(
+      'https://wa.me/2250700112233?text=Merci',
     );
     expect(whatsappLink('a b')).toBe('https://wa.me/?text=a%20b');
   });
