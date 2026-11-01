@@ -4,11 +4,13 @@
 
 ## Ce qui est déjà fait
 
-| Point de l'audit           | État                                                                                             |
-| -------------------------- | ------------------------------------------------------------------------------------------------ |
-| Hors-ligne coupé (ADR-042) | Réactivé : l'appareil est la référence (ADR-053), message à l'ouverture, bouton « Synchroniser » |
-| Limites de produits        | Gratuit 10, Essentiel 50, Pro sans limite (ADR-054)                                              |
-| Promesses du site          | De nouveau exactes pour la vente sans internet, à vérifier sur un vrai téléphone                 |
+| Point de l'audit               | État                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Hors-ligne coupé (ADR-042)     | Réactivé : l'appareil est la référence (ADR-053), message à l'ouverture, bouton « Synchroniser » |
+| Limites de produits            | Gratuit 10, Essentiel 50, Pro sans limite (ADR-054)                                              |
+| Relance du crédit (3.1)        | Livrée : message WhatsApp prêt depuis la fiche client (ADR-056)                                  |
+| Paiement de l'abonnement (3.2) | Livré à la main : montant, numéro Wave et référence (ADR-056), sans renouvellement               |
+| Promesses du site              | De nouveau exactes pour la vente sans internet, à vérifier sur un vrai téléphone                 |
 
 ## Décisions déjà prises
 

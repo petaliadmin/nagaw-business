@@ -1,4 +1,4 @@
-import type { AdminPlanRequestDto } from '@nagaw/shared';
+import { paymentReference, type AdminPlanRequestDto } from '@nagaw/shared';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
@@ -71,6 +71,10 @@ async function Requests({ searchParams }: PageProps<'/admin/demandes'>) {
                   </Link>
                   <span>
                     {r.from.name} → {r.to.name}, par {r.requestedBy}
+                  </span>
+                  <span>
+                    Référence de paiement :{' '}
+                    <strong>{paymentReference(r.id)}</strong>
                   </span>
                   <span className="text-ink-muted">
                     Le {formatDateTime(r.createdAt, 'UTC')} (UTC)

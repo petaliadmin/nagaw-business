@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { roleHasPermission } from './permissions.js';
-import { planChangeRequestSchema, usagePercent } from './plans.js';
+import {
+  paymentReference,
+  planChangeRequestSchema,
+  usagePercent,
+} from './plans.js';
 
 describe('offers', () => {
   it('shows how much of a limit is used, never beyond the gauge', () => {
@@ -24,5 +28,13 @@ describe('offers', () => {
     expect(roleHasPermission('admin', 'subscription.read')).toBe(true);
     expect(roleHasPermission('admin', 'subscription.manage')).toBe(false);
     expect(roleHasPermission('viewer', 'subscription.read')).toBe(false);
+  });
+});
+
+describe('paymentReference', () => {
+  it('is short, and the same for the team and the shop', () => {
+    expect(paymentReference('3f9a1c2e-0000-4000-8000-000000000001')).toBe(
+      'NGW-3F9A1C',
+    );
   });
 });

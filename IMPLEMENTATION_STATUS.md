@@ -888,6 +888,13 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
 - **Livré** sur la branche `claude/blog-20-articles` : 40 articles au total, dont les métiers de services, les factures et les chiffres du commerçant. Aucun seuil, taux ou coût officiel n'y figure : les sources trouvées se contredisent, et ces articles renvoient aux services compétents.
 
+## Lot 3 : relance du crédit et paiement de l'abonnement (ADR-056)
+
+- **Lancé** par le propriétaire le 2026-11-01. Sur la branche `claude/lot-3-relance-paiement`, non fusionné, non déployé. Les points 3.3 à 3.8 attendent les retours du pilote.
+- **Livré** : « Relancer sur WhatsApp » sur la fiche client ; montant, numéro Wave et référence sur une demande d'offre, référence dans l'administration ; FAQ et conditions à jour.
+- **À faire par le propriétaire avant le déploiement** : appliquer `20261101130000_subscription_payment`.
+- **Non fait** : renouvellement et rappel mensuel d'une offre.
+
 ## Lot 1 du plan d'amélioration (ADR-055)
 
 - **Validé** par le propriétaire le 2026-11-01. Sur la branche `claude/lot-1-avant-pilote`, non fusionné, non déployé. « Free Money » reste, et la démarche CDP est reportée.

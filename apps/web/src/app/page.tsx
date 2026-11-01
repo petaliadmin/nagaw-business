@@ -247,7 +247,7 @@ const FAQ: { question: string; answer: string }[] = [
   {
     question: 'Combien ça coûte, et comment payer ?',
     answer:
-      'L’offre gratuite permet de commencer sans payer et sans carte bancaire. Une offre payante se demande depuis l’application ; le paiement en ligne n’est pas encore ouvert : l’équipe Nagaw vous contacte pour le règlement.',
+      'L’offre gratuite permet de commencer sans payer et sans carte bancaire. Une offre payante se demande depuis l’application, qui vous indique le montant, le numéro Wave et la référence à donner. L’offre change dès que le paiement est reçu.',
   },
   {
     question: 'Mes vendeurs peuvent-ils l’utiliser ?',

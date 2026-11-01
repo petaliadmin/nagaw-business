@@ -8,6 +8,7 @@ import {
   FileText,
   HandCoins,
   History,
+  MessageCircle,
   Pencil,
   Phone,
 } from 'lucide-react';
@@ -26,6 +27,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { formatDateTime } from '@/lib/format';
 import { PAYMENT_LABELS, ticketNumber } from '@/lib/sales/labels';
+import { creditReminderText, whatsappLink } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { CustomerForm, RepaymentForm } from '../customer-forms';
 
@@ -101,6 +103,27 @@ async function Customer({ params }: PageProps<'/espace/clients/[id]'>) {
             Crédit maximum : {money(c.creditLimit)}
           </p>
         )}
+        {canManage &&
+          c.balance > 0 &&
+          (c.phone ? (
+            <a
+              href={whatsappLink(
+                creditReminderText(c.name, organization.name, money(c.balance)),
+                c.phone,
+                organization.phoneCountryCode,
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonClasses('secondary', 'self-start')}
+            >
+              <MessageCircle aria-hidden className="size-5" />
+              Relancer sur WhatsApp
+            </a>
+          ) : (
+            <p className="text-ink-muted">
+              Ajoutez son numéro pour le relancer sur WhatsApp.
+            </p>
+          ))}
       </section>
 
       {canManage && c.balance > 0 && (

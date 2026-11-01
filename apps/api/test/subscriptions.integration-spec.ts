@@ -115,6 +115,20 @@ describe('Offers, subscriptions and quotas', () => {
     });
   });
 
+  it('says where to pay, from the settings of the platform', async () => {
+    const s = (await get(alice, acmeId, '/subscription').expect(200)).body;
+    expect(s.payment).toEqual({ wave: '76 905 58 52', orangeMoney: null });
+    await ctx.admin.query(
+      `update app.platform_settings set payment_orange_money_number = '77 000 00 00'`,
+    );
+    expect(
+      (await get(alice, acmeId, '/subscription').expect(200)).body.payment,
+    ).toEqual({ wave: '76 905 58 52', orangeMoney: '77 000 00 00' });
+    await ctx.admin.query(
+      `update app.platform_settings set payment_orange_money_number = null`,
+    );
+  });
+
   it('applies the free offer to products, devices and people', async () => {
     for (let i = 1; i <= 10; i++) await product(`Article ${i}`).expect(201);
     const refused = await product('Article 11').expect(409);

@@ -76,7 +76,7 @@ export class SubscriptionsService {
     organizationId: string,
     executor: Executor = this.database.db,
   ): Promise<SubscriptionDto> {
-    const [subscription, org, products, members, devices, pending] =
+    const [subscription, org, products, members, devices, pending, settings] =
       await Promise.all([
         executor
           .selectFrom('app.subscriptions')
@@ -96,6 +96,10 @@ export class SubscriptionsService {
           .select(['id', 'plan_key', 'created_at'])
           .where('organization_id', '=', organizationId)
           .where('status', '=', 'pending')
+          .executeTakeFirst(),
+        executor
+          .selectFrom('app.platform_settings')
+          .select(['payment_wave_number', 'payment_orange_money_number'])
           .executeTakeFirst(),
       ]);
     const plan = await this.plan(executor, subscription.plan_key);
@@ -121,6 +125,10 @@ export class SubscriptionsService {
               createdAt: pending.created_at.toISOString(),
             }
           : null,
+      payment: {
+        wave: settings?.payment_wave_number ?? null,
+        orangeMoney: settings?.payment_orange_money_number ?? null,
+      },
     };
   }
 
