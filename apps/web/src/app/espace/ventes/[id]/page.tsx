@@ -128,7 +128,7 @@ async function Sale({
           <h1 className="text-2xl font-extrabold md:text-3xl">
             Ticket {ticketLabel(s)}
           </h1>
-          <ButtonLink href="/caisse">
+          <ButtonLink href="/caisse" prefetch={false}>
             <ShoppingCart aria-hidden className="size-5" />
             Nouvelle vente
           </ButtonLink>

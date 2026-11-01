@@ -1,6 +1,8 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { roleHasPermission } from '@nagaw/shared';
 import type {
+  SyncCheckRequest,
+  SyncCheckResponseDto,
   SyncOperation,
   SyncRequest,
   SyncResponseDto,
@@ -23,7 +25,8 @@ const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
  * Applies the operations a device recorded, in order (ADR-020). Each runs
  * in its own transaction: one refused operation never blocks the others,
  * and is answered with its reason so that the device shows it. A replayed
- * operation is answered `duplicate`, without effect.
+ * operation is answered `duplicate`, without effect; one the server could
+ * not treat is answered `deferred` and stays on the device (ADR-053).
  */
 @Injectable()
 export class SyncService {
@@ -57,7 +60,23 @@ export class SyncService {
       code: string;
       message: string;
     }[] = [];
+    // A sale cannot pass the customer it waits for.
+    const deferred = new Set<string>();
     for (const operation of request.operations) {
+      const waitsFor =
+        operation.type === 'sale' ? operation.data.customerOperationId : null;
+      if (waitsFor && deferred.has(waitsFor)) {
+        deferred.add(operation.clientOperationId);
+        results.push({
+          clientOperationId: operation.clientOperationId,
+          status: 'deferred',
+          error: {
+            code: 'WAITING_FOR_CUSTOMER',
+            message: 'Le client de cette vente n’a pas encore été enregistré.',
+          },
+        });
+        continue;
+      }
       try {
         results.push(
           await this.applyOne(tenant, user, request.deviceId, operation, {
@@ -66,7 +85,24 @@ export class SyncService {
           }),
         );
       } catch (error) {
-        if (!(error instanceof HttpException)) throw error;
+        // A fault of ours is not a refusal: nothing is decided about this
+        // operation, it comes back, and the others of the batch go on.
+        if (!(error instanceof HttpException) || error.getStatus() >= 500) {
+          this.logger.error(
+            { err: error, requestId, operation: operation.clientOperationId },
+            'Opération hors ligne reportée',
+          );
+          deferred.add(operation.clientOperationId);
+          results.push({
+            clientOperationId: operation.clientOperationId,
+            status: 'deferred',
+            error: {
+              code: 'SERVER_ERROR',
+              message: 'Le serveur n’a pas pu la traiter pour l’instant.',
+            },
+          });
+          continue;
+        }
         const { code, message } = describe(error);
         this.logger.warn(
           { requestId, code, operation: operation.clientOperationId },
@@ -84,6 +120,28 @@ export class SyncService {
     await this.devices.touch(tenant.organizationId, request.deviceId);
     await this.alerts.flush(tenant.organizationId);
     return { results };
+  }
+
+  /**
+   * The phone's proof of delivery (ADR-053): the sales it believes sent
+   * and the server does not hold, after a restored backup for instance.
+   */
+  async check(
+    tenant: TenantContext,
+    user: AuthContext,
+    request: SyncCheckRequest,
+  ): Promise<SyncCheckResponseDto> {
+    await this.devices.assertUsable(tenant, user, request.deviceId);
+    const held = await this.database.db
+      .selectFrom('app.sales')
+      .select('client_operation_id')
+      .where('organization_id', '=', tenant.organizationId)
+      .where('client_operation_id', 'in', request.clientOperationIds)
+      .execute();
+    const known = new Set(held.map((row) => row.client_operation_id));
+    return {
+      unknown: request.clientOperationIds.filter((id) => !known.has(id)),
+    };
   }
 
   /** What the batch brought, for the platform's metrics (ADR-030). */
@@ -164,7 +222,11 @@ export class SyncService {
         'occurredAt',
         'La date de la vente est dans le futur : vérifiez l’heure du téléphone.',
       );
-    if (age > options.maxOfflineDays * 24 * 60 * 60 * 1000)
+    // What a phone kept for long is not lost: a manager delivers it.
+    if (
+      age > options.maxOfflineDays * 24 * 60 * 60 * 1000 &&
+      !roleHasPermission(tenant.role, 'sales.cancel')
+    )
       throw invalid(
         'occurredAt',
         `Opération de plus de ${options.maxOfflineDays} jours : elle doit être vérifiée par un gérant.`,
@@ -205,6 +267,19 @@ export class SyncService {
       customerId = created.id;
     }
 
+    // The person who sold, if this phone knows them; a name it does not
+    // know is ignored and the sale stays with the person who delivers it.
+    const soldBy =
+      sale.recordedBy &&
+      sale.recordedBy !== user.userId &&
+      (await this.devices.knows(
+        tenant.organizationId,
+        deviceId,
+        sale.recordedBy,
+      ))
+        ? sale.recordedBy
+        : undefined;
+
     const { sale: recorded, replayed } = await this.sales.create(
       tenant,
       user,
@@ -238,6 +313,7 @@ export class SyncService {
         deviceTicket: sale.deviceTicket,
         occurredAt,
         unitPrices: sale.lines.map((line) => line.unitPrice),
+        ...(soldBy ? { soldBy } : {}),
       },
     );
     return {

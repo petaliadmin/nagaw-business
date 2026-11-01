@@ -364,7 +364,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-033 — Limite de produits des offres : 3, 10, sans limite
 
-- **Statut** : **Acceptée** (décision du propriétaire, 2026-10-26).
+- **Statut** : **Modifiée par ADR-054** (10, 50, sans limite). Acceptée à l'origine (décision du propriétaire, 2026-10-26).
 - **Contexte** : la grille de l'ADR-029 donnait 50, 500 et 5 000 produits. Le propriétaire la resserre pour que l'offre Gratuit serve à essayer et que l'offre Pro n'ait pas de plafond.
 - **Décision** :
   - **Gratuit** : 3 produits ; **Essentiel** : 10 produits ; **Pro** : **sans limite**. Les autres limites (personnes, téléphones de caisse) et les prix ne changent pas ;
@@ -475,7 +475,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-042 — Caisse en ligne uniquement, pour l'instant (suspend en partie ADR-020)
 
-- **Statut** : **Acceptée** (demande du propriétaire du 2026-10-29 : un client connecté à internet ne pouvait pas enregistrer ses ventes, la caisse le croyait hors ligne ; « pour l'instant désactiver le mode caisse offline, toutes les ventes sont comptabilisées sur internet »).
+- **Statut** : **Remplacée par ADR-053** (2026-11-01). Acceptée à l'origine (demande du propriétaire du 2026-10-29 : un client connecté à internet ne pouvait pas enregistrer ses ventes, la caisse le croyait hors ligne ; « pour l'instant désactiver le mode caisse offline, toutes les ventes sont comptabilisées sur internet »).
 - **Constat** :
   - la caisse gardait chaque vente sur le téléphone puis l'envoyait. Toute réponse d'erreur du serveur autre que 401, 403 ou 404 (400, 409, 500, délai dépassé) était traitée comme une absence de réseau : la vente restait « en attente d'envoi » sans explication, et une opération refusée en bloc bloquait les suivantes ;
   - un échec de l'enregistrement du téléphone comme appareil affichait l'écran « ouvrez la caisse une première fois avec internet ».
@@ -605,3 +605,47 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - il revient à la page vue juste avant, avec ses filtres et sa position ; sans page précédente (lien direct, rechargement), il va à la page du dessus (`parentPath`) ;
   - il ne revient jamais sur un formulaire : après l'envoi, il va à la page du dessus ;
   - les pages du menu n'ont pas de « Retour » : elles s'atteignent depuis le menu, comme les onglets d'une application. La caisse garde son lien « Accueil ».
+
+## ADR-053 — L'appareil est la référence : hors ligne d'abord, le serveur vérifie (remplace ADR-042, modifie ADR-020, ADR-024 et ADR-025)
+
+- **Statut** : **Acceptée** (décision du propriétaire du 2026-11-01 : « réactiver le hors-ligne en trouvant une meilleure alternative pour gérer la synchronisation : meilleure vérification, synchro des données en local, tout est sauvegardé en local ; l'appareil est le point de référence, pas le compte »).
+- **Constat** : ADR-042 avait coupé le hors-ligne pour de bonnes raisons, mais les causes étaient précises :
+  - toute réponse autre que 401, 403 ou 404 passait pour une absence de réseau : une opération que le serveur ne prendrait jamais bloquait la file, en silence ;
+  - une erreur interne sur une opération faisait échouer tout le lot ;
+  - une vente refusée perdait son contenu : seul son motif restait sur le téléphone ;
+  - l'appareil appartenait à un compte : les ventes d'une personne restaient bloquées sur un téléphone partagé, et la déconnexion effaçait tout ;
+  - une session expirée redirigeait vers la page de connexion, dont le HTML était lu comme une réponse ;
+  - un réseau lent pouvait retenir la file sans limite.
+- **Décision** :
+  - **ce que dit l'appareil et ce que décide le serveur** : l'appareil fait foi sur ce qui s'est passé au comptoir (une vente faite reste faite, le téléphone n'en perd jamais la trace) ; le serveur reste seul juge des droits, de l'appartenance à la boutique et des numéros légaux de facture. Les règles non négociables de `CLAUDE.md` ne changent pas ;
+  - **la caisse ouvre sur la copie du téléphone**, tout de suite, puis se rafraîchit en arrière-plan, avec un délai limité. Sans copie, il faut une première ouverture avec internet ;
+  - **toute vente s'écrit d'abord sur le téléphone** (vente, client, correction de stock), puis part en arrière-plan. Le vendeur attend le serveur 3 secondes au plus. Un téléphone que le serveur n'a pas encore enregistré vend quand même, avec un préfixe de trois lettres tiré au hasard ;
+  - **l'appareil appartient à la boutique** : nouvelle table `device_users`, personnes vues sur cet appareil. Tout membre ayant le droit de vendre livre ce que garde le téléphone, et un même téléphone reste un seul appareil quelle que soit la personne ;
+  - **la vente reste à celui qui l'a faite** : l'opération porte `recordedBy`, retenu seulement si cette personne a été vue sur cet appareil ; sinon la vente revient à la personne qui livre. `recordedBy` ne donne **aucun droit** : les règles (limite de réduction, vente sous le prix d'achat, ancienneté) restent celles de la personne connectée. Une vente livrée par un gérant vaut donc validation par ce gérant ;
+  - **se déconnecter n'efface plus rien** : la caisse se ferme sur ce téléphone jusqu'à la prochaine connexion, et ce qui attend part avec le prochain membre de la boutique connecté. Une session simplement expirée laisse la caisse ouverte, et le bandeau propose de se reconnecter. Seul **« Effacer ce téléphone »** (Paramètres) vide l'appareil, et il est refusé tant qu'une opération attend ;
+  - **quatre issues, jamais confondues** : `accepted` et `duplicate` ; `rejected`, les règles refusent ; `deferred`, le serveur n'a pas pu traiter, l'opération reste en file. Une erreur 5xx sur une opération ne touche plus les autres du lot, et une vente ne dépasse jamais le client qu'elle attend. Une panne de ce type n'est plus comptée comme un refus ;
+  - **la file ne se bloque plus** : un lot non accepté repart une opération à la fois ; celle qui pose problème est mise de côté avec son motif (4xx) ou attend de plus en plus longtemps, une heure au plus (5xx), et les autres passent. Chaque envoi a un délai ;
+  - **rien n'est perdu sur un refus** : l'opération refusée garde son contenu et peut être **renvoyée**, par exemple par un gérant ;
+  - **ancienneté** : au-delà de `max_offline_days`, un vendeur reste refusé, mais un gérant peut livrer ;
+  - **preuve de réception** : `POST /sync/check`. À l'ouverture et au retour du réseau, le téléphone demande au serveur lesquelles de ses 200 dernières ventes envoyées il détient, et renvoie les autres (sauvegarde restaurée par exemple). Le téléphone peut ainsi reconstituer ce que le serveur a perdu ;
+  - **message à l'ouverture** : une caisse ouverte sans réseau affiche d'abord « Vous êtes hors ligne », qui dit que l'on peut vendre et que les ventes partiront seules (demande du propriétaire du 2026-11-01). Il n'interrompt jamais une vente en cours, où le bandeau suffit, et se ferme si le réseau revient ;
+  - **bouton « Synchroniser »** dans la caisse et **« Envoyer maintenant »** dans le bandeau (demande du propriétaire du 2026-11-01), au cas où l'envoi ne se déclenche pas seul : ils envoient tout de suite, sans respecter l'attente d'une opération reportée, chaque opération une fois par essai. « Synchroniser » met aussi à jour produits et prix, puis dit le résultat en clair ;
+  - **journal du téléphone** : « Ventes de ce téléphone » dans la caisse (Envoyée, En attente, Refusée), lisible sans réseau, avec le ticket ;
+  - **stockage durable** demandé au navigateur (`navigator.storage.persist`) pour limiter l'effacement automatique quand la place manque ;
+  - **`/caisse` n'est plus préchargée** depuis les autres pages : le service worker la garde déjà, et cela économise des données à la première visite.
+- **Écartée** : faire du téléphone l'arbitre des droits ou des stocks, ce qui aurait ouvert la falsification depuis un appareil et contredit ADR-005 ; répliquer Postgres vers le téléphone (ADR-020).
+- **Limites** :
+  - les données de la boutique restent sur le téléphone après une déconnexion, **sans chiffrement au repos** : prix d'achat et clients sont lisibles par qui ouvre le navigateur de ce téléphone. C'est le prix de « tout est sauvegardé en local » ;
+  - un téléphone perdu avec des ventes jamais envoyées les perd ; retirer un appareil refuse ses envois ;
+  - un téléphone retiré dont la session reste valide peut encore se réenregistrer comme nouvel appareil (comportement antérieur, non corrigé ici) ;
+  - un compte d'une autre boutique sur le même téléphone ne livre pas : le bandeau demande un compte de la boutique concernée. Il ne voit pas la copie de l'autre boutique dans la caisse, mais elle reste dans le navigateur ;
+  - un compte en lecture seule ne peut pas livrer ;
+  - les pertes, entrées et inventaires, les factures et les statistiques restent en ligne ;
+  - le stockage durable dépend du navigateur, et vider les données du navigateur efface tout ;
+  - **à vérifier sur de vrais Android d'entrée de gamme**, sur la production, pendant le pilote.
+- **Conséquences** : appliquer `20261101090000_device_users` **avant** de déployer l'API. Les routes `/caisse/vente` et `/caisse/client` disparaissent.
+
+## ADR-054 — Limite de produits des offres : 10, 50, sans limite (modifie ADR-033)
+
+- **Statut** : **Acceptée** (décision du propriétaire, 2026-11-01).
+- **Décision** : **Gratuit** 10 produits, **Essentiel** 50, **Pro** sans limite. Les prix et les autres limites ne changent pas. Chaque boutique prend le plafond de son offre (`20261101091000_plan_product_limits_10_50`) : les plafonds ne font que monter, personne ne perd rien.

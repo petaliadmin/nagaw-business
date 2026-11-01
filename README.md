@@ -10,20 +10,21 @@ Application SaaS de **gestion de boutique**, mobile first, utilisable sur ordina
 
 ## Documentation
 
-| Document                                       | Contenu                                         |
-| ---------------------------------------------- | ----------------------------------------------- |
-| [docs/AUDIT_PHASE_0.md](docs/AUDIT_PHASE_0.md) | Audit initial, risques, MVP, questions ouvertes |
-| [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)   | Vision, personas, modules                       |
-| [docs/DESIGN.md](docs/DESIGN.md)               | Design, palette, accessibilité                  |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)   | Architecture cible                              |
-| [docs/DATA_MODEL.md](docs/DATA_MODEL.md)       | Modèle de données                               |
-| [docs/API.md](docs/API.md)                     | Conventions d'API                               |
-| [docs/SECURITY.md](docs/SECURITY.md)           | Sécurité et permissions                         |
-| [docs/TESTING.md](docs/TESTING.md)             | Stratégie de tests                              |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)       | Environnements et variables                     |
-| [docs/OPERATIONS.md](docs/OPERATIONS.md)       | Exploitation                                    |
-| [docs/ROADMAP.md](docs/ROADMAP.md)             | Phases et progression                           |
-| [docs/DECISIONS.md](docs/DECISIONS.md)         | Décisions techniques (ADR)                      |
+| Document                                               | Contenu                                         |
+| ------------------------------------------------------ | ----------------------------------------------- |
+| [docs/AUDIT_PHASE_0.md](docs/AUDIT_PHASE_0.md)         | Audit initial, risques, MVP, questions ouvertes |
+| [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md)           | Vision, personas, modules                       |
+| [docs/DESIGN.md](docs/DESIGN.md)                       | Design, palette, accessibilité                  |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)           | Architecture cible                              |
+| [docs/DATA_MODEL.md](docs/DATA_MODEL.md)               | Modèle de données                               |
+| [docs/API.md](docs/API.md)                             | Conventions d'API                               |
+| [docs/SECURITY.md](docs/SECURITY.md)                   | Sécurité et permissions                         |
+| [docs/PLAN_AMELIORATION.md](docs/PLAN_AMELIORATION.md) | Plan d'amélioration, marché sénégalais          |
+| [docs/TESTING.md](docs/TESTING.md)                     | Stratégie de tests                              |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)               | Environnements et variables                     |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md)               | Exploitation                                    |
+| [docs/ROADMAP.md](docs/ROADMAP.md)                     | Phases et progression                           |
+| [docs/DECISIONS.md](docs/DECISIONS.md)                 | Décisions techniques (ADR)                      |
 
 ## Stack
 

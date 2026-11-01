@@ -25,7 +25,7 @@ export const PLAN_LIMITS: {
 
 const formatNumber = (n: number) => new Intl.NumberFormat('fr').format(n);
 
-/** « 3 produits », or « Produits sans limite » (ADR-033). */
+/** « 10 produits », or « Produits sans limite » (ADR-033). */
 export const planCount = (n: number | null, [one, many]: [string, string]) =>
   n === null
     ? `${many.charAt(0).toUpperCase()}${many.slice(1)} sans limite`

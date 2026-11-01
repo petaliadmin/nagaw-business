@@ -11,6 +11,7 @@ import {
   customerRepaymentSchema,
   deviceTicketPrefix,
   registerDeviceSchema,
+  syncCheckSchema,
   syncRequestSchema,
   paymentProblem,
   roleHasPermission,
@@ -319,7 +320,7 @@ export async function handleSales(ctx) {
       saleNumber: state.nextNumber[orgId],
       status: 'completed',
       customerId: input.customerId,
-      sellerId: user.id,
+      sellerId: device?.soldBy ?? user.id,
       lines: lines.map(({ product, quantity, unitPrice }, index) => ({
         position: index + 1,
         productId: product.id,
@@ -431,12 +432,24 @@ export async function handleSales(ctx) {
     device.revokedAt ??= new Date().toISOString();
     return reply(200, deviceDto(device, ctx.userById));
   }
+  if (path === '/api/v1/sync/check' && req.method === 'POST') {
+    if (role === 'viewer') return deny();
+    const parsed = syncCheckSchema.safeParse(await ctx.readJson(req));
+    if (!parsed.success) return invalid(parsed.error.issues);
+    if (!state.devices.some((d) => mine(d) && d.id === parsed.data.deviceId))
+      return fail(404, 'DEVICE_NOT_FOUND', 'Appareil introuvable.');
+    return reply(200, {
+      unknown: parsed.data.clientOperationIds.filter(
+        (id) => !state.sales.some((s) => mine(s) && s.clientOperationId === id),
+      ),
+    });
+  }
   if (path === '/api/v1/sync' && req.method === 'POST') {
     if (role === 'viewer') return deny();
     const parsed = syncRequestSchema.safeParse(await ctx.readJson(req));
     if (!parsed.success) return invalid(parsed.error.issues);
     const device = state.devices.find(
-      (d) => mine(d) && d.id === parsed.data.deviceId && d.userId === user.id,
+      (d) => mine(d) && d.id === parsed.data.deviceId,
     );
     if (!device) return fail(404, 'DEVICE_NOT_FOUND', 'Appareil introuvable.');
     if (device.revokedAt)
@@ -542,7 +555,11 @@ export async function handleSales(ctx) {
           payments: data.payments,
           cashReceived: data.cashReceived,
         },
-        { occurredAt: data.occurredAt, deviceTicket: data.deviceTicket },
+        {
+          occurredAt: data.occurredAt,
+          deviceTicket: data.deviceTicket,
+          soldBy: data.recordedBy ?? undefined,
+        },
       );
       results.push(
         result.ok

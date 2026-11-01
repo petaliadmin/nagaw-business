@@ -83,14 +83,14 @@ describe('Offers, subscriptions and quotas', () => {
         name: 'Gratuit',
         monthlyPrice: 0,
         currency: 'XOF',
-        limits: { products: 3, members: 2, devices: 1 },
+        limits: { products: 10, members: 2, devices: 1 },
       },
       {
         key: 'essential',
         name: 'Essentiel',
         monthlyPrice: 5000,
         currency: 'XOF',
-        limits: { products: 10, members: 5, devices: 3 },
+        limits: { products: 50, members: 5, devices: 3 },
       },
       {
         key: 'pro',
@@ -109,17 +109,17 @@ describe('Offers, subscriptions and quotas', () => {
     const s = (await get(alice, acmeId, '/subscription').expect(200)).body;
     expect(s).toMatchObject({
       plan: { key: 'free' },
-      limits: { products: 3, members: 2, devices: 1 },
+      limits: { products: 10, members: 2, devices: 1 },
       usage: { products: 0, members: 1, devices: 0 },
       pendingRequest: null,
     });
   });
 
   it('applies the free offer to products, devices and people', async () => {
-    for (let i = 1; i <= 3; i++) await product(`Article ${i}`).expect(201);
-    const refused = await product('Article 4').expect(409);
+    for (let i = 1; i <= 10; i++) await product(`Article ${i}`).expect(201);
+    const refused = await product('Article 11').expect(409);
     expect(refused.body.error.message).toBe(
-      'Limite de 3 produits atteinte. Changez d’offre dans « Abonnement » pour en ajouter.',
+      'Limite de 10 produits atteinte. Changez d’offre dans « Abonnement » pour en ajouter.',
     );
     await device().expect(201);
     // Beyond the offer, a phone is still accepted: the checkout must
@@ -133,7 +133,7 @@ describe('Offers, subscriptions and quotas', () => {
     expect(
       (await get(alice, acmeId, '/subscription').expect(200)).body.usage,
     ).toEqual({
-      products: 3,
+      products: 10,
       members: 1,
       devices: 2,
     });
@@ -145,21 +145,21 @@ describe('Offers, subscriptions and quotas', () => {
       (await get(alice, acmeId, '/subscription').expect(200)).body,
     ).toMatchObject({
       plan: { key: 'essential', name: 'Essentiel' },
-      limits: { products: 10, members: 5, devices: 3 },
+      limits: { products: 50, members: 5, devices: 3 },
     });
-    await product('Article 4').expect(201);
+    await product('Article 11').expect(201);
     await device().expect(201);
     await invite('autre@example.test').expect(201);
 
     await ctx.setPlan(acmeId, 'free');
     const s = (await get(alice, acmeId, '/subscription').expect(200)).body;
-    expect(s.usage).toEqual({ products: 4, members: 1, devices: 3 });
-    expect(s.limits).toEqual({ products: 3, members: 2, devices: 1 });
+    expect(s.usage).toEqual({ products: 11, members: 1, devices: 3 });
+    expect(s.limits).toEqual({ products: 10, members: 2, devices: 1 });
     // Nothing is taken away; no more products can be added.
     expect(
       (await get(alice, acmeId, '/products').expect(200)).body,
-    ).toHaveLength(4);
-    await product('Article 5').expect(409);
+    ).toHaveLength(11);
+    await product('Article 12').expect(409);
     // A phone is never refused: the checkout always opens (2026-10-27).
     await device().expect(201);
   });
@@ -168,12 +168,12 @@ describe('Offers, subscriptions and quotas', () => {
     await ctx.setPlan(acmeId, 'pro');
     const s = (await get(alice, acmeId, '/subscription').expect(200)).body;
     expect(s.limits).toEqual({ products: null, members: 20, devices: 10 });
-    // Beyond the 10 of Essentiel: 4 already, 7 more.
-    for (let i = 5; i <= 11; i++) await product(`Article ${i}`).expect(201);
+    // Beyond the 50 of Essentiel: 11 already, 40 more.
+    for (let i = 12; i <= 51; i++) await product(`Article ${i}`).expect(201);
     expect(
       (await get(alice, acmeId, '/subscription').expect(200)).body.usage
         .products,
-    ).toBe(11);
+    ).toBe(51);
     await ctx.setPlan(acmeId, 'free');
   }, 60_000);
 

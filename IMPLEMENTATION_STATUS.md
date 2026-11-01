@@ -887,3 +887,20 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 ## Blog : 20 articles de plus
 
 - **Livré** sur la branche `claude/blog-20-articles` : 40 articles au total, dont les métiers de services, les factures et les chiffres du commerçant. Aucun seuil, taux ou coût officiel n'y figure : les sources trouvées se contredisent, et ces articles renvoient aux services compétents.
+
+## Hors ligne réactivé : l'appareil est la référence (ADR-053) et nouvelles limites (ADR-054)
+
+- **Décision** du propriétaire du 2026-11-01. Sur la branche `claude/hors-ligne-appareil`, à fusionner après application des migrations en production.
+- **Livré** :
+  - caisse ouverte depuis la copie du téléphone, vente, client et correction de stock écrits d'abord en local, envoi en arrière-plan ;
+  - appareil rattaché à la boutique (`device_users`), livraison par tout membre autorisé, vendeur d'origine conservé (`recordedBy`), sans aucun droit transmis ;
+  - déconnexion qui garde tout et ferme la caisse, « Effacer ce téléphone » dans Paramètres, refusé tant qu'une opération attend ;
+  - statut `deferred`, reprise une opération à la fois, attente croissante, opération refusée gardée avec son contenu et bouton « Renvoyer » ;
+  - preuve de réception (`POST /sync/check`, `/caisse/verifier`) ; « Ventes de ce téléphone » dans la caisse ; stockage durable demandé ;
+  - session expirée reconnue (une redirection n'est plus lue comme une réponse) ; `/caisse` n'est plus préchargée ;
+  - message « Vous êtes hors ligne » à l'ouverture de la caisse sans réseau ; bouton « Synchroniser » dans la caisse et « Envoyer maintenant » dans le bandeau ;
+  - offres : Gratuit 10 produits, Essentiel 50, Pro sans limite.
+- **À faire par le propriétaire avant le déploiement** : appliquer `20261101090000_device_users` et `20261101091000_plan_product_limits_10_50`, **puis** déployer l'API et le web.
+- **Non vérifié** : vrai téléphone Android d'entrée de gamme, réseau réel, production. Les tests tournent dans Chromium, contre un faux backend pour l'e2e.
+- **Limites** : voir ADR-053, notamment les données non chiffrées sur le téléphone après déconnexion.
+- **Tests exécutés** (2026-11-01, build dans les conditions de la CI) : lint, types, unitaires (367), intégration (215) et build verts ; e2e 370 réussis, 6 ignorés volontairement. `format:check` signale 24 fichiers non modifiés ici, en CRLF à cause de `core.autocrlf` sur ce poste ; aucun fichier de ce lot.

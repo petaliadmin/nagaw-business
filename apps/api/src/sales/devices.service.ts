@@ -9,20 +9,16 @@ import { AuditService } from '../audit/audit.service.js';
 import { ApiException } from '../common/api-exception.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
-import {
-  conflict,
-  notFound,
-  UUID_RE,
-  type Executor,
-} from '../catalog/catalog.errors.js';
+import { notFound, UUID_RE, type Executor } from '../catalog/catalog.errors.js';
 
 function deviceNotFound(): ApiException {
   return notFound('DEVICE_NOT_FOUND', 'Appareil introuvable.');
 }
 
 /**
- * Devices allowed to sell offline (ADR-020). Each has its own ticket
- * prefix; a manager can revoke a lost or stolen one.
+ * Devices allowed to sell offline (ADR-020). They belong to the shop, not
+ * to an account (ADR-053). Each has its own ticket prefix; a manager can
+ * revoke a lost or stolen one.
  */
 @Injectable()
 export class DevicesService {
@@ -94,11 +90,8 @@ export class DevicesService {
         .where('client_operation_id', '=', input.clientOperationId)
         .executeTakeFirst();
       if (existing) {
-        if (existing.user_id !== user.userId)
-          throw conflict(
-            'OPERATION_ID_REUSED',
-            'Cet identifiant d’opération a déjà servi.',
-          );
+        // The same phone, whoever opens it now (ADR-053).
+        await this.seen(trx, tenant.organizationId, existing.id, user.userId);
         const row = await this.select(trx, tenant.organizationId)
           .where('d.id', '=', existing.id)
           .executeTakeFirstOrThrow();
@@ -125,6 +118,7 @@ export class DevicesService {
         })
         .returning('id')
         .executeTakeFirstOrThrow();
+      await this.seen(trx, tenant.organizationId, id, user.userId);
       await trx
         .updateTable('app.organizations')
         .set({ next_device_number: org.next_device_number + 1 })
@@ -191,8 +185,9 @@ export class DevicesService {
   }
 
   /**
-   * The device that sends a batch must be one of the caller's, in this
-   * shop, and not revoked.
+   * The device that sends a batch must be of this shop and not revoked.
+   * It is not tied to the caller (ADR-053): any member delivers what the
+   * phone keeps, and is then known on it.
    */
   async assertUsable(
     tenant: TenantContext,
@@ -202,18 +197,52 @@ export class DevicesService {
     const device = UUID_RE.test(id)
       ? await this.database.db
           .selectFrom('app.devices')
-          .select(['user_id', 'revoked_at'])
+          .select('revoked_at')
           .where('organization_id', '=', tenant.organizationId)
           .where('id', '=', id)
           .executeTakeFirst()
       : undefined;
-    if (!device || device.user_id !== user.userId) throw deviceNotFound();
+    if (!device) throw deviceNotFound();
     if (device.revoked_at)
       throw new ApiException(
         HttpStatus.FORBIDDEN,
         'DEVICE_REVOKED',
         'Cet appareil a été retiré par un gérant : ses ventes ne sont plus acceptées.',
       );
+    await this.seen(this.database.db, tenant.organizationId, id, user.userId);
+  }
+
+  private async seen(
+    executor: Executor,
+    organizationId: string,
+    deviceId: string,
+    userId: string,
+  ): Promise<void> {
+    await executor
+      .insertInto('app.device_users')
+      .values({
+        organization_id: organizationId,
+        device_id: deviceId,
+        user_id: userId,
+      })
+      .onConflict((oc) => oc.doNothing())
+      .execute();
+  }
+
+  /** Whether this person has been on this device (ADR-053). */
+  async knows(
+    organizationId: string,
+    deviceId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const row = await this.database.db
+      .selectFrom('app.device_users')
+      .select('user_id')
+      .where('organization_id', '=', organizationId)
+      .where('device_id', '=', deviceId)
+      .where('user_id', '=', userId)
+      .executeTakeFirst();
+    return row !== undefined;
   }
 
   async touch(organizationId: string, id: string): Promise<void> {

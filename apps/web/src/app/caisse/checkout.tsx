@@ -477,8 +477,8 @@ export interface SaleDraft {
 
 /**
  * The checkout screen (Phase 10). It knows nothing of the network: the
- * checkout (/caisse) sends the sale to the server (ADR-042) and shows
- * its answer.
+ * offline checkout (/caisse) records the sale on the device and sends it
+ * when it can (ADR-053).
  */
 export function Checkout({
   noun,

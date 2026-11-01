@@ -65,14 +65,14 @@ const PLANS = [
     name: 'Gratuit',
     monthlyPrice: 0,
     currency: 'XOF',
-    limits: { products: 3, members: 2, devices: 1 },
+    limits: { products: 10, members: 2, devices: 1 },
   },
   {
     key: 'essential',
     name: 'Essentiel',
     monthlyPrice: 5000,
     currency: 'XOF',
-    limits: { products: 10, members: 5, devices: 3 },
+    limits: { products: 50, members: 5, devices: 3 },
   },
   {
     key: 'pro',

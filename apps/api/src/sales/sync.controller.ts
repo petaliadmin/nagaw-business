@@ -10,9 +10,12 @@ import {
 } from '@nestjs/common';
 import {
   registerDeviceSchema,
+  syncCheckSchema,
   syncRequestSchema,
   type DeviceDto,
   type RegisterDeviceInput,
+  type SyncCheckRequest,
+  type SyncCheckResponseDto,
   type SyncRequest,
   type SyncResponseDto,
 } from '@nagaw/shared';
@@ -87,5 +90,16 @@ export class SyncController {
     @RequestId() requestId: string | null,
   ): Promise<SyncResponseDto> {
     return this.sync.apply(tenant, user, body, requestId);
+  }
+
+  @Post('sync/check')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermission('sales.create')
+  check(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(syncCheckSchema)) body: SyncCheckRequest,
+  ): Promise<SyncCheckResponseDto> {
+    return this.sync.check(tenant, user, body);
   }
 }
