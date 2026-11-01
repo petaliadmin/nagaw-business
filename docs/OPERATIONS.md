@@ -33,7 +33,7 @@ Le compte doit exister (inscription faite, ou créé dans **Authentication → U
 1. **Retirer l'appareil** : le propriétaire ou un gérant, dans **Paramètres → Appareils de vente**, choisit « Retirer ». Les ventes que ce téléphone enverrait sont refusées et apparaissent dans les métriques de synchronisation.
 2. **Fermer l'accès de la personne** si le téléphone restait connecté : **Équipe → Désactiver**. Toutes les routes de la boutique lui sont alors refusées, quel que soit le téléphone.
 3. **Changer son mot de passe** (page « Mot de passe oublié ») ; une session déjà ouverte expire au plus tard à l'échéance de son jeton Supabase (1 heure par défaut).
-4. Les ventes faites sur ce téléphone et **jamais envoyées** sont perdues : elles n'existent que sur l'appareil (ADR-025). Celles déjà envoyées restent dans la boutique.
+4. Les ventes faites sur ce téléphone et **jamais envoyées** sont perdues : elles n'existent que sur l'appareil (ADR-053). Celles déjà envoyées restent dans la boutique.
 
 ### Suspendre une boutique (fraude, impayé)
 

@@ -26,10 +26,10 @@ test('the owner sees the offer, its limits, and asks for another one', async ({
   const offers = page.getByRole('list', { name: 'Les offres' });
   await expect(
     offers.getByRole('listitem', { name: 'Offre Gratuit' }),
-  ).toContainText('3 produits');
+  ).toContainText('10 produits');
   await expect(
     offers.getByRole('listitem', { name: 'Offre Essentiel' }),
-  ).toContainText('10 produits');
+  ).toContainText('50 produits');
   const pro = offers.getByRole('listitem', { name: 'Offre Pro' });
   await expect(pro).toContainText('Votre offre');
   await expect(pro).toContainText('Produits sans limite');

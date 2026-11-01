@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
   flushOutbox,
+  flushOutboxNow,
   outboxStatus,
   OUTBOX_EVENT,
   type OutboxStatus,
@@ -42,6 +43,11 @@ export function ConnectionBanner() {
     void load().then(send);
     window.addEventListener(OUTBOX_EVENT, load);
     window.addEventListener('online', send);
+    // A phone taken out of a pocket: its timers were asleep.
+    const wake = () => {
+      if (document.visibilityState === 'visible') send();
+    };
+    document.addEventListener('visibilitychange', wake);
     const timer = window.setInterval(() => {
       if (navigator.onLine) send();
     }, RETRY_MS);
@@ -49,6 +55,7 @@ export function ConnectionBanner() {
       active = false;
       window.removeEventListener(OUTBOX_EVENT, load);
       window.removeEventListener('online', send);
+      document.removeEventListener('visibilitychange', wake);
       window.clearInterval(timer);
     };
   }, []);
@@ -74,16 +81,38 @@ export function ConnectionBanner() {
   if (blocked.length > 0) {
     const stuck = blocked.reduce((sum, b) => sum + b.sales, 0);
     const revoked = blocked.some((b) => b.code === 'DEVICE_REVOKED');
-    const email = blocked.find((b) => b.email)?.email;
     return (
       <div role="status" className={`${base} bg-danger-strong text-white`}>
         <TriangleAlert aria-hidden className="size-5 shrink-0" />
         {revoked
           ? `${sales(stuck)} bloquée${stuck > 1 ? 's' : ''} : ce téléphone a été retiré par un gérant. Montrez ce message au propriétaire.`
-          : `${sales(stuck)} faite${stuck > 1 ? 's' : ''} sur ce téléphone avec ${email ? `le compte ${email}` : 'un autre compte'} : reconnectez-vous avec ce compte pour ${stuck > 1 ? 'les' : 'l’'}envoyer.`}
+          : `${sales(stuck)} d’une autre boutique sur ce téléphone : connectez un compte de cette boutique pour ${stuck > 1 ? 'les' : 'l’'}envoyer.`}
       </div>
     );
   }
+  if (pending > 0 && status?.problem === 'session')
+    return (
+      <div role="status" className={`${base} bg-warning text-on-vivid`}>
+        <TriangleAlert aria-hidden className="size-5 shrink-0" />
+        {sales(pending)} gardée{pending > 1 ? 's' : ''} sur ce téléphone.
+        <Link
+          href="/connexion?next=/caisse"
+          className="inline-flex min-h-12 items-center underline underline-offset-4"
+        >
+          Reconnectez-vous pour envoyer
+        </Link>
+      </div>
+    );
+  if (pending > 0 && status?.problem === 'server')
+    return (
+      <div role="status" className={`${base} bg-warning text-on-vivid`}>
+        <TriangleAlert aria-hidden className="size-5 shrink-0" />
+        Le serveur ne répond pas bien. {sales(pending)} gardée
+        {pending > 1 ? 's' : ''} sur ce téléphone, rien n’est perdu : nouvel
+        essai automatique.
+        <SendNow />
+      </div>
+    );
   if (rejected > 0)
     return (
       <div role="status" className={`${base} bg-danger-strong text-white`}>
@@ -103,6 +132,29 @@ export function ConnectionBanner() {
     <div role="status" className={`${base} bg-brand-soft text-brand-ink`}>
       <CloudUpload aria-hidden className="size-5 shrink-0" />
       {sales(pending)} en attente d’envoi…
+      <SendNow />
     </div>
+  );
+}
+
+/** In case the automatic sending does not start by itself. */
+function SendNow() {
+  const [sending, setSending] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={sending}
+      onClick={() => {
+        setSending(true);
+        flushOutboxNow()
+          .catch((error: unknown) => {
+            console.warn('Envoi demandé impossible', error);
+          })
+          .finally(() => setSending(false));
+      }}
+      className="inline-flex min-h-12 items-center underline underline-offset-4"
+    >
+      {sending ? 'Envoi…' : 'Envoyer maintenant'}
+    </button>
   );
 }

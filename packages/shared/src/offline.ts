@@ -70,6 +70,11 @@ export const offlineSaleSchema = z
       .regex(/^[A-Z]{1,3}-\d{6}$/, 'Numéro de ticket invalide'),
     /** Device time of the sale. */
     occurredAt: z.iso.datetime({ offset: true, error: 'Date invalide' }),
+    /**
+     * The person who sold, when the sale may be delivered by someone else
+     * on the same phone (ADR-053). The server checks it was seen there.
+     */
+    recordedBy: uuid.nullable().default(null),
     /** A customer known by the server… */
     customerId: uuid.nullable().default(null),
     /** …or one created offline in the same batch (its operation id). */
@@ -162,7 +167,25 @@ export const syncRequestSchema = z
   .strict();
 export type SyncRequest = z.infer<typeof syncRequestSchema>;
 
-export type SyncStatus = 'accepted' | 'duplicate' | 'rejected';
+/**
+ * `rejected`: the rules refuse it, sending it again as is changes nothing.
+ * `deferred`: the server could not treat it now; it stays queued (ADR-053).
+ */
+export type SyncStatus = 'accepted' | 'duplicate' | 'rejected' | 'deferred';
+
+/** Which of these sales the server really holds (ADR-053). */
+export const syncCheckSchema = z
+  .object({
+    deviceId: uuid,
+    clientOperationIds: z.array(uuid).min(1).max(200),
+  })
+  .strict();
+export type SyncCheckRequest = z.infer<typeof syncCheckSchema>;
+
+export interface SyncCheckResponseDto {
+  /** Sales the server does not know: the phone sends them again. */
+  unknown: string[];
+}
 
 export interface SyncResultDto {
   clientOperationId: string;

@@ -41,7 +41,7 @@ L'application reste **manuelle** au sens d'ADR-017 : pas d'IA, pas d'agent, pas 
 | Dépense            | Sortie d'argent hors marchandises : loyer, électricité, salaires, transport.                                                                                                                         |
 | Caisse             | Lieu d'argent : caisse espèces, compte Mobile Money, compte bancaire. La trésorerie est la somme des caisses.                                                                                        |
 | Écriture comptable | Traduction d'une opération (vente, facture, achat, dépense) dans les comptes SYSCOHADA. Générée par l'opération, jamais saisie par un vendeur.                                                       |
-| Appareil           | Téléphone ou ordinateur enregistré pour travailler hors ligne. Chaque appareil a son préfixe de numérotation des tickets.                                                                            |
+| Appareil           | Téléphone ou ordinateur de la boutique, pas d'un compte (ADR-053). Il garde tout en local ; chaque appareil a son préfixe de numérotation des tickets.                                               |
 
 ## Modules
 

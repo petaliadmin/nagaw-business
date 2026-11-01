@@ -31,6 +31,7 @@ const sale = (productId: string, quantity: number): SyncOperation => ({
   data: {
     deviceTicket: 'A-000001',
     occurredAt: '2026-10-26T09:00:00Z',
+    recordedBy: null,
     customerId: null,
     customerOperationId: null,
     lines: [

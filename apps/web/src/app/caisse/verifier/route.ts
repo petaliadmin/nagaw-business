@@ -1,10 +1,9 @@
-import { createSaleSchema, type SaleDto } from '@nagaw/shared';
+import { syncCheckSchema, type SyncCheckResponseDto } from '@nagaw/shared';
 import { apiAsUser, getSession } from '@/lib/api/server';
 
 /**
- * Records a sale of the checkout on the server, at once (ADR-042: the
- * offline checkout is paused). The API checks the shop, the prices, the
- * stock and the seller's rights; its refusal goes back to the seller.
+ * Asks the API which sales it really holds (ADR-053). The request names
+ * its shop: the API checks membership and the device.
  */
 export async function POST(request: Request) {
   const session = await getSession();
@@ -12,22 +11,18 @@ export async function POST(request: Request) {
     return Response.json({ error: 'signed-out' }, { status: 401 });
   const body = (await request.json().catch(() => null)) as {
     organizationId?: unknown;
-    sale?: unknown;
+    deviceId?: unknown;
+    clientOperationIds?: unknown;
   } | null;
-  const parsed = createSaleSchema.safeParse(body?.sale);
+  const parsed = syncCheckSchema.safeParse({
+    deviceId: body?.deviceId,
+    clientOperationIds: body?.clientOperationIds,
+  });
   if (!parsed.success || typeof body?.organizationId !== 'string')
-    return Response.json(
-      {
-        error:
-          parsed.error?.issues[0]?.message ??
-          'Vente incomplète : rechargez la caisse.',
-        code: 'VALIDATION_FAILED',
-      },
-      { status: 400 },
-    );
-  const result = await apiAsUser<SaleDto>(session.accessToken, {
+    return Response.json({ error: 'invalid' }, { status: 400 });
+  const result = await apiAsUser<SyncCheckResponseDto>(session.accessToken, {
     method: 'POST',
-    path: '/sales',
+    path: '/sync/check',
     organizationId: body.organizationId,
     body: parsed.data,
     timeoutMs: 20000,

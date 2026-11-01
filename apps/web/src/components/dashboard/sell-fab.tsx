@@ -13,6 +13,7 @@ export function SellFab() {
       <div aria-hidden className="h-20 shrink-0 md:h-12 print:hidden" />
       <Link
         href="/caisse"
+        prefetch={false}
         className="fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 inline-flex min-h-16 items-center justify-center gap-2 rounded-full bg-sales-strong px-7 text-xl font-bold text-white shadow-lg transition-shadow hover:shadow-xl md:right-8 md:bottom-8 print:hidden"
       >
         <ShoppingCart aria-hidden className="size-6" />

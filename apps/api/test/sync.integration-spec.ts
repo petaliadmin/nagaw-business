@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { vi } from 'vitest';
+import { CustomersService } from '../src/sales/customers.service.js';
+import { SalesService } from '../src/sales/sales.service.js';
 import type { TestContext, TestUser } from './support/app.js';
 import { createTestContext } from './support/app.js';
 
@@ -258,9 +261,164 @@ describe('Offline devices and synchronization', () => {
     await limit(null);
   });
 
-  it('only accepts a device of the caller, in this shop, not revoked', async () => {
-    // Another user's device.
-    await sync([offlineSale()], alice).expect(404);
+  it('lets any member deliver what the device keeps, and keeps the seller (ADR-053)', async () => {
+    // Carol sold on this phone; Alice opens it and delivers.
+    const res = await sync(
+      [offlineSale({ recordedBy: carol.id })],
+      alice,
+    ).expect(200);
+    expect(res.body.results[0].status).toBe('accepted');
+    const sale = (
+      await get(alice, acmeId, `/sales/${res.body.results[0].saleId}`).expect(
+        200,
+      )
+    ).body;
+    expect(sale.seller.userId).toBe(carol.id);
+    // She sees it among her own sales.
+    await get(carol, acmeId, `/sales/${sale.id}`).expect(200);
+    const { rows } = await ctx.admin.query(
+      `select actor_id, metadata from app.audit_logs
+        where organization_id = $1 and target_id = $2 and action = 'sale.completed'`,
+      [acmeId, sale.id],
+    );
+    expect(rows[0]).toMatchObject({
+      actor_id: alice.id,
+      metadata: { soldBy: carol.id },
+    });
+  });
+
+  it('ignores a seller this device has never seen', async () => {
+    const res = await sync([offlineSale({ recordedBy: bob.id })]).expect(200);
+    const sale = (
+      await get(alice, acmeId, `/sales/${res.body.results[0].saleId}`).expect(
+        200,
+      )
+    ).body;
+    expect(sale.seller.userId).toBe(carol.id);
+  });
+
+  it('never gives the rights of the named seller to the person who delivers', async () => {
+    await ctx
+      .http()
+      .patch(`/api/v1/organizations/current/members/${carol.id}`)
+      .set(as(alice, acmeId))
+      .send({ maxDiscountBasisPoints: 1000 })
+      .expect(200);
+    // Alice was seen on this device, and has no limit; Carol has one.
+    const res = await sync([
+      offlineSale({
+        recordedBy: alice.id,
+        discount: 500,
+        payments: [{ method: 'cash', amount: 500 }],
+      }),
+    ]).expect(200);
+    expect(res.body.results[0]).toMatchObject({
+      status: 'rejected',
+      error: { code: 'DISCOUNT_NOT_ALLOWED' },
+    });
+    await ctx
+      .http()
+      .patch(`/api/v1/organizations/current/members/${carol.id}`)
+      .set(as(alice, acmeId))
+      .send({ maxDiscountBasisPoints: null })
+      .expect(200);
+  });
+
+  it('lets a manager deliver a sale older than the limit, not a seller', async () => {
+    const old = () =>
+      offlineSale({
+        occurredAt: new Date(Date.now() - 30 * 86_400_000).toISOString(),
+      });
+    const refused = await sync([old()]).expect(200);
+    expect(refused.body.results[0].status).toBe('rejected');
+    const delivered = await sync([old()], alice).expect(200);
+    expect(delivered.body.results[0].status).toBe('accepted');
+  });
+
+  it('defers an operation it cannot treat, and the others go on', async () => {
+    const sales = ctx.app.get(SalesService);
+    const original = sales.create.bind(sales);
+    const failing = vi
+      .spyOn(sales, 'create')
+      .mockImplementationOnce(() => Promise.reject(new Error('panne simulée')))
+      .mockImplementation(original);
+    const broken = offlineSale();
+    const next = offlineSale();
+    const res = await sync([broken, next]).expect(200);
+    failing.mockRestore();
+    expect(res.body.results.map((r: { status: string }) => r.status)).toEqual([
+      'deferred',
+      'accepted',
+    ]);
+    // Nothing was refused: it is sent again and recorded.
+    const again = await sync([broken]).expect(200);
+    expect(again.body.results[0].status).toBe('accepted');
+  });
+
+  it('keeps a sale behind the customer it waits for', async () => {
+    const customers = ctx.app.get(CustomersService);
+    const failing = vi
+      .spyOn(customers, 'createAlone')
+      .mockRejectedValueOnce(new Error('panne simulée'));
+    const customer = {
+      type: 'customer',
+      clientOperationId: randomUUID(),
+      data: {
+        name: 'Awa',
+        phone: '',
+        email: '',
+        address: '',
+        taxId: '',
+        notes: '',
+        creditLimit: null,
+      },
+    };
+    const sale = offlineSale({
+      customerOperationId: customer.clientOperationId,
+      payments: [{ method: 'credit', amount: 1000 }],
+    });
+    const res = await sync([customer, sale]).expect(200);
+    failing.mockRestore();
+    expect(res.body.results.map((r: { status: string }) => r.status)).toEqual([
+      'deferred',
+      'deferred',
+    ]);
+    const again = await sync([customer, sale]).expect(200);
+    expect(again.body.results.map((r: { status: string }) => r.status)).toEqual(
+      ['accepted', 'accepted'],
+    );
+  });
+
+  it('tells which sales it does not hold, in this shop only', async () => {
+    const sale = offlineSale();
+    await sync([sale]).expect(200);
+    const lost = randomUUID();
+    const res = await post(carol, acmeId, '/sync/check', {
+      deviceId: carolDevice.id,
+      clientOperationIds: [sale.clientOperationId, lost],
+    }).expect(200);
+    expect(res.body.unknown).toEqual([lost]);
+
+    // Another shop learns nothing: its device is unknown here, and its own
+    // view of the same sale is « unknown ».
+    await post(bob, globexId, '/sync/check', {
+      deviceId: carolDevice.id,
+      clientOperationIds: [sale.clientOperationId],
+    }).expect(404);
+    const globexDevice = (
+      await post(bob, globexId, '/devices', {
+        label: 'Globex vérification',
+        clientOperationId: randomUUID(),
+      }).expect(201)
+    ).body;
+    const elsewhere = await post(bob, globexId, '/sync/check', {
+      deviceId: globexDevice.id,
+      clientOperationIds: [sale.clientOperationId],
+    }).expect(200);
+    expect(elsewhere.body.unknown).toEqual([sale.clientOperationId]);
+  });
+
+  it('only accepts a device of this shop, not revoked', async () => {
     // A device id from nowhere, or from another shop.
     await sync([offlineSale()], carol, randomUUID()).expect(404);
     const globexDevice = (

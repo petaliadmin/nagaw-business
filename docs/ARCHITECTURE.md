@@ -82,7 +82,7 @@ retour du réseau (événement online, ouverture de l'application, bouton « Env
   → appareil : file purgée des opérations acceptées, refus affichés au gérant
 ```
 
-- La caisse est la page statique `/caisse`, gardée par le service worker ; ses données viennent d'IndexedDB (`apps/web/src/lib/offline`), rafraîchies par `/caisse/donnees`. Les envois passent par `/caisse/synchroniser` et l'enregistrement de l'appareil par `/caisse/appareil` : des routes du web qui relaient la session de la personne vers l'API.
+- L'appareil est la référence de ce qui s'est passé au comptoir, le serveur vérifie les droits (ADR-053). La caisse est la page statique `/caisse`, gardée par le service worker ; ses données viennent d'IndexedDB (`apps/web/src/lib/offline`), rafraîchies par `/caisse/donnees`. Les envois passent par `/caisse/synchroniser`, la preuve de réception par `/caisse/verifier` et l'enregistrement de l'appareil par `/caisse/appareil` : des routes du web qui relaient la session de la personne vers l'API.
 - Toute vente suit ce chemin, même en ligne (envoi immédiat).
 - Le stock affiché hors ligne est une estimation locale ; la valeur de référence est celle du serveur, recalculée depuis les mouvements.
 - Les lectures analytiques (statistiques, comptabilité) sont en ligne ; la dernière consultation reste lisible hors ligne, datée.

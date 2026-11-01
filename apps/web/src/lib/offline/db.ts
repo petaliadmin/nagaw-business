@@ -1,7 +1,7 @@
 /**
  * Minimal promise wrapper around IndexedDB (ADR-020). One database per
- * browser profile; data of a shop is keyed by its organization id, and
- * everything is erased at sign-out.
+ * browser profile; data of a shop is keyed by its organization id. It stays
+ * through sign-outs: only « Effacer ce téléphone » empties it (ADR-053).
  */
 const DB_NAME = 'nagaw';
 const DB_VERSION = 1;
@@ -84,7 +84,7 @@ export const idb = {
     request(tx.objectStore(store).count()),
 };
 
-/** Erases every local copy (sign-out, shared phone). */
+/** Erases every local copy: a phone that changes hands (ADR-053). */
 export async function eraseLocalData(): Promise<void> {
   if (typeof indexedDB === 'undefined') return;
   if (opening) {

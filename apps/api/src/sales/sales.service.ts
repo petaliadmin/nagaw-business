@@ -49,6 +49,11 @@ export interface DeviceSale {
   occurredAt: Date;
   /** Catalogue prices the seller saw, line by line (see priceBasis). */
   unitPrices: number[];
+  /**
+   * Who sold, when someone else delivers the sale (ADR-053). It only
+   * names the seller: the rules stay those of the person who delivers.
+   */
+  soldBy?: string;
 }
 
 /** A line sold under its purchase price (ADR-038). */
@@ -712,7 +717,7 @@ export class SalesService {
             organization_id: tenant.organizationId,
             sale_number: org.next_sale_number,
             customer_id: input.customerId,
-            seller_id: user.userId,
+            seller_id: device?.soldBy ?? user.userId,
             subtotal: totals.subtotal,
             discount: totals.discount,
             total: totals.total,
@@ -830,6 +835,7 @@ export class SalesService {
                   deviceTicket: device.deviceTicket,
                   offline: true,
                   priceReview,
+                  ...(device.soldBy ? { soldBy: device.soldBy } : {}),
                 }
               : {}),
             ...(shortages.length > 0 ? { stockReview: true } : {}),
@@ -863,7 +869,7 @@ export class SalesService {
           credit: input.payments
             .filter((p) => p.method === 'credit')
             .reduce((sum, p) => sum + p.amount, 0),
-          sellerId: user.userId,
+          sellerId: sale.seller.userId,
           sellerEmail: sale.seller.email,
           priceReview,
           shortages,

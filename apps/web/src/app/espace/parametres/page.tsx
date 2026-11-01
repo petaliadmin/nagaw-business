@@ -17,6 +17,7 @@ import {
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { EraseDeviceButton } from '@/components/pwa/erase-device-button';
 import { Alert } from '@/components/ui/alert';
 import { ButtonLink } from '@/components/ui/button-link';
 import { Card, Stat } from '@/components/ui/card';
@@ -236,6 +237,16 @@ async function Settings() {
           )}
         </Card>
       )}
+      <Card title="Ce téléphone" titleId="this-device" icon={Smartphone}>
+        <div className="flex flex-col gap-3">
+          <p className="text-ink-muted">
+            Il garde les produits, les clients et les ventes de la boutique,
+            même après une déconnexion. Videz-le seulement s’il change de
+            propriétaire.
+          </p>
+          <EraseDeviceButton />
+        </div>
+      </Card>
       <section aria-labelledby="taxes-title" className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <h2 id="taxes-title" className="text-xl font-bold">

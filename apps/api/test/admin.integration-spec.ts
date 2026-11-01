@@ -371,7 +371,7 @@ describe('Platform administration', () => {
     ).body;
     expect(changed).toMatchObject({
       plan: { key: 'essential' },
-      limits: { products: 10, members: 5, devices: 3 },
+      limits: { products: 50, members: 5, devices: 3 },
     });
   });
 

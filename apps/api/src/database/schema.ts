@@ -617,6 +617,13 @@ export interface SyncBatchesTable {
   received_at: ColumnType<Date, never, never>;
 }
 
+export interface DeviceUsersTable {
+  organization_id: string;
+  device_id: string;
+  user_id: string;
+  first_seen_at: ColumnType<Date, never, never>;
+}
+
 export interface SyncRejectionsTable {
   id: Generated<string>;
   organization_id: string;
@@ -707,6 +714,7 @@ export interface Database {
   'app.sale_payments': SalePaymentsTable;
   'app.customer_payments': CustomerPaymentsTable;
   'app.devices': DevicesTable;
+  'app.device_users': DeviceUsersTable;
   'app.document_sequences': DocumentSequencesTable;
   'app.quotes': QuotesTable;
   'app.invoices': InvoicesTable;
