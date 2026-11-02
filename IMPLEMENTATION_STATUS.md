@@ -888,6 +888,12 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
 - **Livré** sur la branche `claude/blog-20-articles` : 40 articles au total, dont les métiers de services, les factures et les chiffres du commerçant. Aucun seuil, taux ou coût officiel n'y figure : les sources trouvées se contredisent, et ces articles renvoient aux services compétents.
 
+## Vente sans internet suspendue (ADR-057)
+
+- **Demandé** par le propriétaire le 2026-11-02. Branche `claude/offline-suspendu`. Aucune migration.
+- **Livré** : la caisse s'ouvre seulement avec la réponse du serveur, refuse une vente sans réseau en gardant le panier, et le vendeur attend la confirmation du serveur. Une vente dont l'envoi échoue en route reste gardée et repart seule. Ce que les téléphones gardaient déjà part toujours.
+- **Non fait** : cause de l'essai raté non établie ; site public et guides à corriger sur décision du propriétaire.
+
 ## Lot 5 : téléphone retiré (5.1)
 
 - **Lancé** par le propriétaire le 2026-11-01. Branche `claude/lots-4-5`, avec le lot 4, fusionnée dans `main` le 2026-11-02 sur son autorisation. Aucune migration.

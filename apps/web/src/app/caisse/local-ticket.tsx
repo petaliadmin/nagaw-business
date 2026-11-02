@@ -79,7 +79,8 @@ export function LocalTicketView({
             className="flex items-center gap-2 rounded-xl bg-warning-soft p-3 font-semibold text-warning-ink"
           >
             <CloudOff aria-hidden className="size-5 shrink-0" />
-            Gardée sur ce téléphone : elle sera envoyée dès le retour du réseau.
+            Gardée sur ce téléphone : pas encore reçue en ligne. Elle partira
+            toute seule, ne la refaites pas.
           </p>
         )}
         {ticket.status === 'rejected' && (

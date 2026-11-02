@@ -24,7 +24,6 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ShopMark } from '@/components/ui/shop-mark';
 import { Alert } from '@/components/ui/alert';
-import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { buttonClasses } from '@/components/ui/button-styles';
 import {
   addLocalCustomer,
@@ -56,10 +55,15 @@ import { LocalTicketView } from './local-ticket';
  * The phone is the reference (ADR-053): the checkout opens from what it
  * keeps, every sale is written here first, and the network only ever
  * happens in the background. The server checks what arrives.
+ *
+ * Selling without internet is suspended (ADR-057): the checkout opens only
+ * once the server answered, and refuses a sale while the phone has no
+ * network. A sale whose sending fails on the way is still kept here and
+ * sent later, under the same operation id.
  */
 type State =
   | { status: 'loading' }
-  | { status: 'never-online' }
+  | { status: 'offline' }
   | { status: 'server-error'; message: string }
   | { status: 'signed-out' }
   | { status: 'not-allowed' }
@@ -333,14 +337,9 @@ function asSale(ticket: LocalTicket): SaleDto {
   };
 }
 
-/**
- * Past this time at the opening, a failed refresh says nothing: the seller
- * is already at work, and the banner is enough.
- */
-const OFFLINE_NOTICE_WINDOW_MS = 5_000;
-
-/** How long a seller waits for the server before seeing the local ticket. */
-const CONFIRM_WAIT_MS = 3_000;
+/** Said when the phone has no network at the moment of writing. */
+const NO_NETWORK =
+  'Pas de connexion internet : rien n’est enregistré. Pour l’instant, la caisse demande internet. Votre panier est gardé : validez à nouveau quand le réseau revient.';
 
 const TICKET_STATUS: Record<
   LocalTicket['status'],
@@ -417,8 +416,6 @@ export function CaisseApp() {
   const [ticket, setTicket] = useState<LocalTicket | null>(null);
   const [tickets, setTickets] = useState<LocalTicket[]>([]);
   const [rejected, setRejected] = useState<RejectedEntry[]>([]);
-  // Said once, before the first sale, and never in the middle of one.
-  const [offlineNotice, setOfflineNotice] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
 
@@ -435,7 +432,6 @@ export function CaisseApp() {
     async (cached: ShopSnapshot | null, asked = false) => {
       const fresh = await refresh(cached);
       if (fresh.ok) {
-        setOfflineNotice(false);
         setState({ status: 'ready', snapshot: fresh.snapshot, fresh: true });
         await (asked ? flushOutboxNow() : flushOutbox());
         await verifyDelivered(fresh.snapshot.organizationId);
@@ -454,7 +450,6 @@ export function CaisseApp() {
     let cancelled = false;
     (async () => {
       void keepLocalData();
-      const openedAt = Date.now();
       const [cached, locked] = await Promise.all([
         readSnapshot(),
         isCheckoutLocked(),
@@ -462,25 +457,12 @@ export function CaisseApp() {
         console.warn('Copie de la caisse illisible sur ce téléphone', error);
         return [null, false] as const;
       });
-      // The phone's copy opens at once: nothing waits for the network.
-      if (cached && !locked && !cancelled) {
-        setState({ status: 'ready', snapshot: cached, fresh: true });
-        if (!navigator.onLine) setOfflineNotice(true);
-        await loadRejected(cached.organizationId);
-      }
+      // The checkout opens on the server's answer only (ADR-057). The
+      // phone's copy still gives the device, the ticket counter and what
+      // waits to be sent.
       const fresh = await syncWithServer(cached);
       if (cancelled || fresh.ok || fresh.reason === 'revoked') return;
-      if (cached && !locked) {
-        if (
-          fresh.reason === 'offline' &&
-          Date.now() - openedAt < OFFLINE_NOTICE_WINDOW_MS
-        )
-          setOfflineNotice(true);
-        // Sales wait on the phone, and the banner says why (ADR-037).
-        setState((current) =>
-          current.status === 'ready' ? { ...current, fresh: false } : current,
-        );
-      } else if (locked) {
+      if (locked) {
         setState({ status: 'signed-out' });
       } else if (fresh.reason === 'server' || fresh.reason === 'device-limit') {
         setState({
@@ -494,7 +476,7 @@ export function CaisseApp() {
               ? 'signed-out'
               : fresh.reason === 'not-allowed'
                 ? 'not-allowed'
-                : 'never-online',
+                : 'offline',
         });
       }
     })().catch((error: unknown) => {
@@ -535,10 +517,9 @@ export function CaisseApp() {
     };
   }, [openShopId, loadRejected, syncWithServer]);
 
-  // Without a copy on the phone, try again by itself: every 15 s and as
+  // Closed for want of the server, try again by itself: every 15 s and as
   // soon as the network comes back. Nobody has to find « Réessayer ».
-  const waiting =
-    state.status === 'never-online' || state.status === 'server-error';
+  const waiting = state.status === 'offline' || state.status === 'server-error';
   useEffect(() => {
     if (!waiting) return;
     const retry = () => window.location.reload();
@@ -625,12 +606,12 @@ export function CaisseApp() {
         </Link>
       </Centered>
     );
-  if (state.status === 'never-online')
+  if (state.status === 'offline')
     return (
       <Centered>
         <Alert tone="warning">
-          Ouvrez la caisse une première fois avec internet : elle garde ensuite
-          vos produits sur ce téléphone pour vendre sans connexion.
+          Pas de connexion internet. Pour l’instant, la caisse demande internet
+          pour vendre : elle s’ouvrira dès que le réseau revient.
         </Alert>
         <button
           type="button"
@@ -698,8 +679,12 @@ export function CaisseApp() {
       );
   }
 
-  /** Written on the phone first; the server is told when it can be. */
+  /**
+   * Refused without network (ADR-057); otherwise written on the phone
+   * first, then sent at once, and the seller waits for the answer.
+   */
   async function onRecord(draft: SaleDraft): Promise<string | null> {
+    if (!navigator.onLine) return NO_NETWORK;
     const pendingCustomer = draft.customer
       ? snapshot.customers.find(
           (c) => c.id === draft.customer?.id && c.pendingOperationId,
@@ -777,22 +762,16 @@ export function CaisseApp() {
       return 'La vente n’a pas pu être gardée sur ce téléphone : son stockage est peut-être plein. Rien n’est enregistré.';
     }
     await reloadSnapshot();
-    // A slow network never keeps the customer waiting at the counter.
-    const outcome = await Promise.race([
-      flushOutbox(),
-      new Promise<null>((resolve) =>
-        window.setTimeout(() => resolve(null), CONFIRM_WAIT_MS),
-      ),
-    ]);
-    if (outcome === 'sent') {
-      const sent = await readTicket(clientOperationId);
-      if (sent?.status === 'sent' && sent.saleId) {
-        router.push(`/espace/ventes/${sent.saleId}?nouvelle=1`);
-        return null;
-      }
-      if (sent) local = sent;
+    // A new round, so that this sale is in it; each sending has a delay.
+    await flushOutboxNow();
+    const sent = await readTicket(clientOperationId);
+    if (sent?.status === 'sent' && sent.saleId) {
+      router.push(`/espace/ventes/${sent.saleId}?nouvelle=1`);
+      return null;
     }
-    setTicket(local);
+    // Refused, or lost on the way: the ticket says it, and the phone keeps
+    // the sale under its operation id, never sent twice.
+    setTicket(sent ?? local);
     return null;
   }
 
@@ -816,6 +795,7 @@ export function CaisseApp() {
     counted: number,
     reason: string,
   ): Promise<string | null> {
+    if (!navigator.onLine) return NO_NETWORK;
     try {
       await correctStockLocally(snapshot.organizationId, {
         type: 'stock_correction',
@@ -847,6 +827,7 @@ export function CaisseApp() {
   > {
     const name = values.name.trim();
     if (!name) return { ok: false, message: 'Donnez le nom du client.' };
+    if (!navigator.onLine) return { ok: false, message: NO_NETWORK };
     const pendingOperationId = crypto.randomUUID();
     const customer = {
       id: pendingOperationId,
@@ -878,38 +859,6 @@ export function CaisseApp() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <BottomSheet
-        open={offlineNotice}
-        title="Vous êtes hors ligne"
-        onClose={() => setOfflineNotice(false)}
-      >
-        <div className="flex flex-col gap-4">
-          <p className="text-lg">
-            Ce téléphone n’a pas de connexion internet.{' '}
-            <strong>Vous pouvez quand même vendre.</strong>
-          </p>
-          <p className="text-lg">
-            Vos ventes sont gardées sur ce téléphone et partiront toutes seules
-            au retour du réseau.
-          </p>
-          <p className="text-ink-muted">
-            Prix et stock du{' '}
-            {new Intl.DateTimeFormat('fr', {
-              dateStyle: 'short',
-              timeStyle: 'short',
-              timeZone: snapshot.shop.timeZone,
-            }).format(new Date(snapshot.refreshedAt))}
-            .
-          </p>
-          <button
-            type="button"
-            onClick={() => setOfflineNotice(false)}
-            className={buttonClasses('sell', 'w-full')}
-          >
-            Commencer à vendre
-          </button>
-        </div>
-      </BottomSheet>
       <header className="sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 border-b border-line bg-surface px-4 pt-[env(safe-area-inset-top)] print:hidden">
         <Link
           href="/espace"

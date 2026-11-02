@@ -608,7 +608,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-053 — L'appareil est la référence : hors ligne d'abord, le serveur vérifie (remplace ADR-042, modifie ADR-020, ADR-024 et ADR-025)
 
-- **Statut** : **Acceptée** (décision du propriétaire du 2026-11-01 : « réactiver le hors-ligne en trouvant une meilleure alternative pour gérer la synchronisation : meilleure vérification, synchro des données en local, tout est sauvegardé en local ; l'appareil est le point de référence, pas le compte »).
+- **Statut** : **Acceptée, vente sans internet suspendue par ADR-057** (2026-11-02). Décision du propriétaire du 2026-11-01 : « réactiver le hors-ligne en trouvant une meilleure alternative pour gérer la synchronisation : meilleure vérification, synchro des données en local, tout est sauvegardé en local ; l'appareil est le point de référence, pas le compte »).
 - **Constat** : ADR-042 avait coupé le hors-ligne pour de bonnes raisons, mais les causes étaient précises :
   - toute réponse autre que 401, 403 ou 404 passait pour une absence de réseau : une opération que le serveur ne prendrait jamais bloquait la file, en silence ;
   - une erreur interne sur une opération faisait échouer tout le lot ;
@@ -663,6 +663,18 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **numéros en base** (`platform_settings.payment_wave_number`, `payment_orange_money_number`), modifiables sans déploiement, en SQL comme les autres réglages de la plateforme. Vide : ce moyen n'est pas proposé. Sans aucun numéro, l'écran dit que l'équipe contacte la boutique.
 - **Limites** : **aucun renouvellement** : une offre acceptée reste active sans échéance, ni rappel mensuel, ni contrôle du paiement suivant. Aucun rapprochement automatique avec Wave : l'équipe vérifie à la main. La référence ne prouve pas le paiement.
 - **Conséquences** : appliquer `20261101130000_subscription_payment` **avant** de déployer l'API : `GET /subscription` lit ces colonnes.
+
+## ADR-057 — Vente sans internet suspendue (suspend en partie ADR-053)
+
+- **Statut** : **Acceptée** (décision du propriétaire du 2026-11-02 : « bloquer offline jusqu'à ce que je trouve un moyen »), après un essai où les ventes gardées sur le téléphone ne partaient pas malgré « Synchroniser » et l'actualisation de la page.
+- **Décision** :
+  - la caisse **ne s'ouvre qu'après la réponse du serveur** (données fraîches). Sans réseau, elle dit que la vente demande internet pour l'instant, et s'ouvre seule au retour du réseau ;
+  - une vente, une correction de stock ou un nouveau client est **refusé si le téléphone n'a pas de réseau** au moment de valider. Rien n'est enregistré, le panier est gardé ;
+  - avec du réseau, la vente s'écrit d'abord sur le téléphone puis part aussitôt, et le vendeur **attend la réponse** (plus de ticket local au bout de 3 secondes). Une vente dont l'envoi échoue en route reste gardée et repart sous le même identifiant d'opération : jamais perdue, jamais comptée deux fois ;
+  - le reste d'ADR-053 est gardé : file d'envoi, refus et reports distincts, preuve de réception, appareil de la boutique, « Effacer ce téléphone ». Ce que les téléphones gardent déjà part toujours ;
+  - textes de l'application corrigés (caisse, ticket, page « Pas de connexion », installation, `llms.txt`).
+- **Non fait** : la cause de l'essai raté n'est pas établie. En local, l'API n'était pas lancée et chaque envoi échouait, mais aucun essai n'a été mené en production. Le site public (accueil, référencement, données structurées, image de partage, guides dont « vendre sans internet ») promet encore la caisse sans internet : à corriger sur décision du propriétaire.
+- **Retour** : réactiver la vente hors ligne demande de comprendre l'échec, puis de rouvrir la caisse sur la copie du téléphone et d'enlever le refus sans réseau dans `caisse-app.tsx`.
 
 ## ADR-054 — Limite de produits des offres : 10, 50, sans limite (modifie ADR-033)
 
