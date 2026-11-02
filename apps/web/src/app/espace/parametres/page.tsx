@@ -28,7 +28,7 @@ import { apiAsUser } from '@/lib/api/server';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { ReferenceList } from '../produits/reference-page';
 import { OrganizationSwitcher } from '@/components/shell/organization-switcher';
-import { RevokeDeviceButton } from './device-actions';
+import { RestoreDeviceButton, RevokeDeviceButton } from './device-actions';
 import { InvoiceSettingsForm } from './invoice-settings-form';
 import { LogoForm } from './logo-form';
 import { MarkForm } from './mark-form';
@@ -221,9 +221,16 @@ async function Settings() {
                       : ' · aucun envoi'}
                   </span>
                   {device.revokedAt ? (
-                    <span className="font-semibold text-danger-ink">
-                      Retiré le {when(device.revokedAt)}
-                    </span>
+                    <>
+                      <span className="font-semibold text-danger-ink">
+                        Retiré le {when(device.revokedAt)}
+                      </span>
+                      <RestoreDeviceButton
+                        organizationId={active.id}
+                        deviceId={device.id}
+                        label={device.label}
+                      />
+                    </>
                   ) : (
                     <RevokeDeviceButton
                       organizationId={active.id}

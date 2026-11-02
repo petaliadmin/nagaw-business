@@ -888,6 +888,19 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
 - **Livré** sur la branche `claude/blog-20-articles` : 40 articles au total, dont les métiers de services, les factures et les chiffres du commerçant. Aucun seuil, taux ou coût officiel n'y figure : les sources trouvées se contredisent, et ces articles renvoient aux services compétents.
 
+## Lot 5 : téléphone retiré (5.1)
+
+- **Lancé** par le propriétaire le 2026-11-01. Branche `claude/lots-4-5`, avec le lot 4, fusionnée dans `main` le 2026-11-02 sur son autorisation. Aucune migration.
+- **Livré** : un téléphone retiré ne se réenregistre plus ; caisse fermée, prix et clients effacés dès qu'il joint le serveur ; « Remettre cet appareil » dans Paramètres. Le proxy renvoie vers `/connexion` une personne sans session avant le rendu de l'espace (plus d'erreur de validation `instant` en développement).
+- **Non fait** : 5.2 à 5.7 du plan, qui attendent une décision du propriétaire, un prestataire ou des données du pilote.
+- **Tests exécutés** (2026-11-02, lots 4 et 5 ensemble, build dans les conditions de la CI) : lint, types, unitaires (373), intégration (217) et build verts ; e2e 374 réussis, 6 ignorés volontairement.
+
+## Lot 4 : adoption et distribution
+
+- **Lancé** par le propriétaire le 2026-11-01. Sur la branche `claude/lot-4-adoption`, non fusionné, non déployé.
+- **Livré** : page d'accueil recentrée sur le crédit et le gain, image de partage et description alignées ; `docs/KIT_ADOPTION.md` (scripts, messages, discours de terrain, objections).
+- **Non fait** : enregistrement des vidéos en wolof et visites de terrain (à mener par le propriétaire) ; interface en wolof et Play Store (en attente de sa décision). Les messages n'ont été testés auprès d'aucun commerçant.
+
 ## Lot 3 : relance du crédit et paiement de l'abonnement (ADR-056)
 
 - **Lancé** par le propriétaire le 2026-11-01. Sur la branche `claude/lot-3-relance-paiement`, non fusionné, non déployé. Les points 3.3 à 3.8 attendent les retours du pilote.

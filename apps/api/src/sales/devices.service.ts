@@ -184,6 +184,47 @@ export class DevicesService {
     });
   }
 
+  /** A device withdrawn by mistake, or found again, comes back. */
+  async restore(
+    tenant: TenantContext,
+    user: AuthContext,
+    id: string,
+    requestId: string | null,
+  ): Promise<DeviceDto> {
+    if (!UUID_RE.test(id)) throw deviceNotFound();
+    return this.database.db.transaction().execute(async (trx) => {
+      const device = await trx
+        .selectFrom('app.devices')
+        .select(['id', 'revoked_at'])
+        .where('organization_id', '=', tenant.organizationId)
+        .where('id', '=', id)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!device) throw deviceNotFound();
+      if (device.revoked_at) {
+        await trx
+          .updateTable('app.devices')
+          .set({ revoked_at: null, revoked_by: null })
+          .where('organization_id', '=', tenant.organizationId)
+          .where('id', '=', id)
+          .execute();
+        await this.audit.record(trx, {
+          organizationId: tenant.organizationId,
+          actorType: 'user',
+          actorId: user.userId,
+          action: 'device.restored',
+          targetType: 'device',
+          targetId: id,
+          requestId,
+        });
+      }
+      const row = await this.select(trx, tenant.organizationId)
+        .where('d.id', '=', id)
+        .executeTakeFirstOrThrow();
+      return this.toDto(row);
+    });
+  }
+
   /**
    * The device that sends a batch must be of this shop and not revoked.
    * It is not tied to the caller (ADR-053): any member delivers what the

@@ -28,6 +28,7 @@ import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { buttonClasses } from '@/components/ui/button-styles';
 import {
   addLocalCustomer,
+  clearShopCopy,
   correctStockLocally,
   dismissRejected,
   flushOutbox,
@@ -62,6 +63,7 @@ type State =
   | { status: 'server-error'; message: string }
   | { status: 'signed-out' }
   | { status: 'not-allowed' }
+  | { status: 'device-revoked' }
   | {
       status: 'ready';
       snapshot: ShopSnapshot;
@@ -91,6 +93,8 @@ type RefreshFailure =
   | 'signed-out'
   | 'not-allowed'
   | 'device-limit'
+  /** A manager withdrew this phone: it stays out until one brings it back. */
+  | 'revoked'
   /** The server answered, with an error: not a network problem. */
   | 'server';
 
@@ -190,11 +194,7 @@ async function requestDevice(
     if (!response.ok)
       return { ok: false, reason: 'server', message: await errorOf(response) };
     const device = (await response.json()) as DeviceDto;
-    // A device a manager removed is never used again.
-    if (device.revokedAt) {
-      forgetOperationId(key);
-      continue;
-    }
+    if (device.revokedAt) return { ok: false, reason: 'revoked' };
     return { ok: true, device };
   }
   // The server answered twice with a device it would not let us use: a
@@ -254,7 +254,11 @@ async function refresh(
       registered = { ok: false, reason: 'offline' };
     }
     if (registered.ok) device = registered.device;
-    else if (registered.reason === 'signed-out') return registered;
+    else if (
+      registered.reason === 'signed-out' ||
+      registered.reason === 'revoked'
+    )
+      return registered;
     else device = known;
   }
   const snapshot = await saveSnapshot({
@@ -437,6 +441,9 @@ export function CaisseApp() {
         await verifyDelivered(fresh.snapshot.organizationId);
         await flushOutbox();
         await loadRejected(fresh.snapshot.organizationId);
+      } else if (fresh.reason === 'revoked') {
+        if (cached) await clearShopCopy(cached.organizationId);
+        setState({ status: 'device-revoked' });
       }
       return fresh;
     },
@@ -462,7 +469,7 @@ export function CaisseApp() {
         await loadRejected(cached.organizationId);
       }
       const fresh = await syncWithServer(cached);
-      if (cancelled || fresh.ok) return;
+      if (cancelled || fresh.ok || fresh.reason === 'revoked') return;
       if (cached && !locked) {
         if (
           fresh.reason === 'offline' &&
@@ -603,6 +610,19 @@ export function CaisseApp() {
         <p role="status" className="text-center text-ink-muted">
           Nouvel essai automatique dans quelques secondes.
         </p>
+      </Centered>
+    );
+  if (state.status === 'device-revoked')
+    return (
+      <Centered>
+        <Alert tone="error">
+          Ce téléphone a été retiré de la boutique par un gérant : sa caisse est
+          fermée. Le propriétaire ou un gérant peut le remettre dans Paramètres,
+          « Appareils de vente ».
+        </Alert>
+        <Link href="/espace" className={buttonClasses('secondary')}>
+          Revenir à l’accueil
+        </Link>
       </Centered>
     );
   if (state.status === 'never-online')

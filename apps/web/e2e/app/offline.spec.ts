@@ -437,6 +437,77 @@ test('a sale the server no longer holds is sent again by the phone', async ({
   await page.unroute('**/caisse/verifier');
 });
 
+test('a withdrawn phone stays out, loses its copy, and a manager can bring it back', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await openCheckoutOnline(page);
+
+  await page.goto('/espace/parametres');
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page
+    .getByRole('button', { name: /^Retirer l’appareil/ })
+    .first()
+    .click();
+  await expect(
+    page.getByRole('button', { name: /^Remettre l’appareil/ }),
+  ).toBeVisible();
+
+  await page.goto('/caisse');
+  await expect(page.getByText(/a été retiré de la boutique/)).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Vendre' }),
+  ).toHaveCount(0);
+
+  // Prices and customers have left the phone, its ticket counter has not.
+  const copy = await page.evaluate(
+    () =>
+      new Promise<{ products: unknown[]; nextTicket: number } | undefined>(
+        (resolve, reject) => {
+          const open = indexedDB.open('nagaw');
+          open.onerror = () => reject(open.error);
+          open.onsuccess = () => {
+            const all = open.result
+              .transaction('snapshots')
+              .objectStore('snapshots')
+              .getAll();
+            all.onsuccess = () => {
+              resolve(
+                (
+                  all.result as {
+                    products?: unknown[];
+                    nextTicket: number;
+                  }[]
+                ).find((row) => row.products) as never,
+              );
+              open.result.close();
+            };
+          };
+        },
+      ),
+  );
+  expect(copy?.products).toEqual([]);
+  expect(copy?.nextTicket).toBeGreaterThan(0);
+
+  await page.goto('/espace/parametres');
+  await page.getByRole('button', { name: /^Remettre l’appareil/ }).click();
+  await expect(
+    page.getByRole('button', { name: /^Remettre l’appareil/ }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: /^Retirer l’appareil/ }).first(),
+  ).toBeVisible();
+  await page.goto('/caisse');
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Vendre' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('list', { name: 'Produits à vendre' }),
+  ).toContainText('Eau minérale');
+});
+
 test('only « Effacer ce téléphone » empties it, never while sales wait', async ({
   page,
   context,

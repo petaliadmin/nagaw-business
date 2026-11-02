@@ -637,7 +637,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 - **Limites** :
   - les données de la boutique restent sur le téléphone après une déconnexion, **sans chiffrement au repos** : prix d'achat et clients sont lisibles par qui ouvre le navigateur de ce téléphone. C'est le prix de « tout est sauvegardé en local » ;
   - un téléphone perdu avec des ventes jamais envoyées les perd ; retirer un appareil refuse ses envois ;
-  - un téléphone retiré dont la session reste valide peut encore se réenregistrer comme nouvel appareil (comportement antérieur, non corrigé ici) ;
+  - **téléphone retiré** (lot 5, 2026-11-01) : il ne se réenregistre plus comme nouvel appareil. Dès qu'il joint le serveur, sa caisse se ferme, les prix et les clients quittent le téléphone, et ses ventes, son appareil et son compteur de tickets restent. Un gérant peut le **remettre** (`POST /devices/:id/restore`, audité). Tant qu'il reste hors ligne, rien de cela ne s'applique ; « Effacer ce téléphone » suivi d'une reconnexion en fait un nouvel appareil, et un client modifié à la main peut aussi le faire, car le serveur ne peut pas reconnaître un téléphone sans son identifiant ;
   - un compte d'une autre boutique sur le même téléphone ne livre pas : le bandeau demande un compte de la boutique concernée. Il ne voit pas la copie de l'autre boutique dans la caisse, mais elle reste dans le navigateur ;
   - un compte en lecture seule ne peut pas livrer ;
   - les pertes, entrées et inventaires, les factures et les statistiques restent en ligne ;

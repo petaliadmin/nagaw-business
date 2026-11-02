@@ -450,6 +450,44 @@ describe('Offline devices and synchronization', () => {
     expect(res.body.error.code).toBe('DEVICE_REVOKED');
   });
 
+  it('keeps a revoked device revoked until a manager restores it', async () => {
+    const body = { label: 'Téléphone volé', clientOperationId: randomUUID() };
+    const device = (await post(carol, acmeId, '/devices', body).expect(201))
+      .body;
+    await post(alice, acmeId, `/devices/${device.id}/revoke`, {}).expect(200);
+
+    // The same phone asks again: it stays revoked, whoever asks.
+    const again = await post(carol, acmeId, '/devices', body).expect(200);
+    expect(again.body.id).toBe(device.id);
+    expect(again.body.revokedAt).not.toBeNull();
+
+    // Only a manager of this shop brings it back.
+    await post(carol, acmeId, `/devices/${device.id}/restore`, {}).expect(403);
+    await post(bob, globexId, `/devices/${device.id}/restore`, {}).expect(404);
+    const restored = await post(
+      alice,
+      acmeId,
+      `/devices/${device.id}/restore`,
+      {},
+    ).expect(200);
+    expect(restored.body.revokedAt).toBeNull();
+    const res = await post(carol, acmeId, '/sync', {
+      deviceId: device.id,
+      operations: [
+        offlineSale({
+          deviceTicket: `${device.ticketPrefix}-000001`,
+        }),
+      ],
+    }).expect(200);
+    expect(res.body.results[0].status).toBe('accepted');
+
+    const { rows } = await ctx.admin.query(
+      `select actor_id from app.audit_logs where action = 'device.restored' and target_id = $1`,
+      [device.id],
+    );
+    expect(rows).toEqual([{ actor_id: alice.id }]);
+  });
+
   it('audits device sales with their ticket', async () => {
     const { rows } = await ctx.admin.query(
       `select metadata from app.audit_logs where organization_id = $1 and action = 'sale.completed'`,
