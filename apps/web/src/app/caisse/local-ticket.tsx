@@ -29,8 +29,9 @@ function Row({
 }
 
 /**
- * Ticket of a sale recorded on this device: printable and shareable even
- * without network, with its offline number until the server gives its own.
+ * Ticket of a sale recorded on this device whose sending failed on the way
+ * (ADR-057): printable and shareable, with its local number until the
+ * server gives its own.
  */
 export function LocalTicketView({
   ticket,
