@@ -48,9 +48,9 @@ import {
   website,
 } from '@/lib/structured-data';
 
-const TITLE = 'Nagaw Business — caisse, stock et argent de votre boutique';
+const TITLE = 'Nagaw Business — qui vous doit, ce que vous gagnez';
 const DESCRIPTION =
-  'Tenez votre boutique au franc près depuis votre téléphone : caisse qui marche sans internet, stock, crédit des clients, Wave et Orange Money, factures et comptabilité SYSCOHADA. Gratuit pour commencer.';
+  'Sachez qui vous doit, relancez sur WhatsApp et voyez ce que vous gagnez vraiment, depuis votre téléphone : caisse qui marche sans internet, stock, Wave et Orange Money, factures. Gratuit pour commencer.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -59,6 +59,7 @@ export const metadata: Metadata = {
     'logiciel de gestion de boutique',
     'application de caisse',
     'logiciel de caisse gratuit',
+    'crédit clients',
     'gestion de stock',
     'caisse hors ligne',
     'Wave',
@@ -94,16 +95,22 @@ const SHOP_KINDS = [
 /** Everyday problems, and what the app does about each. */
 const PAINS: { before: string; after: string; icon: LucideIcon }[] = [
   {
+    before: 'Les clients à crédit oublient de payer.',
+    after:
+      '« Ils me doivent » : qui vous doit et combien. Un toucher, et le message de relance poli part sur WhatsApp.',
+    icon: HandCoins,
+  },
+  {
+    before: 'Je vends beaucoup, mais est-ce que je gagne ?',
+    after:
+      'Chiffre d’affaires, marge et bénéfice estimé, du jour, de la semaine ou du mois.',
+    icon: TrendingUp,
+  },
+  {
     before: 'Je ne sais plus ce qui reste en stock.',
     after:
       'Chaque vente retire le stock toute seule, et la liste « bientôt épuisés » vous dit quoi racheter.',
     icon: Package,
-  },
-  {
-    before: 'Les clients à crédit oublient de payer.',
-    after:
-      '« Ils me doivent » : qui vous doit et combien, avec le total à récupérer.',
-    icon: HandCoins,
   },
   {
     before: 'Mon argent est partout : caisse, Wave, Orange Money.',
@@ -116,12 +123,6 @@ const PAINS: { before: string; after: string; icon: LucideIcon }[] = [
     after:
       'Clôturez la caisse : vous comptez, l’application dit tout de suite s’il manque quelque chose.',
     icon: Calculator,
-  },
-  {
-    before: 'Je vends beaucoup, mais est-ce que je gagne ?',
-    after:
-      'Chiffre d’affaires, marge et bénéfice estimé, du jour, de la semaine ou du mois.',
-    icon: TrendingUp,
   },
   {
     before: 'Mes vendeurs voient tout.',
@@ -167,18 +168,18 @@ const MODULES: {
     badge: 'bg-stats-strong text-white',
   },
   {
-    title: 'Comptabilité SYSCOHADA',
-    text: 'Le journal des recettes et dépenses se remplit tout seul. Votre comptable l’exporte en tableur, sans rien ressaisir.',
-    icon: BookOpenCheck,
-    card: 'bg-accounting-soft text-accounting-ink',
-    badge: 'bg-accounting-strong text-white',
-  },
-  {
     title: 'Équipe et boutiques',
     text: 'Invitez vos vendeurs, gérez plusieurs boutiques avec un seul compte et comparez leurs chiffres.',
     icon: Users,
     card: 'bg-brand-soft text-brand-ink',
     badge: 'bg-brand-strong text-white',
+  },
+  {
+    title: 'Comptabilité SYSCOHADA',
+    text: 'Le journal des recettes et dépenses se remplit tout seul. Votre comptable l’exporte en tableur, sans rien ressaisir.',
+    icon: BookOpenCheck,
+    card: 'bg-accounting-soft text-accounting-ink',
+    badge: 'bg-accounting-strong text-white',
   },
 ];
 
@@ -532,14 +533,15 @@ export default function Home() {
           <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-12 md:grid-cols-[1fr_1.2fr] md:py-20">
             <div className="flex flex-col gap-5">
               <p className="text-base font-bold tracking-wide text-brand-ink uppercase">
-                Caisse, stock et argent de votre boutique
+                Le crédit, la caisse et le stock de votre boutique
               </p>
               <h1 className="text-4xl font-extrabold tracking-tight text-brand-ink md:text-6xl">
-                Tenez votre boutique au franc près, depuis votre téléphone
+                Sachez qui vous doit et ce que vous gagnez, depuis votre
+                téléphone
               </h1>
               <p className="text-xl">
-                Encaissez vite, voyez ce qui reste en stock, qui vous doit de
-                l’argent et ce que vous gagnez vraiment.{' '}
+                Suivez le crédit de vos clients, relancez-les sur WhatsApp,
+                encaissez vite et voyez ce qui reste en stock.{' '}
                 <strong>Même quand le réseau coupe.</strong>
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">

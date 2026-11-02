@@ -80,6 +80,18 @@ export class SyncController {
     return this.devices.revoke(tenant, user, id, requestId);
   }
 
+  @Post('devices/:id/restore')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermission('devices.manage')
+  restore(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @RequestId() requestId: string | null,
+  ): Promise<DeviceDto> {
+    return this.devices.restore(tenant, user, id, requestId);
+  }
+
   @Post('sync')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('sales.create')

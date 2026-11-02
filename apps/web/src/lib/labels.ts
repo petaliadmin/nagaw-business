@@ -65,6 +65,7 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   'customer.repaid': 'Remboursement d’un client',
   'device.registered': 'Téléphone de caisse enregistré',
   'device.revoked': 'Téléphone de caisse retiré',
+  'device.restored': 'Téléphone de caisse remis',
   'quote.created': 'Devis créé',
   'quote.updated': 'Devis modifié',
   'quote.status_changed': 'Statut d’un devis modifié',

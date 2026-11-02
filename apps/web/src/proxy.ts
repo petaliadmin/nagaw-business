@@ -25,7 +25,19 @@ export async function proxy(request: NextRequest) {
     },
   });
   // Validates the JWT and refreshes it when needed.
-  await supabase.auth.getClaims();
+  const { data, error } = await supabase.auth.getClaims();
+  // A visitor without a session goes to the sign-in page before the
+  // workspace renders, rather than from inside its layout, which would leave
+  // the page unrendered. Any other failure (Supabase unreachable, invalid
+  // token) is left to the layout, which keeps its own check.
+  if (
+    !data?.claims &&
+    !error &&
+    request.method === 'GET' &&
+    /^\/espace(?:\/|$)/.test(request.nextUrl.pathname)
+  ) {
+    return NextResponse.redirect(new URL('/connexion', request.url));
+  }
   return response;
 }
 

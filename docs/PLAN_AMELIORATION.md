@@ -10,6 +10,9 @@
 | Limites de produits            | Gratuit 10, Essentiel 50, Pro sans limite (ADR-054)                                              |
 | Relance du crédit (3.1)        | Livrée : message WhatsApp prêt depuis la fiche client (ADR-056)                                  |
 | Paiement de l'abonnement (3.2) | Livré à la main : montant, numéro Wave et référence (ADR-056), sans renouvellement               |
+| Site recentré (4.2)            | Fait : « qui me doit » et « ce que je gagne » d'abord, SYSCOHADA en dernier                      |
+| Téléphone retiré (5.1)         | Fait : il ne se réenregistre plus, perd prix et clients, et un gérant peut le remettre           |
+| Scripts et terrain (4.1, 4.3)  | Prêts dans `docs/KIT_ADOPTION.md`, à enregistrer et à porter sur le terrain                      |
 | Promesses du site              | De nouveau exactes pour la vente sans internet, à vérifier sur un vrai téléphone                 |
 
 ## Décisions déjà prises
@@ -70,7 +73,6 @@ Objectif : donner une raison de payer. À affiner avec les résultats du pilote.
 
 | #   | Action                                                                | Pourquoi                                                                  |
 | --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| 5.1 | Empêcher un téléphone retiré de se réenregistrer                      | Limite connue d'ADR-053                                                   |
 | 5.2 | Chiffrer ou protéger par code les données gardées sur le téléphone    | Prix d'achat et clients lisibles après déconnexion                        |
 | 5.3 | Permettre stock et dépenses hors ligne                                | Seules la vente, le client et la correction de stock marchent sans réseau |
 | 5.4 | Saisonnalité dans les prévisions (Tabaski, Korité, Magal, rentrée)    | Le rythme moyen se trompe sur ces périodes                                |

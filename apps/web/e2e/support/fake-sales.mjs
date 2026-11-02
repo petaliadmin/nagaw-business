@@ -432,6 +432,14 @@ export async function handleSales(ctx) {
     device.revokedAt ??= new Date().toISOString();
     return reply(200, deviceDto(device, ctx.userById));
   }
+  const restore = /^\/api\/v1\/devices\/([^/]+)\/restore$/.exec(path);
+  if (restore && req.method === 'POST') {
+    if (!manager) return deny();
+    const device = state.devices.find((d) => mine(d) && d.id === restore[1]);
+    if (!device) return fail(404, 'DEVICE_NOT_FOUND', 'Appareil introuvable.');
+    device.revokedAt = null;
+    return reply(200, deviceDto(device, ctx.userById));
+  }
   if (path === '/api/v1/sync/check' && req.method === 'POST') {
     if (role === 'viewer') return deny();
     const parsed = syncCheckSchema.safeParse(await ctx.readJson(req));

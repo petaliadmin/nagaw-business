@@ -19,6 +19,7 @@ Application SaaS de **gestion de boutique**, mobile first, utilisable sur ordina
 | [docs/DATA_MODEL.md](docs/DATA_MODEL.md)               | Modèle de données                               |
 | [docs/API.md](docs/API.md)                             | Conventions d'API                               |
 | [docs/SECURITY.md](docs/SECURITY.md)                   | Sécurité et permissions                         |
+| [docs/KIT_ADOPTION.md](docs/KIT_ADOPTION.md)           | Scripts vidéo et discours de terrain            |
 | [docs/PLAN_AMELIORATION.md](docs/PLAN_AMELIORATION.md) | Plan d'amélioration, marché sénégalais          |
 | [docs/TESTING.md](docs/TESTING.md)                     | Stratégie de tests                              |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)               | Environnements et variables                     |

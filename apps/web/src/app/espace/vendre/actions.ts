@@ -148,6 +148,23 @@ export async function recordRepayment(
   return { status: 'success', message: 'Remboursement enregistré.' };
 }
 
+/** A manager brings back a device withdrawn by mistake, or found again. */
+export async function restoreDevice(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const shop = await shopOf(text(formData, 'organizationId'));
+  if (!shop) return { status: 'error', message: SHOP_CHANGED };
+  const result = await apiAsUser<DeviceDto>(shop.token, {
+    method: 'POST',
+    path: `/devices/${encodeURIComponent(text(formData, 'deviceId'))}/restore`,
+    organizationId: shop.organizationId,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return { status: 'success', message: 'Appareil remis.' };
+}
+
 /** A manager withdraws a lost or stolen device: its sales are refused. */
 export async function revokeDevice(
   _prev: FormState,

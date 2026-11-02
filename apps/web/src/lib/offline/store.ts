@@ -167,6 +167,31 @@ export async function isCheckoutLocked(): Promise<boolean> {
   );
 }
 
+/**
+ * A manager withdrew this phone: prices and customers leave it, and the
+ * checkout closes. Its sales, its device and its ticket counter stay: the
+ * phone may come back, and must not reuse a number (ADR-053).
+ */
+export async function clearShopCopy(organizationId: string): Promise<void> {
+  await transact([STORES.snapshots], 'readwrite', async (tx) => {
+    const snapshot = await idb.get<ShopSnapshot>(
+      tx,
+      STORES.snapshots,
+      organizationId,
+    );
+    if (snapshot)
+      await idb.put(tx, STORES.snapshots, {
+        ...snapshot,
+        products: [],
+        customers: snapshot.customers.filter((c) => c.pendingOperationId),
+      });
+    await idb.put(tx, STORES.snapshots, {
+      organizationId: LOCKED_KEY,
+      value: true,
+    });
+  });
+}
+
 /** Asks the browser not to clear this phone's sales when space runs low. */
 export async function keepLocalData(): Promise<void> {
   try {
