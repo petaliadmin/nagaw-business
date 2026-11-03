@@ -8,6 +8,7 @@ export function Card({
   titleId,
   icon: Icon,
   tone,
+  action,
   children,
   className = '',
 }: {
@@ -16,6 +17,8 @@ export function Card({
   icon?: LucideIcon;
   /** Module colour of the icon (brand by default). */
   tone?: ModuleTone;
+  /** A link beside the title, such as « Tout voir ». */
+  action?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
@@ -25,21 +28,26 @@ export function Card({
       className={`rounded-2xl border border-line bg-surface p-4 shadow-sm md:p-6 ${className}`}
     >
       {title && (
-        <h2
-          id={titleId}
-          className="mb-4 flex items-center gap-2 text-xl font-bold"
-        >
-          {Icon && (
-            <span
-              className={`flex size-9 items-center justify-center rounded-xl ${
-                tone ? MODULE_TONES[tone].badge : 'bg-brand-soft text-brand-ink'
-              }`}
-            >
-              <Icon aria-hidden className="size-5" />
-            </span>
-          )}
-          {title}
-        </h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3">
+          <h2
+            id={titleId}
+            className="flex items-center gap-2 text-xl font-bold"
+          >
+            {Icon && (
+              <span
+                className={`flex size-9 items-center justify-center rounded-xl ${
+                  tone
+                    ? MODULE_TONES[tone].badge
+                    : 'bg-brand-soft text-brand-ink'
+                }`}
+              >
+                <Icon aria-hidden className="size-5" />
+              </span>
+            )}
+            {title}
+          </h2>
+          {action}
+        </div>
       )}
       {children}
     </section>

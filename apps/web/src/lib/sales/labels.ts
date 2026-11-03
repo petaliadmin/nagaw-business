@@ -10,7 +10,9 @@ export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
 export const PROVIDER_LABELS: Record<MobileMoneyProvider, string> = {
   wave: 'Wave',
   orange_money: 'Orange Money',
-  free_money: 'Free Money',
+  // Free Money became Mixx by Yas (2024): both names, while people still
+  // say the old one.
+  free_money: 'Mixx (Free Money)',
   other: 'Autre',
 };
 

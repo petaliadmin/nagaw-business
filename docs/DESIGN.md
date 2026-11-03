@@ -23,7 +23,7 @@ Couleurs vives, une par module, pour se repérer d'un coup d'œil. Chaque couleu
 | Rôle                  | Vive      | Foncée    | Claire    | Blanc sur foncée | Foncée sur claire |
 | --------------------- | --------- | --------- | --------- | :--------------: | :---------------: |
 | Marque (navigation)   | `#7C3AED` | `#6D28D9` | `#EDE9FE` |      7,10 ✔      |      5,98 ✔       |
-| Ventes                | `#16A34A` | `#15803D` | `#DCFCE7` |      5,02 ✔      |      4,57 ✔       |
+| Ventes (émeraude)     | `#059669` | `#047857` | `#D1FAE5` |      5,48 ✔      |      4,84 ✔       |
 | Produits et stock     | `#2563EB` | `#1D4ED8` | `#DBEAFE` |      6,70 ✔      |      5,49 ✔       |
 | Factures et devis     | `#DB2777` | `#BE185D` | `#FCE7F3` |      6,04 ✔      |      5,14 ✔       |
 | Statistiques          | `#F97316` | `#C2410C` | `#FFEDD5` |      5,18 ✔      |      4,52 ✔       |
@@ -54,6 +54,7 @@ Ces valeurs deviennent des jetons CSS (`@theme` de Tailwind 4) dans `apps/web/sr
 - **« Vendre » flottant** sur Accueil et Ventes, au-dessus de la barre du bas, pour qui a le droit de vendre (ADR-044).
 - **Filtres d'une liste** : dans un panneau ouvert par « Filtrer », à côté de la recherche ; le filtre choisi reste visible sur la page et se retire d'un toucher.
 - **Listes longues** : 20 lignes par page, « Précédent », « Page n », « Suivant » dessous ; rien quand tout tient sur une page.
+- **Harmonie des couleurs** (2026-11-03) : les couleurs de module vont sur les **icônes**, pas sur de grandes surfaces. Les chiffres clés sont sur des tuiles blanches avec une pastille d'icône colorée ; les chiffres secondaires sur un fond neutre (`surface-muted`), l'icône seule en couleur. Le vert plein est réservé au bouton « Vendre » ; la bande « Aujourd'hui » est en vert clair. Le vert est un émeraude (`#047857`), plus accordé au violet de la marque que l'ancien `#15803D`.
 - **Chiffres en tuile** : composant `Figure` dans un conteneur `@container` : un chiffre ne sort jamais de sa tuile et ne se coupe jamais entre ses chiffres.
 - **Sensation d'application installée** : panneaux depuis le bas (composant `BottomSheet`), « Retour » dans l'en-tête des sous-pages, retour visuel au toucher (ADR-044).
 - Bandeau d'état de connexion permanent mais discret : « Hors ligne — vos ventes sont gardées sur ce téléphone » / « 3 ventes en attente d'envoi » / « Tout est à jour ».

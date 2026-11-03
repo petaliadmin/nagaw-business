@@ -232,8 +232,8 @@ test('switching shop changes data and permissions', async ({
   ).toBeVisible();
   // Awa is a plain member of Globex: no audit access, read-only settings.
   await expect(
-    main.getByText('Votre rôle ne donne pas accès à l’historique.'),
-  ).toBeVisible();
+    main.getByRole('region', { name: 'Activité récente' }),
+  ).toHaveCount(0);
   await page.goto('/espace/parametres');
   await expect(page.getByRole('button', { name: 'Enregistrer' })).toHaveCount(
     0,

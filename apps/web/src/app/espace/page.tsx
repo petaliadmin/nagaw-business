@@ -16,6 +16,7 @@ import {
   Banknote,
   CalendarDays,
   ChartColumn,
+  ChevronRight,
   Coins,
   CreditCard,
   HandCoins,
@@ -32,13 +33,19 @@ import {
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { BarList, Change, KpiTile, percent } from '@/components/dashboard/kpi';
+import {
+  BarList,
+  Change,
+  KpiTile,
+  percent,
+  SeeAll,
+  SoftStat,
+} from '@/components/dashboard/kpi';
 import { SellFab } from '@/components/dashboard/sell-fab';
 import { PeriodPicker } from '@/components/treasury/period-picker';
 import { SalesChart } from '@/components/treasury/sales-chart';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { ButtonLink } from '@/components/ui/button-link';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Figure } from '@/components/ui/figure';
@@ -51,12 +58,7 @@ import {
   STOCK_LEVEL_LABELS,
   STOCK_LEVEL_TONES,
 } from '@/lib/catalog/labels';
-import {
-  formatCalendarDate,
-  formatDate,
-  formatDateTime,
-  todayIn,
-} from '@/lib/format';
+import { formatCalendarDate, formatDateTime, todayIn } from '@/lib/format';
 import { auditActionLabel } from '@/lib/labels';
 import { PAYMENT_LABELS } from '@/lib/sales/labels';
 import { previousPeriod, resolvePeriod } from '@/lib/treasury/period';
@@ -75,7 +77,10 @@ function range(from: string, to: string): string {
     : `du ${formatCalendarDate(from)} au ${formatCalendarDate(to)}`;
 }
 
-/** Today's sales, whatever the period of the figures. */
+const capitalize = (text: string) =>
+  text.charAt(0).toUpperCase() + text.slice(1);
+
+/** Today's sales, whatever the period of the figures: one green band. */
 function TodayCard({
   summary,
   currency,
@@ -86,42 +91,54 @@ function TodayCard({
   return (
     <section
       aria-labelledby="today"
-      className="flex flex-col gap-4 rounded-3xl bg-sales-strong p-4 text-white shadow-sm md:flex-row md:items-center md:justify-between md:p-6"
+      className="flex flex-col gap-2 rounded-2xl border border-sales/30 bg-sales-soft px-4 py-3 shadow-sm md:flex-row md:items-center md:gap-6 md:px-6"
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
         <h2
           id="today"
-          className="flex items-center gap-2 text-xl font-extrabold"
+          className="flex items-center gap-2 text-lg font-extrabold text-sales-ink"
         >
-          <span className="flex size-9 items-center justify-center rounded-xl bg-white/20">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-sales-strong text-white">
             <CalendarDays aria-hidden className="size-5" />
           </span>
           Aujourd’hui
         </h2>
-        {!summary.ok ? (
-          <Alert tone="error">Ventes indisponibles : {summary.message}</Alert>
-        ) : (
-          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 md:gap-x-8">
-            <div>
-              <dt className="text-base">Ventes</dt>
-              <dd className="text-2xl font-extrabold tabular-nums">
-                {summary.data.count}
-              </dd>
-            </div>
-            <div className="@container min-w-0">
-              <dt className="text-base">Montant des ventes</dt>
-              <dd className="font-extrabold tabular-nums">
-                <Figure value={formatAmount(summary.data.total, currency)} />
-              </dd>
-            </div>
-          </dl>
-        )}
+        <Link
+          href="/espace/ventes"
+          className="inline-flex min-h-12 items-center gap-1 font-bold text-sales-ink underline underline-offset-4 md:hidden"
+        >
+          Voir les ventes
+          <ChevronRight aria-hidden className="size-5" />
+        </Link>
       </div>
-      <div className="flex flex-wrap gap-3">
-        <ButtonLink href="/espace/ventes" variant="outlineOnDark">
-          Voir les ventes du jour
-        </ButtonLink>
-      </div>
+      {!summary.ok ? (
+        <Alert tone="error">Ventes indisponibles : {summary.message}</Alert>
+      ) : (
+        <dl className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] gap-x-6">
+          <div>
+            <dt className="text-base">Ventes</dt>
+            <dd className="text-2xl font-extrabold tabular-nums">
+              {summary.data.count}
+            </dd>
+          </div>
+          <div className="@container min-w-0">
+            <dt className="text-base">Montant</dt>
+            <dd className="font-extrabold tabular-nums">
+              <Figure
+                value={formatAmount(summary.data.total, currency)}
+                className="[--figure-max:1.5rem]"
+              />
+            </dd>
+          </div>
+        </dl>
+      )}
+      <Link
+        href="/espace/ventes"
+        className="hidden min-h-12 items-center gap-1 font-bold text-sales-ink underline underline-offset-4 md:inline-flex"
+      >
+        Voir les ventes
+        <ChevronRight aria-hidden className="size-5" />
+      </Link>
     </section>
   );
 }
@@ -161,7 +178,7 @@ function Essentials({
   const profit = (s: StatsSummaryDto) => s.margin.amount - s.expenses;
 
   return (
-    <section aria-labelledby="essentials" className="flex flex-col gap-3">
+    <section aria-labelledby="essentials" className="flex flex-col gap-2">
       <h2 id="essentials" className="sr-only">
         L’essentiel
       </h2>
@@ -215,35 +232,33 @@ function Essentials({
           tone="brand"
           icon={PiggyBank}
         >
+          <p className="text-base">Marge − dépenses</p>
           {change(profit)}
         </KpiTile>
       </dl>
       <p className="text-ink-muted">
         {before.ok
-          ? `Comparé à la période d’avant, ${beforeRange}. `
-          : `Comparaison indisponible : ${before.message} `}
-        Bénéfice estimé : marge brute moins les dépenses.
+          ? `Comparé à la période d’avant (${beforeRange}).`
+          : `Comparaison indisponible : ${before.message}`}
       </p>
       {stats.revenue > 0 && stats.margin.coverageBasisPoints < 10000 && (
         <p className="text-ink-muted">
-          La marge est calculée sur {percent(stats.margin.coverageBasisPoints)}{' '}
-          des ventes : pour le reste, le prix d’achat des produits n’était pas
-          connu au moment de la vente.{' '}
+          Marge sur {percent(stats.margin.coverageBasisPoints)} des ventes :{' '}
           <Link
             href="/espace/produits"
             className="font-semibold text-brand-ink underline"
           >
-            Ajoutez les prix d’achat
-          </Link>{' '}
-          pour une marge complète.
+            ajoutez les prix d’achat
+          </Link>
+          .
         </p>
       )}
     </section>
   );
 }
 
-/** Sales day by day, the products that sell or not, the means of payment. */
-function Details({
+/** What sells best over the period, and what is in stock but never sells. */
+function Products({
   stats,
   currency,
   countsStock,
@@ -253,115 +268,113 @@ function Details({
   countsStock: boolean;
 }) {
   const money = (value: number) => formatAmount(value, currency);
-  const paid = Object.values(stats.byMethod).reduce((t, v) => t + v, 0);
   return (
     <>
-      <Card>
-        <SalesChart days={stats.days} currency={currency} />
-      </Card>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card
-          title="Ce qui rapporte le plus"
-          titleId="top-products"
-          icon={Trophy}
-          tone="stats"
-        >
-          {stats.topProducts.length === 0 ? (
-            <EmptyState title="Aucune vente sur cette période" />
-          ) : (
-            <BarList
-              label="Ce qui rapporte le plus"
-              tone="stats"
-              rows={stats.topProducts.slice(0, 5).map((p) => ({
-                key: p.productId,
-                name: (
-                  <Link
-                    href={`/espace/produits/${p.productId}`}
-                    className="underline-offset-4 hover:underline"
-                  >
-                    {p.label}
-                    <span className="block font-normal text-ink-muted">
-                      {formatQuantity(p.quantity, p.unit)} vendu
-                      {p.quantity > 1 ? 's' : ''}
-                    </span>
-                  </Link>
-                ),
-                value: p.revenue,
-                text: money(p.revenue),
-              }))}
-            />
-          )}
-          <Link href="/espace/statistiques" className={`${LINK} mt-3`}>
-            Voir toutes les statistiques
-          </Link>
-        </Card>
-
-        {countsStock && (
-          <Card
-            title="Ne se vendent pas"
-            titleId="slow-products"
-            icon={PackageX}
-            tone="stock"
-          >
-            {stats.slowProducts.length === 0 ? (
-              <EmptyState title="Tout ce qui est en stock s’est vendu sur la période" />
-            ) : (
-              <>
-                <p className="mb-3 text-ink-muted">
-                  En stock, mais aucune vente sur la période.
-                </p>
-                <ul
-                  aria-labelledby="slow-products"
-                  className="flex flex-col divide-y divide-line"
-                >
-                  {stats.slowProducts.slice(0, 5).map((p) => (
-                    <li
-                      key={p.id}
-                      className="flex flex-wrap items-center justify-between gap-x-3 py-1 first:pt-0"
-                    >
-                      <Link
-                        href={`/espace/produits/${p.id}`}
-                        className="inline-flex min-h-12 items-center font-semibold underline-offset-4 hover:underline"
-                      >
-                        {p.name}
-                      </Link>
-                      <span className="text-ink-muted">
-                        Reste {formatQuantity(p.stockQuantity, p.unit)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </Card>
-        )}
-      </div>
-
       <Card
-        title="Comment vos clients paient"
-        titleId="by-method"
-        icon={CreditCard}
-        tone="sales"
+        title="Ce qui rapporte le plus"
+        titleId="top-products"
+        icon={Trophy}
+        tone="stats"
+        action={<SeeAll href="/espace/statistiques" what="statistiques" />}
       >
-        {paid === 0 ? (
-          <EmptyState title="Aucun paiement sur cette période" />
+        {stats.topProducts.length === 0 ? (
+          <EmptyState title="Aucune vente sur cette période" />
         ) : (
           <BarList
-            label="Paiements par moyen"
-            tone="sales"
-            rows={(['cash', 'mobile_money', 'card', 'credit'] as const).map(
-              (m) => ({
-                key: m,
-                name: PAYMENT_LABELS[m],
-                value: stats.byMethod[m],
-                text: `${money(stats.byMethod[m])} · ${percent(shareBasisPoints(stats.byMethod[m], paid))}`,
-              }),
-            )}
+            label="Ce qui rapporte le plus"
+            tone="stats"
+            rows={stats.topProducts.slice(0, 5).map((p) => ({
+              key: p.productId,
+              name: (
+                <Link
+                  href={`/espace/produits/${p.productId}`}
+                  className="underline-offset-4 hover:underline"
+                >
+                  {p.label}
+                  <span className="font-normal text-ink-muted">
+                    {' '}
+                    · {formatQuantity(p.quantity, p.unit)}
+                  </span>
+                </Link>
+              ),
+              value: p.revenue,
+              text: money(p.revenue),
+            }))}
           />
         )}
       </Card>
+
+      {countsStock && (
+        <Card
+          title="Ne se vendent pas"
+          titleId="slow-products"
+          icon={PackageX}
+          tone="stock"
+        >
+          {stats.slowProducts.length === 0 ? (
+            <EmptyState title="Tout ce qui est en stock s’est vendu" />
+          ) : (
+            <ul
+              aria-labelledby="slow-products"
+              className="flex flex-col divide-y divide-line"
+            >
+              {stats.slowProducts.slice(0, 5).map((p) => (
+                <li
+                  key={p.id}
+                  className="flex flex-wrap items-center justify-between gap-x-3"
+                >
+                  <Link
+                    href={`/espace/produits/${p.id}`}
+                    className="inline-flex min-h-12 items-center font-semibold underline-offset-4 hover:underline"
+                  >
+                    {p.name}
+                  </Link>
+                  <span className="text-ink-muted tabular-nums">
+                    Reste {formatQuantity(p.stockQuantity, p.unit)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
     </>
+  );
+}
+
+/** How the period was paid: cash, Mobile Money, card, credit. */
+function PaymentsCard({
+  stats,
+  currency,
+}: {
+  stats: StatsSummaryDto;
+  currency: string;
+}) {
+  const paid = Object.values(stats.byMethod).reduce((t, v) => t + v, 0);
+  return (
+    <Card
+      title="Comment vos clients paient"
+      titleId="by-method"
+      icon={CreditCard}
+      tone="sales"
+    >
+      {paid === 0 ? (
+        <EmptyState title="Aucun paiement sur cette période" />
+      ) : (
+        <BarList
+          label="Paiements par moyen"
+          tone="sales"
+          rows={(['cash', 'mobile_money', 'card', 'credit'] as const).map(
+            (m) => ({
+              key: m,
+              name: PAYMENT_LABELS[m],
+              value: stats.byMethod[m],
+              text: `${formatAmount(stats.byMethod[m], currency)} · ${percent(shareBasisPoints(stats.byMethod[m], paid))}`,
+            }),
+          )}
+        />
+      )}
+    </Card>
   );
 }
 
@@ -377,6 +390,7 @@ function MyFiguresCard({
   currency: string;
 }) {
   const money = (value: number) => formatAmount(value, currency);
+  const sales = (count: number) => `${count} vente${count > 1 ? 's' : ''}`;
   return (
     <Card title="Mes ventes" titleId="my-figures" icon={Trophy} tone="sales">
       {!figures.ok ? (
@@ -385,30 +399,22 @@ function MyFiguresCard({
         </Alert>
       ) : (
         <div className="flex flex-col gap-4">
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <dl className="grid grid-cols-2 gap-2 sm:gap-3">
             <KpiTile
               label="Aujourd’hui"
               value={money(figures.data.today.total)}
               tone="sales"
               icon={Receipt}
             >
-              <p className="text-base">
-                {figures.data.today.count} vente
-                {figures.data.today.count > 1 ? 's' : ''}
-              </p>
+              <p className="text-base">{sales(figures.data.today.count)}</p>
             </KpiTile>
             <KpiTile
-              label="Ces 7 derniers jours"
+              label="7 derniers jours"
               value={money(figures.data.week.total)}
               tone="stats"
               icon={ChartColumn}
             >
-              <p className="text-base">
-                {figures.data.week.count} vente
-                {figures.data.week.count > 1 ? 's' : ''}
-                {figures.data.week.count > 0 &&
-                  `, panier moyen ${money(figures.data.week.averageBasket)}`}
-              </p>
+              <p className="text-base">{sales(figures.data.week.count)}</p>
             </KpiTile>
           </dl>
           {figures.data.topProducts.length > 0 && (
@@ -443,43 +449,31 @@ function MoneyCard({
       titleId="treasury-summary"
       icon={Wallet}
       tone="stats"
+      action={<SeeAll href="/espace/tresorerie" what="trésorerie" />}
     >
       {!treasury.ok ? (
         <Alert tone="error">Trésorerie indisponible : {treasury.message}</Alert>
       ) : (
-        <div className="flex flex-col gap-4">
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <KpiTile
-              label="Argent disponible"
-              value={formatAmount(treasury.data.total, currency)}
-              tone="stats"
-              icon={Wallet}
-            >
-              <p className="text-base">
-                Caisse, Mobile Money et banque, aujourd’hui
-              </p>
-            </KpiTile>
-            <KpiTile
-              label="On vous doit"
-              value={formatAmount(
-                treasury.data.receivables.customers +
-                  treasury.data.receivables.invoices,
-                currency,
-              )}
-              tone="invoices"
-              icon={HandCoins}
-            >
-              <p className="text-base">
-                Ventes à crédit et factures non payées
-              </p>
-            </KpiTile>
-          </dl>
-          <div>
-            <ButtonLink href="/espace/tresorerie" variant="secondary">
-              Voir la trésorerie
-            </ButtonLink>
-          </div>
-        </div>
+        <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+          <SoftStat
+            label="Argent disponible"
+            value={formatAmount(treasury.data.total, currency)}
+            tone="stats"
+            icon={Wallet}
+            hint="Caisse, Mobile Money, banque"
+          />
+          <SoftStat
+            label="On vous doit"
+            value={formatAmount(
+              treasury.data.receivables.customers +
+                treasury.data.receivables.invoices,
+              currency,
+            )}
+            tone="invoices"
+            icon={HandCoins}
+            hint="Crédits et factures"
+          />
+        </dl>
       )}
     </Card>
   );
@@ -495,8 +489,20 @@ function StockCard({
   currency: string;
   canManage: boolean;
 }) {
+  const unvalued = summary.ok ? summary.data.unvaluedProducts : 0;
   return (
-    <Card title="Stock" titleId="stock-summary" icon={Package} tone="stock">
+    <Card
+      title="Stock"
+      titleId="stock-summary"
+      icon={Package}
+      tone="stock"
+      action={
+        summary.ok &&
+        summary.data.trackedProducts > 0 && (
+          <SeeAll href="/espace/produits" what="produits et services" />
+        )
+      }
+    >
       {!summary.ok ? (
         <Alert tone="error">Stock indisponible : {summary.message}</Alert>
       ) : summary.data.trackedProducts === 0 ? (
@@ -510,44 +516,32 @@ function StockCard({
           )}
         </EmptyState>
       ) : (
-        <div className="flex flex-col gap-4">
-          <dl className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-            <KpiTile
-              label="Produits suivis"
-              value={summary.data.trackedProducts}
-              tone="stock"
-              icon={Package}
-            />
-            <KpiTile
+        <div className="flex flex-col gap-3">
+          <dl className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
+            <SoftStat
               label="Épuisés"
               value={summary.data.outOfStock}
               tone="danger"
               icon={PackageX}
             />
-            <KpiTile
+            <SoftStat
               label="Bientôt épuisés"
               value={summary.data.lowStock}
               tone="warning"
               icon={TriangleAlert}
             />
-            <KpiTile
+            <SoftStat
               label="Valeur du stock"
               value={formatAmount(summary.data.stockValue, currency)}
               tone="accounting"
               icon={Coins}
-            >
-              <p className="text-base">Au prix d’achat</p>
-            </KpiTile>
+              hint={
+                unvalued > 0
+                  ? `Au prix d’achat, ${unvalued} produit${unvalued > 1 ? 's' : ''} sans prix`
+                  : 'Au prix d’achat'
+              }
+            />
           </dl>
-          {summary.data.unvaluedProducts > 0 && (
-            <p className="text-ink-muted">
-              {summary.data.unvaluedProducts} produit
-              {summary.data.unvaluedProducts > 1 ? 's' : ''} en stock sans prix
-              d’achat ne {summary.data.unvaluedProducts > 1 ? 'sont' : 'est'}{' '}
-              pas compté{summary.data.unvaluedProducts > 1 ? 's' : ''} dans la
-              valeur.
-            </p>
-          )}
           {summary.data.alerts.length > 0 && (
             <ul
               aria-label="Produits à racheter"
@@ -557,7 +551,7 @@ function StockCard({
                 <li key={alert.id}>
                   <Link
                     href={`/espace/produits/${alert.id}`}
-                    className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-stock-soft px-3 py-2"
+                    className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-line px-3 py-2 hover:bg-surface-muted"
                   >
                     <span className="font-semibold">{alert.name}</span>
                     <Badge tone={STOCK_LEVEL_TONES[alert.stockLevel]}>
@@ -570,10 +564,59 @@ function StockCard({
               ))}
             </ul>
           )}
-          <Link href="/espace/produits" className={LINK}>
-            Voir les produits et services
-          </Link>
         </div>
+      )}
+    </Card>
+  );
+}
+
+/** The last five actions in the shop, for those who may read the history. */
+function ActivityCard({
+  audit,
+  emailById,
+  timezone,
+}: {
+  audit: ApiResult<Paginated<AuditLogDto>>;
+  emailById: Map<string, string>;
+  timezone: string;
+}) {
+  return (
+    <Card
+      title="Activité récente"
+      titleId="recent-activity"
+      icon={History}
+      tone="brand"
+      action={<SeeAll href="/espace/journal" what="historique" />}
+    >
+      {!audit.ok ? (
+        <Alert tone="error">Activité indisponible : {audit.message}</Alert>
+      ) : audit.data.data.length === 0 ? (
+        <EmptyState title="Aucune activité pour le moment" />
+      ) : (
+        <ul className="flex flex-col divide-y divide-line">
+          {audit.data.data.map((entry) => (
+            <li
+              key={entry.id}
+              className="flex flex-wrap justify-between gap-x-4 py-2 first:pt-0"
+            >
+              <span className="font-semibold">
+                {auditActionLabel(entry.action)}
+                {entry.actorId && emailById.has(entry.actorId) && (
+                  <span className="font-normal text-ink-muted">
+                    {' '}
+                    — {emailById.get(entry.actorId)}
+                  </span>
+                )}
+              </span>
+              <time
+                dateTime={entry.createdAt}
+                className="text-ink-muted tabular-nums"
+              >
+                {formatDateTime(entry.createdAt, timezone)}
+              </time>
+            </li>
+          ))}
+        </ul>
       )}
     </Card>
   );
@@ -586,12 +629,12 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
   const role = organization.role;
   const currency = organization.defaultCurrency;
   const canReadAudit = roleHasPermission(role, 'audit.read');
-  const canReadStats = roleHasPermission(role, 'stats.read');
   // Key figures first; otherwise today's sales come first. « Vendre »
   // floats over the page for those who sell.
-  const showFigures = canReadStats;
+  const canReadStats = roleHasPermission(role, 'stats.read');
   const canReadTreasury = roleHasPermission(role, 'treasury.read');
   const canSell = roleHasPermission(role, 'sales.create');
+  const countsStock = sellsGoods(organization.offer);
 
   const period = resolvePeriod(
     await searchParams,
@@ -649,20 +692,27 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
   const emailById = new Map(
     members?.ok ? members.data.map((m) => [m.userId, m.email]) : [],
   );
+  // With the figures of today on screen, the band would repeat them.
+  const showToday = !(stats?.ok && period.key === 'jour');
 
   return (
     <>
       <PageHeader
         title={organization.name}
         description={
-          showFigures
-            ? `Vos chiffres ${range(period.from, period.to)}.`
-            : `Boutique créée le ${formatDate(organization.createdAt, organization.timezone)}`
+          stats ? capitalize(range(period.from, period.to)) : undefined
         }
       />
 
       {stats && statsBefore && (
         <>
+          <PeriodPicker
+            path="/espace"
+            current={period.key}
+            from={period.from}
+            to={period.to}
+            dates={false}
+          />
           {!stats.ok ? (
             <Alert tone="error">Chiffres indisponibles : {stats.message}</Alert>
           ) : (
@@ -673,31 +723,14 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
               currency={currency}
             />
           )}
-          <PeriodPicker
-            path="/espace"
-            current={period.key}
-            from={period.from}
-            to={period.to}
-            dates={false}
-          />
         </>
       )}
 
-      <TodayCard summary={sales} currency={currency} />
+      {showToday && <TodayCard summary={sales} currency={currency} />}
 
       {mine && <MyFiguresCard figures={mine} currency={currency} />}
 
-      {stats?.ok && (
-        <Details
-          stats={stats.data}
-          currency={currency}
-          countsStock={sellsGoods(organization.offer)}
-        />
-      )}
-
-      {treasury && <MoneyCard treasury={treasury} currency={currency} />}
-
-      {sellsGoods(organization.offer) && (
+      {countsStock && (
         <StockCard
           summary={stock}
           currency={currency}
@@ -705,52 +738,35 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
         />
       )}
 
-      <Card
-        title="Activité récente"
-        titleId="recent-activity"
-        icon={History}
-        tone="brand"
-      >
-        {!audit ? (
-          <p className="text-ink-muted">
-            Votre rôle ne donne pas accès à l’historique.
-          </p>
-        ) : !audit.ok ? (
-          <Alert tone="error">Activité indisponible : {audit.message}</Alert>
-        ) : audit.data.data.length === 0 ? (
-          <EmptyState title="Aucune activité pour le moment" />
-        ) : (
-          <div className="flex flex-col gap-3">
-            <ul className="flex flex-col divide-y divide-line">
-              {audit.data.data.map((entry) => (
-                <li
-                  key={entry.id}
-                  className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-3 first:pt-0"
-                >
-                  <span className="font-semibold">
-                    {auditActionLabel(entry.action)}
-                    {entry.actorId && emailById.has(entry.actorId) && (
-                      <span className="font-normal text-ink-muted">
-                        {' '}
-                        — {emailById.get(entry.actorId)}
-                      </span>
-                    )}
-                  </span>
-                  <time
-                    dateTime={entry.createdAt}
-                    className="text-ink-muted tabular-nums"
-                  >
-                    {formatDateTime(entry.createdAt, organization.timezone)}
-                  </time>
-                </li>
-              ))}
-            </ul>
-            <Link href="/espace/journal" className={LINK}>
-              Voir tout l’historique
-            </Link>
-          </div>
-        )}
-      </Card>
+      {stats?.ok && (
+        <Card>
+          <SalesChart days={stats.data.days} currency={currency} />
+        </Card>
+      )}
+
+      {(stats?.ok || treasury) && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {stats?.ok && (
+            <>
+              <Products
+                stats={stats.data}
+                currency={currency}
+                countsStock={countsStock}
+              />
+              <PaymentsCard stats={stats.data} currency={currency} />
+            </>
+          )}
+          {treasury && <MoneyCard treasury={treasury} currency={currency} />}
+        </div>
+      )}
+
+      {audit && (
+        <ActivityCard
+          audit={audit}
+          emailById={emailById}
+          timezone={organization.timezone}
+        />
+      )}
 
       {canSell && <SellFab />}
     </>

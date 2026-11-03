@@ -60,6 +60,7 @@ import {
   type NegotiationRules,
   type PricedLine,
 } from '@/lib/sales/cart';
+import { OperatorLogo } from '@/components/sales/operator-logo';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 
 const METHOD_ICONS: Record<PaymentMethod, LucideIcon> = {
@@ -321,12 +322,13 @@ function ProviderPicker({
             type="button"
             aria-pressed={value === provider}
             onClick={() => onChange(provider)}
-            className={`min-h-12 rounded-xl border-2 px-3 text-base font-bold ${
+            className={`flex min-h-14 items-center gap-2 rounded-xl border-2 px-2 text-left text-base leading-tight font-bold ${
               value === provider
-                ? 'border-brand-strong bg-brand-strong text-white'
+                ? 'border-brand-strong bg-brand-soft text-brand-ink ring-2 ring-brand-strong'
                 : 'border-line-strong bg-surface text-ink'
             }`}
           >
+            <OperatorLogo provider={provider} />
             {PROVIDER_LABELS[provider]}
           </button>
         ))}

@@ -161,5 +161,7 @@ test('a seller sees their own figures on the dashboard', async ({
   await signInAs(context, 'moussa', baseURL!);
   await page.goto('/espace');
   await expect(page.getByRole('heading', { name: 'Mes ventes' })).toBeVisible();
-  await expect(page.getByText('Ces 7 derniers jours')).toBeVisible();
+  await expect(
+    page.getByText('7 derniers jours', { exact: true }),
+  ).toBeVisible();
 });

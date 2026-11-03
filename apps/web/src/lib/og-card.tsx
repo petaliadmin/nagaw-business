@@ -41,7 +41,7 @@ export function OgCard({ eyebrow, title }: { eyebrow: string; title: string }) {
           style={{
             display: 'flex',
             alignSelf: 'flex-start',
-            background: '#DCFCE7',
+            background: '#D1FAE5',
             color: '#14532D',
             borderRadius: 999,
             padding: '8px 24px',

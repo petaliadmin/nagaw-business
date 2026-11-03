@@ -1,5 +1,12 @@
 import { shareBasisPoints } from '@nagaw/shared';
-import { Minus, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react';
+import {
+  ChevronRight,
+  Minus,
+  TrendingDown,
+  TrendingUp,
+  type LucideIcon,
+} from 'lucide-react';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Figure } from '@/components/ui/figure';
 import { MODULE_TONES, type ModuleTone } from './tones';
@@ -14,9 +21,9 @@ export function percent(basisPoints: number): string {
 }
 
 /**
- * How a figure moved since the period before, on a dark tile (text in
- * its colour). The arrow and its colour only repeat the words: up is
- * good, except for `higherIsWorse` figures.
+ * How a figure moved since the period before, on a light tile. The arrow
+ * and its colour only repeat the words: up is good, except for
+ * `higherIsWorse` figures.
  */
 export function Change({
   current,
@@ -43,14 +50,12 @@ export function Change({
   const good = up !== higherIsWorse;
   const Icon = up ? TrendingUp : TrendingDown;
   return (
-    <p className="flex items-center gap-1.5 text-base">
-      <span
-        className={`flex size-6 shrink-0 items-center justify-center rounded-full bg-white ${
-          good ? 'text-sales-strong' : 'text-danger-strong'
-        }`}
-      >
-        <Icon aria-hidden className="size-4" />
-      </span>
+    <p
+      className={`flex w-fit items-center gap-1 rounded-full px-2 text-base ${
+        good ? 'bg-sales-soft text-sales-ink' : 'bg-danger-soft text-danger-ink'
+      }`}
+    >
+      <Icon aria-hidden className="size-4 shrink-0" />
       <span className="font-bold tabular-nums">
         <span className="sr-only">
           {up ? 'En hausse de ' : 'En baisse de '}
@@ -63,8 +68,9 @@ export function Change({
 }
 
 /**
- * A key figure in its module's colour, with how it moved: compact enough
- * for two per row on a 360 px phone, so that the essentials show at once.
+ * A key figure, with how it moved: compact enough for two per row on a
+ * 360 px phone, so that the essentials show at once. A light tile with its
+ * module's colour on the icon only, so that six of them stay calm together.
  */
 export function KpiTile({
   label,
@@ -82,23 +88,74 @@ export function KpiTile({
 }) {
   const colors = MODULE_TONES[tone];
   return (
-    <div
-      className={`@container flex min-w-0 flex-col gap-1.5 rounded-2xl p-3 shadow-sm sm:p-4 ${colors.dark}`}
-    >
-      <dt className="flex items-center gap-2 text-base leading-tight font-bold">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/20 sm:size-9 sm:rounded-xl">
+    <div className="@container flex min-w-0 flex-col gap-1.5 rounded-2xl border border-line bg-surface p-3 shadow-sm sm:p-4">
+      <dt className="flex items-center gap-2 text-base leading-tight font-bold text-ink-muted">
+        <span
+          className={`flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-9 sm:rounded-xl ${colors.badge}`}
+        >
           <Icon aria-hidden className="size-5" />
         </span>
         {label}
       </dt>
-      <dd className="flex flex-col gap-1">
+      <dd className="flex flex-col gap-1 text-ink-muted">
         <Figure
           value={value}
-          className="font-extrabold tabular-nums [--figure-max:1.25rem] sm:[--figure-max:1.5rem]"
+          className="font-extrabold text-ink tabular-nums [--figure-max:1.25rem] sm:[--figure-max:1.5rem]"
         />
         {children}
       </dd>
     </div>
+  );
+}
+
+/**
+ * A secondary figure on a neutral tile, for the cards under the key
+ * figures: lighter than a `KpiTile`, so that the essentials stand out. The
+ * module's colour is on the icon only (the amber ink would fall just under
+ * 4.5:1 on this background).
+ */
+export function SoftStat({
+  label,
+  value,
+  tone,
+  icon: Icon,
+  hint,
+}: {
+  label: string;
+  value: ReactNode;
+  tone: ModuleTone;
+  icon: LucideIcon;
+  /** A few words under the value. */
+  hint?: string;
+}) {
+  const colors = MODULE_TONES[tone];
+  return (
+    <div className="@container flex min-w-0 flex-col gap-1 rounded-xl bg-surface-muted p-3">
+      <dt className="flex items-center gap-2 text-base leading-tight font-bold text-ink">
+        <Icon aria-hidden className={`size-5 shrink-0 ${colors.ink}`} />
+        {label}
+      </dt>
+      <dd className="flex flex-col gap-0.5">
+        <Figure
+          value={value}
+          className="font-extrabold text-ink tabular-nums [--figure-max:1.5rem]"
+        />
+        {hint && <p className="text-base text-ink-muted">{hint}</p>}
+      </dd>
+    </div>
+  );
+}
+
+/** « Tout voir » beside a card title, named in full for screen readers. */
+export function SeeAll({ href, what }: { href: string; what: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex min-h-12 items-center gap-1 font-bold text-brand-ink underline-offset-4 hover:underline"
+    >
+      Tout voir<span className="sr-only"> : {what}</span>
+      <ChevronRight aria-hidden className="size-5" />
+    </Link>
   );
 }
 

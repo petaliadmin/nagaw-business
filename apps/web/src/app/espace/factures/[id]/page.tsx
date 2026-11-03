@@ -21,6 +21,7 @@ import {
   INVOICE_PAYMENT_LABELS,
 } from '@/lib/documents/labels';
 import { formatCalendarDate, formatDateTime, todayIn } from '@/lib/format';
+import { OperatorLogo } from '@/components/sales/operator-logo';
 import { PROVIDER_LABELS, ticketNumber } from '@/lib/sales/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import {
@@ -222,16 +223,21 @@ async function Invoice({ params }: PageProps<'/espace/factures/[id]'>) {
             {invoice.payments.map((payment) => (
               <li
                 key={payment.id}
-                className="flex flex-wrap justify-between gap-3 py-3 first:pt-0"
+                className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0"
               >
-                <span>
-                  {formatCalendarDate(payment.paidOn)} ·{' '}
-                  {INVOICE_PAYMENT_LABELS[payment.method]}
-                  {payment.provider
-                    ? ` (${PROVIDER_LABELS[payment.provider]})`
-                    : ''}
-                  {payment.reference ? ` · ${payment.reference}` : ''}
-                  {payment.fromSale ? ' · réglé en caisse' : ''}
+                <span className="flex min-w-0 items-center gap-2">
+                  {payment.provider && (
+                    <OperatorLogo provider={payment.provider} />
+                  )}
+                  <span className="min-w-0">
+                    {formatCalendarDate(payment.paidOn)} ·{' '}
+                    {INVOICE_PAYMENT_LABELS[payment.method]}
+                    {payment.provider
+                      ? ` (${PROVIDER_LABELS[payment.provider]})`
+                      : ''}
+                    {payment.reference ? ` · ${payment.reference}` : ''}
+                    {payment.fromSale ? ' · réglé en caisse' : ''}
+                  </span>
                 </span>
                 <span className="font-bold tabular-nums">
                   {money(payment.amount)}
