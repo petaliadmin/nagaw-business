@@ -965,4 +965,3 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Demandé** par le propriétaire le 2026-11-03. Branche `claude/factures-boutons-flottants`, non fusionnée, non déployée.
 - **Livré** : onglet « Nouveau » retiré ; sur le résumé, un « + » flottant ouvre « Facture » et « Devis » (Échap ou un toucher à côté le referme) ; « Nouvelle facture » flottant sur la liste des factures, « Nouveau devis » sur celle des devis, chacun selon le rôle (ADR-036). « Retour » depuis une nouvelle facture ou un nouveau devis mène à sa liste. La page `/espace/factures/nouveau` reste accessible pour les anciens liens.
 - **Écart à DESIGN.md** : le « + » est une icône sans mot, à la demande du propriétaire ; il porte le nom « Créer une facture ou un devis » pour les lecteurs d'écran.
-
