@@ -106,7 +106,6 @@ describe('navigation', () => {
       '/espace/factures',
       '/espace/factures/liste',
       '/espace/factures/devis',
-      '/espace/factures/nouveau',
       '/espace/journal',
       '/caisse',
     ])
@@ -122,10 +121,10 @@ describe('navigation', () => {
     );
     expect(parentPath('/espace/factures/7')).toBe('/espace/factures/liste');
     expect(parentPath('/espace/factures/nouvelle')).toBe(
-      '/espace/factures/nouveau',
+      '/espace/factures/liste',
     );
     expect(parentPath('/espace/factures/devis/nouveau')).toBe(
-      '/espace/factures/nouveau',
+      '/espace/factures/devis',
     );
   });
 

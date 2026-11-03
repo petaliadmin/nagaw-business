@@ -19,12 +19,12 @@ import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { KpiTile } from '@/components/dashboard/kpi';
 import { Alert } from '@/components/ui/alert';
-import { ButtonLink } from '@/components/ui/button-link';
 import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { NewDocumentFab, NewDocumentMenuFab } from './new-document-fab';
 
 export const metadata: Metadata = {
   title: 'Factures et devis — Nagaw Business',
@@ -60,19 +60,6 @@ async function Summary({ searchParams }: PageProps<'/espace/factures'>) {
       <PageHeader
         title="Factures et devis"
         description="Ce que vous avez facturé, ce qu’on vous doit, et vos devis en cours."
-        actions={
-          canManage ? (
-            <ButtonLink href="/espace/factures/nouvelle">
-              <FilePlus2 aria-hidden className="size-5" />
-              Nouvelle facture
-            </ButtonLink>
-          ) : canQuote ? (
-            <ButtonLink href="/espace/factures/devis/nouveau">
-              <FileText aria-hidden className="size-5" />
-              Nouveau devis
-            </ButtonLink>
-          ) : undefined
-        }
       />
       {!stats.ok ? (
         <Alert tone="error">Chiffres indisponibles : {stats.message}</Alert>
@@ -186,6 +173,13 @@ async function Summary({ searchParams }: PageProps<'/espace/factures'>) {
           </Card>
         </>
       )}
+      {canManage && canQuote ? (
+        <NewDocumentMenuFab />
+      ) : canManage ? (
+        <NewDocumentFab kind="invoice" />
+      ) : canQuote ? (
+        <NewDocumentFab kind="quote" />
+      ) : null}
     </>
   );
 }
