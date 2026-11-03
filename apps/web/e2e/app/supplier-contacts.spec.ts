@@ -81,9 +81,9 @@ test('a supplier is imported from a contact file', async ({
   await expect(sheet.getByLabel('Téléphone (facultatif)')).toHaveValue(
     '77 999 88 77',
   );
-  await expect(sheet.getByRole('status')).toContainText(
-    '« Ajouter le fournisseur »',
-  );
+  await expect(
+    sheet.getByRole('status').filter({ hasText: '« Ajouter le fournisseur »' }),
+  ).toBeVisible();
 });
 
 test('a seller sees the suppliers but cannot change them', async ({
