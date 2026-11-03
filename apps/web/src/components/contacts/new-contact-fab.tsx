@@ -294,10 +294,9 @@ export function NewContactFab({
       >
         {draft && (
           <div key={draft.key} className="flex flex-col gap-4">
+            {/* Alert is the live region itself (status, or alert). */}
             {draft.notice && (
-              <div role={draft.notice.tone === 'info' ? 'status' : undefined}>
-                <Alert tone={draft.notice.tone}>{draft.notice.text}</Alert>
-              </div>
+              <Alert tone={draft.notice.tone}>{draft.notice.text}</Alert>
             )}
             {children(draft.initial, () => setDraft(null))}
           </div>
