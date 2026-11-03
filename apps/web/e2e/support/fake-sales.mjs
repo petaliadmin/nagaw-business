@@ -764,6 +764,16 @@ export async function handleSales(ctx) {
     if (!customerMatch[2] && req.method === 'PATCH') {
       const parsed = updateCustomerSchema.safeParse(await ctx.readJson(req));
       if (!parsed.success) return invalid(parsed.error.issues);
+      if (
+        parsed.data.status === 'archived' &&
+        customer.status !== 'archived' &&
+        balance(customer.id) > 0
+      )
+        return fail(
+          409,
+          'CUSTOMER_STILL_OWES',
+          'Ce client vous doit encore de l’argent : enregistrez son remboursement avant de le supprimer.',
+        );
       for (const [key, value] of Object.entries(parsed.data))
         if (value !== undefined) customer[key] = value;
       customer.updatedAt = new Date().toISOString();

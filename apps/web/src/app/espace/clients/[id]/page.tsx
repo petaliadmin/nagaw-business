@@ -29,6 +29,10 @@ import { formatDateTime } from '@/lib/format';
 import { PAYMENT_LABELS, ticketNumber } from '@/lib/sales/labels';
 import { creditReminderText, whatsappLink } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import {
+  ContactAvatar,
+  SaveContactButton,
+} from '@/components/contacts/contact-actions';
 import { CustomerForm, RepaymentForm } from '../customer-forms';
 
 export const metadata: Metadata = { title: 'Client — Nagaw Business' };
@@ -53,7 +57,12 @@ async function Customer({ params }: PageProps<'/espace/clients/[id]'>) {
 
   return (
     <>
-      <PageHeader title={c.name} description={c.notes || undefined} />
+      <div className="flex items-center gap-4">
+        <ContactAvatar person={c} size="size-16 text-2xl" />
+        <div className="min-w-0 flex-1">
+          <PageHeader title={c.name} description={c.notes || undefined} />
+        </div>
+      </div>
       {(c.phone || canDocument) && (
         <div className="flex flex-wrap gap-3">
           {c.phone && (
@@ -64,6 +73,12 @@ async function Customer({ params }: PageProps<'/espace/clients/[id]'>) {
               <Phone aria-hidden className="size-5" />
               Appeler le {c.phone}
             </a>
+          )}
+          {c.phone && (
+            <SaveContactButton
+              person={c}
+              countryCode={organization.phoneCountryCode}
+            />
           )}
           {canDocument && (
             <>

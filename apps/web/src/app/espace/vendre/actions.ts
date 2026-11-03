@@ -121,6 +121,27 @@ export async function updateCustomer(
   return { status: 'success', message: 'Client enregistré.' };
 }
 
+/**
+ * Removes the customer from the list. Archived, not erased: its sales,
+ * invoices and books keep its name. Refused by the API while it owes.
+ */
+export async function archiveCustomer(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const shop = await shopOf(text(formData, 'organizationId'));
+  if (!shop) return { status: 'error', message: SHOP_CHANGED };
+  const result = await apiAsUser<CustomerDto>(shop.token, {
+    method: 'PATCH',
+    path: `/customers/${encodeURIComponent(text(formData, 'customerId'))}`,
+    organizationId: shop.organizationId,
+    body: { status: 'archived' },
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return { status: 'success', message: 'Client supprimé de la liste.' };
+}
+
 export async function recordRepayment(
   _prev: FormState,
   formData: FormData,

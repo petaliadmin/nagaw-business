@@ -715,3 +715,16 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - sur un téléphone partagé, le numéro du dernier connecté s'affiche à la page de connexion. Chacun peut le retirer par « Ce n'est pas mon numéro » ;
   - le pavé demande JavaScript ; sans lui, rien ne s'envoie (le site entier en dépend déjà pour la caisse) ;
   - pas d'empreinte digitale ni de reconnaissance du visage : à décider plus tard (WebAuthn).
+
+## ADR-060 — Clients et fournisseurs : contacts du téléphone, menu « ⋮ », suppression par archivage
+
+- **Statut** : **Acceptée** (demandes du propriétaire du 2026-11-03 : ajouter un client dans les contacts du téléphone et depuis eux, un « + » flottant « Créer / Importer », un avatar rond et un menu « ⋮ » coloré, la même chose pour les fournisseurs).
+- **Décision** :
+  - **vers le téléphone** : « Ajouter à mes contacts » fabrique sur l'appareil une fiche vCard 3.0 (`.vcf`) avec le nom, le numéro en `+indicatif` de la boutique, l'e-mail et l'adresse. Android et iPhone proposent de l'ajouter une fois ouverte. Aucun appel au serveur : cela marche sans réseau ;
+  - **depuis le téléphone** : sur Chrome Android, l'API Contact Picker ouvre la liste des contacts. Ailleurs (iPhone, ordinateur), le même bouton fait choisir une fiche `.vcf` (vCard 2.1, 3.0 ou 4.0, accents en quoted-printable). Le contact remplit seulement le formulaire : rien n'est enregistré avant « Ajouter », et le serveur valide comme pour une saisie à la main. Le fichier ne quitte pas le téléphone ;
+  - **« ⋮ »** dans la carte de chaque client et fournisseur : une feuille du bas avec une couleur de module par action (appeler, WhatsApp, contacts, facture ou modification, fiche, suppression en rouge) ;
+  - **« Supprimer » archive** (`status: archived`) : ventes, factures, stock reçu et écritures gardent le nom. Un client qui doit encore de l'argent ne peut pas être archivé (`409 CUSTOMER_STILL_OWES`) : sa dette disparaîtrait de « Ils me doivent ». Un fournisseur supprimé reste en bas de la liste, avec « Remettre dans la liste ».
+- **Limites** :
+  - l'import sur iPhone demande de partager la fiche depuis Contacts puis de la choisir dans Fichiers : moins direct que sur Android ;
+  - un seul contact à la fois, pas d'import en masse ;
+  - un client archivé n'a pas encore d'écran pour revenir : il réapparaîtra quand il faudra (à décider).

@@ -362,6 +362,39 @@ describe('Sales and customers', () => {
       expect(res.body.error.code).toBe('CREDIT_LIMIT_EXCEEDED');
     });
 
+    it('archives a customer only once nothing is owed, keeping its history', async () => {
+      const customer = await newCustomer();
+      const archive = (user = alice, orgId = acmeId) =>
+        ctx
+          .http()
+          .patch(`/api/v1/customers/${customer.id}`)
+          .set(as(user, orgId))
+          .send({ status: 'archived' });
+      await sell({
+        customerId: customer.id,
+        lines: [{ productId: service.id, quantity: 1 }],
+        payments: [{ method: 'credit', amount: 2000 }],
+        expectedTotal: 2000,
+      }).expect(201);
+      const refused = await archive().expect(409);
+      expect(refused.body.error.code).toBe('CUSTOMER_STILL_OWES');
+      // Another shop cannot archive it, owed or not.
+      await archive(bob, globexId).expect(404);
+
+      await post(alice, acmeId, `/customers/${customer.id}/payments`, {
+        method: 'cash',
+        amount: 2000,
+        clientOperationId: randomUUID(),
+      }).expect(201);
+      expect((await archive().expect(200)).body.status).toBe('archived');
+      const list = (await get(alice, acmeId, '/customers').expect(200)).body;
+      expect(list.map((c: { id: string }) => c.id)).not.toContain(customer.id);
+      const kept = (
+        await get(alice, acmeId, `/customers/${customer.id}`).expect(200)
+      ).body;
+      expect(kept.activity).toHaveLength(2);
+    });
+
     it('keeps customers to their shop', async () => {
       const acmeCustomer = await newCustomer();
       await get(bob, globexId, `/customers/${acmeCustomer.id}`).expect(404);

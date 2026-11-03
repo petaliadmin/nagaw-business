@@ -272,9 +272,16 @@ test('categories, suppliers and taxes are managed from their lists', async ({
   ).toBeVisible();
 
   await page.goto('/espace/produits/fournisseurs');
+  await page
+    .getByRole('button', { name: 'Plus d’actions pour Grossiste Sandaga' })
+    .click();
+  const supplier = page.getByRole('dialog', { name: 'Grossiste Sandaga' });
   await expect(
-    page.getByRole('link', { name: 'Appeler le 77 000 00 00' }),
+    supplier.getByRole('link', { name: 'Appeler le 77 000 00 00' }),
   ).toHaveAttribute('href', 'tel:770000000');
+  await expect(
+    supplier.getByRole('link', { name: 'Écrire sur WhatsApp' }),
+  ).toHaveAttribute('href', /^https:\/\/wa\.me\/221770000000/);
 
   await page.goto('/espace/parametres');
   const tax = page.getByRole('region', { name: 'Ajouter une taxe' });
