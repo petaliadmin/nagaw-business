@@ -164,9 +164,7 @@ export function parentPath(pathname: string): string | null {
     ...tabs.flatMap((tab) => [tab.href, ...(tab.paths ?? [])]),
   ];
   if (topLevel.includes(pathname)) return null;
-  // A new document or an invoice comes from a tab, not from its parent path.
-  if (/^\/espace\/factures\/(nouvelle|devis\/nouveau)$/.test(pathname))
-    return '/espace/factures/nouveau';
+  // An invoice, or a new one, comes from its list, not from its parent path.
   if (/^\/espace\/factures\/[^/]+$/.test(pathname))
     return '/espace/factures/liste';
   return pathname.slice(0, pathname.lastIndexOf('/'));
@@ -208,11 +206,6 @@ export const SECTION_TABS = {
     { href: '/espace/factures', label: 'Résumé', permission: 'stats.read' },
     { href: '/espace/factures/liste', label: 'Factures' },
     { href: '/espace/factures/devis', label: 'Devis' },
-    {
-      href: '/espace/factures/nouveau',
-      label: 'Nouveau',
-      permission: 'quotes.manage',
-    },
   ],
   rapports: [
     {

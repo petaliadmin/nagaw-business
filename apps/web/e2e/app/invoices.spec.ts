@@ -278,12 +278,27 @@ test('the summary counts the documents, and leads to the rest', async ({
   await expect(
     page.getByRole('heading', { level: 1, name: 'Devis' }),
   ).toBeVisible();
-  await tabs.getByRole('link', { name: 'Nouveau' }).click();
-  await expect(
-    page.getByRole('link', { name: /^Nouvelle facture/ }),
-  ).toBeVisible();
-  await page.getByRole('link', { name: /^Nouveau devis/ }).click();
+  // No « Nouveau » tab: each list floats its own button.
+  await expect(tabs.getByRole('link', { name: 'Nouveau' })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Nouveau devis' }).click();
   await expect(page).toHaveURL(/\/espace\/factures\/devis\/nouveau$/);
+
+  // On the summary, « + » opens « Facture » and « Devis ».
+  await page.goto('/espace/factures');
+  const create = page.getByRole('button', {
+    name: 'Créer une facture ou un devis',
+  });
+  const menu = page.getByRole('list', { name: 'Créer' });
+  await expect(create).toHaveAttribute('aria-expanded', 'false');
+  await expect(menu.getByRole('link', { name: 'Facture' })).toHaveCount(0);
+  await create.click();
+  await expect(menu.getByRole('link', { name: 'Devis' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(create).toBeFocused();
+  await expect(menu.getByRole('link', { name: 'Devis' })).toHaveCount(0);
+  await create.click();
+  await menu.getByRole('link', { name: 'Facture' }).click();
+  await expect(page).toHaveURL(/\/espace\/factures\/nouvelle$/);
 
   // The former address of the quotes still works.
   await page.goto('/espace/factures?type=devis');
@@ -302,11 +317,10 @@ test('a seller reads the lists, prepares quotes, and sees no total', async ({
   const tabs = page.getByRole('navigation', { name: 'Factures et devis' });
   await expect(tabs.getByRole('link', { name: 'Résumé' })).toHaveCount(0);
 
-  await page.goto('/espace/factures/nouveau');
+  // Invoices stay with the managers (ADR-036): no button on their list.
   await expect(
-    page.getByRole('link', { name: /^Nouveau devis/ }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: /^Nouvelle facture/ }),
+    page.getByRole('link', { name: 'Nouvelle facture' }),
   ).toHaveCount(0);
+  await page.goto('/espace/factures/devis');
+  await expect(page.getByRole('link', { name: 'Nouveau devis' })).toBeVisible();
 });

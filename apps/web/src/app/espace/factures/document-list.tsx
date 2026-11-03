@@ -23,14 +23,15 @@ export async function DocumentList({
   title,
   description,
   page: rawPage,
-  action,
+  fab,
   empty,
 }: {
   kind: 'invoices' | 'quotes';
   title: string;
   description: string;
   page: string | string[] | undefined;
-  action: (canQuote: boolean, canManage: boolean) => ReactNode;
+  /** The floating button that creates a document, when the role may. */
+  fab: (canQuote: boolean, canManage: boolean) => ReactNode;
   empty: (canQuote: boolean, canManage: boolean) => string;
 }) {
   const workspace = await requireReadyWorkspace();
@@ -61,11 +62,7 @@ export async function DocumentList({
 
   return (
     <>
-      <PageHeader
-        title={title}
-        description={description}
-        actions={action(canQuote, canManage)}
-      />
+      <PageHeader title={title} description={description} />
 
       {!documents.ok ? (
         <Alert tone="error">
@@ -130,6 +127,7 @@ export async function DocumentList({
         page={page}
         hasNext={list?.hasNext ?? false}
       />
+      {fab(canQuote, canManage)}
     </>
   );
 }
