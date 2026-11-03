@@ -85,6 +85,10 @@ export async function callApi<T>(
     };
   }
 
+  // Done, nothing to read (a new secret code, ADR-058).
+  if (response.status === 204)
+    return { ok: true, status: 204, data: null as T };
+
   let payload: unknown;
   try {
     payload = await response.json();

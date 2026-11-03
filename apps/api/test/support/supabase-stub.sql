@@ -16,5 +16,6 @@ create schema if not exists extensions;
 
 create table if not exists auth.users (
   id uuid primary key,
-  email text
+  email text,
+  phone text unique
 );

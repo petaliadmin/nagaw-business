@@ -425,7 +425,7 @@ export class TreasuryService {
         'k.difference',
         'k.note',
         'k.closed_by',
-        'u.email',
+        'u.contact as email',
         'k.created_at',
       ])
       .select(sql<string>`k.day::text`.as('day_text'))

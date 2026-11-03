@@ -15,47 +15,82 @@ test('home page links to sign-up and sign-in', async ({ page }) => {
   ).toBeVisible();
 });
 
-test('sign-up validates input on the server and reports errors in French', async ({
+test('sign-up asks for a phone number and a secret code, checked on the server', async ({
   page,
 }) => {
   await page.goto('/inscription');
-  await page.getByLabel('Adresse e-mail').fill('pas-un-email');
-  await page.getByLabel('Mot de passe (8 caractères minimum)').fill('court');
-  await page.getByLabel('Confirmation du mot de passe').fill('different');
+  await expect(page.getByLabel('Pays')).toHaveValue('SN');
+  await expect(page.getByLabel('Pays')).toContainText('Sénégal (+221)');
+  await page.getByLabel('Numéro de téléphone').fill('77 12');
+  await page.getByLabel('Choisissez un code secret (4 chiffres)').fill('4826');
+  await page.getByLabel('Retapez le code secret').fill('4826');
   await page.getByRole('button', { name: 'Créer mon compte' }).click();
 
   await expect(page.getByRole('main').getByRole('alert')).toHaveText(
     'Vérifiez les champs indiqués.',
   );
-  await expect(page.getByText('Adresse e-mail invalide')).toBeVisible();
   await expect(
-    page.getByText('Le mot de passe doit contenir au moins 8 caractères'),
+    page.getByText('Numéro de téléphone invalide pour ce pays'),
   ).toBeVisible();
-  await expect(page.getByLabel('Adresse e-mail')).toHaveAttribute(
+  await expect(page.getByLabel('Numéro de téléphone')).toHaveAttribute(
     'aria-invalid',
     'true',
   );
+
+  await page.getByLabel('Numéro de téléphone').fill('77 123 45 67');
+  await page.getByLabel('Choisissez un code secret (4 chiffres)').fill('1234');
+  await page.getByLabel('Retapez le code secret').fill('1234');
+  await page.getByRole('button', { name: 'Créer mon compte' }).click();
+  await expect(
+    page.getByText(
+      'Ce code est trop facile à deviner. Choisissez-en un autre.',
+    ),
+  ).toBeVisible();
 });
 
 test('a valid sign-up says plainly that authentication is not configured', async ({
   page,
 }) => {
   await page.goto('/inscription');
-  await page.getByLabel('Adresse e-mail').fill('awa@example.sn');
-  await page
-    .getByLabel('Mot de passe (8 caractères minimum)')
-    .fill('motdepasse-solide');
-  await page
-    .getByLabel('Confirmation du mot de passe')
-    .fill('motdepasse-solide');
+  await page.getByLabel('Numéro de téléphone').fill('77 123 45 67');
+  await page.getByLabel('Choisissez un code secret (4 chiffres)').fill('4826');
+  await page.getByLabel('Retapez le code secret').fill('4826');
   await page.getByRole('button', { name: 'Créer mon compte' }).click();
   await expect(page.getByRole('main').getByRole('alert')).toHaveText(
     'L’authentification n’est pas encore configurée sur cet environnement.',
   );
 });
 
-test('sign-in page links to password recovery', async ({ page }) => {
+test('sign-in uses the phone number; a forgotten code goes through the team', async ({
+  page,
+}) => {
   await page.goto('/connexion');
+  await expect(page.getByLabel('Pays')).toHaveValue('SN');
+  await expect(page.getByLabel('Code secret (4 chiffres)')).toHaveAttribute(
+    'inputmode',
+    'numeric',
+  );
+  await page.getByRole('link', { name: 'Code secret oublié ?' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Code secret oublié' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Appeler le +221 76 905 58 52' }),
+  ).toHaveAttribute('href', 'tel:+221769055852');
+});
+
+test('an older account still signs in with its e-mail and can reset its password', async ({
+  page,
+}) => {
+  await page.goto('/connexion');
+  await page
+    .getByRole('link', {
+      name: 'J’ai un ancien compte avec une adresse e-mail',
+    })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Ancien compte' }),
+  ).toBeVisible();
   await page.getByRole('link', { name: 'Mot de passe oublié ?' }).click();
   await expect(
     page.getByRole('heading', { name: 'Mot de passe oublié' }),

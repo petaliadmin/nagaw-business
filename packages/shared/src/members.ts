@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { accountPhoneSchema } from './account.js';
 import { roleSchema, type Role } from './permissions.js';
 
 /** Roles an invitation may grant. Ownership is only given by promotion. */
@@ -8,15 +9,9 @@ export const invitableRoleSchema = z.enum(INVITABLE_ROLES);
 export const MEMBER_STATUSES = ['active', 'disabled'] as const;
 export type MemberStatus = (typeof MEMBER_STATUSES)[number];
 
+/** An invitation is bound to a phone number (ADR-058). */
 export const createInvitationSchema = z
-  .object({
-    email: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .pipe(z.email('Adresse e-mail invalide').max(320)),
-    role: invitableRoleSchema,
-  })
+  .object({ phone: accountPhoneSchema, role: invitableRoleSchema })
   .strict();
 export type CreateInvitationInput = z.infer<typeof createInvitationSchema>;
 
@@ -57,11 +52,14 @@ export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
 
 export interface InvitationDto {
   id: string;
-  email: string;
+  /** The invited number, or the address of an invitation sent before it. */
+  phone: string | null;
+  email: string | null;
   role: z.infer<typeof invitableRoleSchema>;
   status: InvitationStatus;
   expiresAt: string;
   createdAt: string;
+  /** `email`: what the application shows of the person (ADR-058). */
   invitedBy: { userId: string; email: string };
 }
 
@@ -73,12 +71,13 @@ export interface CreatedInvitationDto {
 
 export interface InvitationPreviewDto {
   organizationName: string;
-  email: string;
+  phone: string | null;
+  email: string | null;
   role: z.infer<typeof invitableRoleSchema>;
   status: InvitationStatus;
   expiresAt: string;
-  /** Whether the signed-in user's e-mail is the invited one. */
-  emailMatches: boolean;
+  /** Whether the signed-in user's number (or e-mail) is the invited one. */
+  contactMatches: boolean;
 }
 
 export type MemberChangeRefusal =

@@ -7,6 +7,15 @@ const optionalUrl = z
   .pipe(z.url().optional())
   .optional();
 
+/** A secret of at least `min` characters; empty means absent. */
+const optionalSecret = (min: number) =>
+  z
+    .string()
+    .trim()
+    .transform((value) => (value === '' ? undefined : value))
+    .pipe(z.string().min(min).optional())
+    .optional();
+
 const envSchema = z
   .object({
     NODE_ENV: z
@@ -29,6 +38,16 @@ const envSchema = z
     APP_VERSION: z.string().default('dev'),
     /** Supabase project URL; the JWKS and token issuer are derived from it. */
     SUPABASE_URL: optionalUrl,
+    /**
+     * Supabase secret key (`sb_secret_…` or the legacy service_role JWT):
+     * creates phone accounts and opens their sessions (ADR-058). Secret.
+     */
+    SUPABASE_SECRET_KEY: optionalSecret(20),
+    /**
+     * Turns a 4-digit secret code into the account's Supabase password
+     * (ADR-058). Secret; changing it invalidates every code.
+     */
+    PHONE_PIN_PEPPER: optionalSecret(32),
     /** Postgres connection string for the `nagaw_api` role (secret). */
     DATABASE_URL: optionalUrl,
     /**
@@ -76,7 +95,11 @@ const envSchema = z
       message:
         'VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT go together',
     },
-  );
+  )
+  .refine((env) => !env.SUPABASE_SECRET_KEY === !env.PHONE_PIN_PEPPER, {
+    path: ['SUPABASE_SECRET_KEY'],
+    message: 'SUPABASE_SECRET_KEY and PHONE_PIN_PEPPER go together',
+  });
 
 export type Env = z.infer<typeof envSchema>;
 

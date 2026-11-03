@@ -14,19 +14,20 @@
 
 ## Menaces principales et contrôles prévus
 
-| Menace                               | Contrôle                                                                                                | Phase |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------- | ----- |
-| IDOR / accès inter-organisations     | TenantGuard, repositories scopés, RLS, tests d'isolation                                                | 2     |
-| Élévation de rôle                    | Changements de rôle limités (un admin ne peut pas promouvoir en owner), dernier owner protégé, audit    | 4     |
-| Vol de jeton d'invitation            | Jeton aléatoire de 256 bits, stocké hashé, expiration, usage unique, liaison à l'e-mail invité          | 4     |
-| Prompt injection via contenu externe | Contenu externe balisé comme non fiable, politiques hors modèle, approbation pour les actions sensibles | 7–9   |
-| Contournement d'approbation          | Hash canonique de l'action, contrôle au moment de l'exécution, expiration                               | 8     |
-| Fuite de credentials d'intégration   | AES-256-GCM, jamais renvoyés, logs masqués (redaction pino)                                             | 9     |
-| Fichiers dangereux                   | Liste blanche MIME + vérification de signature, taille max, URLs signées courtes                        | 10    |
-| Rejeu de webhooks                    | Signature vérifiée, `UNIQUE(provider, event_id)`                                                        | 12    |
-| Abus / brute force                   | Throttling sur auth, invitations, déclenchement de tâches                                               | 2–7   |
-| Explosion des coûts IA               | Quotas par organisation, `max_steps` et `max_tokens` par exécution                                      | 7     |
-| Admin plateforme trop puissant       | Pas d'accès au contenu métier, actions auditées                                                         | 13    |
+| Menace                               | Contrôle                                                                                                                                                       | Phase |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| IDOR / accès inter-organisations     | TenantGuard, repositories scopés, RLS, tests d'isolation                                                                                                       | 2     |
+| Élévation de rôle                    | Changements de rôle limités (un admin ne peut pas promouvoir en owner), dernier owner protégé, audit                                                           | 4     |
+| Vol de jeton d'invitation            | Jeton aléatoire de 256 bits, stocké hashé, expiration, usage unique, liaison au numéro invité (ADR-058)                                                        | 4     |
+| Essai des 10 000 codes secrets       | Code transformé par HMAC avec un secret serveur avant Supabase, chaque essai compté avant d'être fait, numéro bloqué après `pin_max_failures` échecs (ADR-058) | 2     |
+| Prompt injection via contenu externe | Contenu externe balisé comme non fiable, politiques hors modèle, approbation pour les actions sensibles                                                        | 7–9   |
+| Contournement d'approbation          | Hash canonique de l'action, contrôle au moment de l'exécution, expiration                                                                                      | 8     |
+| Fuite de credentials d'intégration   | AES-256-GCM, jamais renvoyés, logs masqués (redaction pino)                                                                                                    | 9     |
+| Fichiers dangereux                   | Liste blanche MIME + vérification de signature, taille max, URLs signées courtes                                                                               | 10    |
+| Rejeu de webhooks                    | Signature vérifiée, `UNIQUE(provider, event_id)`                                                                                                               | 12    |
+| Abus / brute force                   | Throttling sur auth, invitations, déclenchement de tâches                                                                                                      | 2–7   |
+| Explosion des coûts IA               | Quotas par organisation, `max_steps` et `max_tokens` par exécution                                                                                             | 7     |
+| Admin plateforme trop puissant       | Pas d'accès au contenu métier, actions auditées                                                                                                                | 13    |
 
 ## Menaces propres à la boutique et au hors ligne (proposé, ADR-019, ADR-020)
 

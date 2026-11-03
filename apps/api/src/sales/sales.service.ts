@@ -105,8 +105,8 @@ export class SalesService {
       )
       .selectAll('s')
       .select([
-        'u.email as seller_email',
-        'x.email as cancelled_by_email',
+        'u.contact as seller_email',
+        'x.contact as cancelled_by_email',
         'c.name as customer_name',
         'c.phone as customer_phone',
       ])
@@ -234,7 +234,7 @@ export class SalesService {
         's.device_ticket',
         's.price_review',
         's.stock_review',
-        'u.email as seller_email',
+        'u.contact as seller_email',
         'c.name as customer_name',
       ])
       .select([

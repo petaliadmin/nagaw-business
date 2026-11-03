@@ -6,6 +6,7 @@ import { CONTROL } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/auth/schemas';
+import { formatContact } from '@/lib/format';
 import { ROLE_LABELS } from '@/lib/labels';
 import { revokeInvitation, setDiscountLimit, updateMember } from './actions';
 
@@ -34,7 +35,7 @@ export function MemberActions({
     setDiscountLimit,
     initialFormState,
   );
-  const who = member.displayName ?? member.email;
+  const who = member.displayName ?? formatContact(member.email);
   const selectId = `role-${member.userId}`;
   const limitId = `limit-${member.userId}`;
 
@@ -125,11 +126,11 @@ export function MemberActions({
 export function RevokeInvitationButton({
   organizationId,
   invitationId,
-  email,
+  contact,
 }: {
   organizationId: string;
   invitationId: string;
-  email: string;
+  contact: string;
 }) {
   const [state, action] = useActionState(revokeInvitation, initialFormState);
   return (
@@ -140,7 +141,7 @@ export function RevokeInvitationButton({
         <SubmitButton
           variant="secondary"
           pendingLabel="Annulation…"
-          aria-label={`Annuler l’invitation de ${email}`}
+          aria-label={`Annuler l’invitation de ${contact}`}
         >
           Annuler
         </SubmitButton>

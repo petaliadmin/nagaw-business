@@ -48,9 +48,17 @@ export class SupabaseJwtVerifier implements JwtVerifier {
     if (typeof payload.sub !== 'string' || !UUID_RE.test(payload.sub)) {
       throw unauthenticated('Jeton d’authentification invalide.');
     }
+    // Supabase puts '' in the claim an account does not have.
     return {
       userId: payload.sub,
-      email: typeof payload.email === 'string' ? payload.email : null,
+      email:
+        typeof payload.email === 'string' && payload.email !== ''
+          ? payload.email
+          : null,
+      phone:
+        typeof payload.phone === 'string' && payload.phone !== ''
+          ? payload.phone
+          : null,
     };
   }
 }

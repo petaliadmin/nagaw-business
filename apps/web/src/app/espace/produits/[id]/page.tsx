@@ -28,7 +28,7 @@ import {
   STOCK_LEVEL_LABELS,
   STOCK_LEVEL_TONES,
 } from '@/lib/catalog/labels';
-import { formatDateTime } from '@/lib/format';
+import { formatContact, formatDateTime } from '@/lib/format';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { ProductStatusForm } from './status-form';
 import { StockForms } from './stock-forms';
@@ -72,7 +72,7 @@ function MovementLine({
         )}
         <span className="text-ink-muted">
           {formatDateTime(movement.occurredAt, timeZone)} —{' '}
-          {movement.createdBy.email}
+          {formatContact(movement.createdBy.email)}
         </span>
       </div>
       <span className={`text-lg font-extrabold tabular-nums ${tone}`}>

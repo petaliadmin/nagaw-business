@@ -12,7 +12,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Pagination } from '@/components/ui/pagination';
 import { requirePlatformAdmin } from '@/lib/admin/load';
 import { apiAsUser } from '@/lib/api/server';
-import { formatDateTime } from '@/lib/format';
+import { formatContact, formatDateTime } from '@/lib/format';
 import { pageNumber, pageParams, pageRows } from '@/lib/pagination';
 
 async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
@@ -65,8 +65,9 @@ async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
                 <span className="flex min-w-0 flex-col">
                   <span className="font-bold">{shop.name}</span>
                   <span className="truncate text-ink-muted">
-                    {shop.ownerEmails.join(', ') || 'sans propriétaire actif'} ·{' '}
-                    {shop.members} personne(s)
+                    {shop.ownerEmails.map(formatContact).join(', ') ||
+                      'sans propriétaire actif'}{' '}
+                    · {shop.members} personne(s)
                   </span>
                   <span className="text-ink-muted">
                     {shop.lastSaleAt

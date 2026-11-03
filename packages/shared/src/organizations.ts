@@ -187,6 +187,8 @@ export interface MemberDto {
 export interface MeDto {
   id: string;
   email: string;
+  /** International digits; null for an account still on its e-mail. */
+  phone: string | null;
   displayName: string | null;
   locale: string;
   timezone: string;

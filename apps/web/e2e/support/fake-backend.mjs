@@ -49,9 +49,11 @@ const USERS = {
     id: 'aaaaaaaa-0000-4000-8000-000000000002',
     email: 'moussa@acme.test',
   },
+  // A phone account (ADR-058); the others still sign in with an e-mail.
   binta: {
     id: 'aaaaaaaa-0000-4000-8000-000000000003',
-    email: 'binta@new.test',
+    email: '',
+    phone: '221770000003',
   },
   broken: {
     id: 'aaaaaaaa-0000-4000-8000-000000000004',
@@ -236,12 +238,47 @@ async function readJson(req) {
   return raw ? JSON.parse(raw) : {};
 }
 
+/** Secret code of the phone accounts of the fake (ADR-058). */
+const PINS = { [USERS.binta.phone]: '2580' };
+
+async function accessTokenOf(user) {
+  const now = Math.floor(Date.now() / 1000);
+  return new SignJWT({
+    role: 'authenticated',
+    email: user.email,
+    phone: user.phone ?? '',
+    aal: 'aal1',
+    session_id: randomUUID(),
+    is_anonymous: false,
+  })
+    .setProtectedHeader({ alg: 'ES256', kid, typ: 'JWT' })
+    .setSubject(user.id)
+    .setIssuer(ISSUER)
+    .setAudience('authenticated')
+    .setIssuedAt(now)
+    .setExpirationTime(now + 3600)
+    .sign(privateKey);
+}
+
+/** Supabase's view of a user (GET /auth/v1/user). */
+const authUser = (user) => ({
+  id: user.id,
+  aud: 'authenticated',
+  role: 'authenticated',
+  email: user.email,
+  phone: user.phone ?? '',
+  app_metadata: {},
+  user_metadata: {},
+  created_at: '2026-10-01T09:00:00.000Z',
+});
+
 async function sessionCookie(userKey) {
   const user = USERS[userKey];
   const now = Math.floor(Date.now() / 1000);
   const accessToken = await new SignJWT({
     role: 'authenticated',
     email: user.email,
+    phone: user.phone ?? '',
     aal: 'aal1',
     session_id: randomUUID(),
     is_anonymous: false,
@@ -264,6 +301,7 @@ async function sessionCookie(userKey) {
       aud: 'authenticated',
       role: 'authenticated',
       email: user.email,
+      phone: user.phone ?? '',
       app_metadata: {},
       user_metadata: {},
       created_at: '2026-10-01T09:00:00.000Z',
@@ -313,6 +351,8 @@ function recordAudit(organizationId, actorId, action, targetId, metadata) {
 }
 
 const userById = (id) => Object.values(USERS).find((u) => u.id === id);
+/** What the API shows of a person: `+number`, else the e-mail. */
+const contactOf = (user) => (user.phone ? `+${user.phone}` : user.email);
 
 function invitationDto(invitation) {
   const expired =
@@ -320,14 +360,15 @@ function invitationDto(invitation) {
     Date.parse(invitation.expiresAt) <= Date.now();
   return {
     id: invitation.id,
-    email: invitation.email,
+    phone: invitation.phone,
+    email: null,
     role: invitation.role,
     status: expired ? 'expired' : invitation.status,
     expiresAt: invitation.expiresAt,
     createdAt: invitation.createdAt,
     invitedBy: {
       userId: invitation.invitedBy,
-      email: userById(invitation.invitedBy).email,
+      email: contactOf(userById(invitation.invitedBy)),
     },
   };
 }
@@ -362,6 +403,7 @@ const server = createServer(async (req, res) => {
     return send(res, 200, await sessionCookie(url.searchParams.get('user')));
   if (path === '/__test/reset') {
     state = makeState();
+    PINS[USERS.binta.phone] = '2580';
     resetCatalog();
     resetSales();
     resetDocuments();
@@ -389,6 +431,27 @@ const server = createServer(async (req, res) => {
   // --- Supabase Auth --------------------------------------------------------
   if (path === '/auth/v1/.well-known/jwks.json') return send(res, 200, jwks);
   if (path === '/auth/v1/logout') return send(res, 204);
+  if (path === '/auth/v1/user' && req.method === 'GET') {
+    const known = await authenticate(req);
+    if (!known) return send(res, 401, { error_code: 'bad_jwt' });
+    return send(res, 200, authUser(known));
+  }
+  // The API opens the session of a phone account (ADR-058).
+  if (path === '/api/v1/auth/phone/sign-in' && req.method === 'POST') {
+    const { phone, pin } = await readJson(req);
+    const known = Object.values(USERS).find((u) => u.phone === phone);
+    if (!known || PINS[phone] !== pin)
+      return apiError(
+        res,
+        401,
+        'INVALID_CREDENTIALS',
+        'Numéro ou code secret incorrect. Encore 4 essais avant un blocage de 15 minutes.',
+      );
+    return send(res, 200, {
+      accessToken: await accessTokenOf(known),
+      refreshToken: 'fake-refresh-token',
+    });
+  }
 
   // --- Nagaw API ------------------------------------------------------------
   if (!path.startsWith('/api/v1/'))
@@ -437,7 +500,7 @@ const server = createServer(async (req, res) => {
             m.role === 'owner' &&
             m.status === 'active',
         )
-        .map((m) => userById(m.userId).email);
+        .map((m) => contactOf(userById(m.userId)));
     const listItem = (org) => ({
       id: org.id,
       name: org.name,
@@ -481,6 +544,18 @@ const server = createServer(async (req, res) => {
           ? { at: org.suspendedAt, reason: org.suspensionReason }
           : null,
       devices: [],
+      team: state.memberships
+        .filter((m) => m.organizationId === org.id)
+        .map((m) => {
+          const person = userById(m.userId);
+          return {
+            userId: m.userId,
+            contact: contactOf(person),
+            hasPhone: Boolean(person.phone),
+            role: m.role,
+            active: m.status === 'active',
+          };
+        }),
       requests: state.subscriptions[org.id].pending ? [requestDto(org)] : [],
       access: null,
     });
@@ -610,6 +685,19 @@ const server = createServer(async (req, res) => {
         silentDevices: [],
       });
     }
+    const pinMatch =
+      /^\/api\/v1\/admin\/shops\/([^/]+)\/members\/([^/]+)\/pin$/.exec(path);
+    if (pinMatch && req.method === 'POST') {
+      const person = userById(pinMatch[2]);
+      const member = state.memberships.some(
+        (m) => m.organizationId === pinMatch[1] && m.userId === pinMatch[2],
+      );
+      if (!person || !member)
+        return apiError(res, 404, 'MEMBER_NOT_FOUND', 'Membre introuvable.');
+      const { pin } = await readJson(req);
+      PINS[person.phone] = pin;
+      return send(res, 204);
+    }
     const shopMatch =
       /^\/api\/v1\/admin\/shops\/([^/]+)(\/plan|\/suspend|\/reactivate)?$/.exec(
         path,
@@ -737,6 +825,7 @@ const server = createServer(async (req, res) => {
     return send(res, 200, {
       id: user.id,
       email: user.email,
+      phone: user.phone ?? null,
       displayName: null,
       locale: 'fr',
       platformAdmin: user.id === USERS.binta.id,
@@ -797,21 +886,22 @@ const server = createServer(async (req, res) => {
     if (path.endsWith('/preview')) {
       return send(res, 200, {
         organizationName: state.organizations[invitation.organizationId].name,
-        email: invitation.email,
+        phone: invitation.phone,
+        email: null,
         role: invitation.role,
         status: dto.status,
         expiresAt: invitation.expiresAt,
-        emailMatches: invitation.email === user.email,
+        contactMatches: invitation.phone === user.phone,
       });
     }
     if (dto.status !== 'pending')
       return apiError(res, 410, 'INVITATION_EXPIRED', 'Invitation expirée.');
-    if (invitation.email !== user.email)
+    if (invitation.phone !== user.phone)
       return apiError(
         res,
         403,
-        'INVITATION_EMAIL_MISMATCH',
-        'Cette invitation est destinée à une autre adresse e-mail.',
+        'INVITATION_CONTACT_MISMATCH',
+        'Cette invitation est destinée à un autre numéro de téléphone.',
       );
     invitation.status = 'accepted';
     state.memberships.push({
@@ -827,7 +917,7 @@ const server = createServer(async (req, res) => {
       user.id,
       'invitation.accepted',
       invitation.id,
-      { email: invitation.email, role: invitation.role },
+      { phone: invitation.phone, role: invitation.role },
     );
     return send(res, 201, {
       ...state.organizations[invitation.organizationId],
@@ -943,7 +1033,7 @@ const server = createServer(async (req, res) => {
           const member = Object.values(USERS).find((u) => u.id === m.userId);
           return {
             userId: m.userId,
-            email: member.email,
+            email: contactOf(member),
             displayName: null,
             role: m.role,
             status: m.status,
@@ -964,9 +1054,11 @@ const server = createServer(async (req, res) => {
           .map(invitationDto),
       );
     const body = await readJson(req);
-    const email = String(body.email).trim().toLowerCase();
+    const phone = String(body.phone ?? '');
+    if (!/^[1-9][0-9]{7,14}$/.test(phone))
+      return apiError(res, 400, 'VALIDATION_FAILED', 'Numéro invalide.');
     const alreadyMember = state.memberships.some(
-      (m) => m.organizationId === orgId && userById(m.userId)?.email === email,
+      (m) => m.organizationId === orgId && userById(m.userId)?.phone === phone,
     );
     if (alreadyMember)
       return apiError(
@@ -979,7 +1071,7 @@ const server = createServer(async (req, res) => {
       state.invitations.some(
         (i) =>
           i.organizationId === orgId &&
-          i.email === email &&
+          i.phone === phone &&
           i.status === 'pending',
       )
     )
@@ -987,13 +1079,13 @@ const server = createServer(async (req, res) => {
         res,
         409,
         'INVITATION_PENDING',
-        'Une invitation est déjà en attente pour cette adresse.',
+        'Une invitation est déjà en attente pour ce numéro.',
       );
     const now = Date.now();
     const invitation = {
       id: randomUUID(),
       organizationId: orgId,
-      email,
+      phone,
       role: body.role,
       status: 'pending',
       token: randomBytes(32).toString('base64url'),
@@ -1005,7 +1097,7 @@ const server = createServer(async (req, res) => {
     };
     state.invitations.push(invitation);
     recordAudit(orgId, user.id, 'invitation.created', invitation.id, {
-      email,
+      phone,
       role: body.role,
     });
     return send(res, 201, {
@@ -1031,7 +1123,7 @@ const server = createServer(async (req, res) => {
       );
     invitation.status = 'revoked';
     recordAudit(orgId, user.id, 'invitation.revoked', invitation.id, {
-      email: invitation.email,
+      phone: invitation.phone,
     });
     return send(res, 200, invitationDto(invitation));
   }
@@ -1073,7 +1165,7 @@ const server = createServer(async (req, res) => {
     const profile = userById(target.userId);
     return send(res, 200, {
       userId: target.userId,
-      email: profile.email,
+      email: contactOf(profile),
       displayName: null,
       role: target.role,
       status: target.status,

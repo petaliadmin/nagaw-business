@@ -432,7 +432,7 @@ export class OrganizationsService {
       .innerJoin('app.user_profiles as p', 'p.id', 'm.user_id')
       .select([
         'm.user_id',
-        'p.email',
+        'p.contact as email',
         'p.display_name',
         'm.role',
         'm.status',

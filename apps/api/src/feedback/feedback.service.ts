@@ -116,7 +116,7 @@ export class FeedbackService {
       .innerJoin('app.organizations as o', 'o.id', 'f.organization_id')
       .innerJoin('app.user_profiles as u', 'u.id', 'f.author_id')
       .selectAll('f')
-      .select(['o.name as shop_name', 'u.email as author_email']);
+      .select(['o.name as shop_name', 'u.contact as author_email']);
     if (status) query = query.where('f.status', '=', status);
     if (id) query = query.where('f.id', '=', id);
     const rows = await query

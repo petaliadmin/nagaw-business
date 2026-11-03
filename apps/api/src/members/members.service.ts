@@ -66,7 +66,7 @@ export class MembersService {
             'm.status',
             'm.max_discount_basis_points',
             'm.created_at',
-            'p.email',
+            'p.contact as email',
             'p.display_name',
           ])
           .where('m.organization_id', '=', tenant.organizationId)

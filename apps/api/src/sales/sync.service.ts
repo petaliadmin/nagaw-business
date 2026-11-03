@@ -9,7 +9,11 @@ import type {
   SyncResultDto,
 } from '@nagaw/shared';
 import { ApiException } from '../common/api-exception.js';
-import type { AuthContext, TenantContext } from '../common/request-context.js';
+import {
+  userLabel,
+  type AuthContext,
+  type TenantContext,
+} from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import { invalid } from '../catalog/catalog.errors.js';
 import { StockService } from '../catalog/stock.service.js';
@@ -185,7 +189,7 @@ export class SyncService {
       await this.alerts.syncRejected(trx, {
         organizationId: tenant.organizationId,
         userId: user.userId,
-        userEmail: user.email ?? 'un vendeur',
+        userEmail: userLabel(user),
         rejections: rejections.map(({ operation, message }) => ({
           label: labelOf(operation),
           message,

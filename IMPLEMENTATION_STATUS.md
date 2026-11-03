@@ -888,6 +888,21 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
 - **Livré** sur la branche `claude/blog-20-articles` : 40 articles au total, dont les métiers de services, les factures et les chiffres du commerçant. Aucun seuil, taux ou coût officiel n'y figure : les sources trouvées se contredisent, et ces articles renvoient aux services compétents.
 
+## Connexion par téléphone et code secret (ADR-058)
+
+- **Demandé** par le propriétaire le 2026-11-02 (code de 4 chiffres, téléphone natif de Supabase, code oublié rendu par l'administrateur, invitations au numéro). Branche `claude/connexion-telephone`, non fusionnée, non déployée.
+- **Livré** :
+  - connexion et inscription par pays (Sénégal par défaut), numéro et code secret de 4 chiffres ; codes faciles refusés ;
+  - API `POST /auth/phone/sign-in`, `/sign-up` et `/link`, avec un blocage du numéro après plusieurs codes faux (seuils dans `platform_settings`) qui tient aussi face à des essais simultanés ; le code n'est jamais envoyé à Supabase ;
+  - ancien compte : connexion par e-mail gardée (`/connexion/email`), puis proposition de passer au numéro à chaque connexion (`/mon-numero`) ;
+  - code oublié : page `/code-oublie` et, dans l'administration, « Équipe et codes secrets » pour donner un nouveau code (audité, limité aux membres de la boutique) ;
+  - invitations par numéro avec bouton WhatsApp ; anciennes invitations par adresse toujours valables ;
+  - les personnes sont affichées par leur numéro (`+221 77 123 45 67`), ou leur e-mail tant qu'elles n'ont pas de numéro.
+- **À faire par le propriétaire avant le déploiement** : appliquer `20261102090000_phone_sign_in` ; dans Supabase, activer le fournisseur Phone sans confirmation par SMS et relever la limite de connexions par IP ; sur `nagaw-api`, définir `SUPABASE_SECRET_KEY` et `PHONE_PIN_PEPPER`.
+- **Non vérifié** : aucun essai contre le vrai Supabase (création par clé secrète, connexion par téléphone, `setSession`) : à faire sur une préversion avant la fusion.
+- **Limites** : numéro non vérifié faute de SMS ; voir ADR-058.
+- **Tests exécutés** (2026-11-02, build dans les conditions de la CI, `.env.local` mis de côté puis restauré à l'identique) : lint, types, unitaires (392), intégration (234, dont 13 sur la connexion par téléphone et l'isolation du nouveau code) et build verts ; e2e 365 réussis, 6 ignorés volontairement, 2 expirations de délai sur mobile (administration, déconnexion de la caisse) réussies au nouveau passage. `format:check` ne signale, parmi les fichiers de ce lot, que des fins de ligne CRLF (`core.autocrlf`).
+
 ## Vente sans internet suspendue (ADR-057)
 
 - **Demandé** par le propriétaire le 2026-11-02. Branche `claude/offline-suspendu`. Aucune migration.

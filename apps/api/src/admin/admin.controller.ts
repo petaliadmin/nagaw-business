@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import {
   adminOpenAccessSchema,
+  adminSetPinSchema,
   adminRequestQuerySchema,
   adminResolveRequestSchema,
   adminSetPlanSchema,
@@ -23,6 +24,7 @@ import {
   type AdminOverviewDto,
   type AdminPlanRequestDto,
   type AdminResolveRequestInput,
+  type AdminSetPinInput,
   type AdminSetPlanInput,
   type AdminShopDto,
   type AdminShopListItemDto,
@@ -33,6 +35,7 @@ import {
 import type { z } from 'zod';
 import type { AuthContext } from '../common/request-context.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
+import { PhoneAuthService } from '../phone-auth/phone-auth.service.js';
 import { CurrentUser, RequestId } from '../tenancy/current.decorator.js';
 import { AdminService } from './admin.service.js';
 import { PlatformAdminGuard } from './platform-admin.guard.js';
@@ -45,7 +48,10 @@ import { PlatformAdminGuard } from './platform-admin.guard.js';
 @Controller('admin')
 @UseGuards(PlatformAdminGuard)
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(
+    private readonly admin: AdminService,
+    private readonly phoneAuth: PhoneAuthService,
+  ) {}
 
   @Get('overview')
   overview(): Promise<AdminOverviewDto> {
@@ -119,6 +125,19 @@ export class AdminController {
     @RequestId() requestId: string | null,
   ): Promise<AdminShopDto> {
     return this.admin.setSuspended(user, id, null, requestId);
+  }
+
+  /** A forgotten secret code: the team gives a new one (ADR-058). */
+  @Post('shops/:id/members/:userId/pin')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  setPin(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Body(new ZodValidationPipe(adminSetPinSchema)) body: AdminSetPinInput,
+    @RequestId() requestId: string | null,
+  ): Promise<void> {
+    return this.phoneAuth.adminSetPin(user, id, userId, body.pin, requestId);
   }
 
   @Get('plan-requests')

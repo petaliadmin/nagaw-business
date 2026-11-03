@@ -35,6 +35,7 @@ export class MeController {
     return {
       id: profile.id,
       email: profile.email,
+      phone: profile.phone === '' ? null : profile.phone,
       displayName: profile.display_name,
       locale: profile.locale,
       timezone: profile.timezone,
