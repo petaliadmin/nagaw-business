@@ -3,16 +3,15 @@
 import Link from 'next/link';
 import { Suspense, useActionState } from 'react';
 import { ActionForm } from '@/components/action-form';
-import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { NextField } from '@/components/next-field';
+import { PhoneField, PinField } from '@/components/phone-field';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/auth/schemas';
 import { signUp } from '../actions';
 
 export function SignUpForm() {
   const [state, action, pending] = useActionState(signUp, initialFormState);
-  if (state.status === 'success') return <FormMessage state={state} />;
   return (
     <ActionForm
       action={action}
@@ -24,29 +23,17 @@ export function SignUpForm() {
       <Suspense fallback={null}>
         <NextField />
       </Suspense>
-      <FormField
-        label="Adresse e-mail"
-        name="email"
-        type="email"
-        autoComplete="email"
-        required
-        error={state.fieldErrors?.email}
-      />
-      <FormField
-        label="Mot de passe (8 caractères minimum)"
-        name="password"
-        type="password"
+      <PhoneField errors={state.fieldErrors} />
+      <PinField
+        label="Choisissez un code secret (4 chiffres)"
         autoComplete="new-password"
-        minLength={8}
-        required
-        error={state.fieldErrors?.password}
+        hint="Gardez-le pour vous. Il vous servira à chaque connexion."
+        error={state.fieldErrors?.pin}
       />
-      <FormField
-        label="Confirmation du mot de passe"
+      <PinField
+        label="Retapez le code secret"
         name="confirmation"
-        type="password"
         autoComplete="new-password"
-        required
         error={state.fieldErrors?.confirmation}
       />
       <p className="text-ink-muted">

@@ -1,5 +1,5 @@
 import type { TestContext, TestUser } from './support/app.js';
-import { createTestContext } from './support/app.js';
+import { createTestContext, randomPhone } from './support/app.js';
 
 describe('Invitations and member management', () => {
   let ctx: TestContext;
@@ -23,14 +23,14 @@ describe('Invitations and member management', () => {
   const invite = (
     user: TestUser,
     orgId: string,
-    email: string,
+    phone: string | null,
     role = 'member',
   ) =>
     ctx
       .http()
       .post('/api/v1/organizations/current/invitations')
       .set(as(user, orgId))
-      .send({ email, role });
+      .send({ phone, role });
 
   const accept = (user: TestUser, token: string) =>
     ctx.http().post('/api/v1/invitations/accept').set(as(user)).send({ token });
@@ -70,12 +70,12 @@ describe('Invitations and member management', () => {
   beforeAll(async () => {
     ctx = await createTestContext();
     [alice, bob, carol, dave, erin, frank] = await Promise.all([
-      ctx.createUser(),
-      ctx.createUser(),
-      ctx.createUser(),
-      ctx.createUser(),
-      ctx.createUser(),
-      ctx.createUser(),
+      ctx.createUser({ phone: true }),
+      ctx.createUser({ phone: true }),
+      ctx.createUser({ phone: true }),
+      ctx.createUser({ phone: true }),
+      ctx.createUser({ phone: true }),
+      ctx.createUser({ phone: true }),
     ]);
     acmeId = (
       await ctx
@@ -112,19 +112,16 @@ describe('Invitations and member management', () => {
 
     it('returns a one-time token and stores only its hash', async () => {
       const before = Date.now();
-      const res = await invite(
-        alice,
-        acmeId,
-        ` ${erin.email.toUpperCase()} `,
-      ).expect(201);
+      const res = await invite(alice, acmeId, erin.phone).expect(201);
       erinToken = res.body.token;
       expect(erinToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
       expect(res.body.invitation).toEqual(
         expect.objectContaining({
-          email: erin.email,
+          phone: erin.phone,
+          email: null,
           role: 'member',
           status: 'pending',
-          invitedBy: { userId: alice.id, email: alice.email },
+          invitedBy: { userId: alice.id, email: `+${alice.phone}` },
         }),
       );
       // Default lifetime: 168 hours, read from the organization.
@@ -144,7 +141,7 @@ describe('Invitations and member management', () => {
       expect(entry).toEqual({
         actor_id: alice.id,
         target_id: res.body.invitation.id,
-        metadata: { email: erin.email, role: 'member' },
+        metadata: { phone: erin.phone, role: 'member' },
       });
       expect(JSON.stringify(entry)).not.toContain(erinToken);
     });
@@ -156,7 +153,7 @@ describe('Invitations and member management', () => {
         .set(as(dave, acmeId))
         .expect(200);
       expect(list.body).toHaveLength(1);
-      expect(list.body[0].email).toBe(erin.email);
+      expect(list.body[0].phone).toBe(erin.phone);
       expect(list.body[0]).not.toHaveProperty('token');
 
       const denied = await ctx
@@ -165,18 +162,17 @@ describe('Invitations and member management', () => {
         .set(as(carol, acmeId))
         .expect(403);
       expect(denied.body.error.code).toBe('PERMISSION_DENIED');
-      await invite(carol, acmeId, frank.email).expect(403);
+      await invite(carol, acmeId, frank.phone).expect(403);
     });
 
     it('refuses duplicates, existing members and the owner role', async () => {
       expect(
-        (await invite(alice, acmeId, erin.email).expect(409)).body.error.code,
+        (await invite(alice, acmeId, erin.phone).expect(409)).body.error.code,
       ).toBe('INVITATION_PENDING');
       expect(
-        (await invite(dave, acmeId, carol.email.toUpperCase()).expect(409)).body
-          .error.code,
+        (await invite(dave, acmeId, carol.phone).expect(409)).body.error.code,
       ).toBe('ALREADY_MEMBER');
-      const owner = await invite(alice, acmeId, frank.email, 'owner').expect(
+      const owner = await invite(alice, acmeId, frank.phone, 'owner').expect(
         400,
       );
       expect(owner.body.error.code).toBe('VALIDATION_FAILED');
@@ -185,7 +181,7 @@ describe('Invitations and member management', () => {
         .http()
         .post('/api/v1/organizations/current/invitations')
         .set(as(alice, acmeId))
-        .send({ email: frank.email, role: 'member', organizationId: globexId })
+        .send({ phone: frank.phone, role: 'member', organizationId: globexId })
         .expect(400);
     });
 
@@ -193,11 +189,12 @@ describe('Invitations and member management', () => {
       const seen = await preview(erin, erinToken).expect(200);
       expect(seen.body).toEqual({
         organizationName: 'Acme Dakar',
-        email: erin.email,
+        phone: erin.phone,
+        email: null,
         role: 'member',
         status: 'pending',
         expiresAt: expect.any(String),
-        emailMatches: true,
+        contactMatches: true,
       });
 
       const joined = await accept(erin, erinToken).expect(201);
@@ -230,15 +227,51 @@ describe('Invitations and member management', () => {
   });
 
   describe('accepting invitations', () => {
-    it('binds the invitation to the invited e-mail address', async () => {
-      const { token } = (await invite(alice, acmeId, frank.email).expect(201))
+    it('binds the invitation to the invited number', async () => {
+      const { token } = (await invite(alice, acmeId, frank.phone).expect(201))
         .body;
-      expect((await preview(erin, token).expect(200)).body.emailMatches).toBe(
+      expect((await preview(erin, token).expect(200)).body.contactMatches).toBe(
         false,
       );
       const res = await accept(erin, token).expect(403);
-      expect(res.body.error.code).toBe('INVITATION_EMAIL_MISMATCH');
+      expect(res.body.error.code).toBe('INVITATION_CONTACT_MISMATCH');
       await accept(frank, token).expect(201);
+    });
+
+    it('invites by number only', async () => {
+      const lisa = await ctx.createUser({ phone: true });
+      const res = await ctx
+        .http()
+        .post('/api/v1/organizations/current/invitations')
+        .set(as(alice, acmeId))
+        .send({ email: lisa.email, role: 'member' })
+        .expect(400);
+      expect(res.body.error.code).toBe('VALIDATION_FAILED');
+    });
+
+    it('still honours an invitation sent to an address before numbers', async () => {
+      const mia = await ctx.createUser();
+      const token = 'B'.repeat(43);
+      await ctx.admin.query(
+        `insert into app.organization_invitations
+           (organization_id, email, role, token_hash, invited_by, expires_at)
+         values ($1, $2, 'viewer', sha256(convert_to($3, 'UTF8')), $4,
+                 now() + interval '1 day')`,
+        [acmeId, mia.email, token, alice.id],
+      );
+      const seen = (await preview(mia, token).expect(200)).body;
+      expect(seen).toEqual(
+        expect.objectContaining({
+          phone: null,
+          email: mia.email,
+          contactMatches: true,
+        }),
+      );
+      expect((await preview(erin, token).expect(200)).body.contactMatches).toBe(
+        false,
+      );
+      await accept(erin, token).expect(403);
+      await accept(mia, token).expect(201);
     });
 
     it('rejects unknown and malformed tokens without leaking anything', async () => {
@@ -255,8 +288,8 @@ describe('Invitations and member management', () => {
     });
 
     it('refuses revoked and expired invitations', async () => {
-      const grace = await ctx.createUser();
-      const created = (await invite(dave, acmeId, grace.email).expect(201))
+      const grace = await ctx.createUser({ phone: true });
+      const created = (await invite(dave, acmeId, grace.phone).expect(201))
         .body;
       const revoked = await ctx
         .http()
@@ -288,7 +321,7 @@ describe('Invitations and member management', () => {
         }),
       );
 
-      const again = (await invite(dave, acmeId, grace.email).expect(201)).body;
+      const again = (await invite(dave, acmeId, grace.phone).expect(201)).body;
       await ctx.admin.query(
         `update app.organization_invitations
          set created_at = now() - interval '2 days',
@@ -303,7 +336,7 @@ describe('Invitations and member management', () => {
         (await accept(grace, again.token).expect(410)).body.error.code,
       ).toBe('INVITATION_EXPIRED');
       // An expired invitation no longer blocks a new one.
-      const fresh = (await invite(dave, acmeId, grace.email).expect(201)).body;
+      const fresh = (await invite(dave, acmeId, grace.phone).expect(201)).body;
       await accept(grace, fresh.token).expect(201);
     });
 
@@ -314,9 +347,9 @@ describe('Invitations and member management', () => {
         .set(as(alice, acmeId))
         .send({ invitationTtlHours: 24 })
         .expect(200);
-      const henry = await ctx.createUser();
+      const henry = await ctx.createUser({ phone: true });
       const before = Date.now();
-      const res = await invite(alice, acmeId, henry.email).expect(201);
+      const res = await invite(alice, acmeId, henry.phone).expect(201);
       const ttl = Date.parse(res.body.invitation.expiresAt) - before;
       expect(ttl).toBeGreaterThan(23 * 3600_000);
       expect(ttl).toBeLessThan(25 * 3600_000);
@@ -325,9 +358,7 @@ describe('Invitations and member management', () => {
         'update app.organizations set max_pending_invitations = 1 where id = $1',
         [acmeId],
       );
-      const limited = await invite(alice, acmeId, 'other@example.test').expect(
-        409,
-      );
+      const limited = await invite(alice, acmeId, randomPhone()).expect(409);
       expect(limited.body.error.code).toBe('INVITATION_LIMIT_REACHED');
       await ctx.admin.query(
         'update app.organizations set max_pending_invitations = 50 where id = $1',
@@ -352,7 +383,7 @@ describe('Invitations and member management', () => {
       expect(entry).toEqual({
         actor_id: alice.id,
         target_id: carol.id,
-        metadata: { email: carol.email, from: 'member', to: 'viewer' },
+        metadata: { email: `+${carol.phone}`, from: 'member', to: 'viewer' },
       });
     });
 
@@ -370,7 +401,7 @@ describe('Invitations and member management', () => {
       expect(me.body.organizations).toEqual([]);
       // A disabled member is not re-invited: they are reactivated.
       expect(
-        (await invite(dave, acmeId, erin.email).expect(409)).body.error.code,
+        (await invite(dave, acmeId, erin.phone).expect(409)).body.error.code,
       ).toBe('ALREADY_MEMBER');
 
       await patchMember(dave, acmeId, erin.id, { status: 'active' }).expect(
@@ -430,7 +461,7 @@ describe('Invitations and member management', () => {
   describe('isolation between organizations', () => {
     it('hides another organization’s invitations', async () => {
       const acmeInvite = (
-        await invite(alice, acmeId, 'isolated@example.test').expect(201)
+        await invite(alice, acmeId, randomPhone()).expect(201)
       ).body.invitation;
 
       // A stranger naming Acme gets the same 404 as for a missing tenant.
@@ -440,7 +471,7 @@ describe('Invitations and member management', () => {
             .http()
             .get('/api/v1/organizations/current/invitations')
             .set(as(bob, acmeId)),
-        () => invite(bob, acmeId, 'x@example.test'),
+        () => invite(bob, acmeId, randomPhone()),
         () =>
           ctx
             .http()

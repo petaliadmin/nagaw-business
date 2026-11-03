@@ -15,7 +15,11 @@ import {
 import { sql } from 'kysely';
 import { AuditService } from '../audit/audit.service.js';
 import { ApiException } from '../common/api-exception.js';
-import type { AuthContext, TenantContext } from '../common/request-context.js';
+import {
+  userLabel,
+  type AuthContext,
+  type TenantContext,
+} from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
 import { AlertsService } from '../notifications/alerts.service.js';
@@ -63,7 +67,7 @@ export class StockService {
         's.name as supplier_name',
         'm.reason',
         'm.created_by',
-        'u.email as created_by_email',
+        'u.contact as created_by_email',
         'm.occurred_at',
       ])
       .where('m.organization_id', '=', organizationId);
@@ -236,7 +240,7 @@ export class StockService {
             unit: product.unit,
             quantity: delta,
             userId: user.userId,
-            userEmail: user.email ?? 'un vendeur',
+            userEmail: userLabel(user),
           });
 
         const movement = await this.selectMovements(trx, tenant.organizationId)
@@ -411,7 +415,7 @@ export class StockService {
             counted: input.countedQuantity,
             reason: input.reason,
             userId: user.userId,
-            userEmail: user.email ?? 'un vendeur',
+            userEmail: userLabel(user),
           });
         return { stockQuantity: after, replayed: false };
       });

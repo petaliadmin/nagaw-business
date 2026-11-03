@@ -204,7 +204,7 @@ const TRUST: { title: string; text: string; icon: LucideIcon }[] = [
 const STEPS = [
   {
     title: 'Créez votre compte',
-    text: 'Une adresse e-mail et un mot de passe, puis le nom de votre boutique. Deux minutes.',
+    text: 'Votre numéro de téléphone et un code secret de 4 chiffres, puis le nom de votre boutique. Deux minutes.',
   },
   {
     title: 'Ajoutez vos produits',

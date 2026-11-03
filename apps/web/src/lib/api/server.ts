@@ -8,6 +8,8 @@ export type Session =
       status: 'signed-in';
       userId: string;
       email: string | null;
+      /** International digits of a phone account (ADR-058). */
+      phone: string | null;
       accessToken: string;
     }
   | { status: 'signed-out' }
@@ -25,7 +27,15 @@ export async function getSession(): Promise<Session> {
   return {
     status: 'signed-in',
     userId: claims.claims.sub,
-    email: typeof claims.claims.email === 'string' ? claims.claims.email : null,
+    // Supabase puts '' in the claim an account does not have.
+    email:
+      typeof claims.claims.email === 'string' && claims.claims.email !== ''
+        ? claims.claims.email
+        : null,
+    phone:
+      typeof claims.claims.phone === 'string' && claims.claims.phone !== ''
+        ? claims.claims.phone
+        : null,
     accessToken: data.session.access_token,
   };
 }
@@ -43,9 +53,16 @@ export async function apiAsUser<T>(
   });
 }
 
-/** Calls a public route of the API (the offer grid), without a session. */
-export async function apiPublic<T>(path: string): Promise<ApiResult<T>> {
+/**
+ * Calls a public route of the API, without a session: the offer grid, or
+ * the phone sign-in that opens one (ADR-058).
+ */
+export async function apiPublic<T>(
+  path: string,
+  options: Pick<CallApiOptions, 'method' | 'body'> = {},
+): Promise<ApiResult<T>> {
   return callApi<T>({
+    ...options,
     path,
     baseUrl: apiBaseUrl(),
     protectionBypass: apiProtectionBypass(),

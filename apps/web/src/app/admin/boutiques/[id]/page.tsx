@@ -1,5 +1,5 @@
 import type { AdminShopDto, PlanDto } from '@nagaw/shared';
-import { Ban, Crown, DoorOpen, Smartphone } from 'lucide-react';
+import { Ban, Crown, DoorOpen, KeyRound, Smartphone } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { selectOrganization } from '@/app/espace/actions';
@@ -11,9 +11,15 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { requirePlatformAdmin } from '@/lib/admin/load';
 import { apiAsUser } from '@/lib/api/server';
-import { formatDateTime } from '@/lib/format';
+import { formatContact, formatDateTime } from '@/lib/format';
+import { ROLE_LABELS } from '@/lib/labels';
 import { closeShopAccess } from '../../actions';
-import { OpenAccessForm, SetPlanForm, SuspendForm } from '../../forms';
+import {
+  OpenAccessForm,
+  SetPinForm,
+  SetPlanForm,
+  SuspendForm,
+} from '../../forms';
 
 const REQUEST_STATUS = {
   pending: 'En attente',
@@ -41,7 +47,7 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
     <>
       <PageHeader
         title={s.name}
-        description={`${s.ownerEmails.join(', ') || 'Sans propriétaire actif'} · créée le ${when(s.createdAt)} · ${s.timezone} · ${s.currency}`}
+        description={`${s.ownerEmails.map(formatContact).join(', ') || 'Sans propriétaire actif'} · créée le ${when(s.createdAt)} · ${s.timezone} · ${s.currency}`}
       />
       {s.suspension && (
         <Alert tone="warning">
@@ -118,8 +124,8 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
                   className="flex flex-wrap justify-between gap-2 py-2"
                 >
                   <span>
-                    {r.from.name} → {r.to.name}, par {r.requestedBy}, le{' '}
-                    {when(r.createdAt)}
+                    {r.from.name} → {r.to.name}, par{' '}
+                    {formatContact(r.requestedBy)}, le {when(r.createdAt)}
                     {r.note ? ` · ${r.note}` : ''}
                   </span>
                   <Badge tone={r.status === 'pending' ? 'warning' : 'neutral'}>
@@ -130,6 +136,42 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
             </ul>
           </div>
         )}
+      </Card>
+      <Card title="Équipe et codes secrets" titleId="team" icon={KeyRound}>
+        <p className="mb-4 text-ink-muted">
+          Code secret oublié : vérifiez que la personne appelle bien depuis le
+          numéro de son compte, puis donnez-lui un nouveau code. Il débloque
+          aussi un numéro bloqué. C’est inscrit dans l’historique de la
+          boutique.
+        </p>
+        <ul
+          aria-labelledby="team"
+          className="flex flex-col divide-y divide-line"
+        >
+          {s.team.map((m) => (
+            <li key={m.userId} className="flex flex-col gap-3 py-3">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold break-all">
+                  {formatContact(m.contact)}
+                </span>
+                <Badge>{ROLE_LABELS[m.role]}</Badge>
+                {!m.active && <Badge>Désactivé</Badge>}
+              </span>
+              {m.hasPhone ? (
+                <SetPinForm
+                  shopId={s.id}
+                  userId={m.userId}
+                  who={formatContact(m.contact)}
+                />
+              ) : (
+                <p className="text-ink-muted">
+                  Se connecte encore avec son adresse e-mail : passer au numéro
+                  lui sera proposé à sa prochaine connexion.
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
       </Card>
       <Card title="Téléphones de caisse" titleId="devices" icon={Smartphone}>
         {s.devices.length === 0 ? (

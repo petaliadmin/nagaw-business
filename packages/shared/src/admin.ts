@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { pageFields } from './pagination.js';
+import type { Role } from './permissions.js';
 import type { PlanLimits, PlanUsage } from './plans.js';
 
 /**
@@ -126,6 +127,17 @@ export interface AdminShopDto extends AdminShopListItemDto {
     label: string;
     lastSyncedAt: string | null;
     revoked: boolean;
+  }[];
+  /**
+   * Members of the shop and how they sign in: with a number and a code,
+   * which the team may give anew (ADR-058), or still with an e-mail.
+   */
+  team: {
+    userId: string;
+    contact: string;
+    hasPhone: boolean;
+    role: Role;
+    active: boolean;
   }[];
   requests: AdminPlanRequestDto[];
   /** The administrator's open access to the shop (ADR-040), if any. */

@@ -20,7 +20,12 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { Pagination } from '@/components/ui/pagination';
 import { apiAsUser } from '@/lib/api/server';
-import { formatCalendarDate, formatDateTime, todayIn } from '@/lib/format';
+import {
+  formatCalendarDate,
+  formatContact,
+  formatDateTime,
+  todayIn,
+} from '@/lib/format';
 import { pageNumber, pageParams, pageRows } from '@/lib/pagination';
 import { PAYMENT_LABELS } from '@/lib/sales/labels';
 import { ticketLabel } from '@/lib/sales/ticket';
@@ -202,7 +207,7 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
                         }).format(new Date(sale.occurredAt))}{' '}
                     · {sale.itemCount} article{sale.itemCount > 1 ? 's' : ''} ·{' '}
                     {sale.methods.map((m) => PAYMENT_LABELS[m]).join(', ')}
-                    {allSales ? ` · ${sale.sellerEmail}` : ''}
+                    {allSales ? ` · ${formatContact(sale.sellerEmail)}` : ''}
                   </span>
                 </span>
                 <span className="flex items-center gap-2">

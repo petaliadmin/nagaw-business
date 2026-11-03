@@ -45,6 +45,27 @@ describe('loadEnv', () => {
     ).toBe('mailto:contact@example.test');
   });
 
+  it('takes the phone sign-in secrets only together', () => {
+    expect(loadEnv({ SUPABASE_SECRET_KEY: '' }).SUPABASE_SECRET_KEY).toBe(
+      undefined,
+    );
+    expect(() =>
+      loadEnv({ SUPABASE_SECRET_KEY: 'sb_secret_0123456789abcdef' }),
+    ).toThrow(/SUPABASE_SECRET_KEY/);
+    expect(() =>
+      loadEnv({
+        SUPABASE_SECRET_KEY: 'sb_secret_0123456789abcdef',
+        PHONE_PIN_PEPPER: 'too short',
+      }),
+    ).toThrow(/PHONE_PIN_PEPPER/);
+    expect(
+      loadEnv({
+        SUPABASE_SECRET_KEY: 'sb_secret_0123456789abcdef',
+        PHONE_PIN_PEPPER: 'x'.repeat(32),
+      }).PHONE_PIN_PEPPER,
+    ).toHaveLength(32);
+  });
+
   it('refuses a short cron secret', () => {
     expect(() => loadEnv({ CRON_SECRET: 'short' })).toThrow(/CRON_SECRET/);
   });

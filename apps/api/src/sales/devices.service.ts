@@ -36,7 +36,7 @@ export class DevicesService {
         'd.label',
         'd.ticket_prefix',
         'd.user_id',
-        'u.email',
+        'u.contact as email',
         'd.last_synced_at',
         'd.revoked_at',
         'd.created_at',

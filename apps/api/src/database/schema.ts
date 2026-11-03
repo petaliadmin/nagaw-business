@@ -32,6 +32,10 @@ type NullableTimestamp = ColumnType<
 export interface UserProfilesTable {
   id: string;
   email: string;
+  /** International digits, '' for an account still on its e-mail. */
+  phone: Generated<string>;
+  /** What the application shows of the person: `+phone`, else the e-mail. */
+  contact: ColumnType<string, never, never>;
   display_name: string | null;
   locale: Generated<string>;
   timezone: Generated<string>;
@@ -115,7 +119,9 @@ export interface OrganizationMembershipsTable {
 export interface OrganizationInvitationsTable {
   id: Generated<string>;
   organization_id: string;
-  email: string;
+  /** Exactly one of the two: a number, or the address of an older one. */
+  email: string | null;
+  phone: string | null;
   role: 'admin' | 'member' | 'viewer';
   token_hash: Buffer;
   status: Generated<'pending' | 'accepted' | 'revoked' | 'expired'>;
@@ -606,7 +612,16 @@ export interface PlatformSettingsTable {
   silent_device_days: number;
   payment_wave_number: string | null;
   payment_orange_money_number: string | null;
+  pin_max_failures: number;
+  pin_lock_minutes: number;
   updated_at: ColumnType<Date, never, never>;
+}
+
+export interface PhoneSignInFailuresTable {
+  phone: string;
+  failures: Generated<number>;
+  locked_until: NullableTimestamp;
+  last_failed_at: Timestamp;
 }
 
 export interface SyncBatchesTable {
@@ -734,6 +749,7 @@ export interface Database {
   'app.platform_admins': PlatformAdminsTable;
   'app.platform_shop_accesses': PlatformShopAccessesTable;
   'app.platform_settings': PlatformSettingsTable;
+  'app.phone_sign_in_failures': PhoneSignInFailuresTable;
   'app.sync_batches': SyncBatchesTable;
   'app.sync_rejections': SyncRejectionsTable;
   'app.feedback': FeedbackTable;

@@ -154,6 +154,7 @@ describe('Platform administration', () => {
         'requests',
         'status',
         'suspension',
+        'team',
         'timezone',
         'usage',
       ].sort(),
