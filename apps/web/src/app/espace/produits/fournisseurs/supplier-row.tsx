@@ -1,27 +1,21 @@
 'use client';
 
 import type { SupplierDto } from '@nagaw/shared';
-import {
-  EllipsisVertical,
-  MessageCircle,
-  Pencil,
-  Phone,
-  RotateCcw,
-  Trash2,
-} from 'lucide-react';
+import { EllipsisVertical } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useId, useState } from 'react';
 import {
-  ACTION_ROW,
-  ActionIcon,
   ContactAvatar,
-  SaveContactButton,
+  SheetLoading,
 } from '@/components/contacts/contact-actions';
 import { Badge } from '@/components/ui/badge';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
-import { whatsappLink } from '@/lib/sales/ticket';
-import { SupplierForm, SupplierStatusForm } from './supplier-forms';
 
-type Step = 'menu' | 'edit' | 'status';
+// Loaded when « ⋮ » is touched: the list stays light (performance budget).
+const SupplierActions = dynamic(
+  () => import('./supplier-actions').then((mod) => mod.SupplierActions),
+  { ssr: false, loading: SheetLoading },
+);
 
 /**
  * One supplier of the list: avatar, name and number; « ⋮ » opens the
@@ -39,12 +33,8 @@ export function SupplierRow({
   canManage: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<Step>('menu');
   const sheetId = useId();
-  const close = () => {
-    setOpen(false);
-    setStep('menu');
-  };
+  const close = () => setOpen(false);
   const archived = supplier.status === 'archived';
   const hasActions = Boolean(supplier.phone) || canManage;
 
@@ -81,78 +71,13 @@ export function SupplierRow({
         title={supplier.name}
         onClose={close}
       >
-        {step === 'edit' ? (
-          <SupplierForm
-            organizationId={organizationId}
-            supplier={supplier}
-            onDone={close}
-          />
-        ) : step === 'status' ? (
-          <SupplierStatusForm
-            organizationId={organizationId}
-            supplier={supplier}
-            onCancel={() => setStep('menu')}
-            onDone={close}
-          />
-        ) : (
-          <div className="flex flex-col gap-3">
-            {supplier.phone && (
-              <>
-                <a
-                  href={`tel:${supplier.phone.replace(/\s/g, '')}`}
-                  className={ACTION_ROW}
-                >
-                  <ActionIcon icon={Phone} tone="brand" />
-                  Appeler le {supplier.phone}
-                </a>
-                <a
-                  href={whatsappLink('', supplier.phone, countryCode)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={ACTION_ROW}
-                >
-                  <ActionIcon icon={MessageCircle} tone="sales" />
-                  Écrire sur WhatsApp
-                </a>
-                <SaveContactButton
-                  person={supplier}
-                  countryCode={countryCode}
-                  tone="stock"
-                />
-              </>
-            )}
-            {canManage && !archived && (
-              <button
-                type="button"
-                onClick={() => setStep('edit')}
-                className={ACTION_ROW}
-              >
-                <ActionIcon icon={Pencil} tone="invoices" />
-                Modifier
-              </button>
-            )}
-            {canManage &&
-              (archived ? (
-                <button
-                  type="button"
-                  onClick={() => setStep('status')}
-                  className={ACTION_ROW}
-                >
-                  <ActionIcon icon={RotateCcw} tone="stats" />
-                  Remettre dans la liste
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setStep('status')}
-                  className={`${ACTION_ROW} text-danger-ink`}
-                >
-                  <ActionIcon icon={Trash2} tone="danger" />
-                  Supprimer le fournisseur
-                </button>
-              ))}
-          </div>
-        )}
+        <SupplierActions
+          supplier={supplier}
+          organizationId={organizationId}
+          countryCode={countryCode}
+          canManage={canManage}
+          close={close}
+        />
       </BottomSheet>
     </li>
   );
