@@ -15,7 +15,12 @@ import { redirect } from 'next/navigation';
 import { requirePlatformAdmin } from '@/lib/admin/load';
 import { apiErrorState } from '@/lib/api/form-error';
 import { apiAsUser } from '@/lib/api/server';
-import { parseValues, type FormState } from '@/lib/auth/schemas';
+import {
+  newPinFormSchema,
+  parseForm,
+  parseValues,
+  type FormState,
+} from '@/lib/auth/schemas';
 import { rememberOrganization } from '@/lib/workspace/remember';
 
 /** The API checks the administrator again on every call (ADR-030). */
@@ -29,6 +34,34 @@ const text = (formData: FormData, name: string) =>
   formData.get(name)?.toString() ?? '';
 const id = (formData: FormData, name: string) =>
   encodeURIComponent(text(formData, name));
+
+/**
+ * A forgotten secret code (ADR-058): the team, having checked who calls,
+ * gives the member a new one, which it tells them.
+ */
+export async function setMemberPin(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const shopId = id(formData, 'shopId');
+  const userId = id(formData, 'userId');
+  formData.delete('shopId');
+  formData.delete('userId');
+  const parsed = parseForm(newPinFormSchema, formData);
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<null>(token, {
+    method: 'POST',
+    path: `/admin/shops/${shopId}/members/${userId}/pin`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  return {
+    status: 'success',
+    message:
+      'Nouveau code enregistré. Donnez-le à la personne : elle peut se connecter tout de suite.',
+  };
+}
 
 export async function setShopPlan(
   _prev: FormState,

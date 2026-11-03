@@ -1,4 +1,5 @@
 import {
+  formatAccountPhone,
   invitationTokenSchema,
   type InvitationPreviewDto,
 } from '@nagaw/shared';
@@ -8,6 +9,7 @@ import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { getSession, apiAsUser } from '@/lib/api/server';
+import { invitationContact } from '@/lib/format';
 import { ROLE_LABELS } from '@/lib/labels';
 import { signOut } from '../actions';
 import { AcceptInvitationForm } from './accept-invitation-form';
@@ -65,8 +67,8 @@ async function Invitation({ searchParams }: PageProps<'/invitation'>) {
         <Title />
         <p className="text-ink-muted">
           Vous avez été invité à rejoindre une boutique sur Nagaw Business.
-          Connectez-vous, ou créez un compte avec l’adresse e-mail qui a reçu
-          l’invitation.
+          Connectez-vous, ou créez un compte, avec le numéro de téléphone qui a
+          reçu l’invitation.
         </p>
         <div className="flex flex-col gap-2 text-base">
           <Link
@@ -137,14 +139,32 @@ async function Invitation({ searchParams }: PageProps<'/invitation'>) {
     );
   }
 
-  if (!invitation.emailMatches) {
+  if (!invitation.contactMatches) {
+    const yours = session.phone
+      ? formatAccountPhone(session.phone)
+      : (session.email ?? 'un autre compte');
     return (
       <>
         {heading}
         <Alert tone="error">
-          Cette invitation est destinée à {invitation.email}, mais vous êtes
-          connecté avec {session.email ?? 'une autre adresse'}.
+          Cette invitation est destinée au {invitationContact(invitation)}, mais
+          vous êtes connecté avec {yours}.
+          {invitation.phone && !session.phone && (
+            <>
+              {' '}
+              Si c’est votre numéro, passez d’abord votre compte au numéro de
+              téléphone.
+            </>
+          )}
         </Alert>
+        {invitation.phone && !session.phone && (
+          <Link
+            href={`/mon-numero?next=${encodeURIComponent(here)}`}
+            className="inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4"
+          >
+            Passer au numéro de téléphone
+          </Link>
+        )}
         <form action={signOut}>
           <input type="hidden" name="next" value={here} />
           <button

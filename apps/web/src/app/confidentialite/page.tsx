@@ -43,8 +43,9 @@ export default function PrivacyPage() {
       <h2>Ce qui est gardé</h2>
       <ul>
         <li>
-          <strong>Votre compte</strong> : adresse e-mail, nom, mot de passe
-          protégé, boutiques et rôle.
+          <strong>Votre compte</strong> : numéro de téléphone, adresse e-mail
+          pour un compte créé avec elle, nom, code secret ou mot de passe
+          protégé (jamais gardé en clair), boutiques et rôle.
         </li>
         <li>
           <strong>Votre boutique</strong> : coordonnées, logo, cachet,

@@ -680,3 +680,25 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 - **Statut** : **Acceptée** (décision du propriétaire, 2026-11-01).
 - **Décision** : **Gratuit** 10 produits, **Essentiel** 50, **Pro** sans limite. Les prix et les autres limites ne changent pas. Chaque boutique prend le plafond de son offre (`20261101091000_plan_product_limits_10_50`) : les plafonds ne font que monter, personne ne perd rien.
+
+## ADR-058 — Connexion par numéro de téléphone et code secret (remplace l'e-mail et le mot de passe)
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-11-02 ; choix faits le même jour : code de 4 chiffres, téléphone natif de Supabase, code oublié rendu par l'administrateur, invitations liées au numéro).
+- **Décision** :
+  - **connexion** : pays (Sénégal par défaut) + numéro + **code secret de 4 chiffres**. L'inscription demande le code deux fois et refuse les codes que tout le monde essaie (`0000`, `1234`, `9876`…). Le numéro est rangé dans `auth.users.phone` (chiffres internationaux, `221771234567`), sans SMS de confirmation ;
+  - **le code n'est jamais le mot de passe Supabase** : l'API calcule `Ng1-` + HMAC-SHA256(`PHONE_PIN_PEPPER`, numéro:code). Sans ce secret, personne ne peut essayer les 10 000 codes directement contre Supabase : tout passe par `POST /auth/phone/sign-in`, qui **compte chaque essai avant de le faire**. Après `pin_max_failures` codes faux (5 par défaut), le numéro est bloqué `pin_lock_minutes` (15 par défaut), réglables dans `platform_settings`. Le compteur est pris dans une seule instruction SQL, si bien que des essais lancés en même temps ne dépassent pas la limite. Un numéro inconnu répond comme un code faux ;
+  - **l'API ouvre la session** avec la clé secrète Supabase (`SUPABASE_SECRET_KEY`, côté API uniquement) et la rend au site, qui la garde dans ses cookies (`setSession`). Le site ne lit toujours aucune clé privilégiée ;
+  - **comptes existants** : « J'ai un ancien compte avec une adresse e-mail » mène à l'ancienne connexion. Après chaque connexion par e-mail, `/mon-numero` propose de choisir un numéro et un code (`POST /auth/phone/link`). On peut refuser (« Plus tard »), et la proposition revient à la connexion suivante. Après le passage, le mot de passe ne sert plus et l'adresse reste sur le compte ;
+  - **code oublié** : pas de SMS. La personne appelle l'équipe, qui vérifie qu'elle appelle depuis le numéro du compte, puis lui donne un nouveau code depuis **Administration → boutique → Équipe et codes secrets** (`POST /admin/shops/:id/members/:userId/pin`). Ce geste lève aussi le blocage et s'inscrit dans l'historique de la boutique (`platform.pin_reset`). Il ne touche qu'un membre de la boutique nommée ;
+  - **invitations** : liées à un numéro, acceptées seulement par le compte qui a ce numéro. Celles déjà envoyées à une adresse restent valables. Le lien se partage par WhatsApp, avec un bouton qui ouvre la conversation avec le numéro invité ;
+  - **affichage** : `user_profiles.contact` (colonne calculée) vaut `+numéro`, ou l'e-mail d'un compte qui n'a pas encore de numéro. L'API l'envoie dans les champs `email` des personnes (vendeur, auteur, membres…), que le site écrit `+221 77 123 45 67`. **Ces champs gardent leur nom `email` pour ne pas casser les contrats** : à renommer dans un lot dédié.
+- **Limites** :
+  - **le numéro n'est pas vérifié** : sans SMS, rien ne prouve que la personne qui s'inscrit possède ce numéro. Quelqu'un peut prendre le numéro d'un autre avant lui ; l'équipe règle alors le cas à la main ;
+  - un code de 4 chiffres reste faible : la protection tient au blocage. Bloquer un numéro en tapant des codes faux est possible et dure `pin_lock_minutes` ; l'équipe peut le lever ;
+  - toutes les connexions partent des serveurs de l'API : la **limite de connexions par adresse IP de Supabase** (Auth → Rate Limits) doit être relevée avant le pilote, sinon des commerçants seront refusés aux heures chargées ;
+  - changer `PHONE_PIN_PEPPER` rend tous les codes faux : chaque compte devra recevoir un nouveau code ;
+  - **non vérifié contre le vrai Supabase** : le client (`GoTrueAuthAdmin`) est testé avec un faux `fetch` et l'API avec un faux Supabase Auth. La création de compte par la clé secrète, la connexion par téléphone et `setSession` restent à essayer sur une préversion.
+- **Conséquences** :
+  - appliquer `20261102090000_phone_sign_in` **avant** de déployer l'API ;
+  - dans Supabase : activer le fournisseur **Phone**, désactiver la confirmation par SMS et relever la limite de connexions . Tant que Phone est désactivé, l'API refuse l'inscription et le passage au numéro (`PHONE_SIGN_IN_DISABLED`) **avant** de toucher au compte : sinon un compte passé au numéro perdrait son mot de passe sans pouvoir se connecter ;
+  - sur le projet Vercel `nagaw-api` : `SUPABASE_SECRET_KEY` et `PHONE_PIN_PEPPER` (type Sensitive). Sans eux, la connexion par téléphone répond « non configurée » (503).

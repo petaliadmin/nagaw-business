@@ -36,23 +36,29 @@ describe('memberChangeRefusal', () => {
 });
 
 describe('createInvitationSchema', () => {
-  it('normalizes the e-mail before validating it', () => {
+  it('takes a number in international digits (ADR-058)', () => {
     expect(
-      createInvitationSchema.parse({
-        email: '  Awa@Acme.TEST ',
-        role: 'member',
-      }),
-    ).toEqual({ email: 'awa@acme.test', role: 'member' });
+      createInvitationSchema.parse({ phone: '221771234567', role: 'member' }),
+    ).toEqual({ phone: '221771234567', role: 'member' });
+    for (const phone of ['77 123 45 67', '+221771234567', '0771234567']) {
+      expect(
+        createInvitationSchema.safeParse({ phone, role: 'member' }).success,
+      ).toBe(false);
+    }
+    expect(
+      createInvitationSchema.safeParse({ email: 'a@b.test', role: 'member' })
+        .success,
+    ).toBe(false);
   });
 
   it('never invites as owner and rejects unknown fields', () => {
     expect(
-      createInvitationSchema.safeParse({ email: 'a@b.test', role: 'owner' })
+      createInvitationSchema.safeParse({ phone: '221771234567', role: 'owner' })
         .success,
     ).toBe(false);
     expect(
       createInvitationSchema.safeParse({
-        email: 'a@b.test',
+        phone: '221771234567',
         role: 'member',
         organizationId: 'x',
       }).success,

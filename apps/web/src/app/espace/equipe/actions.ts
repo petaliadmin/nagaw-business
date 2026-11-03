@@ -1,7 +1,6 @@
 'use server';
 
 import {
-  createInvitationSchema,
   updateMemberSchema,
   type CreatedInvitationDto,
   type InvitationDto,
@@ -10,13 +9,20 @@ import {
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { apiAsUser, getSession } from '@/lib/api/server';
-import { parseForm, type FormState } from '@/lib/auth/schemas';
+import {
+  invitationFormSchema,
+  parseForm,
+  type FormState,
+} from '@/lib/auth/schemas';
+import { invitationContact } from '@/lib/format';
 import { siteUrl } from '@/lib/env';
 
 export type InviteState = FormState & {
   /** Shown once to the inviter, who passes it on to the invitee. */
   link?: string;
-  email?: string;
+  /** The invited number, as people read it, and its digits. */
+  contact?: string;
+  phone?: string;
   expiresAt?: string;
 };
 
@@ -39,7 +45,7 @@ export async function inviteMember(
 ): Promise<InviteState> {
   const accessToken = await requireToken();
   const organizationId = takeOrganizationId(formData);
-  const parsed = parseForm(createInvitationSchema, formData);
+  const parsed = parseForm(invitationFormSchema, formData);
   if (!parsed.ok) return parsed.state;
   if (!organizationId)
     return { status: 'error', message: 'Boutique inconnue.' };
@@ -52,11 +58,13 @@ export async function inviteMember(
   });
   if (!result.ok) return { status: 'error', message: result.message };
   refresh();
+  const contact = invitationContact(result.data.invitation);
   return {
     status: 'success',
-    message: `Invitation créée pour ${result.data.invitation.email}.`,
+    message: `Invitation créée pour ${contact}.`,
     link: `${siteUrl()}/invitation?jeton=${result.data.token}`,
-    email: result.data.invitation.email,
+    contact,
+    phone: result.data.invitation.phone ?? undefined,
     expiresAt: result.data.invitation.expiresAt,
   };
 }

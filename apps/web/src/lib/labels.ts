@@ -32,6 +32,7 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   'organization.reactivated': 'Boutique réactivée par la plateforme',
   'platform.access_opened': 'La plateforme est entrée dans la boutique',
   'platform.access_closed': 'La plateforme a quitté la boutique',
+  'platform.pin_reset': 'Nouveau code secret donné par la plateforme',
   'tax_rate.created': 'Taxe ajoutée',
   'tax_rate.updated': 'Taxe modifiée',
   'category.created': 'Catégorie ajoutée',

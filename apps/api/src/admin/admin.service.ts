@@ -76,7 +76,7 @@ export class AdminService {
         'p.name as plan_name',
       ])
       .select(
-        sql<string[] | null>`(select array_agg(u.email order by u.email)
+        sql<string[] | null>`(select array_agg(u.contact order by u.contact)
           from app.organization_memberships m join app.user_profiles u on u.id = m.user_id
           where m.organization_id = o.id and m.role = 'owner' and m.status = 'active')`.as(
           'owner_emails',
@@ -115,6 +115,7 @@ export class AdminService {
     if (query.status) q = q.where('o.status', '=', query.status);
     if (query.q) {
       const like = `%${query.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+      const digits = query.q.replace(/\D/g, '');
       q = q.where((eb) =>
         eb.or([
           eb('o.name', 'ilike', like),
@@ -124,7 +125,13 @@ export class AdminService {
               .innerJoin('app.user_profiles as u', 'u.id', 'm.user_id')
               .select('m.user_id')
               .whereRef('m.organization_id', '=', 'o.id')
-              .where('u.email', 'ilike', like),
+              .where((w) =>
+                w.or([
+                  w('u.email', 'ilike', like),
+                  // `+221 77…` or `77 12…`: compare the digits only.
+                  ...(digits ? [w('u.phone', 'like', `%${digits}%`)] : []),
+                ]),
+              ),
           ),
         ]),
       );
@@ -161,7 +168,7 @@ export class AdminService {
         'cur.name as from_name',
         'r.plan_key as to_key',
         'want.name as to_name',
-        'u.email',
+        'u.contact',
         'r.status',
         'r.resolution_note',
         'r.created_at',
@@ -175,7 +182,7 @@ export class AdminService {
       shop: { id: r.organization_id, name: r.shop_name },
       from: { key: r.from_key, name: r.from_name },
       to: { key: r.to_key, name: r.to_name },
-      requestedBy: r.email,
+      requestedBy: r.contact,
       status: r.status,
       note: r.resolution_note,
       createdAt: r.created_at.toISOString(),
@@ -218,6 +225,13 @@ export class AdminService {
       .orderBy('created_at')
       .execute();
     const active = devices.filter((d) => d.revoked_at === null).length;
+    const members = await executor
+      .selectFrom('app.organization_memberships as m')
+      .innerJoin('app.user_profiles as u', 'u.id', 'm.user_id')
+      .select(['m.user_id', 'u.contact', 'u.phone', 'm.role', 'm.status'])
+      .where('m.organization_id', '=', id)
+      .orderBy('m.created_at')
+      .execute();
     const access = await executor
       .selectFrom('app.platform_shop_accesses')
       .select(['opened_at', 'reason'])
@@ -251,6 +265,13 @@ export class AdminService {
         label: d.label,
         lastSyncedAt: d.last_synced_at ? d.last_synced_at.toISOString() : null,
         revoked: d.revoked_at !== null,
+      })),
+      team: members.map((m) => ({
+        userId: m.user_id,
+        contact: m.contact,
+        hasPhone: m.phone !== '',
+        role: m.role,
+        active: m.status === 'active',
       })),
       requests: await this.requestsOf(executor, id, false),
       access: access

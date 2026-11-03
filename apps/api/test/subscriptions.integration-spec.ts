@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { TestContext, TestUser } from './support/app.js';
-import { createTestContext } from './support/app.js';
+import { createTestContext, randomPhone } from './support/app.js';
 
 describe('Offers, subscriptions and quotas', () => {
   let ctx: TestContext;
@@ -42,9 +42,9 @@ describe('Offers, subscriptions and quotas', () => {
       label: 'Téléphone',
       clientOperationId: randomUUID(),
     });
-  const invite = (email: string, user = alice, orgId = acmeId) =>
+  const invite = (phone: string | null, user = alice, orgId = acmeId) =>
     post(user, orgId, '/organizations/current/invitations', {
-      email,
+      phone,
       role: 'member',
     });
 
@@ -54,7 +54,7 @@ describe('Offers, subscriptions and quotas', () => {
       ctx.createUser(),
       ctx.createUser(),
       ctx.createUser(),
-      ctx.createUser(),
+      ctx.createUser({ phone: true }),
     ]);
     const createOrg = async (user: TestUser, name: string) =>
       (
@@ -141,8 +141,8 @@ describe('Offers, subscriptions and quotas', () => {
     await device().expect(201);
 
     // Two people: Alice and one invitation already fill the shop.
-    danToken = (await invite(dan.email).expect(201)).body.token;
-    const full = await invite('autre@example.test').expect(409);
+    danToken = (await invite(dan.phone).expect(201)).body.token;
+    const full = await invite(randomPhone()).expect(409);
     expect(full.body.error.code).toBe('MEMBER_LIMIT_REACHED');
     expect(
       (await get(alice, acmeId, '/subscription').expect(200)).body.usage,
@@ -163,7 +163,7 @@ describe('Offers, subscriptions and quotas', () => {
     });
     await product('Article 11').expect(201);
     await device().expect(201);
-    await invite('autre@example.test').expect(201);
+    await invite(randomPhone()).expect(201);
 
     await ctx.setPlan(acmeId, 'free');
     const s = (await get(alice, acmeId, '/subscription').expect(200)).body;

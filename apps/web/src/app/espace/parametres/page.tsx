@@ -1,4 +1,5 @@
 import {
+  formatAccountPhone,
   formatRate,
   roleHasPermission,
   type DeviceDto,
@@ -35,6 +36,7 @@ import { MarkForm } from './mark-form';
 import { NotificationSettingsForm } from './notification-settings-form';
 import { currencyOptions, timeZoneOptions } from './options';
 import { OrganizationSettingsForm } from './organization-settings-form';
+import { formatContact } from '@/lib/format';
 
 export const metadata: Metadata = { title: 'Paramètres — Nagaw Business' };
 
@@ -215,7 +217,7 @@ async function Settings() {
                     {device.label} — tickets {device.ticketPrefix}-…
                   </span>
                   <span className="text-ink-muted">
-                    {device.user.email}
+                    {formatContact(device.user.email)}
                     {device.lastSyncedAt
                       ? ` · dernier envoi le ${when(device.lastSyncedAt)}`
                       : ' · aucun envoi'}
@@ -301,7 +303,11 @@ async function Settings() {
       </Card>
       <Card title="Mon profil" titleId="profile" icon={UserRound}>
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Stat label="Adresse e-mail" value={me.email} />
+          <Stat
+            label="Numéro de téléphone"
+            value={me.phone ? formatAccountPhone(me.phone) : 'Pas encore'}
+          />
+          {me.email && <Stat label="Adresse e-mail" value={me.email} />}
           <Stat label="Langue" value="Français" />
         </dl>
       </Card>

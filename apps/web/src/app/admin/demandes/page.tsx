@@ -9,7 +9,7 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { requirePlatformAdmin } from '@/lib/admin/load';
 import { apiAsUser } from '@/lib/api/server';
-import { formatDateTime } from '@/lib/format';
+import { formatContact, formatDateTime } from '@/lib/format';
 import { ResolveRequestForm } from '../forms';
 
 const STATUS = {
@@ -70,7 +70,8 @@ async function Requests({ searchParams }: PageProps<'/admin/demandes'>) {
                     {r.shop.name}
                   </Link>
                   <span>
-                    {r.from.name} → {r.to.name}, par {r.requestedBy}
+                    {r.from.name} → {r.to.name}, par{' '}
+                    {formatContact(r.requestedBy)}
                   </span>
                   <span>
                     Référence de paiement :{' '}

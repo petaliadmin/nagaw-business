@@ -222,7 +222,7 @@ export class ExpensesService {
         'e.cancelled_at',
         'e.cancel_reason',
         'e.created_by',
-        'u.email',
+        'u.contact as email',
         'e.created_at',
       ])
       .select(sql<string>`e.occurred_on::text`.as('day'))

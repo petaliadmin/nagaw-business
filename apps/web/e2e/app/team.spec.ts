@@ -17,20 +17,25 @@ test('owner invites a collaborator and gets a one-time link', async ({
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/equipe');
   const invite = page.getByRole('region', { name: 'Inviter un collaborateur' });
-  await invite.getByLabel('Adresse e-mail').fill('Binta@New.test');
+  // Binta's number (fake backend), typed as people write it.
+  await expect(invite.getByLabel('Pays')).toHaveValue('SN');
+  await invite.getByLabel('Numéro de téléphone').fill('77 000 00 03');
   await invite.getByLabel('Rôle').selectOption({ label: 'Gérant' });
   await invite.getByRole('button', { name: 'Inviter' }).click();
 
   const link = invite.getByLabel('Lien d’invitation');
   await expect(link).toHaveValue(/\/invitation\?jeton=[A-Za-z0-9_-]{43}$/);
   await expect(invite).toContainText(
-    'L’envoi automatique par e-mail n’est pas encore configuré',
+    'Envoyez ce lien au +221 77 000 00 03, par WhatsApp ou par SMS.',
   );
+  await expect(
+    invite.getByRole('link', { name: 'Envoyer sur WhatsApp' }),
+  ).toHaveAttribute('href', /^https:\/\/wa\.me\/221770000003\?text=/);
   const url = new URL(await link.inputValue());
   invitationPath = `${url.pathname}${url.search}`;
 
   const pending = page.getByRole('list', { name: 'Invitations en attente' });
-  await expect(pending).toContainText('binta@new.test');
+  await expect(pending).toContainText('+221 77 000 00 03');
   await expect(pending).toContainText('Gérant');
   await expect(pending).toContainText('awa@acme.test');
 });
@@ -56,7 +61,7 @@ test('another account cannot use the invitation', async ({
   await signInAs(context, 'moussa', baseURL!);
   await page.goto(invitationPath);
   await expect(page.getByRole('main').getByRole('alert')).toContainText(
-    'Cette invitation est destinée à binta@new.test, mais vous êtes connecté avec moussa@acme.test.',
+    'Cette invitation est destinée au +221 77 000 00 03, mais vous êtes connecté avec moussa@acme.test.',
   );
   await expect(
     page.getByRole('button', { name: 'Accepter l’invitation' }),
@@ -155,7 +160,7 @@ test('owner revokes a pending invitation', async ({
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/equipe');
   const invite = page.getByRole('region', { name: 'Inviter un collaborateur' });
-  await invite.getByLabel('Adresse e-mail').fill('fatou@new.test');
+  await invite.getByLabel('Numéro de téléphone').fill('76 123 45 67');
   await invite.getByRole('button', { name: 'Inviter' }).click();
   await expect(invite.getByLabel('Lien d’invitation')).toBeVisible();
   // clientWidth, not innerWidth: on mobile the layout viewport grows with
@@ -168,7 +173,9 @@ test('owner revokes a pending invitation', async ({
   expect(overflow).toBeLessThanOrEqual(0);
 
   await page
-    .getByRole('button', { name: 'Annuler l’invitation de fatou@new.test' })
+    .getByRole('button', {
+      name: 'Annuler l’invitation de +221 76 123 45 67',
+    })
     .click();
   await expect(page.getByText('Aucune invitation en attente')).toBeVisible();
 });
@@ -181,9 +188,11 @@ test('invalid input is rejected before reaching the API', async ({
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/equipe');
   const invite = page.getByRole('region', { name: 'Inviter un collaborateur' });
-  await invite.getByLabel('Adresse e-mail').fill('pas-une-adresse');
+  await invite.getByLabel('Numéro de téléphone').fill('77 12');
   await invite.getByRole('button', { name: 'Inviter' }).click();
-  await expect(invite.getByText('Adresse e-mail invalide')).toBeVisible();
+  await expect(
+    invite.getByText('Numéro de téléphone invalide pour ce pays'),
+  ).toBeVisible();
 
   await page.goto('/invitation?jeton=trop-court');
   await expect(page.getByRole('main').getByRole('alert')).toContainText(

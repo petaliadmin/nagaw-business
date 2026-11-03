@@ -9,7 +9,7 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { requirePlatformAdmin } from '@/lib/admin/load';
 import { apiAsUser } from '@/lib/api/server';
-import { formatDateTime } from '@/lib/format';
+import { formatContact, formatDateTime } from '@/lib/format';
 import { AnswerFeedbackForm } from '../forms';
 
 const KIND_LABELS = {
@@ -75,7 +75,8 @@ async function Feedback({ searchParams }: PageProps<'/admin/avis'>) {
                     </Link>
                   </span>
                   <span className="text-ink-muted">
-                    {f.author} · {formatDateTime(f.createdAt, 'UTC')} (UTC)
+                    {formatContact(f.author)} ·{' '}
+                    {formatDateTime(f.createdAt, 'UTC')} (UTC)
                     {f.page ? ` · page ${f.page}` : ''}
                   </span>
                 </span>

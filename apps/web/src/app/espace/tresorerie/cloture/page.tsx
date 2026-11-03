@@ -14,7 +14,7 @@ import { Card, Stat } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
-import { formatCalendarDate } from '@/lib/format';
+import { formatCalendarDate, formatContact } from '@/lib/format';
 import { accountOptions } from '@/lib/treasury/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { ClosingForm } from '../forms';
@@ -127,7 +127,8 @@ async function Closing({
                 expected.data.closing.difference === 0 ? 'success' : 'warning'
               }
             >
-              Journée clôturée par {expected.data.closing.closedBy.email} :{' '}
+              Journée clôturée par{' '}
+              {formatContact(expected.data.closing.closedBy.email)} :{' '}
               {money(expected.data.closing.countedAmount)} comptés
               {expected.data.closing.difference === 0
                 ? ', le compte était juste.'

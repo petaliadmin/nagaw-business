@@ -38,6 +38,18 @@ describe('callApi', () => {
     expect(calls[0]?.init.body).toBe('{"name":"Acme"}');
   });
 
+  it('reads an answer without body as a success', async () => {
+    const { fetchImpl } = stub(() => new Response(null, { status: 204 }));
+    const result = await callApi({
+      baseUrl: 'https://api.test',
+      method: 'POST',
+      path: '/admin/shops/s/members/u/pin',
+      body: { pin: '2580' },
+      fetchImpl,
+    });
+    expect(result).toEqual({ ok: true, status: 204, data: null });
+  });
+
   it('adds the Vercel protection bypass header only when configured', async () => {
     const { fetchImpl, calls } = stub(() => Response.json({}));
     await callApi({

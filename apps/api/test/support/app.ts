@@ -9,17 +9,28 @@ import { setupApp } from '../../src/app.setup.js';
 import { AUTH_PROBE } from '../../src/auth/auth-probe.js';
 import { JWT_VERIFIER } from '../../src/auth/jwt-verifier.js';
 import { ENV, loadEnv } from '../../src/config/env.js';
+import { AUTH_ADMIN } from '../../src/phone-auth/auth-admin.js';
+import { createFakeAuthAdmin } from './auth-admin.js';
 import { createTestAuth } from './jwt.js';
 
 export interface TestUser {
   id: string;
   email: string;
+  /** International digits, for an account with a number (ADR-058). */
+  phone: string | null;
   token: string;
+}
+
+/** A Senegalese number nobody else in the test database has. */
+export function randomPhone(): string {
+  return `2217${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`;
 }
 
 /** Boots the real application against the test database. */
 export async function createTestContext() {
   const auth = await createTestAuth();
+  const admin = new pg.Pool({ connectionString: inject('adminDatabaseUrl') });
+  const authAdmin = createFakeAuthAdmin(admin, auth.sign);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(ENV)
     .useValue(
@@ -30,8 +41,13 @@ export async function createTestContext() {
         DATABASE_SSL: 'disable',
         // Postgres in Docker on a busy machine opens connections slowly.
         DATABASE_CONNECT_TIMEOUT_MS: '20000',
+        SUPABASE_SECRET_KEY: 'sb_secret_test_only_0123456789',
+        PHONE_PIN_PEPPER: 'test-only-pepper-0123456789abcdef',
       }),
     )
+    // Supabase Auth itself is faked (support/auth-admin.ts).
+    .overrideProvider(AUTH_ADMIN)
+    .useValue(authAdmin.fake)
     .overrideProvider(JWT_VERIFIER)
     .useValue(auth.verifier)
     // The test key pair stands in for the project JWKS.
@@ -42,23 +58,32 @@ export async function createTestContext() {
   setupApp(app);
   await app.init();
 
-  const admin = new pg.Pool({ connectionString: inject('adminDatabaseUrl') });
-
-  /** Creates a Supabase-like user; the auth trigger creates its profile. */
-  async function createUser(): Promise<TestUser> {
+  /**
+   * Creates a Supabase-like user; the auth trigger creates its profile.
+   * With `phone`, the account also has a number, as phone accounts do.
+   */
+  async function createUser(
+    options: { phone?: boolean } = {},
+  ): Promise<TestUser> {
     const id = randomUUID();
     const email = `user-${id.slice(0, 8)}@example.test`;
-    await admin.query('insert into auth.users (id, email) values ($1, $2)', [
+    const phone = options.phone ? randomPhone() : null;
+    await admin.query(
+      'insert into auth.users (id, email, phone) values ($1, $2, $3)',
+      [id, email, phone],
+    );
+    return {
       id,
       email,
-    ]);
-    return { id, email, token: await auth.sign(id, { email }) };
+      phone,
+      token: await auth.sign(id, { email, phone: phone ?? '' }),
+    };
   }
 
   /** The single platform administrator (ADR-039), created by the setup. */
   async function platformAdmin(): Promise<TestUser> {
     const { id, email } = inject('platformAdmin');
-    return { id, email, token: await auth.sign(id, { email }) };
+    return { id, email, phone: null, token: await auth.sign(id, { email }) };
   }
 
   /**
@@ -85,6 +110,7 @@ export async function createTestContext() {
     app,
     admin,
     auth,
+    authAdmin,
     createUser,
     platformAdmin,
     setPlan,

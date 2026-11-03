@@ -4,24 +4,28 @@ import { INVITABLE_ROLES } from '@nagaw/shared';
 import { CircleCheck, Copy } from 'lucide-react';
 import { useActionState, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
-import { CONTROL, FormField, SelectField } from '@/components/form-field';
+import { CONTROL, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
+import { PhoneField } from '@/components/phone-field';
 import { SubmitButton } from '@/components/submit-button';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { formatDateTime } from '@/lib/format';
 import { ROLE_LABELS } from '@/lib/labels';
+import { whatsappLink } from '@/lib/sales/ticket';
 import { inviteMember, type InviteState } from './actions';
 
 const initialState: InviteState = { status: 'idle' };
 
 function InvitationLink({
   link,
-  email,
+  contact,
+  phone,
   expiresAt,
   timeZone,
 }: {
   link: string;
-  email: string;
+  contact: string;
+  phone?: string;
   expiresAt: string;
   timeZone: string;
 }) {
@@ -46,10 +50,23 @@ function InvitationLink({
         Invitation créée
       </p>
       <p>
-        L’envoi automatique par e-mail n’est pas encore configuré : transmettez
-        ce lien à {email}. Il n’est affiché qu’une fois et expire le{' '}
-        {formatDateTime(expiresAt, timeZone)}.
+        Envoyez ce lien au {contact}, par WhatsApp ou par SMS. La personne
+        l’ouvre et se connecte avec ce numéro. Le lien n’est affiché qu’une fois
+        et expire le {formatDateTime(expiresAt, timeZone)}.
       </p>
+      {phone && (
+        <a
+          href={whatsappLink(
+            `Bonjour, rejoignez ma boutique sur Nagaw Business : ${link}`,
+            `+${phone}`,
+          )}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={buttonClasses('sell')}
+        >
+          Envoyer sur WhatsApp
+        </a>
+      )}
       <label htmlFor="invitation-link" className="font-semibold">
         Lien d’invitation
       </label>
@@ -98,15 +115,8 @@ export function InviteForm({
       >
         <input type="hidden" name="organizationId" value={organizationId} />
         {!state.link && <FormMessage state={state} />}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
-          <FormField
-            label="Adresse e-mail"
-            name="email"
-            type="email"
-            autoComplete="off"
-            required
-            error={state.fieldErrors?.email}
-          />
+        <div className="grid grid-cols-1 gap-4">
+          <PhoneField errors={state.fieldErrors} idPrefix="invite-" />
           <SelectField
             label="Rôle"
             name="role"
@@ -121,11 +131,12 @@ export function InviteForm({
           <SubmitButton pendingLabel="Création…">Inviter</SubmitButton>
         </div>
       </ActionForm>
-      {state.link && state.email && state.expiresAt && (
+      {state.link && state.contact && state.expiresAt && (
         <InvitationLink
           key={state.link}
           link={state.link}
-          email={state.email}
+          contact={state.contact}
+          phone={state.phone}
           expiresAt={state.expiresAt}
           timeZone={timeZone}
         />

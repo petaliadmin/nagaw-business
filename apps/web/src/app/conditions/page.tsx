@@ -27,8 +27,8 @@ export default function ConditionsPage() {
       <ul>
         <li>Les informations que vous donnez doivent être exactes.</li>
         <li>
-          Gardez votre mot de passe pour vous : ce qui est fait avec votre
-          compte est fait sous votre responsabilité.
+          Gardez votre code secret pour vous : ce qui est fait avec votre compte
+          est fait sous votre responsabilité.
         </li>
         <li>
           Le propriétaire d’une boutique choisit qui y entre et avec quel rôle.

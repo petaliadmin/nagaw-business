@@ -26,7 +26,8 @@ const UUID_RE =
 
 interface InvitationRow {
   id: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
   role: 'admin' | 'member' | 'viewer';
   status: 'pending' | 'accepted' | 'revoked' | 'expired';
   expires_at: Date;
@@ -47,6 +48,7 @@ function effectiveStatus(
 function toDto(row: InvitationRow): InvitationDto {
   return {
     id: row.id,
+    phone: row.phone,
     email: row.email,
     role: row.role,
     status: effectiveStatus(row),
@@ -54,6 +56,15 @@ function toDto(row: InvitationRow): InvitationDto {
     createdAt: row.created_at.toISOString(),
     invitedBy: { userId: row.invited_by, email: row.inviter_email },
   };
+}
+
+/** Whether the profile is the person invited: same number, or address. */
+function isInvited(
+  invitation: { phone: string | null; email: string | null },
+  profile: { phone: string; email: string },
+): boolean {
+  if (invitation.phone !== null) return invitation.phone === profile.phone;
+  return invitation.email === profile.email.toLowerCase();
 }
 
 function invitationNotFound(): ApiException {
@@ -103,12 +114,13 @@ export class InvitationsService {
       .select([
         'i.id',
         'i.email',
+        'i.phone',
         'i.role',
         'i.status',
         'i.expires_at',
         'i.created_at',
         'i.invited_by',
-        'p.email as inviter_email',
+        'p.contact as inviter_email',
       ]);
   }
 
@@ -144,7 +156,7 @@ export class InvitationsService {
           .innerJoin('app.user_profiles as p', 'p.id', 'm.user_id')
           .select('m.status')
           .where('m.organization_id', '=', tenant.organizationId)
-          .where(sql<string>`lower(p.email)`, '=', input.email)
+          .where('p.phone', '=', input.phone)
           .executeTakeFirst();
         if (existingMember) {
           throw new ApiException(
@@ -156,7 +168,7 @@ export class InvitationsService {
           );
         }
 
-        // Expired invitations stop blocking a new one for the same address.
+        // Expired invitations stop blocking a new one for the same number.
         await trx
           .updateTable('app.organization_invitations')
           .set({ status: 'expired' })
@@ -186,7 +198,7 @@ export class InvitationsService {
           .insertInto('app.organization_invitations')
           .values({
             organization_id: tenant.organizationId,
-            email: input.email,
+            phone: input.phone,
             role: input.role,
             token_hash: hashInvitationToken(token),
             invited_by: actor.userId,
@@ -202,7 +214,7 @@ export class InvitationsService {
           action: 'invitation.created',
           targetType: 'invitation',
           targetId: inserted.id,
-          metadata: { email: input.email, role: input.role },
+          metadata: { phone: input.phone, role: input.role },
           requestId,
         });
 
@@ -216,7 +228,7 @@ export class InvitationsService {
         throw new ApiException(
           HttpStatus.CONFLICT,
           'INVITATION_PENDING',
-          'Une invitation est déjà en attente pour cette adresse.',
+          'Une invitation est déjà en attente pour ce numéro.',
         );
       }
       throw error;
@@ -233,7 +245,7 @@ export class InvitationsService {
     return this.database.db.transaction().execute(async (trx) => {
       const current = await trx
         .selectFrom('app.organization_invitations')
-        .select(['status', 'expires_at', 'email'])
+        .select(['status', 'expires_at', 'email', 'phone'])
         .where('id', '=', invitationId)
         .where('organization_id', '=', tenant.organizationId)
         .forUpdate()
@@ -264,7 +276,9 @@ export class InvitationsService {
         action: 'invitation.revoked',
         targetType: 'invitation',
         targetId: invitationId,
-        metadata: { email: current.email },
+        metadata: current.phone
+          ? { phone: current.phone }
+          : { email: current.email },
         requestId,
       });
 
@@ -286,6 +300,7 @@ export class InvitationsService {
       .innerJoin('app.organizations as o', 'o.id', 'i.organization_id')
       .select([
         'i.email',
+        'i.phone',
         'i.role',
         'i.status',
         'i.expires_at',
@@ -297,14 +312,15 @@ export class InvitationsService {
     if (!row || row.organization_status !== 'active') {
       throw invitationNotFound();
     }
-    const email = await this.profileEmail(user.userId);
+    const profile = await this.profile(user.userId);
     return {
       organizationName: row.organization_name,
+      phone: row.phone,
       email: row.email,
       role: row.role,
       status: effectiveStatus(row),
       expiresAt: row.expires_at.toISOString(),
-      emailMatches: email === row.email,
+      contactMatches: isInvited(row, profile),
     };
   }
 
@@ -324,6 +340,7 @@ export class InvitationsService {
             'i.id',
             'i.organization_id',
             'i.email',
+            'i.phone',
             'i.role',
             'i.status',
             'i.expires_at',
@@ -338,12 +355,14 @@ export class InvitationsService {
         const status = effectiveStatus(invitation);
         if (status !== 'pending') throw unusable(status);
 
-        const email = await this.profileEmail(user.userId, trx);
-        if (email !== invitation.email) {
+        const profile = await this.profile(user.userId, trx);
+        if (!isInvited(invitation, profile)) {
           throw new ApiException(
             HttpStatus.FORBIDDEN,
-            'INVITATION_EMAIL_MISMATCH',
-            'Cette invitation est destinée à une autre adresse e-mail.',
+            'INVITATION_CONTACT_MISMATCH',
+            invitation.phone
+              ? 'Cette invitation est destinée à un autre numéro de téléphone.'
+              : 'Cette invitation est destinée à une autre adresse e-mail.',
           );
         }
 
@@ -388,7 +407,9 @@ export class InvitationsService {
           action: 'invitation.accepted',
           targetType: 'invitation',
           targetId: invitation.id,
-          metadata: { email: invitation.email, role: invitation.role },
+          metadata: invitation.phone
+            ? { phone: invitation.phone, role: invitation.role }
+            : { email: invitation.email, role: invitation.role },
           requestId,
         });
         return invitation.organization_id;
@@ -401,14 +422,14 @@ export class InvitationsService {
     return joined;
   }
 
-  /** The address of record: the profile, kept in sync with Supabase Auth. */
-  private async profileEmail(
+  /** Number and address of record, kept in sync with Supabase Auth. */
+  private async profile(
     userId: string,
     executor?: Transaction<Database>,
-  ): Promise<string> {
+  ): Promise<{ phone: string; email: string }> {
     const profile = await (executor ?? this.database.db)
       .selectFrom('app.user_profiles')
-      .select('email')
+      .select(['phone', 'email'])
       .where('id', '=', userId)
       .executeTakeFirst();
     if (!profile) {
@@ -418,6 +439,6 @@ export class InvitationsService {
         'Profil utilisateur introuvable.',
       );
     }
-    return profile.email.toLowerCase();
+    return profile;
   }
 }

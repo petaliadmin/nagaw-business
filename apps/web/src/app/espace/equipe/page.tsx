@@ -16,7 +16,12 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { Table, type Column } from '@/components/ui/table';
 import { apiAsUser } from '@/lib/api/server';
-import { formatDate, formatDateTime } from '@/lib/format';
+import {
+  formatContact,
+  formatDate,
+  formatDateTime,
+  invitationContact,
+} from '@/lib/format';
 import {
   INVITATION_STATUS_LABELS,
   MEMBER_STATUS_LABELS,
@@ -62,11 +67,13 @@ async function Team() {
       cell: (member) => (
         <div className="flex flex-col">
           <span className="font-semibold">
-            {member.displayName ?? member.email}
+            {member.displayName ?? formatContact(member.email)}
             {member.userId === me.id && ' (vous)'}
           </span>
           {member.displayName && (
-            <span className="text-ink-muted">{member.email}</span>
+            <span className="text-ink-muted">
+              {formatContact(member.email)}
+            </span>
           )}
         </div>
       ),
@@ -163,7 +170,7 @@ async function Team() {
                   <div className="flex min-w-0 flex-col gap-1 text-base">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="font-medium break-all">
-                        {invitation.email}
+                        {invitationContact(invitation)}
                       </span>
                       <Badge>{ROLE_LABELS[invitation.role]}</Badge>
                       {invitation.status !== 'pending' && (
@@ -173,7 +180,8 @@ async function Team() {
                       )}
                     </span>
                     <span className="text-ink-muted">
-                      Invité par {invitation.invitedBy.email} · expire le{' '}
+                      Invité par {formatContact(invitation.invitedBy.email)} ·
+                      expire le{' '}
                       {formatDateTime(
                         invitation.expiresAt,
                         organization.timezone,
@@ -183,7 +191,7 @@ async function Team() {
                   <RevokeInvitationButton
                     organizationId={organization.id}
                     invitationId={invitation.id}
-                    email={invitation.email}
+                    contact={invitationContact(invitation)}
                   />
                 </li>
               ))}

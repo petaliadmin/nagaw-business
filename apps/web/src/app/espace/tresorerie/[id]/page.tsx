@@ -16,7 +16,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
-import { formatCalendarDate, todayIn } from '@/lib/format';
+import { formatCalendarDate, formatContact, todayIn } from '@/lib/format';
 import { movementLabel } from '@/lib/treasury/labels';
 import { resolvePeriod } from '@/lib/treasury/period';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
@@ -158,7 +158,8 @@ async function Account({
                     {formatCalendarDate(c.day)}
                   </span>
                   <span className="text-ink-muted">
-                    Compté {money(c.countedAmount)} par {c.closedBy.email}
+                    Compté {money(c.countedAmount)} par{' '}
+                    {formatContact(c.closedBy.email)}
                     {c.note ? ` · ${c.note}` : ''}
                   </span>
                 </span>

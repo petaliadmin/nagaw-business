@@ -28,6 +28,10 @@ const NOT_SHOP_SCOPED: Record<string, 'public' | 'user' | 'admin'> = {
   'POST /api/v1/push/subscriptions/remove': 'user',
   // Vercel Cron, behind its own secret (notifications.integration-spec).
   'GET /api/v1/cron/daily': 'public',
+  // Phone number and secret code (ADR-058): they open the session.
+  'POST /api/v1/auth/phone/sign-in': 'public',
+  'POST /api/v1/auth/phone/sign-up': 'public',
+  'POST /api/v1/auth/phone/link': 'user',
 };
 
 /** API documentation: public, and not served in production (Phase 1). */

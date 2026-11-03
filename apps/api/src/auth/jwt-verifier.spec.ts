@@ -22,6 +22,17 @@ describe('SupabaseJwtVerifier', () => {
     await expect(auth.verifier.verify(token)).resolves.toEqual({
       userId,
       email: 'a@example.test',
+      phone: null,
+    });
+  });
+
+  it('reads the number of a phone account, and empty claims as absent', async () => {
+    const auth = await createTestAuth();
+    const token = await auth.sign(userId, { email: '', phone: '221771234567' });
+    await expect(auth.verifier.verify(token)).resolves.toEqual({
+      userId,
+      email: null,
+      phone: '221771234567',
     });
   });
 

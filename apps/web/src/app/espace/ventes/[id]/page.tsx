@@ -18,7 +18,7 @@ import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { ShopLogo } from '@/components/ui/shop-logo';
 import { apiAsUser } from '@/lib/api/server';
-import { formatDateTime } from '@/lib/format';
+import { formatContact, formatDateTime } from '@/lib/format';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 import { ticketLabel, ticketText, whatsappLink } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
@@ -121,7 +121,7 @@ async function Sale({
           <Alert tone="warning">
             Vente annulée le{' '}
             {formatDateTime(s.cancellation.at, organization.timezone)} par{' '}
-            {s.cancellation.by.email} : {s.cancellation.reason}
+            {formatContact(s.cancellation.by.email)} : {s.cancellation.reason}
           </Alert>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -230,9 +230,9 @@ async function Sale({
         </a>
       </div>
       <p className="text-center text-ink-muted print:hidden">
-        Vendu par {s.seller.email}. L’impression passe par l’imprimante de votre
-        téléphone ou de votre ordinateur ; l’impression Bluetooth directe sera
-        ajoutée après les essais sur vos imprimantes.
+        Vendu par {formatContact(s.seller.email)}. L’impression passe par
+        l’imprimante de votre téléphone ou de votre ordinateur ; l’impression
+        Bluetooth directe sera ajoutée après les essais sur vos imprimantes.
       </p>
 
       {canInvoice && (

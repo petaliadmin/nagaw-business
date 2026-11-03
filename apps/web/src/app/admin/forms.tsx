@@ -6,15 +6,65 @@ import { FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { buttonClasses } from '@/components/ui/button-styles';
+import { PinField } from '@/components/phone-field';
 import { initialFormState } from '@/lib/auth/schemas';
 import {
   answerFeedback,
   openShopAccess,
   reactivateShop,
   resolvePlanRequest,
+  setMemberPin,
   setShopPlan,
   suspendShop,
 } from './actions';
+
+export function SetPinForm({
+  shopId,
+  userId,
+  who,
+}: {
+  shopId: string;
+  userId: string;
+  who: string;
+}) {
+  const [state, action, pending] = useActionState(
+    setMemberPin,
+    initialFormState,
+  );
+  return (
+    <ActionForm
+      key={state.status === 'success' ? state.message : 'form'}
+      action={action}
+      pending={pending}
+      noValidate
+      className="flex flex-col gap-4"
+    >
+      <input type="hidden" name="shopId" value={shopId} />
+      <input type="hidden" name="userId" value={userId} />
+      <FormMessage state={state} />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <PinField
+          label={`Nouveau code de ${who}`}
+          id={`pin-${userId}`}
+          autoComplete="new-password"
+          error={state.fieldErrors?.pin}
+        />
+        <PinField
+          label="Retapez le code"
+          name="confirmation"
+          id={`pin-confirmation-${userId}`}
+          autoComplete="new-password"
+          error={state.fieldErrors?.confirmation}
+        />
+      </div>
+      <div>
+        <SubmitButton variant="secondary" pendingLabel="Enregistrement…">
+          Donner ce code
+        </SubmitButton>
+      </div>
+    </ActionForm>
+  );
+}
 
 export function SetPlanForm({
   shopId,

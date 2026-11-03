@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { authErrorMessage } from './messages';
 import { safeNextPath } from './redirect';
 import { createOrganizationSchema } from '@nagaw/shared';
-import { parseForm, signUpSchema } from './schemas';
+import {
+  parseForm,
+  phoneCredentialsFormSchema,
+  phoneSignInSchema,
+} from './schemas';
 
 function form(values: Record<string, string>): FormData {
   const data = new FormData();
@@ -27,36 +31,58 @@ describe('safeNextPath', () => {
   });
 });
 
-describe('signUpSchema', () => {
-  it('normalizes the e-mail and accepts matching passwords', () => {
-    const result = parseForm(
-      signUpSchema,
-      form({
-        email: ' Awa@Example.SN ',
-        password: 'motdepasse',
-        confirmation: 'motdepasse',
-      }),
-    );
-    expect(result).toEqual({
-      ok: true,
-      data: {
-        email: 'awa@example.sn',
-        password: 'motdepasse',
-        confirmation: 'motdepasse',
-      },
-    });
+describe('phone forms', () => {
+  it('builds the number of the account from the country chosen', () => {
+    expect(
+      parseForm(
+        phoneSignInSchema,
+        form({ country: 'SN', number: ' 77 123 45 67 ', pin: '4826' }),
+      ),
+    ).toEqual({ ok: true, data: { phone: '221771234567', pin: '4826' } });
   });
 
-  it('reports field errors in French', () => {
+  it('says in French what is wrong with a number or a code', () => {
     const result = parseForm(
-      signUpSchema,
-      form({ email: 'pas-un-email', password: 'court', confirmation: 'autre' }),
+      phoneCredentialsFormSchema,
+      form({ country: 'SN', number: '77 12', pin: '1234', confirmation: '1' }),
     );
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.state.fieldErrors).toMatchObject({
-        email: 'Adresse e-mail invalide',
-        password: 'Le mot de passe doit contenir au moins 8 caractères',
+        pin: 'Ce code est trop facile à deviner. Choisissez-en un autre.',
+      });
+    }
+    const number = parseForm(
+      phoneCredentialsFormSchema,
+      form({
+        country: 'SN',
+        number: '77 12',
+        pin: '4826',
+        confirmation: '4826',
+      }),
+    );
+    expect(number.ok).toBe(false);
+    if (!number.ok) {
+      expect(number.state.fieldErrors).toEqual({
+        number: 'Numéro de téléphone invalide pour ce pays',
+      });
+    }
+  });
+
+  it('asks for the same code twice', () => {
+    const result = parseForm(
+      phoneCredentialsFormSchema,
+      form({
+        country: 'SN',
+        number: '771234567',
+        pin: '4826',
+        confirmation: '4862',
+      }),
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.state.fieldErrors).toEqual({
+        confirmation: 'Les deux codes ne sont pas pareils',
       });
     }
   });
