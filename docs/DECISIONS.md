@@ -702,3 +702,16 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - appliquer `20261102090000_phone_sign_in` **avant** de déployer l'API ;
   - dans Supabase : activer le fournisseur **Phone**, désactiver la confirmation par SMS et relever la limite de connexions . Tant que Phone est désactivé, l'API refuse l'inscription et le passage au numéro (`PHONE_SIGN_IN_DISABLED`) **avant** de toucher au compte : sinon un compte passé au numéro perdrait son mot de passe sans pouvoir se connecter ;
   - sur le projet Vercel `nagaw-api` : `SUPABASE_SECRET_KEY` et `PHONE_PIN_PEPPER` (type Sensitive). Sans eux, la connexion par téléphone répond « non configurée » (503).
+
+## ADR-059 — Numéro gardé sur le téléphone : seul le code secret est demandé
+
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-11-03 : « quand on est déjà connecté et que mon numéro est sauvegardé sur mon téléphone, il faut demander seulement le code secret, avec un pavé numérique comme Wave »).
+- **Décision** :
+  - après une connexion, une inscription ou un passage au numéro réussis, le site garde le numéro dans un cookie de l'appareil (`nagaw_phone`, `httpOnly`, un an). La déconnexion ne l'efface pas ;
+  - `/connexion` lit ce cookie : s'il y a un numéro, la page l'affiche (`+221 77 123 45 67`) et ne demande que le code, sur un pavé de grosses touches (1 à 9, 0, « Effacer »). Le code part tout seul au quatrième chiffre, puis s'efface : un code faux se retape depuis le début. Le clavier d'un ordinateur tape aussi ;
+  - « Ce n'est pas mon numéro » efface le cookie et rend le formulaire complet (pays, numéro, code) ;
+  - le cookie n'est qu'une commodité : il n'ouvre rien. Le code est vérifié par l'API avec le même blocage qu'ADR-058.
+- **Limites** :
+  - sur un téléphone partagé, le numéro du dernier connecté s'affiche à la page de connexion. Chacun peut le retirer par « Ce n'est pas mon numéro » ;
+  - le pavé demande JavaScript ; sans lui, rien ne s'envoie (le site entier en dépend déjà pour la caisse) ;
+  - pas d'empreinte digitale ni de reconnaissance du visage : à décider plus tard (WebAuthn).

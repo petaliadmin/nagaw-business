@@ -1,16 +1,30 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SignInForm } from './sign-in-form';
+import { Suspense } from 'react';
+import { PageFallback } from '@/components/ui/page-fallback';
+import { knownPhone } from '@/lib/auth/known-phone';
+import { KnownPhoneSignInForm, SignInForm } from './sign-in-form';
 
 export const metadata: Metadata = { title: 'Connexion — Nagaw Business' };
 
 const LINK =
   'inline-flex min-h-12 items-center font-bold text-brand-ink underline underline-offset-4';
 
-export default function SignInPage() {
+/** Only the code when this device already knows the number (ADR-059). */
+async function SignIn() {
+  const phone = await knownPhone();
+  if (phone) {
+    return (
+      <>
+        <KnownPhoneSignInForm phone={phone} />
+        <Link href="/code-oublie" className={`${LINK} self-center`}>
+          Code secret oublié ?
+        </Link>
+      </>
+    );
+  }
   return (
     <>
-      <h1 className="text-3xl font-extrabold">Connexion</h1>
       <SignInForm />
       <div className="flex flex-col gap-2 text-base">
         <Link href="/code-oublie" className={LINK}>
@@ -29,6 +43,17 @@ export default function SignInPage() {
           J’ai un ancien compte avec une adresse e-mail
         </Link>
       </div>
+    </>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <>
+      <h1 className="text-3xl font-extrabold">Connexion</h1>
+      <Suspense fallback={<PageFallback />}>
+        <SignIn />
+      </Suspense>
     </>
   );
 }

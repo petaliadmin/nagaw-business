@@ -953,3 +953,9 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Non vérifié** : vrai téléphone Android d'entrée de gamme, réseau réel, production. Les tests tournent dans Chromium, contre un faux backend pour l'e2e.
 - **Limites** : voir ADR-053, notamment les données non chiffrées sur le téléphone après déconnexion.
 - **Tests exécutés** (2026-11-01, build dans les conditions de la CI) : lint, types, unitaires (367), intégration (215) et build verts ; e2e 370 réussis, 6 ignorés volontairement. `format:check` signale 24 fichiers non modifiés ici, en CRLF à cause de `core.autocrlf` sur ce poste ; aucun fichier de ce lot.
+
+## Seul le code secret sur un téléphone déjà connecté (ADR-059)
+
+- **Demandé** par le propriétaire le 2026-11-03. Branche `claude/code-seul`, non fusionnée, non déployée.
+- **Livré** : numéro gardé sur l'appareil après une connexion réussie ; `/connexion` n'affiche alors que ce numéro et un pavé de chiffres, avec envoi au quatrième chiffre ; « Ce n'est pas mon numéro » rend le formulaire complet.
+- **Non vérifié** : vrai téléphone Android, contre le vrai Supabase (même réserve qu'ADR-058).

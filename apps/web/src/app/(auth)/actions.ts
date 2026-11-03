@@ -6,6 +6,7 @@ import { apiErrorState } from '@/lib/api/form-error';
 import type { ApiResult } from '@/lib/api/call-api';
 import { apiAsUser, apiPublic, getSession } from '@/lib/api/server';
 import { siteUrl } from '@/lib/env';
+import { forgetPhone, rememberPhone } from '@/lib/auth/known-phone';
 import { authErrorMessage } from '@/lib/auth/messages';
 import { safeNextPath } from '@/lib/auth/redirect';
 import {
@@ -79,7 +80,22 @@ export async function signIn(
   if (!result.ok) return failure(result);
   const refused = await keepSession(result.data);
   if (refused) return refused;
+  await rememberPhone(parsed.data.phone);
   redirect(safeNextPath(formData.get('next')?.toString()));
+}
+
+/**
+ * "Ce n'est pas mon numéro": the device forgets the number (ADR-059) and
+ * the full sign-in form comes back.
+ */
+export async function changePhone(formData: FormData): Promise<void> {
+  await forgetPhone();
+  const next = formData.get('next')?.toString();
+  redirect(
+    next
+      ? `/connexion?next=${encodeURIComponent(safeNextPath(next))}`
+      : '/connexion',
+  );
 }
 
 export async function signUp(
@@ -95,6 +111,7 @@ export async function signUp(
   if (!result.ok) return failure(result);
   const refused = await keepSession(result.data);
   if (refused) return refused;
+  await rememberPhone(parsed.data.phone);
   redirect(safeNextPath(formData.get('next')?.toString()));
 }
 
@@ -143,6 +160,7 @@ export async function linkPhone(
   if (!result.ok) return failure(result);
   const refused = await keepSession(result.data);
   if (refused) return refused;
+  await rememberPhone(parsed.data.phone);
   redirect(safeNextPath(formData.get('next')?.toString()));
 }
 
