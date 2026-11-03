@@ -11,6 +11,7 @@ import { FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState, type FormState } from '@/lib/auth/schemas';
+import type { CustomerContact } from '@/lib/customers/contact';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 import {
   createCustomer,
@@ -23,11 +24,17 @@ export function CustomerForm({
   organizationId,
   currency,
   customer,
+  initial,
+  stacked = false,
 }: {
   organizationId: string;
   currency: string;
   /** Absent on creation. */
   customer?: CustomerDto;
+  /** On creation, what a contact of the phone already gives. */
+  initial?: CustomerContact;
+  /** One column, for a narrow sheet. */
+  stacked?: boolean;
 }) {
   const [state, action, pending] = useActionState(
     customer ? updateCustomer : createCustomer,
@@ -50,12 +57,14 @@ export function CustomerForm({
         <input type="hidden" name="clientOperationId" value={operationId} />
       )}
       <FormMessage state={state} />
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div
+        className={`grid grid-cols-1 gap-4 ${stacked ? '' : 'md:grid-cols-2'}`}
+      >
         <FormField
           label="Nom"
           name="name"
           id={`${prefix}name`}
-          defaultValue={customer?.name}
+          defaultValue={customer?.name ?? initial?.name}
           required
           maxLength={120}
           autoComplete="off"
@@ -67,7 +76,7 @@ export function CustomerForm({
           id={`${prefix}phone`}
           type="tel"
           inputMode="tel"
-          defaultValue={customer?.phone}
+          defaultValue={customer?.phone ?? initial?.phone}
           maxLength={30}
           error={errors.phone}
         />
@@ -77,7 +86,7 @@ export function CustomerForm({
           id={`${prefix}email`}
           type="email"
           inputMode="email"
-          defaultValue={customer?.email}
+          defaultValue={customer?.email ?? initial?.email}
           maxLength={320}
           error={errors.email}
         />
@@ -85,7 +94,7 @@ export function CustomerForm({
           label="Adresse, pour les factures (facultatif)"
           name="address"
           id={`${prefix}address`}
-          defaultValue={customer?.address}
+          defaultValue={customer?.address ?? initial?.address}
           maxLength={300}
           error={errors.address}
         />

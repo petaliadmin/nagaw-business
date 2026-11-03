@@ -276,6 +276,16 @@ export class CustomersService {
   ): Promise<CustomerDto> {
     return this.database.db.transaction().execute(async (trx) => {
       const before = await this.find(trx, tenant.organizationId, id);
+      // Archived, a debt would leave « Ils me doivent » and be forgotten.
+      if (
+        input.status === 'archived' &&
+        before.status !== 'archived' &&
+        before.balance > 0
+      )
+        throw conflict(
+          'CUSTOMER_STILL_OWES',
+          'Ce client vous doit encore de l’argent : enregistrez son remboursement avant de le supprimer.',
+        );
       const changes: Record<string, { from: unknown; to: unknown }> = {};
       for (const [key, to] of Object.entries(input)) {
         const from = before[key as keyof CustomerDto];
