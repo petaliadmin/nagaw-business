@@ -31,6 +31,7 @@ import { ArticleCard } from '@/components/blog/article-card';
 import { JsonLd } from '@/components/json-ld';
 import { SiteFooter } from '@/components/marketing/site-footer';
 import { SiteHeader } from '@/components/marketing/site-header';
+import { WhatsAppButton } from '@/components/marketing/whatsapp-button';
 import { Alert } from '@/components/ui/alert';
 import { ButtonLink } from '@/components/ui/button-link';
 import { ScrollRegion } from '@/components/ui/scroll-region';
@@ -926,7 +927,8 @@ export default function Home() {
         </section>
       </main>
 
-      <SiteFooter />
+      <SiteFooter belowFloatingButton />
+      <WhatsAppButton />
     </div>
   );
 }

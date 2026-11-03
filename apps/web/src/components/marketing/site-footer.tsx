@@ -11,11 +11,20 @@ const LINKS = [
   ['/confidentialite', 'Confidentialité'],
 ] as const;
 
-/** Footer of the public pages: home page and guides. */
-export function SiteFooter() {
+/**
+ * Footer of the public pages: home page and guides. `belowFloatingButton`:
+ * room at the bottom, so the floating WhatsApp button hides no link.
+ */
+export function SiteFooter({
+  belowFloatingButton = false,
+}: {
+  belowFloatingButton?: boolean;
+}) {
   return (
     <footer className="border-t border-line bg-surface">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8 md:flex-row md:items-center md:justify-between">
+      <div
+        className={`mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8 md:flex-row md:items-center md:justify-between ${belowFloatingButton ? 'pb-24' : ''}`}
+      >
         <div className="flex flex-col gap-1">
           <Logo href="/" />
           <p className="text-base text-ink-muted">

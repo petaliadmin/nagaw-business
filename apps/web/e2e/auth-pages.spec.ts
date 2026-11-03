@@ -15,6 +15,41 @@ test('home page links to sign-up and sign-in', async ({ page }) => {
   ).toBeVisible();
 });
 
+test('home page keeps a WhatsApp button to the team in view', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const whatsapp = page.getByRole('link', {
+    name: 'Nous écrire sur WhatsApp (nouvelle fenêtre)',
+  });
+  await expect(whatsapp).toHaveAttribute(
+    'href',
+    /^https:\/\/wa\.me\/221769055852\?text=/,
+  );
+  await expect(whatsapp).toHaveAttribute('target', '_blank');
+  // Still there at the bottom of the page: it floats, over no footer link.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(whatsapp).toBeInViewport();
+  const box = await whatsapp.boundingBox();
+  expect(box!.height).toBeGreaterThanOrEqual(48);
+  const covered = await page
+    .getByRole('contentinfo')
+    .getByRole('link')
+    .evaluateAll((links) =>
+      links
+        .filter((link) => {
+          const r = link.getBoundingClientRect();
+          const hit = document.elementFromPoint(
+            r.left + r.width / 2,
+            r.top + r.height / 2,
+          );
+          return !hit || !link.contains(hit);
+        })
+        .map((link) => link.textContent),
+    );
+  expect(covered).toEqual([]);
+});
+
 test('sign-up asks for a phone number and a secret code, checked on the server', async ({
   page,
 }) => {
