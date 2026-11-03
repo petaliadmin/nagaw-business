@@ -129,7 +129,9 @@ test('a customer is imported from the phone contacts', async ({
     '+221 76 000 11 22',
   );
   await expect(sheet.getByLabel('E-mail (facultatif)')).toHaveValue('');
-  await expect(sheet.getByRole('status')).toContainText('Vérifiez');
+  await expect(
+    sheet.getByRole('status').filter({ hasText: 'Vérifiez' }),
+  ).toBeVisible();
 });
 
 test('without access to the contacts, a contact file is imported', async ({

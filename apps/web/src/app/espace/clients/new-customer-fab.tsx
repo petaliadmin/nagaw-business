@@ -1,7 +1,14 @@
 'use client';
 
+import dynamic from 'next/dynamic';
+import { SheetLoading } from '@/components/contacts/contact-actions';
 import { NewContactFab } from '@/components/contacts/new-contact-fab';
-import { CustomerForm } from './customer-forms';
+
+// Loaded when the sheet opens: the list stays light (performance budget).
+const CustomerForm = dynamic(
+  () => import('./customer-forms').then((mod) => mod.CustomerForm),
+  { ssr: false, loading: SheetLoading },
+);
 
 /** « + » of the customers list: create a customer, or import a contact. */
 export function NewCustomerFab({

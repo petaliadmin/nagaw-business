@@ -1,76 +1,22 @@
 'use client';
 
 import type { CustomerDto } from '@nagaw/shared';
-import {
-  ChevronRight,
-  EllipsisVertical,
-  FilePlus2,
-  MessageCircle,
-  Phone,
-  Trash2,
-} from 'lucide-react';
+import { EllipsisVertical } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useActionState, useId, useState } from 'react';
-import { ActionForm } from '@/components/action-form';
-import { FormMessage } from '@/components/form-message';
-import { SubmitButton } from '@/components/submit-button';
+import { useId, useState } from 'react';
+import {
+  ContactAvatar,
+  SheetLoading,
+} from '@/components/contacts/contact-actions';
 import { Badge } from '@/components/ui/badge';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
-import { buttonClasses } from '@/components/ui/button-styles';
-import { initialFormState } from '@/lib/auth/schemas';
-import { creditReminderText, whatsappLink } from '@/lib/sales/ticket';
-import { archiveCustomer } from '../vendre/actions';
-import {
-  ACTION_ROW as ACTION,
-  ActionIcon,
-  ContactAvatar,
-  SaveContactButton,
-} from '@/components/contacts/contact-actions';
 
-/** Asks before removing: one touch too many must not lose a customer. */
-function ArchiveForm({
-  organizationId,
-  customer,
-  onCancel,
-}: {
-  organizationId: string;
-  customer: CustomerDto;
-  onCancel: () => void;
-}) {
-  const [state, action, pending] = useActionState(
-    archiveCustomer,
-    initialFormState,
-  );
-  return (
-    <ActionForm
-      action={action}
-      pending={pending}
-      className="flex flex-col gap-3"
-    >
-      <input type="hidden" name="organizationId" value={organizationId} />
-      <input type="hidden" name="customerId" value={customer.id} />
-      <FormMessage state={state} />
-      <p className="text-lg font-bold">
-        Supprimer {customer.name} de vos clients ?
-      </p>
-      <p className="text-ink-muted">
-        Ses ventes et ses factures restent enregistrées.
-      </p>
-      <div className="flex flex-wrap gap-3">
-        <SubmitButton variant="danger" pendingLabel="Suppression…">
-          Oui, supprimer
-        </SubmitButton>
-        <button
-          type="button"
-          onClick={onCancel}
-          className={buttonClasses('secondary')}
-        >
-          Non, garder
-        </button>
-      </div>
-    </ActionForm>
-  );
-}
+// Loaded when « ⋮ » is touched: the list stays light (performance budget).
+const CustomerActions = dynamic(
+  () => import('./customer-actions').then((mod) => mod.CustomerActions),
+  { ssr: false, loading: SheetLoading },
+);
 
 /**
  * One customer of the list: avatar, name and what they owe open the card;
@@ -95,12 +41,7 @@ export function CustomerRow({
   canDocument: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const sheetId = useId();
-  const close = () => {
-    setOpen(false);
-    setConfirming(false);
-  };
   const href = `/espace/clients/${customer.id}`;
 
   return (
@@ -141,78 +82,17 @@ export function CustomerRow({
         id={sheetId}
         open={open}
         title={customer.name}
-        onClose={close}
+        onClose={() => setOpen(false)}
       >
-        {confirming ? (
-          <ArchiveForm
-            organizationId={organizationId}
-            customer={customer}
-            onCancel={() => setConfirming(false)}
-          />
-        ) : (
-          <div className="flex flex-col gap-3">
-            {customer.phone && (
-              <>
-                <a
-                  href={`tel:${customer.phone.replace(/\s/g, '')}`}
-                  className={ACTION}
-                >
-                  <ActionIcon icon={Phone} tone="brand" />
-                  Appeler le {customer.phone}
-                </a>
-                {canManage && owed && (
-                  <a
-                    href={whatsappLink(
-                      creditReminderText(customer.name, shopName, owed),
-                      customer.phone,
-                      countryCode,
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={ACTION}
-                  >
-                    <ActionIcon icon={MessageCircle} tone="sales" />
-                    Relancer sur WhatsApp
-                  </a>
-                )}
-                <SaveContactButton
-                  person={customer}
-                  countryCode={countryCode}
-                  tone="stock"
-                />
-              </>
-            )}
-            {canDocument && (
-              <Link
-                href={`/espace/factures/nouvelle?client=${customer.id}`}
-                className={ACTION}
-              >
-                <ActionIcon icon={FilePlus2} tone="invoices" />
-                Faire une facture
-              </Link>
-            )}
-            <Link href={href} className={ACTION}>
-              <ActionIcon icon={ChevronRight} tone="stats" />
-              Voir la fiche du client
-            </Link>
-            {canManage &&
-              (owed ? (
-                <p className="text-ink-muted">
-                  Pour supprimer ce client, enregistrez d’abord son
-                  remboursement : il vous doit encore {owed}.
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirming(true)}
-                  className={`${ACTION} text-danger-ink`}
-                >
-                  <ActionIcon icon={Trash2} tone="danger" />
-                  Supprimer le client
-                </button>
-              ))}
-          </div>
-        )}
+        <CustomerActions
+          customer={customer}
+          organizationId={organizationId}
+          shopName={shopName}
+          countryCode={countryCode}
+          owed={owed}
+          canManage={canManage}
+          canDocument={canDocument}
+        />
       </BottomSheet>
     </li>
   );

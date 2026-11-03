@@ -12,12 +12,10 @@ import {
 } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
-import {
-  contactToCustomer,
-  parseVCard,
-  type CustomerContact,
-  type PickedContact,
-} from '@/lib/customers/contact';
+// Types only: the vCard code is loaded on use (performance budget).
+import type { CustomerContact, PickedContact } from '@/lib/customers/contact';
+
+const loadCardCode = () => import('@/lib/customers/contact');
 
 /** Contact Picker API: Chrome on Android, not yet in the DOM types. */
 interface ContactsManager {
@@ -56,11 +54,10 @@ interface Draft {
 
 /** A draft from a contact; without name nor number, a message instead. */
 function draftOf(
-  contact: PickedContact,
+  initial: CustomerContact,
   empty: string,
   submitLabel: string,
 ): Draft {
-  const initial = contactToCustomer(contact);
   const key = crypto.randomUUID();
   return initial.name || initial.phone
     ? {
@@ -173,8 +170,13 @@ export function NewContactFab({
       const [contact] = await manager.select(wanted, { multiple: false });
       // Closing the list without choosing is not a failure.
       if (!contact) return;
+      const { contactToCustomer } = await loadCardCode();
       setDraft(
-        draftOf(contact, 'Ce contact n’a ni nom ni numéro.', submitLabel),
+        draftOf(
+          contactToCustomer(contact),
+          'Ce contact n’a ni nom ni numéro.',
+          submitLabel,
+        ),
       );
     } catch (error) {
       setDraft(failure('Vos contacts n’ont pas pu être ouverts', error));
@@ -206,10 +208,15 @@ export function NewContactFab({
       return;
     }
     try {
+      const { contactToCustomer, parseVCard } = await loadCardCode();
       const contact = parseVCard(await file.text());
       setDraft(
         contact
-          ? draftOf(contact, 'Cette fiche n’a ni nom ni numéro.', submitLabel)
+          ? draftOf(
+              contactToCustomer(contact),
+              'Cette fiche n’a ni nom ni numéro.',
+              submitLabel,
+            )
           : {
               key: crypto.randomUUID(),
               notice: {
@@ -287,10 +294,9 @@ export function NewContactFab({
       >
         {draft && (
           <div key={draft.key} className="flex flex-col gap-4">
+            {/* Alert is the live region itself (status, or alert). */}
             {draft.notice && (
-              <div role={draft.notice.tone === 'info' ? 'status' : undefined}>
-                <Alert tone={draft.notice.tone}>{draft.notice.text}</Alert>
-              </div>
+              <Alert tone={draft.notice.tone}>{draft.notice.text}</Alert>
             )}
             {children(draft.initial, () => setDraft(null))}
           </div>
