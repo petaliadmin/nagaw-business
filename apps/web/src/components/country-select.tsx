@@ -8,7 +8,8 @@ import { useState } from 'react';
  * The country of a phone number (ADR-058). Closed, it shows the country
  * and its code in full (`SN +221`); open, the native list names each
  * country (`Sénégal (+221)`). The real select lies invisible on top: touch,
- * keyboard and screen readers use it as any select.
+ * keyboard and screen readers use it as any select. It covers the border
+ * too, so the touch target is the full 48 px of the box.
  */
 export function CountrySelect({
   id,
@@ -41,7 +42,7 @@ export function CountrySelect({
         onChange={(event) => setIso(event.target.value)}
         aria-invalid={invalid ? true : undefined}
         aria-describedby={describedBy}
-        className="absolute inset-0 cursor-pointer opacity-0 focus-visible:outline-none"
+        className="absolute -inset-0.5 cursor-pointer opacity-0 focus-visible:outline-none"
       >
         {ACCOUNT_COUNTRIES.map((c) => (
           <option key={c.iso} value={c.iso}>
