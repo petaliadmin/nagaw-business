@@ -524,7 +524,7 @@ const UPDATABLE = {
   Record<keyof UpdateOrganizationInput, keyof OrganizationsTable>
 >;
 
-function toOrganizationDto(
+export function toOrganizationDto(
   row: Selectable<OrganizationsTable>,
 ): OrganizationDto {
   return {
@@ -547,6 +547,8 @@ function toOrganizationDto(
     quoteValidityDays: row.quote_validity_days,
     documentColor: row.document_color,
     offer: row.offer,
+    profileStatus: row.profile_status,
+    hiddenModules: row.hidden_modules,
     logoVersion: row.logo_sha256?.slice(0, 16) ?? null,
     signatureVersion: row.signature_sha256?.slice(0, 16) ?? null,
     stampVersion: row.stamp_sha256?.slice(0, 16) ?? null,

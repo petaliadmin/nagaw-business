@@ -15,7 +15,11 @@ async function Tabs({ section }: { section: Section }) {
   return (
     <SectionTabs
       label={LABELS[section]}
-      tabs={sectionTabsFor(section, workspace.organization.role)}
+      tabs={sectionTabsFor(
+        section,
+        workspace.organization.role,
+        workspace.organization.hiddenModules,
+      )}
     />
   );
 }

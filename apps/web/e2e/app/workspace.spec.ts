@@ -148,7 +148,7 @@ test('owner updates the shop settings', async ({ page, context, baseURL }) => {
   await page.goto('/espace/parametres');
   await page.getByLabel('Nom de la boutique').fill('Acme Dakar SA');
   await page.getByLabel('Fuseau horaire').selectOption('Africa/Abidjan');
-  const shop = page.getByRole('region', { name: 'Boutique' });
+  const shop = page.getByRole('region', { name: 'Boutique', exact: true });
   await shop.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(
     shop.getByRole('status').filter({ hasText: 'Paramètres enregistrés.' }),
@@ -174,7 +174,7 @@ test('settings validate input before calling the API', async ({
   await page.goto('/espace/parametres');
   await page.getByLabel('Nom de la boutique').fill('A');
   await page
-    .getByRole('region', { name: 'Boutique' })
+    .getByRole('region', { name: 'Boutique', exact: true })
     .getByRole('button', { name: 'Enregistrer' })
     .click();
   await expect(
@@ -267,10 +267,19 @@ test('a forged organization cookie never opens another tenant', async ({
   ).toBeVisible();
 });
 
+/** The whole menu: the sidebar, or the « Plus » sheet on a phone. */
+async function openMenu(page: Page, isMobile: boolean) {
+  if (!isMobile)
+    return page.getByRole('complementary', { name: 'Barre latérale' });
+  await page.getByRole('button', { name: 'Plus' }).click();
+  return page.getByRole('dialog', { name: 'Plus' });
+}
+
 test('a user without a shop is guided to create one', async ({
   page,
   context,
   baseURL,
+  isMobile,
 }) => {
   await signInAs(context, 'binta', baseURL!);
   await page.goto('/espace/equipe');
@@ -280,13 +289,71 @@ test('a user without a shop is guided to create one', async ({
   await page.getByLabel('Nom de la boutique').fill('Binta Conseil');
   await page.getByLabel('Votre nom complet').fill('Binta Sow');
   await page.getByLabel('Votre téléphone').fill('78 000 00 00');
-  await page.locator('label', { hasText: 'Des services' }).click();
   await page.getByRole('button', { name: 'Créer la boutique' }).click();
+
+  // The questions of the profile follow, one per screen (ADR-062).
+  const next = page.getByRole('button', { name: 'Suivant' });
+  await expect(
+    page.getByRole('heading', { name: 'Quelle est votre activité ?' }),
+  ).toBeVisible();
+  await page.locator('label', { hasText: 'Services' }).click();
+  await next.click();
+  await page.locator('label', { hasText: 'Des services' }).click();
+  await next.click();
+  await next.click(); // How it sells: no answer is fine.
+  await page.locator('label', { hasText: 'Savoir ce que je gagne' }).click();
+  await next.click();
+  await page.locator('label', { hasText: 'Je suis seul' }).click();
+  await next.click();
+
+  // The menu suggested by the answers: no suppliers, no accounting.
+  await expect(page.getByRole('heading', { name: 'Votre menu' })).toBeVisible();
+  await expect(
+    page.getByRole('checkbox', { name: /Factures et devis/ }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole('checkbox', { name: /Comptabilité/ }),
+  ).not.toBeChecked();
+  await page.getByRole('button', { name: 'Enregistrer mon menu' }).click();
+
   await expect(
     page
       .getByRole('main')
       .getByRole('heading', { level: 1, name: 'Binta Conseil' }),
   ).toBeVisible();
+  const menu = await openMenu(page, isMobile);
+  // « Rapports » leads to the statistics alone: accounting is hidden.
+  await expect(
+    menu.getByRole('link', { name: 'Statistiques', exact: true }),
+  ).toBeVisible();
+  await expect(menu.getByRole('link', { name: 'Fournisseurs' })).toHaveCount(0);
+  await resetBackend();
+});
+
+test('a new shop may answer later, and is not asked again', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  await signInAs(context, 'binta', baseURL!);
+  await page.goto('/espace');
+  await page.getByLabel('Nom de la boutique').fill('Binta Mode');
+  await page.getByLabel('Votre nom complet').fill('Binta Sow');
+  await page.getByLabel('Votre téléphone').fill('78 000 00 00');
+  await page.getByRole('button', { name: 'Créer la boutique' }).click();
+  await page.getByRole('button', { name: 'Plus tard' }).click();
+  await expect(
+    page
+      .getByRole('main')
+      .getByRole('heading', { level: 1, name: 'Binta Mode' }),
+  ).toBeVisible();
+  // Nothing hidden, no question on the dashboard.
+  await expect(
+    page.getByRole('link', { name: 'Répondre aux questions' }),
+  ).toHaveCount(0);
+  const menu = await openMenu(page, isMobile);
+  await expect(menu.getByRole('link', { name: 'Fournisseurs' })).toBeVisible();
   await resetBackend();
 });
 

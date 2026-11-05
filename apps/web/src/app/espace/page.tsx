@@ -3,6 +3,7 @@ import {
   roleHasPermission,
   sellsGoods,
   shareBasisPoints,
+  showsModule,
   type AuditLogDto,
   type MemberDto,
   type Paginated,
@@ -41,6 +42,7 @@ import {
   SeeAll,
   SoftStat,
 } from '@/components/dashboard/kpi';
+import { ProfilePrompt } from '@/components/dashboard/profile-prompt';
 import { SellFab } from '@/components/dashboard/sell-fab';
 import { PeriodPicker } from '@/components/treasury/period-picker';
 import { SalesChart } from '@/components/treasury/sales-chart';
@@ -632,6 +634,9 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
   // Key figures first; otherwise today's sales come first. « Vendre »
   // floats over the page for those who sell.
   const canReadStats = roleHasPermission(role, 'stats.read');
+  // A shop that hides its statistics gets a plain dashboard (ADR-062).
+  const showsStats =
+    canReadStats && showsModule(organization.hiddenModules, 'stats');
   const canReadTreasury = roleHasPermission(role, 'treasury.read');
   const canSell = roleHasPermission(role, 'sales.create');
   const countsStock = sellsGoods(organization.offer);
@@ -679,8 +684,8 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
             organizationId: organization.id,
           })
         : null,
-      canReadStats ? statsOf(period) : null,
-      canReadStats ? statsOf(before) : null,
+      showsStats ? statsOf(period) : null,
+      showsStats ? statsOf(before) : null,
       showMine
         ? apiAsUser<MySalesStatsDto>(accessToken, {
             path: '/sales/my-stats',
@@ -703,6 +708,11 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
           stats ? capitalize(range(period.from, period.to)) : undefined
         }
       />
+
+      {organization.profileStatus === 'pending' &&
+        roleHasPermission(role, 'organization.update') && (
+          <ProfilePrompt organizationId={organization.id} />
+        )}
 
       {stats && statsBefore && (
         <>

@@ -741,3 +741,51 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 - **Limites** :
   - clore une version ne vaut pas mise en production : les réserves de la version restent à lever par le propriétaire avant le pilote ;
   - `APP_VERSION` est réglé à la main sur Vercel et peut diverger du `package.json`.
+
+## ADR-062 — Profil de la boutique et modules activés (généralise ADR-047)
+
+- **Statut** : **Acceptée** (périmètre de la 1.1 validé par le propriétaire le 2026-11-04, `docs/VERSION_1_1.md`). Livrée en Phase 19 (migration `20261104090000_shop_profile_modules`).
+- **Décision** :
+  - juste après la création, la boutique répond à cinq questions, une par écran : activité, ce qu'elle vend (le réglage `offer` d'ADR-047, qui quitte le formulaire de création), comment elle vend, ce qu'elle veut d'abord, taille de l'équipe. Chacune peut rester sans réponse ; « Plus tard » quitte le questionnaire. Un dernier écran montre le menu suggéré, que la personne ajuste avant d'enregistrer ;
+  - les activités et les objectifs, avec les modules que chacun affiche, sont en base (`profile_choices`), modifiables sans déploiement : la 1.2 y ajoutera écoles et location. Le menu suggéré masque tout module qu'aucune réponse choisie n'affiche ; sans réponse, rien n'est masqué ;
+  - les réponses vont dans `organization_profiles` ; l'état du questionnaire (`profile_status`) et les modules masqués (`hidden_modules`) sont des colonnes de `organizations`, donc dans `OrganizationDto` sans jointure. Qui a changé quoi et quand est dans le journal d'audit, plutôt que dans une table `organization_modules` envisagée au plan ;
+  - modules qui peuvent quitter le menu : factures et devis, fournisseurs, dépenses, statistiques, comptabilité. Vendre, produits, clients, trésorerie et paramètres restent toujours ;
+  - masquer un module **cache, ne supprime rien et ne refuse rien**, comme ADR-047 : l'entrée quitte le menu et les onglets, les statistiques quittent le tableau de bord, mais les pages et l'API répondent toujours. Les modules à venir (Commandes, Péremptions) seront aussi contrôlés par l'API ;
+  - les boutiques existantes gardent tout leur menu ; le tableau de bord leur propose une fois les questions, au propriétaire et aux gérants ;
+  - la plateforme voit des comptes agrégés des réponses (`GET /admin/profiles`), sans aucune boutique nommée.
+- **Limites** : le profil ne change ni les permissions (ADR-019) ni la comptabilité ; les canaux et la taille de l'équipe ne servent encore qu'à la mesure.
+
+## ADR-063 — Catalogue public en lien et commandes à distance
+
+- **Statut** : **Acceptée** (périmètre de la 1.1 validé le 2026-11-04, `docs/VERSION_1_1.md`, Phase 20).
+- **Décision proposée** :
+  - catalogue public en lecture à `/b/{slug}`, ouvert seulement si la boutique active le module Commandes et publie son catalogue ; il n'expose jamais prix d'achat, stock exact, clients ni chiffres ;
+  - un client sans compte passe une commande (`orders`, `order_lines`) ; une commande livrée devient une vente (ADR-024) avec son `client_operation_id`, le stock ne sort qu'à ce moment ;
+  - paiement par numéro Wave ou Orange Money de la boutique et référence de commande, marqué payé à la main (modèle d'ADR-056) ; le lien de paiement Wave vient avec ADR-065 ;
+  - relances et messages au livreur préparés et envoyés par le commerçant depuis son WhatsApp ; les relances automatiques viennent avec ADR-064 ;
+  - commandes dans toutes les offres, Gratuit limité à 30 par mois (`plans.max_orders_per_month`, en base) ;
+  - limites anti-abus (commandes par numéro et par minute) réglables en base.
+- **Points d'attention** : c'est le premier endpoint métier ouvert sans connexion : revue de sécurité dédiée en Phase 22, tests d'isolation et test qu'aucun champ privé ne sort.
+
+## ADR-064 — Relances automatiques par WhatsApp et SMS (modifie ADR-017, réactive ADR-006)
+
+- **Statut** : **Acceptée dans son principe** (décision du propriétaire du 2026-11-04 : relances préparées **et** automatiques). Prestataires à choisir avant la Phase 22.
+- **Décision** :
+  - ADR-017 est levée **pour les seules relances**, et seulement pour la boutique qui les active ; le reste de l'application reste manuel ;
+  - la file de tâches d'ADR-006 est réactivée (table `jobs`, Vercel Cron protégé par `CRON_SECRET`), chaque envoi idempotent ;
+  - WhatsApp par l'API WhatsApp Business (modèles validés par Meta), SMS en secours par un prestataire sénégalais ;
+  - délais, nombre de relances, heures d'envoi et quotas mensuels par offre sont en base ; « STOP » arrête les envois vers un numéro ; chaque envoi est journalisé sans le contenu ;
+  - relances automatiques à partir d'Essentiel ; les relances préparées (ADR-056) restent dans toutes les offres.
+- **Limites** : la fréquence de Cron dépend du plan Vercel ; chaque message a un coût chez le prestataire ; rien n'est annoncé comme opérationnel avant des messages réels reçus en préproduction.
+
+## ADR-065 — Paiement par Wave (complète ADR-029 et ADR-056)
+
+- **Statut** : **Acceptée dans son principe** (décision du propriétaire du 2026-11-04 : prestataire Wave). À vérifier sur un vrai compte Wave Business avant la Phase 21.
+- **Décision** :
+  - une commande peut être payée par un lien Wave ; **l'argent va sur le compte Wave Business de la boutique**, jamais sur celui de Nagaw ;
+  - la clé d'API de la boutique est chiffrée côté serveur (ADR-009), jamais renvoyée au navigateur ni écrite dans les logs ;
+  - le paiement est confirmé par webhook Wave : signature vérifiée, traitement idempotent par identifiant de transaction, montant et devise comparés ; un écart est signalé, jamais appliqué en silence ;
+  - les frais Wave sont séparés dans la trésorerie ;
+  - le même mécanisme, avec le compte Wave Business de Nagaw, remplacera la validation à la main des abonnements (ADR-056) une fois vérifié ;
+  - dans toutes les offres, sans commission Nagaw en 1.1. Le paiement à la main avec référence reste possible (Orange Money, boutique sans Wave Business).
+- **Limites** : le format exact de l'API et des webhooks est à lire dans la documentation Wave Business au démarrage de la phase ; aucune intégration n'est déclarée opérationnelle avant un paiement réel de bout en bout.

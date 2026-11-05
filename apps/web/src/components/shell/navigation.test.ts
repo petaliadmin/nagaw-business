@@ -1,4 +1,9 @@
-import type { ShopOffer } from '@nagaw/shared';
+import {
+  SHOP_MODULES,
+  type Role,
+  type ShopModule,
+  type ShopOffer,
+} from '@nagaw/shared';
 import { describe, expect, it } from 'vitest';
 import {
   NAV_ITEMS,
@@ -138,6 +143,50 @@ describe('navigation', () => {
       navItemsFor('owner', offer).map((item) => item.href);
     expect(hrefs('services')).not.toContain('/espace/produits/fournisseurs');
     expect(hrefs('products')).toContain('/espace/produits/fournisseurs');
+  });
+
+  it('leaves out the modules the shop hides (ADR-062)', () => {
+    const hrefs = (hidden: ShopModule[]) =>
+      navItemsFor('owner', 'both', hidden).map((item) => item.href);
+    expect(hrefs([])).toEqual(navItemsFor('owner').map((item) => item.href));
+    const lean = hrefs(['documents', 'suppliers', 'expenses']);
+    expect(lean).not.toContain('/espace/factures');
+    expect(lean).not.toContain('/espace/produits/fournisseurs');
+    expect(lean).not.toContain('/espace/tresorerie/depenses');
+    // Selling, products, customers, treasury and settings always stay.
+    for (const always of [
+      '/espace',
+      '/espace/ventes',
+      '/espace/produits',
+      '/espace/clients',
+      '/espace/tresorerie',
+      '/espace/parametres',
+    ])
+      expect(hrefs([...SHOP_MODULES])).toContain(always);
+  });
+
+  it('points « Rapports » at what is left of it', () => {
+    const reports = (hidden: ShopModule[], role: Role = 'owner') =>
+      navItemsFor(role, 'both', hidden).find(
+        (item) =>
+          item.href === '/espace/statistiques' ||
+          item.href === '/espace/comptabilite',
+      );
+    expect(reports([])?.label).toBe('Rapports / Statistiques');
+    expect(reports(['accounting'])).toMatchObject({
+      href: '/espace/statistiques',
+      label: 'Statistiques',
+    });
+    expect(reports(['stats'])).toMatchObject({
+      href: '/espace/comptabilite',
+      label: 'Comptabilité',
+    });
+    expect(reports(['stats', 'accounting'])).toBeUndefined();
+    expect(
+      sectionTabsFor('rapports', 'owner', ['accounting']).map(
+        (tab) => tab.href,
+      ),
+    ).toEqual(['/espace/statistiques']);
   });
 
   it('follows the pages seen, forward and back', () => {

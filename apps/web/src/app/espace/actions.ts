@@ -38,7 +38,8 @@ export async function createOrganization(
   });
   if (!result.ok) return { status: 'error', message: result.message };
   await rememberOrganization(result.data.id);
-  redirect('/espace');
+  // The questions of the profile come right after (ADR-062).
+  redirect('/espace/profil');
 }
 
 /**

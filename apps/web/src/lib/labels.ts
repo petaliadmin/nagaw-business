@@ -10,6 +10,10 @@ export const ROLE_LABELS: Record<Role, string> = {
 const AUDIT_ACTION_LABELS: Record<string, string> = {
   'organization.created': 'Boutique créée',
   'organization.updated': 'Paramètres de la boutique modifiés',
+  'organization.profile_answered': 'Questions sur l’activité répondues',
+  'organization.profile_skipped':
+    'Questions sur l’activité remises à plus tard',
+  'organization.modules_updated': 'Menu de la boutique modifié',
   'invitation.created': 'Invitation créée',
   'invitation.revoked': 'Invitation annulée',
   'invitation.accepted': 'Invitation acceptée',

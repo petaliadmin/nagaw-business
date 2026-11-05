@@ -2,7 +2,6 @@
 
 import { useActionState } from 'react';
 import { ActionForm } from '@/components/action-form';
-import { OfferField } from '@/components/catalog/offer-field';
 import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
@@ -57,7 +56,6 @@ export function CreateOrganizationForm({
         maxLength={30}
         error={state.fieldErrors?.phone}
       />
-      <OfferField value="products" error={state.fieldErrors?.offer} />
       <SubmitButton pendingLabel="Création…">Créer la boutique</SubmitButton>
     </ActionForm>
   );

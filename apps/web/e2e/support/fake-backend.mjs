@@ -97,6 +97,50 @@ const DOCUMENT_SETTINGS = {
   quoteValidityDays: 30,
 };
 
+/** What the database offers (migration 20261104090000_shop_profile_modules). */
+const PROFILE_CHOICES = {
+  sectors: [
+    {
+      key: 'neighbourhood',
+      label: 'Boutique de quartier',
+      modules: ['suppliers', 'expenses', 'stats'],
+    },
+    {
+      key: 'fashion_beauty',
+      label: 'Mode et beauté',
+      modules: ['suppliers', 'expenses', 'stats'],
+    },
+    {
+      key: 'services',
+      label: 'Services',
+      modules: ['documents', 'expenses', 'stats'],
+    },
+    {
+      key: 'other',
+      label: 'Autre',
+      modules: ['documents', 'suppliers', 'expenses', 'stats', 'accounting'],
+    },
+  ],
+  goals: [
+    {
+      key: 'profit',
+      label: 'Savoir ce que je gagne',
+      modules: ['expenses', 'stats'],
+    },
+    { key: 'credit', label: 'Suivre qui me doit', modules: [] },
+    {
+      key: 'documents',
+      label: 'Faire des factures et des devis',
+      modules: ['documents'],
+    },
+    {
+      key: 'accounting',
+      label: 'Préparer ma comptabilité',
+      modules: ['accounting', 'expenses'],
+    },
+  ],
+};
+
 function makeState() {
   const created = '2026-10-01T09:00:00.000Z';
   const organizations = {
@@ -110,6 +154,8 @@ function makeState() {
       invitationTtlHours: 168,
       documentColor: '#6d28d9',
       offer: 'both',
+      profileStatus: 'answered',
+      hiddenModules: [],
       phoneCountryCode: '221',
       ...DOCUMENT_SETTINGS,
       createdAt: created,
@@ -125,6 +171,8 @@ function makeState() {
       invitationTtlHours: 168,
       documentColor: '#6d28d9',
       offer: 'both',
+      profileStatus: 'answered',
+      hiddenModules: [],
       phoneCountryCode: '221',
       ...DOCUMENT_SETTINGS,
       createdAt: created,
@@ -565,6 +613,22 @@ const server = createServer(async (req, res) => {
         state.subscriptions[o.id].pending &&
         !state.subscriptions[o.id].pending.status,
     );
+    if (path === '/api/v1/admin/profiles')
+      return send(res, 200, {
+        status: { pending: 1, answered: 1, skipped: 0 },
+        sectors: PROFILE_CHOICES.sectors.map(({ key, label }, i) => ({
+          key,
+          label,
+          count: i === 0 ? 1 : 0,
+        })),
+        goals: PROFILE_CHOICES.goals.map(({ key, label }) => ({
+          key,
+          label,
+          count: 0,
+        })),
+        channels: [],
+        teamSizes: [],
+      });
     if (path === '/api/v1/admin/overview')
       return send(res, 200, {
         shops: {
@@ -849,6 +913,8 @@ const server = createServer(async (req, res) => {
       logoVersion: null,
       documentColor: '#6d28d9',
       offer: body.offer ?? 'products',
+      profileStatus: 'pending',
+      hiddenModules: [],
       createdAt: now,
       updatedAt: now,
     };
@@ -968,6 +1034,57 @@ const server = createServer(async (req, res) => {
       createdAt: new Date().toISOString(),
     });
     return send(res, 200, org);
+  }
+  // Profile of the shop and its menu (ADR-062).
+  if (
+    path.startsWith('/api/v1/organizations/current/profile') ||
+    path === '/api/v1/organizations/current/modules'
+  ) {
+    if (!canManage) return forbidden(res);
+    const org = state.organizations[orgId];
+    const profileOf = () => ({
+      status: org.profileStatus,
+      sector: org.profile?.sector ?? null,
+      channels: org.profile?.channels ?? [],
+      goals: org.profile?.goals ?? [],
+      teamSize: org.profile?.teamSize ?? null,
+      answeredAt: org.profile?.answeredAt ?? null,
+      offer: org.offer,
+      hiddenModules: org.hiddenModules,
+      choices: PROFILE_CHOICES,
+    });
+    if (
+      path === '/api/v1/organizations/current/profile' &&
+      req.method === 'GET'
+    )
+      return send(res, 200, profileOf());
+    if (
+      path === '/api/v1/organizations/current/profile' &&
+      req.method === 'PUT'
+    ) {
+      const body = await readJson(req);
+      org.profile = { ...body, answeredAt: new Date().toISOString() };
+      Object.assign(org, {
+        profileStatus: 'answered',
+        offer: body.offer,
+        hiddenModules: body.hiddenModules,
+      });
+      return send(res, 200, profileOf());
+    }
+    if (
+      path === '/api/v1/organizations/current/profile/skip' &&
+      req.method === 'POST'
+    ) {
+      if (org.profileStatus === 'pending') org.profileStatus = 'skipped';
+      return send(res, 201, org);
+    }
+    if (
+      path === '/api/v1/organizations/current/modules' &&
+      req.method === 'PUT'
+    ) {
+      org.hiddenModules = (await readJson(req)).hiddenModules;
+      return send(res, 200, org);
+    }
   }
   const markPath =
     /^\/api\/v1\/organizations\/current\/marks\/(signature|stamp)$/.exec(path);
