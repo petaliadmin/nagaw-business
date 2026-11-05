@@ -7,7 +7,11 @@ import { loadLocalEnvFile } from './config/load-env-file.js';
 async function bootstrap() {
   // Before the app reads its configuration (ConfigModule).
   loadLocalEnvFile();
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+    // The Wave webhook is checked on its raw bytes (ADR-065).
+    rawBody: true,
+  });
   setupApp(app);
   await app.listen(app.get<Env>(ENV).PORT);
 }

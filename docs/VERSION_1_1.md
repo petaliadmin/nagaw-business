@@ -88,6 +88,8 @@ Taille estimée : **L**.
 
 ### Phase 21 — Paiement par Wave (ADR-065)
 
+> **Livrée en code le 2026-11-05**, non vérifiée sur un vrai compte Wave Business. Écarts au plan : la confirmation principale est une question à Wave (au retour du client, ou par le vendeur), le webhook reste facultatif ; les abonnements Nagaw restent payés à la main (voir ADR-065).
+
 **But** : le client paie la commande par un lien Wave ; la commande passe en « Payée » sans saisie.
 
 Contenu :

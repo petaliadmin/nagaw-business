@@ -789,12 +789,18 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-065 — Paiement par Wave (complète ADR-029 et ADR-056)
 
-- **Statut** : **Acceptée dans son principe** (décision du propriétaire du 2026-11-04 : prestataire Wave). À vérifier sur un vrai compte Wave Business avant la Phase 21.
+- **Statut** : **Acceptée** (décision du propriétaire du 2026-11-04 : prestataire Wave). Livrée en code en Phase 21 (migration `20261105120000_wave_payments`), **non vérifiée sur un vrai compte Wave Business**.
+- **Sources** : documentation Wave lue le 2026-11-05 (`https://docs.wave.com/checkout`, `https://docs.wave.com/webhook`) : sessions de paiement `POST /v1/checkout/sessions` (montant en chaîne, XOF sans décimales, `success_url` et `error_url` en https, `client_reference`), lecture `GET /v1/checkout/sessions/:id`, clé en `Authorization: Bearer`, une clé par compte, signature `Wave-Signature: t=…,v1=…` (HMAC-SHA256 de `timestamp + corps`) facultative pour les requêtes, obligatoire pour vérifier un webhook, sessions valables 30 minutes, `wave_launch_url` à ouvrir dans le navigateur.
 - **Décision** :
-  - une commande peut être payée par un lien Wave ; **l'argent va sur le compte Wave Business de la boutique**, jamais sur celui de Nagaw ;
-  - la clé d'API de la boutique est chiffrée côté serveur (ADR-009), jamais renvoyée au navigateur ni écrite dans les logs ;
-  - le paiement est confirmé par webhook Wave : signature vérifiée, traitement idempotent par identifiant de transaction, montant et devise comparés ; un écart est signalé, jamais appliqué en silence ;
-  - les frais Wave sont séparés dans la trésorerie ;
-  - le même mécanisme, avec le compte Wave Business de Nagaw, remplacera la validation à la main des abonnements (ADR-056) une fois vérifié ;
-  - dans toutes les offres, sans commission Nagaw en 1.1. Le paiement à la main avec référence reste possible (Orange Money, boutique sans Wave Business).
-- **Limites** : le format exact de l'API et des webhooks est à lire dans la documentation Wave Business au démarrage de la phase ; aucune intégration n'est déclarée opérationnelle avant un paiement réel de bout en bout.
+  - **chaque boutique relie son propre compte Wave Business** dans « Mon catalogue en ligne » : l'argent va sur son compte, jamais sur celui de Nagaw. La clé est essayée auprès de Wave avant d'être gardée ;
+  - la clé, et les secrets facultatifs de signature et de webhook, sont **scellés** par l'API (AES-256-GCM, clé maître `CREDENTIALS_ENCRYPTION_KEY`, ADR-009), liés à l'identifiant de la boutique : un secret recopié sur une autre boutique ne s'ouvre pas. Ils ne sont jamais renvoyés au navigateur, à l'audit ni aux journaux ; seuls les 4 derniers caractères sont montrés. Retirer le compte écrase les secrets ;
+  - après sa commande, le client voit « Payer avec Wave ». Une session est créée pour le montant de la commande, avec l'identifiant de la commande comme `client_reference`, puis **réutilisée** tant qu'elle reste ouverte plus de 2 minutes : un second toucher n'ouvre pas un second paiement ;
+  - **une commande n'est marquée payée que lorsque Wave lui-même**, interrogé avec la clé de la boutique, dit la session réussie, **pour le montant et la devise de la commande**. Jamais sur la parole d'un navigateur ni du seul corps d'un webhook. Un montant différent n'est pas appliqué ;
+  - Wave est interrogé quand le client revient sur `/b/{slug}/paiement/{id}` et quand le vendeur touche « Vérifier le paiement Wave ». Le **webhook est facultatif** : la boutique peut enregistrer l'adresse `/api/v1/public/wave/webhooks/{boutique}` dans son portail ; sa signature est vérifiée sur le corps brut (ou le « Shared Secret » en `Bearer`), puis la session est relue chez Wave ;
+  - le paiement est inscrit comme Mobile Money Wave, avec le numéro de transaction ; la vente créée à la livraison (ADR-063) le reprend ;
+  - le paiement au numéro avec la référence reste proposé (Orange Money, boutique sans compte Wave Business).
+- **Non fait** :
+  - **les abonnements Nagaw** restent payés à la main (ADR-056) : accepter une offre sur un paiement Wave change ce que paie une boutique, à décider par le propriétaire avec le compte Wave Business de Nagaw ;
+  - les **frais Wave** ne sont pas séparés dans la trésorerie : l'API de paiement ne les renvoie pas ;
+  - pas de remboursement depuis l'application (`POST /v1/checkout/sessions/:id/refund` existe chez Wave) ;
+  - rien n'est déclaré opérationnel avant un paiement réel de bout en bout, sur un vrai compte, en préproduction.

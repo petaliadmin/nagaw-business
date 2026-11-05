@@ -109,8 +109,9 @@ export async function handlePublicOrders({
     const total = lines.reduce((sum, l) => sum + l.lineTotal, 0);
     const reference = `CMD-${randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}`;
     const digits = body.phone.replace(/\D/g, '');
+    const id = randomUUID();
     orders.unshift({
-      id: randomUUID(),
+      id,
       organizationId: org.id,
       reference,
       status: 'new',
@@ -126,6 +127,7 @@ export async function handlePublicOrders({
       paidAt: null,
       payment: null,
       cancelReason: '',
+      waveSessionId: null,
       saleId: null,
       confirmedAt: null,
       shippedAt: null,
@@ -136,7 +138,10 @@ export async function handlePublicOrders({
     });
     const shop = publicShop(org);
     send(res, 201, {
+      id,
       reference,
+      // The fake shop has no Wave account (ADR-065).
+      wave: false,
       total,
       currency: org.defaultCurrency,
       lines: lines.map(({ label, quantity, lineTotal }) => ({
@@ -212,6 +217,22 @@ export async function handleOrders({
       slug: organization.slug,
       ordersThisMonth: mine.length,
       maxOrdersPerMonth: 30,
+    });
+  }
+  if (path === '/api/v1/orders/wave') {
+    if (!manager) {
+      forbidden(res);
+      return true;
+    }
+    // As on a platform without its master key: Wave is not open yet.
+    return reply(200, {
+      connected: false,
+      keyHint: null,
+      signing: false,
+      webhook: false,
+      connectedAt: null,
+      webhookPath: `/api/v1/public/wave/webhooks/${orgId}`,
+      available: false,
     });
   }
   if (path === '/api/v1/orders/counts')

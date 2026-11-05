@@ -17,6 +17,7 @@ import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { whatsappLink } from '@/lib/sales/ticket';
 import { placeOrder } from './actions';
+import { WavePayButton } from './wave-pay-button';
 
 /**
  * The public page of a shop (ADR-063): pick, send, then pay with the
@@ -80,7 +81,7 @@ export function ShopCatalog({ catalog }: { catalog: PublicCatalogDto }) {
     });
   };
 
-  if (receipt) return <Receipt receipt={receipt} />;
+  if (receipt) return <Receipt slug={shop.slug} receipt={receipt} />;
 
   return (
     <>
@@ -307,7 +308,13 @@ function ProductRow({
 }
 
 /** Sent: the reference, how to pay it, and the way to the shop. */
-function Receipt({ receipt }: { receipt: PublicOrderReceiptDto }) {
+function Receipt({
+  slug,
+  receipt,
+}: {
+  slug: string;
+  receipt: PublicOrderReceiptDto;
+}) {
   const { shop } = receipt;
   const money = (amount: number) => formatAmount(amount, receipt.currency);
   const message = `Bonjour ${shop.name}, je viens de passer la commande ${receipt.reference} de ${money(receipt.total)}.`;
@@ -340,9 +347,17 @@ function Receipt({ receipt }: { receipt: PublicOrderReceiptDto }) {
           Total : <span className="font-bold">{money(receipt.total)}</span>
         </p>
       </div>
-      {numbers.length > 0 ? (
+      {receipt.wave && (
         <div className="flex flex-col gap-2 text-base">
           <h2 className="text-lg font-bold">Payer maintenant</h2>
+          <WavePayButton slug={slug} orderId={receipt.id} />
+        </div>
+      )}
+      {numbers.length > 0 ? (
+        <div className="flex flex-col gap-2 text-base">
+          <h2 className="text-lg font-bold">
+            {receipt.wave ? 'Ou payer au numéro' : 'Payer maintenant'}
+          </h2>
           <ul className="flex flex-col gap-1">
             {numbers.map(({ label, number }) => (
               <li key={label}>
@@ -357,7 +372,7 @@ function Receipt({ receipt }: { receipt: PublicOrderReceiptDto }) {
             l’accepte.
           </p>
         </div>
-      ) : (
+      ) : receipt.wave ? null : (
         <p className="text-base">La boutique vous dira comment payer.</p>
       )}
       <a

@@ -38,6 +38,11 @@ const NOT_SHOP_SCOPED: Record<string, 'public' | 'user' | 'admin'> = {
   'GET /api/v1/public/shops/:slug/logo': 'public',
   'GET /api/v1/public/shops/:slug/products/:id/photo': 'public',
   'POST /api/v1/public/shops/:slug/orders': 'public',
+  // Paying an order by Wave, and the optional webhook (ADR-065,
+  // wave.integration-spec).
+  'POST /api/v1/public/shops/:slug/orders/:id/wave': 'public',
+  'GET /api/v1/public/shops/:slug/orders/:id': 'public',
+  'POST /api/v1/public/wave/webhooks/:organizationId': 'public',
 };
 
 /** API documentation: public, and not served in production (Phase 1). */

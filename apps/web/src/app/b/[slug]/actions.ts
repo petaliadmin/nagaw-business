@@ -1,6 +1,10 @@
 'use server';
 
-import { publicOrderSchema, type PublicOrderReceiptDto } from '@nagaw/shared';
+import {
+  publicOrderSchema,
+  type PublicOrderReceiptDto,
+  type WaveLaunchDto,
+} from '@nagaw/shared';
 import { apiPublic } from '@/lib/api/server';
 
 export type PlaceOrderResult =
@@ -48,4 +52,23 @@ export async function placeOrder(
     fieldErrors,
     priceChanged: result.code === 'PRICE_CHANGED',
   };
+}
+
+/**
+ * The Wave page of an order (ADR-065). The browser opens it itself: inside
+ * an app webview the jump to the Wave app would fail (Wave docs).
+ */
+export async function launchWave(
+  slug: string,
+  orderId: string,
+): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  const result = await apiPublic<WaveLaunchDto>(
+    `/public/shops/${encodeURIComponent(slug)}/orders/${encodeURIComponent(orderId)}/wave`,
+    { method: 'POST' },
+  );
+  if (!result.ok) return { ok: false, message: result.message };
+  // Only a Wave page: never send the customer elsewhere.
+  if (!/^https:\/\/([a-z0-9-]+\.)*wave\.com\//.test(result.data.launchUrl))
+    return { ok: false, message: 'Lien Wave invalide. Payez avec le numéro.' };
+  return { ok: true, url: result.data.launchUrl };
 }

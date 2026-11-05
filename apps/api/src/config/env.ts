@@ -80,6 +80,21 @@ const envSchema = z
       .optional(),
     /** Sent by Vercel Cron as a bearer token (secret, ADR-006). */
     CRON_SECRET: z.string().min(16).optional(),
+    /**
+     * Master key of the secrets kept in the database (ADR-009): 32 bytes in
+     * base64. Without it, no shop can connect its Wave account. Secret.
+     */
+    CREDENTIALS_ENCRYPTION_KEY: z
+      .string()
+      .trim()
+      .refine((value) => Buffer.from(value, 'base64').length === 32, {
+        message: '32 bytes in base64 expected',
+      })
+      .optional(),
+    /** Public address of the web site: Wave sends the customer back there. */
+    WEB_URL: optionalUrl,
+    /** Wave Business API (ADR-065); changed only by the tests. */
+    WAVE_API_URL: z.url().default('https://api.wave.com'),
   })
   .refine(
     (env) => {

@@ -10,6 +10,7 @@ import { AUTH_PROBE } from '../../src/auth/auth-probe.js';
 import { JWT_VERIFIER } from '../../src/auth/jwt-verifier.js';
 import { ENV, loadEnv } from '../../src/config/env.js';
 import { AUTH_ADMIN } from '../../src/phone-auth/auth-admin.js';
+import { WAVE_CLIENT, type WaveClient } from '../../src/orders/wave.client.js';
 import { createFakeAuthAdmin } from './auth-admin.js';
 import { createTestAuth } from './jwt.js';
 
@@ -26,8 +27,11 @@ export function randomPhone(): string {
   return `2217${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`;
 }
 
-/** Boots the real application against the test database. */
-export async function createTestContext() {
+/**
+ * Boots the real application against the test database. `wave` stands in
+ * for the Wave Business API (ADR-065): no test reaches the real one.
+ */
+export async function createTestContext(options: { wave?: WaveClient } = {}) {
   const auth = await createTestAuth();
   const admin = new pg.Pool({ connectionString: inject('adminDatabaseUrl') });
   const authAdmin = createFakeAuthAdmin(admin, auth.sign);
@@ -43,7 +47,18 @@ export async function createTestContext() {
         DATABASE_CONNECT_TIMEOUT_MS: '20000',
         SUPABASE_SECRET_KEY: 'sb_secret_test_only_0123456789',
         PHONE_PIN_PEPPER: 'test-only-pepper-0123456789abcdef',
+        // 32 bytes, for the sealed secrets of the tests only (ADR-009).
+        CREDENTIALS_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+        WEB_URL: 'https://nagaw.test',
       }),
+    )
+    .overrideProvider(WAVE_CLIENT)
+    .useValue(
+      options.wave ?? {
+        createSession: () => Promise.reject(new Error('Wave not faked')),
+        getSession: () => Promise.reject(new Error('Wave not faked')),
+        probe: () => Promise.reject(new Error('Wave not faked')),
+      },
     )
     // Supabase Auth itself is faked (support/auth-admin.ts).
     .overrideProvider(AUTH_ADMIN)
@@ -54,7 +69,9 @@ export async function createTestContext() {
     .overrideProvider(AUTH_PROBE)
     .useValue({ check: () => Promise.resolve('ok') })
     .compile();
-  const app: INestApplication = moduleRef.createNestApplication();
+  const app: INestApplication = moduleRef.createNestApplication({
+    rawBody: true,
+  });
   setupApp(app);
   await app.init();
 

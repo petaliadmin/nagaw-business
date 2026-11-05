@@ -687,9 +687,26 @@ export interface OrdersTable {
   shipped_at: NullableTimestamp;
   delivered_at: NullableTimestamp;
   cancelled_at: NullableTimestamp;
+  /** Wave checkout of the order (ADR-065). */
+  wave_session_id: string | null;
+  wave_session_expires_at: NullableTimestamp;
+  wave_launch_url: string | null;
+  wave_transaction_id: string | null;
   updated_by: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
+}
+
+/** Sealed secrets only (ADR-009, ADR-065). */
+export interface OrganizationWaveAccountsTable {
+  organization_id: string;
+  api_key_sealed: string;
+  signing_secret_sealed: string | null;
+  webhook_secret_sealed: string | null;
+  key_hint: string;
+  connected_by: string;
+  connected_at: ColumnType<Date, Date | string | undefined, Date | string>;
+  disconnected_at: NullableTimestamp;
 }
 
 export interface OrderLinesTable {
@@ -804,6 +821,7 @@ export interface Database {
   'app.organization_profiles': OrganizationProfilesTable;
   'app.orders': OrdersTable;
   'app.order_lines': OrderLinesTable;
+  'app.organization_wave_accounts': OrganizationWaveAccountsTable;
   'app.organization_invitations': OrganizationInvitationsTable;
   'app.audit_logs': AuditLogsTable;
   'app.tax_rates': TaxRatesTable;

@@ -114,7 +114,11 @@ export type PublicOrderInput = z.infer<typeof publicOrderSchema>;
 
 /** What the customer sees once the order is sent. */
 export interface PublicOrderReceiptDto {
+  /** Unguessable: opens the payment and its status (ADR-065). */
+  id: string;
   reference: string;
+  /** The shop takes Wave payments online. */
+  wave: boolean;
   total: number;
   currency: string;
   lines: { label: string; quantity: number; lineTotal: number }[];
@@ -158,6 +162,8 @@ export interface OrderDto {
     reference: string;
   } | null;
   cancelReason: string;
+  /** Wave checkout opened for it (ADR-065); null: none. */
+  waveSessionId: string | null;
   saleId: string | null;
   confirmedAt: string | null;
   shippedAt: string | null;
