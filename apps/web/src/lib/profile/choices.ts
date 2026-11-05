@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Pill,
   Shirt,
+  ShoppingBag,
   ShoppingBasket,
   Smartphone,
   Store,
@@ -48,6 +49,7 @@ export const GOAL_ICONS: Record<string, LucideIcon> = {
   stock: Boxes,
   documents: FileText,
   accounting: Calculator,
+  orders: ShoppingBag,
 };
 
 export const iconOf = (icons: Record<string, LucideIcon>, key: string) =>
@@ -109,6 +111,12 @@ export const MODULE_OPTIONS: {
     label: 'Comptabilité',
     hint: 'Le journal pour le comptable',
     icon: Calculator,
+  },
+  {
+    value: 'orders',
+    label: 'Commandes',
+    hint: 'Un catalogue en lien pour WhatsApp et Instagram',
+    icon: ShoppingBag,
   },
 ];
 

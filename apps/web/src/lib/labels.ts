@@ -14,6 +14,13 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   'organization.profile_skipped':
     'Questions sur l’activité remises à plus tard',
   'organization.modules_updated': 'Menu de la boutique modifié',
+  'catalog.updated': 'Catalogue en ligne modifié',
+  'order.received': 'Commande reçue en ligne',
+  'order.confirmed': 'Commande confirmée',
+  'order.paid': 'Paiement de commande enregistré',
+  'order.shipping': 'Commande partie en livraison',
+  'order.delivered': 'Commande livrée',
+  'order.cancelled': 'Commande annulée',
   'invitation.created': 'Invitation créée',
   'invitation.revoked': 'Invitation annulée',
   'invitation.accepted': 'Invitation acceptée',

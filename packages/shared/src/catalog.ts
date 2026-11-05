@@ -293,6 +293,8 @@ export const createProductSchema = z
   .object({
     ...productFields,
     kind: productFields.kind.default('product'),
+    /** In the public catalogue of the shop (ADR-063). */
+    soldOnline: z.boolean().default(true),
     /** Stock on hand when the product is added; recorded as a movement. */
     initialStock: quantitySchema
       .positive('Le stock de départ doit être positif')
@@ -325,6 +327,7 @@ export const updateProductSchema = z
     trackStock: productFields.trackStock.optional(),
     lowStockThreshold: productFields.lowStockThreshold.optional(),
     kind: productFields.kind.optional(),
+    soldOnline: z.boolean().optional(),
     status: archivableStatus.optional(),
     /** Version read before editing: a stale version is a conflict (ADR-020). */
     version: z.number().int().min(1),
@@ -366,6 +369,8 @@ export interface ProductDto {
   barcode: string | null;
   kind: ProductKind;
   trackStock: boolean;
+  /** In the public catalogue of the shop (ADR-063). */
+  soldOnline: boolean;
   lowStockThreshold: number | null;
   /** Sum of the stock movements. */
   stockQuantity: number;

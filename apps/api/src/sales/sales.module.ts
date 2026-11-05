@@ -11,5 +11,7 @@ import { SyncService } from './sync.service.js';
   imports: [CatalogModule],
   controllers: [SalesController, SyncController],
   providers: [SalesService, CustomersService, DevicesService, SyncService],
+  // A delivered order becomes a sale (ADR-063).
+  exports: [SalesService],
 })
 export class SalesModule {}

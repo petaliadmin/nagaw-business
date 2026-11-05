@@ -159,6 +159,7 @@ export class ProductsService {
         'p.barcode',
         'p.kind',
         'p.track_stock',
+        'p.sold_online',
         'p.low_stock_threshold',
         'p.status',
         'p.version',
@@ -188,6 +189,7 @@ export class ProductsService {
   ): ProductDto {
     const stock = {
       trackStock: row.track_stock,
+      soldOnline: row.sold_online,
       stockQuantity: toNumber(row.stock_quantity),
       lowStockThreshold: toNullableNumber(row.low_stock_threshold),
     };
@@ -443,6 +445,7 @@ export class ProductsService {
             barcode: input.barcode,
             kind: input.kind,
             track_stock: input.trackStock,
+            sold_online: input.soldOnline,
             low_stock_threshold: input.lowStockThreshold,
             client_operation_id: input.clientOperationId,
             created_by: user.userId,
@@ -557,6 +560,7 @@ export class ProductsService {
           barcode: before.barcode,
           kind: before.kind,
           trackStock: before.trackStock,
+          soldOnline: before.soldOnline,
           lowStockThreshold: before.lowStockThreshold,
           status: before.status,
         };
@@ -580,6 +584,7 @@ export class ProductsService {
             // Becoming a service ends the count of its stock.
             track_stock: service ? false : input.trackStock,
             low_stock_threshold: service ? null : input.lowStockThreshold,
+            sold_online: input.soldOnline,
             status: input.status,
             version: sql`version + 1`,
           })

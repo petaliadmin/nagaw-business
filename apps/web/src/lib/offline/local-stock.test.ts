@@ -13,6 +13,7 @@ const product = (overrides: Partial<ProductDto> = {}): ProductDto => ({
   taxRate: null,
   barcode: null,
   trackStock: true,
+  soldOnline: true,
   lowStockThreshold: 2,
   stockQuantity: 5,
   stockLevel: 'ok',

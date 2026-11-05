@@ -42,7 +42,8 @@ describe('Shop profile and modules', () => {
     const acme = await create(alice, 'Acme Mode');
     acmeId = acme.id;
     expect(acme.profileStatus).toBe('pending');
-    expect(acme.hiddenModules).toEqual([]);
+    // « Commandes » opens a public page: hidden until chosen (ADR-063).
+    expect(acme.hiddenModules).toEqual(['orders']);
     globexId = (await create(bob, 'Globex')).id;
     await ctx.admin.query(
       `insert into app.organization_memberships (organization_id, user_id, role)
@@ -187,7 +188,7 @@ describe('Shop profile and modules', () => {
     expect(audit.rows).toHaveLength(1);
     expect(audit.rows[0].actor_id).toBe(alice.id);
     expect(audit.rows[0].metadata.hiddenModules).toEqual({
-      from: [],
+      from: ['orders'],
       to: ['documents', 'accounting'],
     });
   });

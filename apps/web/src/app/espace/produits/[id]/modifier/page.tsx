@@ -3,6 +3,7 @@ import {
   type CategoryDto,
   type ProductDto,
   type TaxRateDto,
+  showsModule,
 } from '@nagaw/shared';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -65,6 +66,7 @@ async function EditProduct({
       <Card>
         <ProductForm
           offer={organization.offer}
+          online={showsModule(organization.hiddenModules, 'orders')}
           organizationId={organization.id}
           currency={organization.defaultCurrency}
           categories={categories.data.filter((c) => c.status === 'active')}

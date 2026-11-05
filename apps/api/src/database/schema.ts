@@ -6,6 +6,7 @@ import type {
   QuoteStatus,
   MobileMoneyProvider,
   NotificationCategory,
+  OrderStatus,
   NotificationSeverity,
   PaymentMethod,
   ProductKind,
@@ -108,6 +109,11 @@ export interface OrganizationsTable {
   profile_status: Generated<ProfileStatus>;
   /** Modules left out of the menu (ADR-062). */
   hidden_modules: Generated<ShopModule[]>;
+  /** Public page of the shop, and where its customers pay (ADR-063). */
+  catalog_published: Generated<boolean>;
+  order_wave_number: Generated<string>;
+  order_orange_money_number: Generated<string>;
+  order_note: Generated<string>;
   created_by: string;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -237,6 +243,8 @@ export interface ProductsTable {
   status: CatalogStatus;
   version: Generated<number>;
   photo_sha256: string | null;
+  /** Shown in the public catalogue (ADR-063). */
+  sold_online: Generated<boolean>;
   client_operation_id: string;
   created_by: string;
   created_at: Timestamp;
@@ -594,6 +602,8 @@ export interface PlansTable {
   max_products: number | null;
   max_members: number;
   max_devices: number;
+  /** Null: no limit (ADR-063). */
+  max_orders_per_month: number | null;
   position: number;
   created_at: ColumnType<Date, never, never>;
   updated_at: ColumnType<Date, never, never>;
@@ -643,7 +653,54 @@ export interface PlatformSettingsTable {
   payment_orange_money_number: string | null;
   pin_max_failures: number;
   pin_lock_minutes: number;
+  public_orders_per_phone_per_hour: number;
+  public_orders_per_shop_per_hour: number;
   updated_at: ColumnType<Date, never, never>;
+}
+
+export interface OrdersTable {
+  id: Generated<string>;
+  organization_id: string;
+  reference: string;
+  status: Generated<OrderStatus>;
+  customer_name: string;
+  customer_phone: string;
+  customer_area: string;
+  customer_note: Generated<string>;
+  total: Numeric;
+  currency: string;
+  delivery_fee: ColumnType<
+    string,
+    number | string | undefined,
+    number | string
+  >;
+  courier_name: Generated<string>;
+  courier_phone: Generated<string>;
+  paid_at: NullableTimestamp;
+  payment_method: 'cash' | 'mobile_money' | null;
+  payment_provider: MobileMoneyProvider | null;
+  payment_reference: Generated<string>;
+  cancel_reason: Generated<string>;
+  sale_operation_id: Generated<string>;
+  sale_id: string | null;
+  confirmed_at: NullableTimestamp;
+  shipped_at: NullableTimestamp;
+  delivered_at: NullableTimestamp;
+  cancelled_at: NullableTimestamp;
+  updated_by: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface OrderLinesTable {
+  organization_id: string;
+  order_id: string;
+  position: number;
+  product_id: string;
+  label: string;
+  unit_price: Numeric;
+  quantity: Numeric;
+  line_total: Numeric;
 }
 
 export interface PhoneSignInFailuresTable {
@@ -745,6 +802,8 @@ export interface Database {
   'app.organization_memberships': OrganizationMembershipsTable;
   'app.profile_choices': ProfileChoicesTable;
   'app.organization_profiles': OrganizationProfilesTable;
+  'app.orders': OrdersTable;
+  'app.order_lines': OrderLinesTable;
   'app.organization_invitations': OrganizationInvitationsTable;
   'app.audit_logs': AuditLogsTable;
   'app.tax_rates': TaxRatesTable;
