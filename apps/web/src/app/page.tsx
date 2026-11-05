@@ -391,6 +391,47 @@ function DesktopScreen({
   );
 }
 
+// Demo video hosted on Cloudinary. `q_auto,w_1280` brings the 23 MB source
+// down to about 11 MB; nothing is downloaded before the visitor presses play
+// (`preload="none"`), so the page stays light on mobile data.
+const DEMO_VIDEO_BASE =
+  'https://res.cloudinary.com/dtkuombmo/video/upload/q_auto,w_1280/v1793901196/nagaw_video_demo';
+const DEMO_POSTER_BASE =
+  'https://res.cloudinary.com/dtkuombmo/video/upload/so_3,q_auto,w_1280/v1793901196/nagaw_video_demo';
+
+/** Demo video in the same browser frame as the desktop screenshots. */
+function DemoVideo({ className = '' }: { className?: string }) {
+  return (
+    <figure
+      className={`overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-xl ${className}`}
+    >
+      <div aria-hidden className="flex gap-1.5 border-b border-line px-3 py-2">
+        <span className="size-2.5 rounded-full bg-danger" />
+        <span className="size-2.5 rounded-full bg-warning" />
+        <span className="size-2.5 rounded-full bg-sales" />
+      </div>
+      <video
+        controls
+        playsInline
+        preload="none"
+        poster={`${DEMO_POSTER_BASE}.jpg`}
+        width={1920}
+        height={1008}
+        aria-label="Vidéo de démonstration de Nagaw Business"
+        className="aspect-[1920/1008] h-auto w-full bg-ink"
+      >
+        <source src={`${DEMO_VIDEO_BASE}.mp4`} type="video/mp4" />
+        <a href={`${DEMO_VIDEO_BASE}.mp4`}>
+          Regarder la vidéo de démonstration
+        </a>
+      </video>
+      <figcaption className="border-t border-line px-3 py-2 text-base font-semibold">
+        Voir l’application en vidéo
+      </figcaption>
+    </figure>
+  );
+}
+
 function SectionTitle({
   id,
   eyebrow,
@@ -576,20 +617,7 @@ export default function Home() {
                 ))}
               </ul>
             </div>
-            <div className="relative md:pb-12 md:pl-10">
-              <DesktopScreen
-                src={screen('desktop', 'accueil')}
-                alt="Tableau de bord sur ordinateur : menu à gauche, six chiffres clés en couleur (350 500 F CFA de chiffre d’affaires, 53 000 F CFA de bénéfice estimé), choix de la période et ventes du jour."
-                priority
-                className="hidden md:block"
-              />
-              <PhoneScreen
-                src={screen('mobile', 'accueil')}
-                alt="Tableau de bord sur téléphone : chiffre d’affaires de 350 500 F CFA, 7 ventes, panier moyen, marge brute, dépenses et bénéfice estimé dans des cartes de couleur, avec le bouton Vendre."
-                priority
-                className="mx-auto w-full max-w-64 md:absolute md:bottom-0 md:left-0 md:w-36"
-              />
-            </div>
+            <DemoVideo />
           </div>
         </section>
 
