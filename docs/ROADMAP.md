@@ -35,6 +35,8 @@ Les anciennes phases 8 (approbations), 9 (outils et intégrations), 10 (document
 
 Après la Phase 18 : **notifications, accès élargi des vendeurs et contrôle du stock à la vente** (ADR-036, validée le 2026-10-26).
 
+**Version 1.0.0** (2026-11-04, ADR-061) : clôture de tout ce qui est livré ci-dessus et des lots fusionnés jusqu'au 2026-11-03. Contenu et réserves dans `CHANGELOG.md`. Le pilote de la Phase 18 reste à mener.
+
 ## Critères d'acceptation du MVP
 
 Le MVP est atteint lorsque le parcours suivant fonctionne **en préproduction**, sur le backend réel, sur un téléphone (360 px) et sur ordinateur, couvert par des tests end-to-end automatisés :

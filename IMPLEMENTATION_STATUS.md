@@ -978,8 +978,27 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 
 ## Tableau de bord : refonte
 
-- **Demandé** par le propriétaire le 2026-11-03 (moins de texte, design plus efficace). Non commité, non déployé.
+- **Demandé** par le propriétaire le 2026-11-03 (moins de texte, design plus efficace). Commité directement sur `main` (`62eb009`) ; déploiement non vérifié.
 - **Livré** : période en haut, juste sous le nom de la boutique, puis les six chiffres clés ; une seule ligne de comparaison, « Marge − dépenses » dans la tuile du bénéfice, rappel des prix d'achat raccourci ; bande « Aujourd'hui » compacte, masquée quand la période est déjà « Aujourd'hui » ; stock remonté sous les chiffres, en tuiles claires (épuisés, bientôt épuisés, valeur) sans « Produits suivis » ; produits, paiements et trésorerie en grille de deux colonnes sur ordinateur ; liens « Tout voir » dans l'en-tête des cartes (composant `Card`, propriété `action`) au lieu des liens en bas ; la carte « Activité récente » n'apparaît plus pour un rôle sans accès à l'historique. Aucun nouvel endpoint.
 - **Couleurs** (2026-11-03, même demande) : vert des ventes passé en émeraude (`#047857`, blanc dessus à 5,48:1) ; tuiles de chiffres clés blanches avec pastille d'icône colorée (accueil, factures, administration) ; chiffres secondaires sur fond neutre ; bande « Aujourd'hui » en vert clair, le vert plein restant au seul bouton « Vendre ». Règle ajoutée à `docs/DESIGN.md`.
 - **Page Ventes** (2026-11-03) : description retirée pour le propriétaire (« Vos ventes. » reste pour le vendeur) ; Aujourd'hui, Hier, Toutes et « Autre jour » sur une seule ligne ; résumé du jour avec le total en grand sur fond vert clair, puis ventes et moyens de paiement avec leur icône ; chaque vente avec sa pastille ticket, ses alertes sous la ligne, le montant à droite.
 - **Logos Mobile Money** (2026-11-03) : logos de Wave, Orange Money et Mixx by Yas (ex-Free Money), téléchargés le 2026-11-03 depuis wave.com, orange.sn et yas.sn, dans `apps/web/src/components/sales/operators/` (importés, donc gardés par le service worker pour la caisse hors ligne). Affichés à côté du nom au choix de l'opérateur en caisse et dans les paiements d'une facture. « Free Money » s'affiche désormais « Mixx (Free Money) ». Pour Orange, c'est le carré Orange (seul logo exploitable trouvé sur la page Orange Money). **Droit d'usage des marques non vérifié** : à confirmer par le propriétaire avant la production.
+
+## Version 1.0 (ADR-061)
+
+- **Demandé** par le propriétaire le 2026-11-04 (« clôturer la version 1.0 »). Branche `claude/version-1-0`, non fusionnée, étiquette `v1.0.0` non posée.
+- **Contenu** : tout ce qui est fusionné dans `main` au 2026-11-04 (commit `62eb009`), décrit dans `CHANGELOG.md`. Vérifié le 2026-11-04 : toutes les branches `claude/*` sont fusionnées (le seul commit restant, « Sélecteur de pays : zone tactile de 48 px », est déjà dans `main`) et aucune PR n'est ouverte.
+- **Fait sur cette branche** : version `1.0.0` dans les quatre `package.json`, `CHANGELOG.md`, ADR-061, mise à jour de ce fichier et de `docs/ROADMAP.md`. Aucun changement de code ni de schéma.
+- **Non vérifié depuis ce poste** :
+  - migrations appliquées en production : le projet Supabase n'est pas relié ici (`supabase migration list` impossible) ;
+  - commit déployé sur Vercel : le connecteur Vercel ne voit pas les projets `nagaw-web` et `nagaw-api`.
+- **Réserves à lever par le propriétaire avant le pilote** (reprises des sections ci-dessus) :
+  1. vérifier par `supabase migration list` que toutes les migrations de `supabase/migrations` sont appliquées, en particulier `20261029200000_product_units_catch_up`, `20261030090000_organization_logos` à `20261030130000_shop_marks`, `20261101090000_device_users`, `20261101091000_plan_product_limits_10_50`, `20261101120000_phone_country_code`, `20261101130000_subscription_payment` et `20261102090000_phone_sign_in`, **puis** déployer l'API et le web ;
+  2. Supabase : fournisseur Phone activé sans confirmation par SMS, limite de connexions par IP relevée, **sauvegardes et PITR activés** (aucune sauvegarde au 2026-11-01) ;
+  3. Vercel `nagaw-api` : `SUPABASE_SECRET_KEY`, `PHONE_PIN_PEPPER`, `VAPID_*`, `CRON_SECRET`, et `APP_VERSION=1.0.0` ;
+  4. essayer la connexion par téléphone contre le vrai Supabase sur une préversion (ADR-058) ;
+  5. essais sur de vrais téléphones Android d'entrée de gamme et iPhone : hors ligne, contacts, installation, rendu ;
+  6. droit d'usage des logos Wave, Orange Money et Mixx ; relecture juridique des conditions et de la politique de confidentialité ;
+  7. mener le pilote (`docs/PILOT.md`).
+- **Tests exécutés** (2026-11-04, sur ce poste) : format vérifié en ignorant les fins de ligne (CRLF dus à `core.autocrlf`), lint et types verts ; unitaires 411 (shared 100, web 246, api 65) ; intégration 236 sur 18 fichiers, verts avec `--testTimeout=90000 --hookTimeout=180000` (avec les délais par défaut, 10 tests dépassent 15 s sur ce poste chargé, sans échec d'assertion propre) ; build vert. E2e non relancés : aucun code modifié.
+- **Après la fusion** : poser l'étiquette `v1.0.0` sur le commit de fusion (`git tag -a v1.0.0 -m "Version 1.0.0"` puis `git push origin v1.0.0`) et, si souhaité, publier la version GitHub à partir de la section 1.0.0 de `CHANGELOG.md`.

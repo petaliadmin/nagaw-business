@@ -728,3 +728,16 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - l'import sur iPhone demande de partager la fiche depuis Contacts puis de la choisir dans Fichiers : moins direct que sur Android ;
   - un seul contact à la fois, pas d'import en masse ;
   - un client archivé n'a pas encore d'écran pour revenir : il réapparaîtra quand il faudra (à décider).
+
+## ADR-061 — Numéro de version et clôture d'une version
+
+- **Statut** : **Proposée** (demande du propriétaire du 2026-11-04 : « clôturer la version 1.0 de l'application »). À accepter avec la PR de clôture.
+- **Décision** :
+  - le numéro suit SemVer : majeur pour un changement qui casse les données, l'API ou les habitudes des commerçants, mineur pour une fonctionnalité, correctif sinon ;
+  - un seul numéro pour tout le dépôt : `package.json` de la racine, de `apps/web`, `apps/api` et `packages/shared` portent la même valeur ;
+  - chaque version a sa section dans `CHANGELOG.md` (contenu, ce qui en est exclu, réserves) et dans `IMPLEMENTATION_STATUS.md` ;
+  - une version est close quand la PR de clôture est fusionnée dans `main` ; le propriétaire pose ensuite l'étiquette `vX.Y.Z` sur le commit de fusion et règle `APP_VERSION` sur le projet Vercel `nagaw-api`, lu par `GET /api/v1/health` ;
+  - la version **1.0.0** regroupe tout ce qui est fusionné dans `main` au 2026-11-04 (commit `62eb009`).
+- **Limites** :
+  - clore une version ne vaut pas mise en production : les réserves de la version restent à lever par le propriétaire avant le pilote ;
+  - `APP_VERSION` est réglé à la main sur Vercel et peut diverger du `package.json`.
