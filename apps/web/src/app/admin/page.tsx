@@ -5,6 +5,7 @@ import {
   type AdminAlertDto,
   type AdminFinancesDto,
   type AdminOverviewDto,
+  type AdminProfilesDto,
 } from '@nagaw/shared';
 import {
   BellRing,
@@ -12,6 +13,7 @@ import {
   Crown,
   RefreshCw,
   ShoppingCart,
+  Sparkles,
   Store,
   TrendingUp,
   Trophy,
@@ -95,10 +97,11 @@ function Alerts({ o }: { o: AdminOverviewDto }) {
 async function Overview() {
   const admin = await requirePlatformAdmin();
   if (!admin) return null;
-  const [overview, finances, activity] = await Promise.all([
+  const [overview, finances, activity, profiles] = await Promise.all([
     apiAsUser<AdminOverviewDto>(admin.accessToken, { path: '/admin/overview' }),
     apiAsUser<AdminFinancesDto>(admin.accessToken, { path: '/admin/finances' }),
     apiAsUser<AdminActivityDto>(admin.accessToken, { path: '/admin/activity' }),
+    apiAsUser<AdminProfilesDto>(admin.accessToken, { path: '/admin/profiles' }),
   ]);
   if (!overview.ok)
     return (
@@ -343,7 +346,57 @@ async function Overview() {
           </Link>
         </Card>
       </div>
+
+      {!profiles.ok ? (
+        <Alert tone="error">
+          Activités des boutiques indisponibles : {profiles.message}
+        </Alert>
+      ) : (
+        <ProfilesCard profiles={profiles.data} />
+      )}
     </>
+  );
+}
+
+/**
+ * What the active shops answered (ADR-062), to choose the next activities
+ * on facts. Counts only: no shop is named.
+ */
+function ProfilesCard({ profiles }: { profiles: AdminProfilesDto }) {
+  const shops = (n: number) => count(n, 'boutique', 'boutiques');
+  const rows = (list: { key: string; label: string; count: number }[]) =>
+    list.map((item) => ({
+      key: item.key,
+      name: item.label,
+      value: item.count,
+      text: shops(item.count),
+    }));
+  return (
+    <Card title="Activités des boutiques" titleId="profiles" icon={Sparkles}>
+      <dl className="grid grid-cols-3 gap-3">
+        <Stat label="Ont répondu" value={integer(profiles.status.answered)} />
+        <Stat label="Plus tard" value={integer(profiles.status.skipped)} />
+        <Stat label="Pas encore" value={integer(profiles.status.pending)} />
+      </dl>
+      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="flex flex-col gap-3">
+          <h3 className="text-lg font-bold">Activité</h3>
+          <BarList
+            label="Activité"
+            tone="brand"
+            rows={rows(profiles.sectors)}
+          />
+        </div>
+        <div className="flex flex-col gap-3">
+          <h3 className="text-lg font-bold">Ce qu’elles veulent d’abord</h3>
+          <BarList
+            label="Ce qu’elles veulent d’abord"
+            tone="brand"
+            rows={rows(profiles.goals)}
+          />
+        </div>
+      </div>
+    </Card>
   );
 }
 

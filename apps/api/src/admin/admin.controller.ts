@@ -22,6 +22,7 @@ import {
   type AdminFinancesDto,
   type AdminOpenAccessInput,
   type AdminOverviewDto,
+  type AdminProfilesDto,
   type AdminPlanRequestDto,
   type AdminResolveRequestInput,
   type AdminSetPinInput,
@@ -56,6 +57,11 @@ export class AdminController {
   @Get('overview')
   overview(): Promise<AdminOverviewDto> {
     return this.admin.overview();
+  }
+
+  @Get('profiles')
+  profiles(): Promise<AdminProfilesDto> {
+    return this.admin.profiles();
   }
 
   @Get('shops')

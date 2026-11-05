@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { documentColorSchema } from './document-colors.js';
 import type { MemberStatus } from './members.js';
 import { roleSchema } from './permissions.js';
+import type { ProfileStatus, ShopModule } from './profile.js';
 
 const timezoneSchema = z
   .string()
@@ -65,11 +66,14 @@ export const createOrganizationSchema = z
   .strict();
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 
-/** The form asks both: the API stays open to its older clients. */
+/**
+ * The form asks the owner and the phone: the API stays open to its older
+ * clients. What the shop sells is the second question of its profile, right
+ * after (ADR-062).
+ */
 export const createShopFormSchema = createOrganizationSchema.extend({
   ownerName: ownerNameSchema,
   phone: phoneSchema,
-  offer: offerSchema,
 });
 
 /** Bounds mirror the database check constraint. */
@@ -154,6 +158,10 @@ export interface OrganizationDto {
   invoiceDueDays: number;
   quoteValidityDays: number;
   offer: ShopOffer;
+  /** Whether the questionnaire of the profile was answered (ADR-062). */
+  profileStatus: ProfileStatus;
+  /** Modules left out of the menu; nothing is removed nor refused. */
+  hiddenModules: ShopModule[];
   /** Colour of the shop's documents, `#rrggbb` (ADR-044). */
   documentColor: string;
   /** Changes with the logo (cache key); null without logo. */

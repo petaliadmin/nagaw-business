@@ -12,8 +12,12 @@ import type {
   ProductPhotoType,
   ShopLogoType,
   ShopMarkKind,
+  ShopModule,
   ShopOffer,
+  ProfileStatus,
+  SalesChannel,
   StockMovementKind,
+  TeamSize,
   Unit,
 } from '@nagaw/shared';
 import type { ColumnType, Generated } from 'kysely';
@@ -100,9 +104,34 @@ export interface OrganizationsTable {
     string | null | undefined,
     string | null
   >;
+  /** Questionnaire of the profile (ADR-062). */
+  profile_status: Generated<ProfileStatus>;
+  /** Modules left out of the menu (ADR-062). */
+  hidden_modules: Generated<ShopModule[]>;
   created_by: string;
   created_at: Timestamp;
   updated_at: Timestamp;
+}
+
+/** Answers offered by the questionnaire (ADR-062), edited in SQL. */
+export interface ProfileChoicesTable {
+  kind: 'sector' | 'goal';
+  key: string;
+  label: string;
+  position: number;
+  modules: ShopModule[];
+  active: Generated<boolean>;
+}
+
+export interface OrganizationProfilesTable {
+  organization_id: string;
+  sector_kind: Generated<'sector'>;
+  sector: string | null;
+  channels: Generated<SalesChannel[]>;
+  goals: Generated<string[]>;
+  team_size: TeamSize | null;
+  answered_by: string;
+  answered_at: Generated<Date>;
 }
 
 export interface OrganizationMembershipsTable {
@@ -714,6 +743,8 @@ export interface Database {
   'app.user_profiles': UserProfilesTable;
   'app.organizations': OrganizationsTable;
   'app.organization_memberships': OrganizationMembershipsTable;
+  'app.profile_choices': ProfileChoicesTable;
+  'app.organization_profiles': OrganizationProfilesTable;
   'app.organization_invitations': OrganizationInvitationsTable;
   'app.audit_logs': AuditLogsTable;
   'app.tax_rates': TaxRatesTable;

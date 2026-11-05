@@ -5,6 +5,7 @@ import {
   type AdminAlertDto,
   type AdminFinancesDto,
   type AdminOverviewDto,
+  type AdminProfilesDto,
   type AdminPlanRequestDto,
   type AdminShopDto,
   type AdminShopListItemDto,
@@ -829,6 +830,71 @@ export class AdminService {
       label: r.label,
       lastSyncedAt: r.last_synced_at ? r.last_synced_at.toISOString() : null,
     }));
+  }
+
+  /** Answers of the active shops, counted (ADR-062). */
+  async profiles(): Promise<AdminProfilesDto> {
+    const db = this.database.db;
+    const [status, choices, channels, teamSizes] = await Promise.all([
+      sql<{ status: string; count: string }>`
+        select profile_status as status, count(*) as count
+          from app.organizations where status = 'active'
+         group by profile_status`.execute(db),
+      sql<{
+        kind: 'sector' | 'goal';
+        key: string;
+        label: string;
+        count: string;
+      }>`
+        select c.kind, c.key, c.label, count(o.id) as count
+          from app.profile_choices c
+          left join app.organization_profiles p
+            on (c.kind = 'sector' and p.sector = c.key)
+            or (c.kind = 'goal' and c.key = any (p.goals))
+          left join app.organizations o
+            on o.id = p.organization_id and o.status = 'active'
+         group by c.kind, c.key, c.label, c.position
+         order by c.position, c.key`.execute(db),
+      sql<{ key: string; count: string }>`
+        select channel as key, count(*) as count
+          from app.organization_profiles p
+          join app.organizations o on o.id = p.organization_id and o.status = 'active'
+          cross join unnest(p.channels) as channel
+         group by channel order by channel`.execute(db),
+      sql<{ key: string; count: string }>`
+        select p.team_size as key, count(*) as count
+          from app.organization_profiles p
+          join app.organizations o on o.id = p.organization_id and o.status = 'active'
+         where p.team_size is not null
+         group by p.team_size order by p.team_size`.execute(db),
+    ]);
+    const countOf = (value: string) =>
+      toNumber(status.rows.find((row) => row.status === value)?.count ?? '0');
+    const of = (kind: 'sector' | 'goal') =>
+      choices.rows
+        .filter((row) => row.kind === kind)
+        .map(({ key, label, count }) => ({
+          key,
+          label,
+          count: toNumber(count),
+        }));
+    return {
+      status: {
+        pending: countOf('pending'),
+        answered: countOf('answered'),
+        skipped: countOf('skipped'),
+      },
+      sectors: of('sector'),
+      goals: of('goal'),
+      channels: channels.rows.map(({ key, count }) => ({
+        key,
+        count: toNumber(count),
+      })),
+      teamSizes: teamSizes.rows.map(({ key, count }) => ({
+        key,
+        count: toNumber(count),
+      })),
+    };
   }
 
   async overview(): Promise<AdminOverviewDto> {

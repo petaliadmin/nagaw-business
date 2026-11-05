@@ -93,6 +93,18 @@ export interface AdminOverviewDto {
   alerts: AdminAlertDto[];
 }
 
+/**
+ * What the active shops answered about their activity (ADR-062): counts
+ * only, to choose the next activities on facts. No shop is named.
+ */
+export interface AdminProfilesDto {
+  status: { pending: number; answered: number; skipped: number };
+  sectors: { key: string; label: string; count: number }[];
+  goals: { key: string; label: string; count: number }[];
+  channels: { key: string; count: number }[];
+  teamSizes: { key: string; count: number }[];
+}
+
 export interface AdminShopListItemDto {
   id: string;
   name: string;

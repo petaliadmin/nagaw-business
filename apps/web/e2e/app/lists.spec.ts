@@ -86,7 +86,7 @@ test('a shop of services only sees what serves it, and can change', async ({
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/parametres');
   await page.waitForLoadState('networkidle');
-  const shop = page.getByRole('region', { name: 'Boutique' });
+  const shop = page.getByRole('region', { name: 'Boutique', exact: true });
   await shop.locator('label', { hasText: 'Des services' }).click();
   await shop.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(shop.getByText('Paramètres enregistrés.')).toBeVisible();

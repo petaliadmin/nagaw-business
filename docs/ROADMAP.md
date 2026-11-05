@@ -37,6 +37,8 @@ Après la Phase 18 : **notifications, accès élargi des vendeurs et contrôle d
 
 **Version 1.0.0** (2026-11-04, ADR-061) : clôture de tout ce qui est livré ci-dessus et des lots fusionnés jusqu'au 2026-11-03. Contenu et réserves dans `CHANGELOG.md`. Le pilote de la Phase 18 reste à mener.
 
+**Version 1.1** (périmètre validé le 2026-11-04) : profil de la boutique et modules (Phase 19, ADR-062, en parallèle du pilote), catalogue en lien et commandes (Phase 20, ADR-063), paiement Wave (Phase 21, ADR-065), relances automatiques WhatsApp et SMS (Phase 22, ADR-064), lots et péremptions (Phase 23), stabilisation (Phase 24). Détail dans `docs/VERSION_1_1.md`. La 1.2 élargira l'application selon l'activité (écoles, location).
+
 ## Critères d'acceptation du MVP
 
 Le MVP est atteint lorsque le parcours suivant fonctionne **en préproduction**, sur le backend réel, sur un téléphone (360 px) et sur ordinateur, couvert par des tests end-to-end automatisés :

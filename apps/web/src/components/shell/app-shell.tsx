@@ -187,7 +187,11 @@ export async function AppShell({ children }: { children: ReactNode }) {
           tone="sidebar"
         />
         <nav aria-label="Navigation principale">
-          <NavLinks role={organization.role} offer={organization.offer} />
+          <NavLinks
+            role={organization.role}
+            offer={organization.offer}
+            hiddenModules={organization.hiddenModules}
+          />
         </nav>
         <div className="mt-auto">
           <Account me={me} organization={organization} tone="sidebar" />
@@ -227,12 +231,17 @@ export async function AppShell({ children }: { children: ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgb(0_0_0/0.06)] md:hidden print:hidden"
       >
         <ul className="mx-auto flex max-w-xl gap-1 px-2 py-1">
-          <BottomNavLinks role={organization.role} offer={organization.offer} />
+          <BottomNavLinks
+            role={organization.role}
+            offer={organization.offer}
+            hiddenModules={organization.hiddenModules}
+          />
           <MoreMenu>
             <nav aria-label="Autres pages">
               <NavLinks
                 role={organization.role}
                 offer={organization.offer}
+                hiddenModules={organization.hiddenModules}
                 only="secondary"
                 tone="sheet"
               />

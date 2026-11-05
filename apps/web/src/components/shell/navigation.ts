@@ -1,8 +1,10 @@
 import {
   roleHasPermission,
   sellsGoods,
+  showsModule,
   type Permission,
   type Role,
+  type ShopModule,
   type ShopOffer,
 } from '@nagaw/shared';
 import {
@@ -32,6 +34,8 @@ export interface NavItem {
   matches?: readonly string[];
   /** Hidden from the roles without it (the API refuses them anyway). */
   permission?: Permission;
+  /** Left out when the shop hides this module (ADR-062). */
+  module?: ShopModule;
 }
 
 /**
@@ -68,6 +72,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: FileText,
     bottomBar: false,
     permission: 'documents.read',
+    module: 'documents',
   },
   {
     href: '/espace/clients',
@@ -80,6 +85,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Fournisseurs',
     icon: Truck,
     bottomBar: false,
+    module: 'suppliers',
   },
   {
     href: '/espace/tresorerie/depenses',
@@ -87,6 +93,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: Banknote,
     bottomBar: false,
     permission: 'treasury.read',
+    module: 'expenses',
   },
   {
     href: '/espace/tresorerie',
@@ -112,21 +119,53 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
 ];
 
-/** Entries the role may open, named after what the shop sells (ADR-047). */
-export function navItemsFor(role: Role, offer: ShopOffer = 'both'): NavItem[] {
-  return NAV_ITEMS.filter(
-    (item) =>
-      (!item.permission || roleHasPermission(role, item.permission)) &&
-      (sellsGoods(offer) || item.href !== '/espace/produits/fournisseurs'),
-  ).map((item) =>
-    item.href === '/espace/produits' && offer !== 'both'
-      ? {
-          ...item,
-          label: CATALOG_TITLES[offer],
-          shortLabel: CATALOG_TITLES[offer],
-        }
-      : item,
-  );
+/**
+ * Entries the role may open, named after what the shop sells (ADR-047),
+ * without the modules the shop hides (ADR-062). « Rapports » leads to the
+ * accounting when the statistics are hidden, and leaves with both.
+ */
+export function navItemsFor(
+  role: Role,
+  offer: ShopOffer = 'both',
+  hiddenModules: readonly ShopModule[] = [],
+): NavItem[] {
+  return NAV_ITEMS.map((item) => reportsEntry(item, hiddenModules))
+    .filter(
+      (item): item is NavItem =>
+        item !== null &&
+        (!item.permission || roleHasPermission(role, item.permission)) &&
+        (!item.module || showsModule(hiddenModules, item.module)) &&
+        (sellsGoods(offer) || item.href !== '/espace/produits/fournisseurs'),
+    )
+    .map((item) =>
+      item.href === '/espace/produits' && offer !== 'both'
+        ? {
+            ...item,
+            label: CATALOG_TITLES[offer],
+            shortLabel: CATALOG_TITLES[offer],
+          }
+        : item,
+    );
+}
+
+function reportsEntry(
+  item: NavItem,
+  hiddenModules: readonly ShopModule[],
+): NavItem | null {
+  if (item.href !== '/espace/statistiques') return item;
+  const stats = showsModule(hiddenModules, 'stats');
+  const accounting = showsModule(hiddenModules, 'accounting');
+  if (stats && accounting) return item;
+  if (stats) return { ...item, label: 'Statistiques', matches: [] };
+  if (accounting)
+    return {
+      ...item,
+      href: '/espace/comptabilite',
+      label: 'Comptabilité',
+      matches: ['/espace/statistiques'],
+      permission: 'accounting.read',
+    };
+  return null;
 }
 
 /** Exact match for the overview, prefix match for sections. */
@@ -198,6 +237,7 @@ export interface SectionTab {
   /** Other paths where the tabs show, with this tab marked. */
   paths?: readonly string[];
   permission?: Permission;
+  module?: ShopModule;
 }
 
 /** Tabs at the top of the sections that group several pages. */
@@ -212,11 +252,13 @@ export const SECTION_TABS = {
       href: '/espace/statistiques',
       label: 'Statistiques',
       permission: 'stats.read',
+      module: 'stats',
     },
     {
       href: '/espace/comptabilite',
       label: 'Comptabilité',
       permission: 'accounting.read',
+      module: 'accounting',
     },
   ],
   parametres: [
@@ -233,10 +275,15 @@ export const SECTION_TABS = {
 
 export type Section = keyof typeof SECTION_TABS;
 
-/** Tabs of a section the role may open. */
-export function sectionTabsFor(section: Section, role: Role): SectionTab[] {
+/** Tabs of a section the role may open, without the hidden modules. */
+export function sectionTabsFor(
+  section: Section,
+  role: Role,
+  hiddenModules: readonly ShopModule[] = [],
+): SectionTab[] {
   return SECTION_TABS[section].filter(
     (tab: SectionTab) =>
-      !tab.permission || roleHasPermission(role, tab.permission),
+      (!tab.permission || roleHasPermission(role, tab.permission)) &&
+      (!tab.module || showsModule(hiddenModules, tab.module)),
   );
 }

@@ -10,6 +10,7 @@ import {
 import {
   BellRing,
   FileText,
+  LayoutList,
   Plus,
   Smartphone,
   Store,
@@ -32,6 +33,7 @@ import { OrganizationSwitcher } from '@/components/shell/organization-switcher';
 import { RestoreDeviceButton, RevokeDeviceButton } from './device-actions';
 import { InvoiceSettingsForm } from './invoice-settings-form';
 import { LogoForm } from './logo-form';
+import { ModulesForm } from './modules-form';
 import { MarkForm } from './mark-form';
 import { NotificationSettingsForm } from './notification-settings-form';
 import { currencyOptions, timeZoneOptions } from './options';
@@ -113,6 +115,20 @@ async function Settings() {
           </div>
         )}
       </Card>
+      {organization.ok && canUpdate && (
+        <Card title="Menu de la boutique" titleId="modules" icon={LayoutList}>
+          <ModulesForm
+            organizationId={organization.data.id}
+            hiddenModules={organization.data.hiddenModules}
+          />
+          <Link
+            href="/espace/profil"
+            className="mt-4 inline-flex min-h-12 items-center text-base font-bold text-brand-ink underline underline-offset-4"
+          >
+            Répondre de nouveau aux questions sur votre activité
+          </Link>
+        </Card>
+      )}
       {organization.ok && roleHasPermission(active.role, 'documents.read') && (
         <Card
           title="Factures et devis"

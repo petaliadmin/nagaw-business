@@ -13,6 +13,7 @@ const PAGES = [
   '/espace/journal',
   '/espace/parametres',
   '/espace/nouvelle-boutique',
+  '/espace/profil',
   '/espace/produits',
   '/espace/produits/nouveau',
   '/espace/produits/dddddddd-0000-4000-8000-000000000001',

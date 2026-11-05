@@ -3,7 +3,7 @@
 import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
-import type { Role, ShopOffer } from '@nagaw/shared';
+import type { Role, ShopModule, ShopOffer } from '@nagaw/shared';
 import { activeHref, navItemsFor } from './navigation';
 
 /**
@@ -13,16 +13,18 @@ import { activeHref, navItemsFor } from './navigation';
 export function NavLinks({
   role,
   offer,
+  hiddenModules,
   only = 'all',
   tone = 'sidebar',
 }: {
   role: Role;
   offer: ShopOffer;
+  hiddenModules: readonly ShopModule[];
   only?: 'all' | 'secondary';
   tone?: 'sidebar' | 'sheet';
 }) {
   const pathname = usePathname();
-  const all = navItemsFor(role, offer);
+  const all = navItemsFor(role, offer, hiddenModules);
   const current = activeHref(all, pathname);
   const items = all.filter((item) => only === 'all' || !item.bottomBar);
   const styles =
@@ -84,12 +86,14 @@ function TabIcon({
 export function BottomNavLinks({
   role,
   offer,
+  hiddenModules,
 }: {
   role: Role;
   offer: ShopOffer;
+  hiddenModules: readonly ShopModule[];
 }) {
   const pathname = usePathname();
-  const all = navItemsFor(role, offer);
+  const all = navItemsFor(role, offer, hiddenModules);
   const current = activeHref(all, pathname);
   return (
     <>
