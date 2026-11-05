@@ -12,6 +12,7 @@ import { initialFormState } from '@/lib/auth/schemas';
 import { PROVIDER_LABELS } from '@/lib/sales/labels';
 import {
   cancelOrder,
+  checkWavePayment,
   confirmOrder,
   deliverOrder,
   payOrder,
@@ -248,5 +249,26 @@ export function CancelOrder(props: Props) {
         </ActionForm>
       </BottomSheet>
     </>
+  );
+}
+
+/** Asks Wave again, for an order whose customer opened the Wave page. */
+export function CheckWavePayment(props: Props) {
+  const [state, action, pending] = useActionState(
+    checkWavePayment,
+    initialFormState,
+  );
+  return (
+    <ActionForm
+      action={action}
+      pending={pending}
+      className="flex flex-col gap-2"
+    >
+      <FormMessage state={state} />
+      <Ids {...props} />
+      <SubmitButton pendingLabel="Question à Wave…" variant="secondary">
+        Vérifier le paiement Wave
+      </SubmitButton>
+    </ActionForm>
   );
 }

@@ -12,6 +12,8 @@ import {
   type PublicCatalogDto,
   type PublicOrderInput,
   type PublicOrderReceiptDto,
+  type PublicOrderStatusDto,
+  type WaveLaunchDto,
 } from '@nagaw/shared';
 import type { Response } from 'express';
 import { Public } from '../auth/public.decorator.js';
@@ -19,6 +21,7 @@ import { ProductsService } from '../catalog/products.service.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { OrganizationsService } from '../organizations/organizations.service.js';
 import { OrdersService } from './orders.service.js';
+import { WaveService } from './wave.service.js';
 
 /**
  * The public page of a shop (ADR-063): no session. Only what a customer may
@@ -32,6 +35,7 @@ export class PublicCatalogController {
     private readonly orders: OrdersService,
     private readonly organizations: OrganizationsService,
     private readonly products: ProductsService,
+    private readonly wave: WaveService,
   ) {}
 
   @Get()
@@ -62,6 +66,24 @@ export class PublicCatalogController {
     const photo = await this.products.photo(shopId, id);
     res.setHeader('Cache-Control', 'public, max-age=3600');
     return new StreamableFile(photo.data, { type: photo.contentType });
+  }
+
+  /** The Wave page of an order, by its unguessable id (ADR-065). */
+  @Post('orders/:id/wave')
+  launchWave(
+    @Param('slug') slug: string,
+    @Param('id') id: string,
+  ): Promise<WaveLaunchDto> {
+    return this.wave.launch(slug, id);
+  }
+
+  /** On coming back from Wave: asks Wave, then says paid or not. */
+  @Get('orders/:id')
+  status(
+    @Param('slug') slug: string,
+    @Param('id') id: string,
+  ): Promise<PublicOrderStatusDto> {
+    return this.wave.publicStatus(slug, id);
   }
 
   @Post('orders')

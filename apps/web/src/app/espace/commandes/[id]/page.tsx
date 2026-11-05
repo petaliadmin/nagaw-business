@@ -24,6 +24,7 @@ import { whatsappLink } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import {
   CancelOrder,
+  CheckWavePayment,
   ConfirmOrder,
   DeliverOrder,
   PayOrder,
@@ -126,6 +127,9 @@ async function Order({ params }: PageProps<'/espace/commandes/[id]'>) {
                   <Truck aria-hidden className="size-5" />
                   Message au livreur
                 </a>
+              )}
+              {!order.paidAt && order.waveSessionId && (
+                <CheckWavePayment {...props} />
               )}
               {!order.paidAt && order.status !== 'new' && (
                 <PayOrder {...props} />

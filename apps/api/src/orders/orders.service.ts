@@ -41,6 +41,7 @@ import type {
   OrganizationsTable,
 } from '../database/schema.js';
 import { SalesService } from '../sales/sales.service.js';
+import { WaveService } from './wave.service.js';
 
 type Executor = Kysely<Database> | Transaction<Database>;
 
@@ -75,6 +76,7 @@ export class OrdersService {
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
     private readonly sales: SalesService,
+    private readonly wave: WaveService,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -346,7 +348,9 @@ export class OrdersService {
       note,
     } = publicShop(shop);
     return {
+      id: order.id,
       reference: order.reference,
+      wave: await this.wave.takesWave(shop.id),
       total,
       currency: shop.default_currency,
       lines: lines.map(({ label, quantity, lineTotal }) => ({
@@ -714,6 +718,7 @@ export class OrdersService {
           }
         : null,
       cancelReason: order.cancel_reason,
+      waveSessionId: order.wave_session_id,
       saleId: order.sale_id,
       confirmedAt: order.confirmed_at?.toISOString() ?? null,
       shippedAt: order.shipped_at?.toISOString() ?? null,

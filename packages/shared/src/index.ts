@@ -20,4 +20,5 @@ export * from './profile.js';
 export * from './sales.js';
 export * from './stats.js';
 export * from './treasury.js';
+export * from './wave.js';
 export * from './notifications.js';

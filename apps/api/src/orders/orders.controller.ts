@@ -1,12 +1,23 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import {
   cancelOrderSchema,
   catalogSettingsSchema,
+  connectWaveSchema,
   deliverOrderSchema,
   orderListQuerySchema,
   orderPaymentSchema,
   shipOrderSchema,
   type CancelOrderInput,
+  type ConnectWaveInput,
   type CatalogSettingsDto,
   type CatalogSettingsInput,
   type DeliverOrderInput,
@@ -15,6 +26,7 @@ import {
   type OrderListQuery,
   type OrderPaymentInput,
   type ShipOrderInput,
+  type WaveAccountDto,
 } from '@nagaw/shared';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
@@ -25,11 +37,15 @@ import {
 } from '../tenancy/current.decorator.js';
 import { RequirePermission } from '../tenancy/require-permission.decorator.js';
 import { OrdersService } from './orders.service.js';
+import { WaveService } from './wave.service.js';
 
 /** Orders of the shop (ADR-063). */
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly orders: OrdersService) {}
+  constructor(
+    private readonly orders: OrdersService,
+    private readonly wave: WaveService,
+  ) {}
 
   @Get()
   @RequirePermission('orders.read')
@@ -70,6 +86,47 @@ export class OrdersController {
       body,
       requestId,
     );
+  }
+
+  /** The shop's Wave account (ADR-065): never its secrets. */
+  @Get('wave')
+  @RequirePermission('organization.update')
+  waveAccount(@CurrentTenant() tenant: TenantContext): Promise<WaveAccountDto> {
+    return this.wave.account(tenant.organizationId);
+  }
+
+  @Put('wave')
+  @RequirePermission('organization.update')
+  connectWave(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(connectWaveSchema)) body: ConnectWaveInput,
+    @RequestId() requestId: string | null,
+  ): Promise<WaveAccountDto> {
+    return this.wave.connect(tenant.organizationId, user, body, requestId);
+  }
+
+  @Delete('wave')
+  @RequirePermission('organization.update')
+  disconnectWave(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @RequestId() requestId: string | null,
+  ): Promise<WaveAccountDto> {
+    return this.wave.disconnect(tenant.organizationId, user, requestId);
+  }
+
+  /** Asks Wave again how the payment of the order went. */
+  @Post(':id/wave/check')
+  @RequirePermission('orders.manage')
+  async checkWave(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @RequestId() requestId: string | null,
+  ): Promise<OrderDto> {
+    await this.wave.check(tenant.organizationId, id, user, requestId);
+    return this.orders.get(tenant.organizationId, id);
   }
 
   @Get(':id')

@@ -3,11 +3,13 @@
 import {
   cancelOrderSchema,
   catalogSettingsSchema,
+  connectWaveSchema,
   deliverOrderSchema,
   orderPaymentSchema,
   shipOrderSchema,
   type CatalogSettingsDto,
   type OrderDto,
+  type WaveAccountDto,
 } from '@nagaw/shared';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -159,4 +161,69 @@ export async function updateCatalogSettings(
       ? 'Catalogue en ligne : partagez le lien.'
       : 'Catalogue fermé.',
   };
+}
+
+/** Asks Wave again how the payment of an order went (ADR-065). */
+export async function checkWavePayment(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await requireSession();
+  const { organizationId, orderId } = ids(formData);
+  if (!organizationId || !orderId)
+    return { status: 'error', message: 'Commande inconnue.' };
+  const result = await apiAsUser<OrderDto>(session.accessToken, {
+    method: 'POST',
+    path: `/orders/${encodeURIComponent(orderId)}/wave/check`,
+    organizationId,
+  });
+  if (!result.ok) return { status: 'error', message: result.message };
+  refresh();
+  return result.data.paidAt
+    ? { status: 'success', message: 'Wave confirme le paiement.' }
+    : { status: 'error', message: 'Wave n’a pas encore reçu le paiement.' };
+}
+
+/** Connects the Wave account of the shop; the key goes to the API only. */
+export async function connectWave(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await requireSession();
+  const organizationId = formData.get('organizationId')?.toString();
+  if (!organizationId)
+    return { status: 'error', message: 'Boutique inconnue.' };
+  const parsed = parseValues(connectWaveSchema, {
+    apiKey: formData.get('apiKey')?.toString() ?? '',
+    signingSecret: formData.get('signingSecret')?.toString() ?? '',
+    webhookSecret: formData.get('webhookSecret')?.toString() ?? '',
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<WaveAccountDto>(session.accessToken, {
+    method: 'PUT',
+    path: '/orders/wave',
+    organizationId,
+    body: parsed.data,
+  });
+  if (!result.ok) return { status: 'error', message: result.message };
+  refresh();
+  return { status: 'success', message: 'Compte Wave relié.' };
+}
+
+export async function disconnectWave(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await requireSession();
+  const organizationId = formData.get('organizationId')?.toString();
+  if (!organizationId)
+    return { status: 'error', message: 'Boutique inconnue.' };
+  const result = await apiAsUser<WaveAccountDto>(session.accessToken, {
+    method: 'DELETE',
+    path: '/orders/wave',
+    organizationId,
+  });
+  if (!result.ok) return { status: 'error', message: result.message };
+  refresh();
+  return { status: 'success', message: 'Compte Wave retiré.' };
 }

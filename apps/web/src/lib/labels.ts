@@ -15,6 +15,8 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
     'Questions sur l’activité remises à plus tard',
   'organization.modules_updated': 'Menu de la boutique modifié',
   'catalog.updated': 'Catalogue en ligne modifié',
+  'wave.connected': 'Compte Wave relié',
+  'wave.disconnected': 'Compte Wave retiré',
   'order.received': 'Commande reçue en ligne',
   'order.confirmed': 'Commande confirmée',
   'order.paid': 'Paiement de commande enregistré',
