@@ -10,6 +10,7 @@ export * from './health.js';
 export * from './members.js';
 export * from './money.js';
 export * from './offline.js';
+export * from './orders.js';
 export * from './phone.js';
 export * from './organizations.js';
 export * from './pagination.js';

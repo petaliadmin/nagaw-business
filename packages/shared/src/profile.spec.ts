@@ -22,7 +22,7 @@ describe('shop profile', () => {
         { modules: ['suppliers', 'expenses', 'stats'] },
         { modules: ['expenses', 'stats'] },
       ]),
-    ).toEqual(['documents', 'accounting']);
+    ).toEqual(['documents', 'accounting', 'orders']);
   });
 
   it('hides nothing without an answer', () => {
@@ -36,6 +36,7 @@ describe('shop profile', () => {
       'expenses',
       'stats',
       'accounting',
+      'orders',
     ]);
   });
 

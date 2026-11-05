@@ -12,6 +12,11 @@ import {
   createLocalJWKSet,
 } from 'jose';
 import { handleCatalog, resetCatalog } from './fake-catalog.mjs';
+import {
+  handleOrders,
+  handlePublicOrders,
+  resetOrders,
+} from './fake-orders.mjs';
 import { handleDocuments, resetDocuments } from './fake-documents.mjs';
 import {
   handleNotifications,
@@ -138,6 +143,11 @@ const PROFILE_CHOICES = {
       label: 'Préparer ma comptabilité',
       modules: ['accounting', 'expenses'],
     },
+    {
+      key: 'orders',
+      label: 'Prendre des commandes à distance',
+      modules: ['orders'],
+    },
   ],
 };
 
@@ -155,7 +165,7 @@ function makeState() {
       documentColor: '#6d28d9',
       offer: 'both',
       profileStatus: 'answered',
-      hiddenModules: [],
+      hiddenModules: ['orders'],
       phoneCountryCode: '221',
       ...DOCUMENT_SETTINGS,
       createdAt: created,
@@ -172,7 +182,7 @@ function makeState() {
       documentColor: '#6d28d9',
       offer: 'both',
       profileStatus: 'answered',
-      hiddenModules: [],
+      hiddenModules: ['orders'],
       phoneCountryCode: '221',
       ...DOCUMENT_SETTINGS,
       createdAt: created,
@@ -457,6 +467,7 @@ const server = createServer(async (req, res) => {
     resetDocuments();
     resetTreasury();
     resetNotifications();
+    resetOrders();
     return send(res, 200, { ok: true });
   }
   if (path === '/__test/long-names') {
@@ -507,6 +518,19 @@ const server = createServer(async (req, res) => {
   // The offer grid, the same for everyone and public (ADR-029, ADR-034).
   if (path === '/api/v1/plans' && req.method === 'GET')
     return send(res, 200, PLANS);
+  // The public page of a published shop, without session (ADR-063).
+  if (
+    await handlePublicOrders({
+      req,
+      res,
+      path,
+      organizations: state.organizations,
+      send,
+      apiError,
+      readJson,
+    })
+  )
+    return;
   const user = await authenticate(req);
   if (!user)
     return apiError(res, 401, 'UNAUTHENTICATED', 'Authentification requise.');
@@ -914,7 +938,7 @@ const server = createServer(async (req, res) => {
       documentColor: '#6d28d9',
       offer: body.offer ?? 'products',
       profileStatus: 'pending',
-      hiddenModules: [],
+      hiddenModules: ['orders'],
       createdAt: now,
       updatedAt: now,
     };
@@ -1461,6 +1485,22 @@ const server = createServer(async (req, res) => {
       path,
       url,
       user,
+      orgId,
+      role: membership.role,
+      organization: state.organizations[orgId],
+      send,
+      apiError,
+      readJson,
+      forbidden,
+    })
+  )
+    return;
+  if (
+    await handleOrders({
+      req,
+      res,
+      path,
+      url,
       orgId,
       role: membership.role,
       organization: state.organizations[orgId],

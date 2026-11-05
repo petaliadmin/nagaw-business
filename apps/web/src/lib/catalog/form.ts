@@ -66,5 +66,9 @@ export function productValues(formData: FormData, currency: string) {
     barcode: text(formData, 'barcode'),
     trackStock: kind === 'product' && formData.get('trackStock') === 'on',
     lowStockThreshold: optionalQuantityField(formData, 'lowStockThreshold'),
+    // Only when the form shows the box (a shop that takes orders, ADR-063).
+    soldOnline: formData.has('soldOnlineShown')
+      ? formData.get('soldOnline') === 'on'
+      : undefined,
   };
 }

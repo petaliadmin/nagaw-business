@@ -2,6 +2,7 @@ import {
   formatAccountPhone,
   formatRate,
   roleHasPermission,
+  showsModule,
   type DeviceDto,
   type NotificationSettingsDto,
   type OrganizationDto,
@@ -11,6 +12,7 @@ import {
   BellRing,
   FileText,
   LayoutList,
+  ShoppingBag,
   Plus,
   Smartphone,
   Store,
@@ -54,6 +56,7 @@ async function Settings() {
   // Fresh read, so the form never starts from stale values.
   const canManageDevices = roleHasPermission(active.role, 'devices.manage');
   const canUpdate = roleHasPermission(active.role, 'organization.update');
+  const takesOrders = canUpdate && showsModule(active.hiddenModules, 'orders');
   const [organization, taxRates, devices, alerts] = await Promise.all([
     apiAsUser<OrganizationDto>(accessToken, {
       path: '/organizations/current',
@@ -127,6 +130,25 @@ async function Settings() {
           >
             Répondre de nouveau aux questions sur votre activité
           </Link>
+        </Card>
+      )}
+      {takesOrders && (
+        <Card
+          title="Catalogue en ligne"
+          titleId="online-catalog"
+          icon={ShoppingBag}
+        >
+          <p className="text-base">
+            Le lien à partager, vos numéros Wave et Orange Money, et le mot pour
+            vos clients se règlent avec vos commandes.
+          </p>
+          <ButtonLink
+            href="/espace/commandes/catalogue"
+            variant="secondary"
+            className="mt-4"
+          >
+            Régler mon catalogue en ligne
+          </ButtonLink>
         </Card>
       )}
       {organization.ok && roleHasPermission(active.role, 'documents.read') && (

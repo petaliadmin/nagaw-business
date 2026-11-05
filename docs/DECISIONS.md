@@ -757,15 +757,24 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-063 — Catalogue public en lien et commandes à distance
 
-- **Statut** : **Acceptée** (périmètre de la 1.1 validé le 2026-11-04, `docs/VERSION_1_1.md`, Phase 20).
-- **Décision proposée** :
-  - catalogue public en lecture à `/b/{slug}`, ouvert seulement si la boutique active le module Commandes et publie son catalogue ; il n'expose jamais prix d'achat, stock exact, clients ni chiffres ;
-  - un client sans compte passe une commande (`orders`, `order_lines`) ; une commande livrée devient une vente (ADR-024) avec son `client_operation_id`, le stock ne sort qu'à ce moment ;
-  - paiement par numéro Wave ou Orange Money de la boutique et référence de commande, marqué payé à la main (modèle d'ADR-056) ; le lien de paiement Wave vient avec ADR-065 ;
-  - relances et messages au livreur préparés et envoyés par le commerçant depuis son WhatsApp ; les relances automatiques viennent avec ADR-064 ;
-  - commandes dans toutes les offres, Gratuit limité à 30 par mois (`plans.max_orders_per_month`, en base) ;
-  - limites anti-abus (commandes par numéro et par minute) réglables en base.
-- **Points d'attention** : c'est le premier endpoint métier ouvert sans connexion : revue de sécurité dédiée en Phase 22, tests d'isolation et test qu'aucun champ privé ne sort.
+- **Statut** : **Acceptée** (périmètre de la 1.1 validé le 2026-11-04, `docs/VERSION_1_1.md`). Livrée en Phase 20 (migration `20261105090000_orders`).
+- **Décision** :
+  - « Commandes » est un module du menu (ADR-062), **masqué au départ pour toutes les boutiques**, existantes et nouvelles : il ouvre une page publique, c'est donc un choix de la boutique. L'objectif « Prendre des commandes à distance » du questionnaire l'affiche ;
+  - la page publique `/b/{slug}` n'existe que si la boutique est active, affiche le module **et** a coché « Mettre mon catalogue en ligne ». Sinon elle répond comme une boutique inconnue (404). Elle montre le nom, le logo, un mot de la boutique et les produits actifs « vendus en ligne » (case de la fiche produit, oui par défaut) avec un prix de vente : nom, photo, prix, unité, catégorie, « disponible » ou « épuisé ». **Jamais** le prix d'achat, la quantité en stock, un client ni un chiffre (test d'intégration) ;
+  - un client sans compte envoie une commande (`orders`, `order_lines`) : nom, téléphone (normalisé avec l'indicatif de la boutique), quartier, un mot. Le serveur recalcule le total au prix du catalogue, refuse un article épuisé ou retiré, et répond « les prix ont changé » si le total affiché diffère. La commande reçoit une référence `CMD-XXXXXX` ;
+  - étapes : nouvelle → confirmée → en livraison → livrée, ou annulée avec un motif. Le paiement est enregistré à part (espèces ou Mobile Money avec son opérateur), avant ou à la livraison ;
+  - **une commande livrée devient une vente** par le service des ventes (ADR-024), au prix de la commande (prix convenu), sous un `client_operation_id` tiré à la création : un second clic ne crée pas de seconde vente. Le stock ne sort qu'à ce moment. Les frais de livraison sont payés au livreur, hors de la vente ;
+  - paiement par le numéro Wave ou Orange Money de la boutique et la référence, marqué payé à la main (modèle d'ADR-056) ; le lien de paiement Wave vient avec ADR-065 ;
+  - relance et message au livreur préparés, envoyés par le vendeur depuis son WhatsApp ; les relances automatiques viennent avec ADR-064 ;
+  - limites en base : 5 commandes par numéro et par heure, 120 par boutique et par heure (`platform_settings`), et **30 commandes par mois en Gratuit** (`plans.max_orders_per_month`, sans limite pour Essentiel et Pro) ;
+  - les réglages de la page publique (en ligne, numéros, mot aux clients, lien à partager) sont dans « Commandes → Mon catalogue en ligne » (`/espace/commandes/catalogue`) ; Paramètres y renvoie. Placés dans Paramètres, ils alourdissaient chaque page : le menu précharge Paramètres partout (budget de poids, Phase 17) ;
+  - droits : propriétaire, gérant et vendeur voient et traitent les commandes (`orders.read`, `orders.manage`) ; livrer demande aussi `sales.create` ; le lecteur n'y a pas accès ; seuls le propriétaire et les gérants règlent la page publique ;
+  - la commande reçue est inscrite au journal d'audit avec l'acteur « système » : aucune personne de la boutique ne l'a faite.
+- **Limites** :
+  - la page publique n'est pas indexée par les moteurs de recherche (`noindex`), en attendant la décision du propriétaire ;
+  - pas de notification à la boutique quand une commande arrive : le vendeur ouvre « Commandes » ;
+  - une commande n'est pas rattachée à une fiche client : nom et téléphone restent sur la commande ;
+  - pas d'unité de vente ni de quantité décimale en ligne : la commande se fait dans l'unité de stock, par quantités entières.
 
 ## ADR-064 — Relances automatiques par WhatsApp et SMS (modifie ADR-017, réactive ADR-006)
 

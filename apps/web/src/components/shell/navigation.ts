@@ -16,6 +16,7 @@ import {
   Package,
   Receipt,
   Settings,
+  ShoppingBag,
   Truck,
   Wallet,
   type LucideIcon,
@@ -40,8 +41,8 @@ export interface NavItem {
 
 /**
  * Menu in the owner's order (2026-10-25). Every entry points to a page that
- * exists: « Commandes » and « Achats » join it when their module ships (no
- * dead links). Accounting, team, history and subscription are tabs of
+ * exists: « Achats » joins it when its module ships (no dead links);
+ * « Commandes » shows when the shop takes orders (ADR-063). Accounting, team, history and subscription are tabs of
  * their section. The phone bottom bar holds at most three entries
  * next to « Plus » (DESIGN.md).
  */
@@ -58,6 +59,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Ventes',
     icon: Receipt,
     bottomBar: true,
+  },
+  {
+    href: '/espace/commandes',
+    label: 'Commandes',
+    icon: ShoppingBag,
+    bottomBar: false,
+    permission: 'orders.read',
+    module: 'orders',
   },
   {
     href: '/espace/produits',

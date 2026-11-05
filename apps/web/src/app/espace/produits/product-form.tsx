@@ -40,6 +40,7 @@ const quantityText = (value: number | null) =>
 
 export function ProductForm({
   offer,
+  online,
   organizationId,
   currency,
   categories,
@@ -47,6 +48,8 @@ export function ProductForm({
   product,
 }: {
   offer: ShopOffer;
+  /** The shop takes orders: the product may be in its public catalogue. */
+  online: boolean;
   organizationId: string;
   currency: string;
   /** Active categories and tax rates of the shop. */
@@ -243,6 +246,19 @@ export function ProductForm({
             </p>
           )}
         </fieldset>
+      )}
+
+      {online && (
+        <label className="flex min-h-12 items-center gap-3 rounded-2xl bg-surface-muted p-4 text-base font-semibold">
+          <input type="hidden" name="soldOnlineShown" value="on" />
+          <input
+            type="checkbox"
+            name="soldOnline"
+            defaultChecked={product?.soldOnline ?? true}
+            className="size-6 accent-brand-strong"
+          />
+          Montrer dans mon catalogue en ligne
+        </label>
       )}
 
       <details

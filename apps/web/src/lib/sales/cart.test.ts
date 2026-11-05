@@ -21,6 +21,7 @@ const rice: ProductDto = {
   taxRate: null,
   barcode: null,
   trackStock: true,
+  soldOnline: true,
   lowStockThreshold: null,
   stockQuantity: 100,
   stockLevel: 'ok',

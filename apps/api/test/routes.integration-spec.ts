@@ -32,6 +32,12 @@ const NOT_SHOP_SCOPED: Record<string, 'public' | 'user' | 'admin'> = {
   'POST /api/v1/auth/phone/sign-in': 'public',
   'POST /api/v1/auth/phone/sign-up': 'public',
   'POST /api/v1/auth/phone/link': 'user',
+  // The public page of a published shop, without session (ADR-063,
+  // orders.integration-spec).
+  'GET /api/v1/public/shops/:slug': 'public',
+  'GET /api/v1/public/shops/:slug/logo': 'public',
+  'GET /api/v1/public/shops/:slug/products/:id/photo': 'public',
+  'POST /api/v1/public/shops/:slug/orders': 'public',
 };
 
 /** API documentation: public, and not served in production (Phase 1). */

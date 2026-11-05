@@ -67,6 +67,8 @@ Taille estimée : **M**.
 
 ### Phase 20 — Catalogue en lien et commandes (ADR-063)
 
+> **Livrée en code le 2026-11-05**, en attente de validation. Écarts au plan : limites par heure plutôt que par minute ; « Commandes » masqué au départ pour toutes les boutiques (voir ADR-063).
+
 **But** : remplacer le cahier de commandes. Le vendeur partage un lien ; le client choisit ; la commande arrive dans l'application ; le vendeur suit paiement, livraison et relance.
 
 Contenu :

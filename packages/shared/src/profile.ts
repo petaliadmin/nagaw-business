@@ -14,6 +14,7 @@ export const SHOP_MODULES = [
   'expenses',
   'stats',
   'accounting',
+  'orders',
 ] as const;
 export type ShopModule = (typeof SHOP_MODULES)[number];
 

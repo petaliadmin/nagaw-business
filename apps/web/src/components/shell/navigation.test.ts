@@ -24,6 +24,7 @@ describe('navigation', () => {
     expect(NAV_ITEMS.map((item) => item.label)).toEqual([
       'Tableau de bord',
       'Ventes',
+      'Commandes',
       'Produits et services',
       'Factures / Devis',
       'Clients',
