@@ -812,22 +812,25 @@ export function Checkout({
       aria-labelledby={`${ids}-cart`}
       className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-sm"
     >
-      {/* Coloured header: the cart stands out from the products. */}
-      <div className="-mx-4 -mt-4 flex min-h-16 items-center justify-between gap-3 bg-gradient-to-r from-sales-strong to-brand-strong px-4 py-2 text-white">
+      {/* Light band of the sales module, its colour on the icon
+          (DESIGN.md, harmony of colours). */}
+      <div className="-mx-4 -mt-4 flex min-h-16 items-center justify-between gap-3 border-b border-sales/30 bg-sales-soft px-4 py-2">
         <h2
           id={`${ids}-cart`}
           ref={cartTitleRef}
           tabIndex={-1}
-          className="flex items-center gap-2 text-xl font-bold focus:outline-none"
+          className="flex items-center gap-3 text-xl font-bold focus:outline-none"
         >
-          <ShoppingCart aria-hidden className="size-6" />
+          <span className="flex size-10 items-center justify-center rounded-xl bg-sales-strong text-white">
+            <ShoppingCart aria-hidden className="size-6" />
+          </span>
           Panier
         </h2>
         {cart.length > 0 && (
           <button
             type="button"
             onClick={() => void clearCart()}
-            className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border-2 border-white/70 px-3 text-base font-bold text-white hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border-2 border-danger-strong/40 bg-surface px-3 text-base font-bold text-danger-ink hover:bg-danger-soft"
           >
             <Trash2 aria-hidden className="size-5" />
             Vider le panier
@@ -1329,9 +1332,13 @@ export function Checkout({
         className={`flex flex-col gap-4 ${step === 'pay' ? 'hidden lg:flex' : ''}`}
       >
         {/* Header of the products, as the cart's: title, then search. */}
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-gradient-to-r from-sales-strong to-brand-strong p-3 text-white shadow-sm">
-          <h2 className="flex items-center gap-2 px-1 text-xl font-bold">
-            <Package aria-hidden className="size-6" />
+        {/* Light band of the products and stock module (blue), its
+            colour on the icon (DESIGN.md, harmony of colours). */}
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-stock/30 bg-stock-soft p-3 shadow-sm">
+          <h2 className="flex items-center gap-3 text-xl font-bold">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-stock-strong text-white">
+              <Package aria-hidden className="size-6" />
+            </span>
             {noun === 'service' ? 'Services' : 'Produits'}
           </h2>
           <div className="relative min-w-0 flex-1 basis-56 sm:ml-auto sm:max-w-sm">
@@ -1349,7 +1356,7 @@ export function Checkout({
               value={query}
               onChange={(event) => setQuery(event.currentTarget.value)}
               placeholder={`Chercher un ${noun}`}
-              className={`${CONTROL} border-white/70 pl-12 text-ink`}
+              className={`${CONTROL} pl-12`}
             />
           </div>
         </div>
