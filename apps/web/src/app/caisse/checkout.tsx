@@ -824,16 +824,16 @@ export function Checkout({
       aria-labelledby={`${ids}-cart`}
       className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-sm"
     >
-      {/* Light band of the sales module, its colour on the icon
-          (DESIGN.md, harmony of colours). */}
-      <div className="-mx-4 -mt-4 flex min-h-16 items-center justify-between gap-3 border-b border-sales/30 bg-sales-soft px-4 py-2">
+      {/* Vivid green of the sales module, with the dark on-vivid text:
+          white falls under 4.5:1 on it (DESIGN.md). */}
+      <div className="-mx-4 -mt-4 flex min-h-16 items-center justify-between gap-3 bg-sales px-4 py-2 text-on-vivid">
         <h2
           id={`${ids}-cart`}
           ref={cartTitleRef}
           tabIndex={-1}
           className="flex items-center gap-3 text-xl font-bold focus:outline-none"
         >
-          <span className="flex size-10 items-center justify-center rounded-xl bg-sales-strong text-white">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-surface text-sales-ink shadow-sm">
             <ShoppingCart aria-hidden className="size-6" />
           </span>
           Panier
@@ -1009,11 +1009,10 @@ export function Checkout({
               </p>
             )}
           </details>
-          <div className="flex items-end justify-between gap-2 rounded-xl bg-sales-soft px-4 py-3">
-            <span className="text-lg font-semibold text-sales-ink">
-              À payer
-            </span>
-            <span className="text-3xl font-extrabold tabular-nums text-sales-ink">
+          {/* Dark green, white text (5.48:1): the total stands out. */}
+          <div className="flex items-end justify-between gap-2 rounded-xl bg-sales-strong px-4 py-3 text-white shadow-sm">
+            <span className="text-lg font-semibold">À payer</span>
+            <span className="text-3xl font-extrabold tabular-nums">
               {money(totals.total)}
             </span>
           </div>
@@ -1346,11 +1345,11 @@ export function Checkout({
         className={`flex flex-col gap-4 ${step === 'pay' ? 'hidden lg:flex' : ''}`}
       >
         {/* Header of the products, as the cart's: title, then search. */}
-        {/* Light band of the products and stock module (blue), its
-            colour on the icon (DESIGN.md, harmony of colours). */}
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-stock/30 bg-stock-soft p-3 shadow-sm">
+        {/* Vivid blue of the products and stock module, white text
+            (DESIGN.md): the shelf stands out. */}
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-stock p-3 text-white shadow-sm">
           <h2 className="flex items-center gap-3 text-xl font-bold">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-stock-strong text-white">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-surface text-stock-ink shadow-sm">
               <Package aria-hidden className="size-6" />
             </span>
             {noun === 'service' ? 'Services' : 'Produits'}
