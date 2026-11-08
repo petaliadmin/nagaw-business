@@ -787,20 +787,50 @@ export function Checkout({
     });
   }
 
+  /** Empties the cart, after a confirmation: a full cart is work. */
+  function clearCart() {
+    if (
+      !window.confirm(
+        'Vider le panier ? Tous les articles et la remise seront retirés.',
+      )
+    )
+      return;
+    setCart([]);
+    setDiscountText('');
+    setCashText('');
+    setError(null);
+    setAnnouncement('Panier vidé.');
+    // Back to the products: nothing is left to pay.
+    if (step === 'pay') goTo('cart');
+  }
+
   const cartPanel = (
     <section
       aria-labelledby={`${ids}-cart`}
-      className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 shadow-sm"
+      className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-sm"
     >
-      <h2
-        id={`${ids}-cart`}
-        ref={cartTitleRef}
-        tabIndex={-1}
-        className="flex items-center gap-2 text-xl font-bold focus:outline-none"
-      >
-        <ShoppingCart aria-hidden className="size-6 text-sales-ink" />
-        Panier
-      </h2>
+      {/* Coloured header: the cart stands out from the products. */}
+      <div className="-mx-4 -mt-4 flex min-h-16 items-center justify-between gap-3 bg-gradient-to-r from-sales-strong to-brand-strong px-4 py-2 text-white">
+        <h2
+          id={`${ids}-cart`}
+          ref={cartTitleRef}
+          tabIndex={-1}
+          className="flex items-center gap-2 text-xl font-bold focus:outline-none"
+        >
+          <ShoppingCart aria-hidden className="size-6" />
+          Panier
+        </h2>
+        {cart.length > 0 && (
+          <button
+            type="button"
+            onClick={clearCart}
+            className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border-2 border-white/70 px-3 text-base font-bold text-white hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            <Trash2 aria-hidden className="size-5" />
+            Vider le panier
+          </button>
+        )}
+      </div>
       {cart.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-line px-4 py-8 text-center text-ink-muted">
           <ShoppingCart aria-hidden className="size-8" />

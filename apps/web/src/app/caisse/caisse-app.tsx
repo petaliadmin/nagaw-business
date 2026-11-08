@@ -14,7 +14,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   CloudUpload,
-  RefreshCw,
   RotateCcw,
   ShoppingCart,
   TriangleAlert,
@@ -416,8 +415,6 @@ export function CaisseApp() {
   const [ticket, setTicket] = useState<LocalTicket | null>(null);
   const [tickets, setTickets] = useState<LocalTicket[]>([]);
   const [rejected, setRejected] = useState<RejectedEntry[]>([]);
-  const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState('');
 
   const loadRejected = useCallback(async (organizationId: string) => {
     const status = await outboxStatus();
@@ -628,45 +625,6 @@ export function CaisseApp() {
 
   const { snapshot } = state;
   const money = (value: number) => formatAmount(value, snapshot.shop.currency);
-
-  /**
-   * In case nothing starts by itself: everything at once, products and
-   * prices too, and the result in plain words.
-   */
-  async function onSyncNow(): Promise<void> {
-    setSyncing(true);
-    setSyncMessage('');
-    try {
-      const fresh = await syncWithServer(snapshot, true);
-      if (!fresh.ok) await flushOutboxNow();
-      await loadRejected(snapshot.organizationId);
-      const status = await outboxStatus();
-      const waiting = status.pendingSales + status.pendingOther;
-      if (fresh.ok && waiting === 0)
-        setSyncMessage('Tout est envoyé. Produits et prix sont à jour.');
-      else if (!fresh.ok && fresh.reason === 'offline')
-        setSyncMessage(
-          'Pas de connexion internet : tout reste gardé sur ce téléphone.',
-        );
-      else if (!fresh.ok && fresh.reason === 'signed-out')
-        setSyncMessage('Reconnectez-vous pour envoyer et mettre à jour.');
-      else if (waiting > 0)
-        setSyncMessage(
-          `${waiting > 1 ? `${waiting} opérations restent` : 'Une opération reste'} sur ce téléphone, rien n’est perdu. Nouvel essai automatique.`,
-        );
-      else
-        setSyncMessage(
-          'Le serveur ne répond pas bien : vos ventes sont parties, mais les produits ne sont pas à jour.',
-        );
-    } catch (error) {
-      console.error('Synchronisation demandée impossible', error);
-      setSyncMessage(
-        'La synchronisation n’a pas abouti : rien n’est perdu, réessayez dans un instant.',
-      );
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   /** What the phone holds now, after something was written on it. */
   async function reloadSnapshot(): Promise<void> {
@@ -949,24 +907,6 @@ export function CaisseApp() {
             </p>
           </section>
         )}
-        <div className="flex flex-col gap-2 print:hidden">
-          <button
-            type="button"
-            disabled={syncing}
-            onClick={() => void onSyncNow()}
-            // Beside the title, not above the products: the checkout first.
-            className={buttonClasses('secondary', 'self-end')}
-          >
-            <RefreshCw
-              aria-hidden
-              className={`size-5 ${syncing ? 'motion-safe:animate-spin' : ''}`}
-            />
-            {syncing ? 'Synchronisation…' : 'Synchroniser'}
-          </button>
-          <p role="status" className="font-semibold empty:hidden">
-            {syncMessage}
-          </p>
-        </div>
         {ticket ? (
           <LocalTicketView
             ticket={ticket}

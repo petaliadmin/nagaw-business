@@ -35,7 +35,7 @@ Vérifier, avec de vrais commerçants et de vraies ventes, que Nagaw Business ti
 4. Invitation d'un vendeur, s'il y en a un.
 5. Une vente en espèces, une en Mobile Money, une à crédit ; puis une vente en mode avion, le message « Vous êtes hors ligne », et l'envoi au retour du réseau.
 6. Installation de l'application sur l'écran d'accueil.
-7. Lui montrer « Donner mon avis » et le bouton « Synchroniser ».
+7. Lui montrer « Donner mon avis » et le bouton « Envoyer maintenant » du bandeau, qui apparaît quand une vente attend d'être envoyée.
 8. Faire signer l'accord de participation (en fin de document).
 
 ## Suivi pendant le pilote (chaque jour, 10 minutes)
@@ -50,19 +50,19 @@ Vérifier, avec de vrais commerçants et de vraies ventes, que Nagaw Business ti
 
 **Consignes** : la personne utilise son téléphone et dit à voix haute ce qu'elle pense ; l'observateur **n'aide pas** (sauf blocage de plus de 2 minutes, noté « avec aide »), ne commente pas, note.
 
-| #   | Tâche                                                                    | Réussie seule | Avec aide | Échec | Durée | Remarques et citations |
-| --- | ------------------------------------------------------------------------ | ------------- | --------- | ----- | ----- | ---------------------- |
-| 1   | Ajouter un produit avec sa photo et son stock                            |               |           |       |       |                        |
-| 2   | Vendre 3 articles en espèces et rendre la monnaie                        |               |           |       |       |                        |
-| 3   | Vendre à crédit à un client, puis enregistrer son remboursement          |               |           |       |       |                        |
-| 4   | Vendre sans réseau (mode avion), puis vérifier l'envoi                   |               |           |       |       |                        |
-| 5   | Faire un devis, le transformer en facture et l'envoyer en PDF            |               |           |       |       |                        |
-| 6   | Dire combien la boutique a gagné ce mois et ce qu'il y a en caisse       |               |           |       |       |                        |
-| 7   | Clôturer la caisse du jour                                               |               |           |       |       |                        |
-| 8   | (Comptable ou propriétaire) Exporter le journal des recettes et dépenses |               |           |       |       |                        |
-| 9   | Ouvrir la caisse sans réseau, dire ce que signifie le message affiché    |               |           |       |       |                        |
-| 10  | Une vente ne part pas : la faire partir soi-même (« Synchroniser »)      |               |           |       |       |                        |
-| 11  | Vendre à deux sur le même téléphone, puis dire qui a vendu quoi          |               |           |       |       |                        |
+| #   | Tâche                                                                     | Réussie seule | Avec aide | Échec | Durée | Remarques et citations |
+| --- | ------------------------------------------------------------------------- | ------------- | --------- | ----- | ----- | ---------------------- |
+| 1   | Ajouter un produit avec sa photo et son stock                             |               |           |       |       |                        |
+| 2   | Vendre 3 articles en espèces et rendre la monnaie                         |               |           |       |       |                        |
+| 3   | Vendre à crédit à un client, puis enregistrer son remboursement           |               |           |       |       |                        |
+| 4   | Vendre sans réseau (mode avion), puis vérifier l'envoi                    |               |           |       |       |                        |
+| 5   | Faire un devis, le transformer en facture et l'envoyer en PDF             |               |           |       |       |                        |
+| 6   | Dire combien la boutique a gagné ce mois et ce qu'il y a en caisse        |               |           |       |       |                        |
+| 7   | Clôturer la caisse du jour                                                |               |           |       |       |                        |
+| 8   | (Comptable ou propriétaire) Exporter le journal des recettes et dépenses  |               |           |       |       |                        |
+| 9   | Ouvrir la caisse sans réseau, dire ce que signifie le message affiché     |               |           |       |       |                        |
+| 10  | Une vente ne part pas : la faire partir soi-même (« Envoyer maintenant ») |               |           |       |       |                        |
+| 11  | Vendre à deux sur le même téléphone, puis dire qui a vendu quoi           |               |           |       |       |                        |
 
 **Questions de fin** (réponse de 1 à 5) : c'était facile ; je me suis senti en confiance ; je saurais le refaire seul ; les mots étaient clairs ; je le recommanderais à un autre commerçant. Puis : qu'est-ce qui vous a gêné ? qu'est-ce qui manque ?
 

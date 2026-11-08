@@ -246,42 +246,6 @@ test('a failing server never loses a sale, nor passes for a missing network', as
   await page.unroute('**/caisse/synchroniser');
 });
 
-test('« Synchroniser » sends at once what the automatic sending put off', async ({
-  page,
-  context,
-  baseURL,
-  isMobile,
-}) => {
-  await signInAs(context, 'awa', baseURL!);
-  await openCheckoutOnline(page);
-  await page.route('**/caisse/synchroniser', (route) =>
-    route.fulfill({ status: 500, json: { error: 'panne' } }),
-  );
-  await sellUnsent(page, isMobile);
-  await expect(banner(page)).toContainText('Le serveur ne répond pas bien', {
-    timeout: 15_000,
-  });
-  await nextSale(page);
-
-  // Still failing: the seller is told, and nothing is lost.
-  const sync = page.getByRole('button', { name: 'Synchroniser' });
-  await sync.click();
-  await expect(
-    page.getByText(/Une opération reste sur ce téléphone, rien n’est perdu/),
-  ).toBeVisible({ timeout: 15_000 });
-
-  // Repaired: no wait of a minute, the sale leaves on the button.
-  await page.unroute('**/caisse/synchroniser');
-  await sync.click();
-  await expect(
-    page.getByText('Tout est envoyé. Produits et prix sont à jour.'),
-  ).toBeVisible({ timeout: 15_000 });
-  await page.getByText(/Ventes de ce téléphone \(1\)/).click();
-  await expect(
-    page.getByRole('list', { name: 'Ventes de ce téléphone' }),
-  ).toContainText('Envoyée');
-});
-
 test('« Envoyer maintenant » in the banner does it from any page', async ({
   page,
   context,
@@ -301,25 +265,6 @@ test('« Envoyer maintenant » in the banner does it from any page', async ({
   await page.unroute('**/caisse/synchroniser');
   await page.getByRole('button', { name: 'Envoyer maintenant' }).click();
   await expect(banner(page)).toHaveCount(0, { timeout: 15_000 });
-});
-
-test('without network, « Synchroniser » says so and keeps everything', async ({
-  page,
-  context,
-  baseURL,
-  isMobile,
-}) => {
-  await signInAs(context, 'awa', baseURL!);
-  await openCheckoutOnline(page);
-  await failSending(page);
-  await sellUnsent(page, isMobile);
-  await context.setOffline(true);
-  await page.getByRole('button', { name: 'Synchroniser' }).click();
-  await expect(
-    page.getByText(/Pas de connexion internet : tout reste gardé/),
-  ).toBeVisible({ timeout: 15_000 });
-  await context.setOffline(false);
-  await page.unroute('**/caisse/synchroniser');
 });
 
 test('a refused batch does not hold the others, and the refused sale can go back', async ({

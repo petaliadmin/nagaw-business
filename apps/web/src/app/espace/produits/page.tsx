@@ -315,6 +315,10 @@ async function Products({ searchParams }: PageProps<'/espace/produits'>) {
             <li key={product.id}>
               <Link
                 href={`/espace/produits/${product.id}`}
+                // One link per product: the page of a product (its stock
+                // forms) is not prefetched on a first visit (weight budget,
+                // Phase 17); it loads on the tap.
+                prefetch={false}
                 className="flex min-h-24 items-center gap-4 rounded-2xl border border-line bg-surface p-3 shadow-sm hover:border-stock"
               >
                 <ProductTile product={product} />
