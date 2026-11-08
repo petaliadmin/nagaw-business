@@ -201,7 +201,7 @@ test('signing out keeps everything, closes the checkout, and the sales still lea
   await expect(
     page.getByRole('heading', { level: 1, name: 'Vendre' }),
   ).toBeVisible();
-  await page.getByText(/Ventes de ce téléphone \(1\)/).click();
+  await page.getByRole('button', { name: 'Ventes (1)' }).click();
   await expect(
     page.getByRole('list', { name: 'Ventes de ce téléphone' }),
   ).toContainText('Envoyée', { timeout: 15_000 });
@@ -303,7 +303,7 @@ test('a refused batch does not hold the others, and the refused sale can go back
   await expect(
     page.getByText(/Le serveur ne peut pas lire cette opération/),
   ).toBeVisible();
-  await page.getByText(/Ventes de ce téléphone \(2\)/).click();
+  await page.getByRole('button', { name: 'Ventes (2)' }).click();
   const sales = page.getByRole('list', { name: 'Ventes de ce téléphone' });
   await expect(sales).toContainText('Refusée');
   await expect(sales).toContainText('Envoyée');

@@ -52,3 +52,44 @@ test('« Vider le panier » asks first, then empties the cart', async ({
   if (isMobile) await expect(products).toBeVisible();
   await expect(page.getByRole('button', { name: /^Encaisser/ })).toHaveCount(0);
 });
+
+test('the checkout keeps the seller: sales inside, out only on purpose', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/caisse');
+  // No link leads out of the checkout.
+  await expect(page.getByRole('main').getByRole('link')).toHaveCount(0);
+  await expect(page.getByRole('banner').getByRole('link')).toHaveCount(0);
+
+  const products = page.getByRole('list', { name: 'Produits à vendre' });
+  await products
+    .getByRole('button', { name: /^Ajouter Eau minérale 1,5 L/ })
+    .click();
+
+  // The sales of the phone, then back: the cart is still there.
+  await page.getByRole('button', { name: /^Ventes \(/ }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Ventes de ce téléphone' }),
+  ).toBeVisible();
+  await expect(products).toBeHidden();
+  await page.getByRole('button', { name: 'Vendre', exact: true }).click();
+  if (isMobile) await page.getByRole('button', { name: /^Encaisser/ }).click();
+  await expect(
+    page
+      .getByRole('list', { name: 'Articles du panier' })
+      .getByRole('listitem'),
+  ).toHaveCount(1);
+
+  // Leaving asks first; « Annuler » stays in the checkout.
+  const ask = page.getByRole('alertdialog', { name: 'Quitter la caisse ?' });
+  await page.getByRole('button', { name: /^Quitter/ }).click();
+  await ask.getByRole('button', { name: 'Annuler' }).click();
+  await expect(page).toHaveURL(/\/caisse$/);
+  await page.getByRole('button', { name: /^Quitter/ }).click();
+  await ask.getByRole('button', { name: 'Quitter la caisse' }).click();
+  await expect(page).toHaveURL(/\/espace$/);
+});

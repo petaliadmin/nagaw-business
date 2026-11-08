@@ -11,9 +11,10 @@ import {
   type SyncOperation,
 } from '@nagaw/shared';
 import {
-  ArrowLeft,
   CheckCircle2,
   CloudUpload,
+  LogOut,
+  ReceiptText,
   RotateCcw,
   ShoppingCart,
   TriangleAlert,
@@ -22,6 +23,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ShopMark } from '@/components/ui/shop-mark';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
 import {
@@ -358,7 +360,11 @@ const TICKET_STATUS: Record<
 };
 
 /** Everything sold on this phone, readable without network (ADR-053). */
-function PhoneSales({
+/**
+ * The sales of this phone, inside the checkout: the seller opens one to
+ * print it or send it again, without leaving the checkout.
+ */
+function SalesView({
   tickets,
   money,
   onOpen,
@@ -367,45 +373,54 @@ function PhoneSales({
   money: (value: number) => string;
   onOpen: (ticket: LocalTicket) => void;
 }) {
-  if (tickets.length === 0) return null;
   return (
-    <details className="rounded-2xl border border-line bg-surface print:hidden">
-      <summary className="flex min-h-12 cursor-pointer items-center px-4 font-bold">
-        Ventes de ce téléphone ({tickets.length})
-      </summary>
-      <ul
-        aria-label="Ventes de ce téléphone"
-        className="flex flex-col divide-y divide-line px-4 pb-2"
-      >
-        {tickets.map((ticket) => {
-          const status = TICKET_STATUS[ticket.status];
-          return (
-            <li key={ticket.clientOperationId}>
-              <button
-                type="button"
-                onClick={() => onOpen(ticket)}
-                className="flex min-h-12 w-full items-center justify-between gap-3 py-2 text-left"
-              >
-                <span className="min-w-0">
-                  <span className="block font-semibold">
-                    {ticket.deviceTicket}
+    <section
+      aria-labelledby="sales-view-title"
+      className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm print:hidden"
+    >
+      <h2 id="sales-view-title" className="text-xl font-bold">
+        Ventes de ce téléphone
+      </h2>
+      {tickets.length === 0 ? (
+        <p className="text-ink-muted">
+          Aucune vente pour l’instant. Les ventes faites ici s’affichent dans
+          cette liste.
+        </p>
+      ) : (
+        <ul
+          aria-label="Ventes de ce téléphone"
+          className="flex flex-col divide-y divide-line"
+        >
+          {tickets.map((ticket) => {
+            const status = TICKET_STATUS[ticket.status];
+            return (
+              <li key={ticket.clientOperationId}>
+                <button
+                  type="button"
+                  onClick={() => onOpen(ticket)}
+                  className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left"
+                >
+                  <span className="min-w-0">
+                    <span className="block font-semibold">
+                      {ticket.deviceTicket}
+                    </span>
+                    <span
+                      className={`flex items-center gap-1 font-semibold ${status.className}`}
+                    >
+                      <status.icon aria-hidden className="size-5 shrink-0" />
+                      {status.label}
+                    </span>
                   </span>
-                  <span
-                    className={`flex items-center gap-1 font-semibold ${status.className}`}
-                  >
-                    <status.icon aria-hidden className="size-5 shrink-0" />
-                    {status.label}
+                  <span className="font-bold tabular-nums">
+                    {money(ticket.sale.total)}
                   </span>
-                </span>
-                <span className="font-bold tabular-nums">
-                  {money(ticket.sale.total)}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </details>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -413,6 +428,20 @@ export function CaisseApp() {
   const router = useRouter();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [ticket, setTicket] = useState<LocalTicket | null>(null);
+  // Selling, or the sales of this phone: both inside the checkout.
+  const [view, setView] = useState<'sell' | 'sales'>('sell');
+  const [confirm, confirmDialog] = useConfirm();
+  /** The only way out of the checkout: explicit, after a question. */
+  async function quit() {
+    const ok = await confirm({
+      title: 'Quitter la caisse ?',
+      message:
+        'Les ventes faites restent enregistrées. Un panier en cours sera perdu.',
+      confirmLabel: 'Quitter la caisse',
+      tone: 'primary',
+    });
+    if (ok) router.push('/espace');
+  }
   const [tickets, setTickets] = useState<LocalTicket[]>([]);
   const [rejected, setRejected] = useState<RejectedEntry[]>([]);
 
@@ -818,21 +847,26 @@ export function CaisseApp() {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 border-b border-line bg-surface px-4 pt-[env(safe-area-inset-top)] print:hidden">
-        <Link
-          href="/espace"
-          className="flex min-h-12 items-center gap-2 rounded-xl px-2 font-bold text-brand-ink"
-        >
-          <ArrowLeft aria-hidden className="size-6" />
-          Accueil
-        </Link>
+        {/* No link out: the checkout is left on purpose only. */}
         <ShopMark version={snapshot.shop.logoVersion} />
-        <span className="min-w-0 flex-1 truncate text-lg font-extrabold">
-          {snapshot.shop.name}
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-lg font-extrabold">
+            {snapshot.shop.name}
+          </span>
+          <span className="flex items-center gap-1 text-base font-semibold text-sales-ink">
+            <ShoppingCart aria-hidden className="size-4" />
+            Caisse
+          </span>
         </span>
-        <span className="flex items-center gap-2 text-base font-semibold text-sales-ink">
-          <ShoppingCart aria-hidden className="size-5" />
-          Caisse
-        </span>
+        <button
+          type="button"
+          onClick={() => void quit()}
+          className={buttonClasses('secondary', 'shrink-0')}
+        >
+          <LogOut aria-hidden className="size-5" />
+          Quitter<span className="sr-only sm:not-sr-only"> la caisse</span>
+        </button>
+        {confirmDialog}
       </header>
       <main
         id="contenu"
@@ -907,7 +941,42 @@ export function CaisseApp() {
             </p>
           </section>
         )}
-        {ticket ? (
+        {/* Selling or the sales of this phone, without leaving. */}
+        <div
+          role="group"
+          aria-label="Caisse"
+          className="grid grid-cols-2 gap-1 rounded-2xl bg-surface-muted p-1 print:hidden"
+        >
+          {(
+            [
+              { key: 'sell', label: 'Vendre', icon: ShoppingCart },
+              {
+                key: 'sales',
+                label: `Ventes (${tickets.length})`,
+                icon: ReceiptText,
+              },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              aria-pressed={!ticket && view === tab.key}
+              onClick={() => {
+                setTicket(null);
+                setView(tab.key);
+              }}
+              className={`flex min-h-12 items-center justify-center gap-2 rounded-xl text-base font-bold ${
+                !ticket && view === tab.key
+                  ? 'bg-surface text-sales-ink shadow-sm'
+                  : 'text-ink-muted'
+              }`}
+            >
+              <tab.icon aria-hidden className="size-5" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {ticket && (
           <LocalTicketView
             ticket={ticket}
             sale={asSale(ticket)}
@@ -915,31 +984,38 @@ export function CaisseApp() {
             money={money}
             onNext={() => {
               backToSell.current = true;
+              setView('sell');
               setTicket(null);
             }}
           />
-        ) : (
-          <>
-            {/* Not shown: the products and the cart have their own
-                headers. Kept for screen readers, and to take the focus
-                back after a sale. */}
-            <h1 ref={sellTitleRef} tabIndex={-1} className="sr-only">
-              Vendre
-            </h1>
-            <Checkout
-              noun={snapshot.shop.offer === 'services' ? 'service' : 'produit'}
-              currency={snapshot.shop.currency}
-              products={snapshot.products}
-              customers={snapshot.customers}
-              stockRights={stockRights}
-              negotiation={negotiation}
-              onRecord={onRecord}
-              onCreateCustomer={onCreateCustomer}
-              onCorrectStock={onCorrectStock}
-            />
-            <PhoneSales tickets={tickets} money={money} onOpen={setTicket} />
-          </>
         )}
+        {!ticket && view === 'sales' && (
+          <SalesView tickets={tickets} money={money} onOpen={setTicket} />
+        )}
+        {/* Hidden, never unmounted: a cart in progress survives a look at
+            the sales or at a ticket. */}
+        <div
+          hidden={ticket !== null || view !== 'sell'}
+          className="flex flex-col gap-4"
+        >
+          {/* Not shown: the products and the cart have their own
+              headers. Kept for screen readers, and to take the focus
+              back after a sale. */}
+          <h1 ref={sellTitleRef} tabIndex={-1} className="sr-only">
+            Vendre
+          </h1>
+          <Checkout
+            noun={snapshot.shop.offer === 'services' ? 'service' : 'produit'}
+            currency={snapshot.shop.currency}
+            products={snapshot.products}
+            customers={snapshot.customers}
+            stockRights={stockRights}
+            negotiation={negotiation}
+            onRecord={onRecord}
+            onCreateCustomer={onCreateCustomer}
+            onCorrectStock={onCorrectStock}
+          />
+        </div>
       </main>
     </div>
   );
