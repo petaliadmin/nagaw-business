@@ -93,3 +93,44 @@ test('the checkout keeps the seller: sales inside, out only on purpose', async (
   await ask.getByRole('button', { name: 'Quitter la caisse' }).click();
   await expect(page).toHaveURL(/\/espace$/);
 });
+
+test('a shop that sells both picks products or services in one tap', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/caisse');
+  const products = page.getByRole('list', { name: 'Produits à vendre' });
+  await products.waitFor();
+  // Products only so far: no choice to make.
+  await expect(
+    page.getByRole('group', { name: 'Produits ou services' }),
+  ).toHaveCount(0);
+
+  await page.goto('/espace/produits/nouveau');
+  await page.waitForLoadState('networkidle');
+  await page.locator('label', { hasText: 'Un service' }).click();
+  await page.getByLabel('Nom du service').fill('Livraison à domicile');
+  await page.getByLabel(/^Prix de vente/).fill('1000');
+  await page.getByRole('button', { name: 'Enregistrer le service' }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Livraison à domicile' }),
+  ).toBeVisible();
+
+  await page.goto('/caisse');
+  const kinds = page.getByRole('group', { name: 'Produits ou services' });
+  await expect(kinds).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Produits et services' }),
+  ).toBeVisible();
+  await kinds.getByRole('button', { name: 'Services' }).click();
+  await expect(products).toContainText('Livraison à domicile');
+  await expect(products).not.toContainText('Eau minérale');
+  await kinds.getByRole('button', { name: 'Produits' }).click();
+  await expect(products).toContainText('Eau minérale');
+  await expect(products).not.toContainText('Livraison à domicile');
+  await kinds.getByRole('button', { name: 'Tout' }).click();
+  await expect(products).toContainText('Livraison à domicile');
+  await expect(products).toContainText('Eau minérale');
+});

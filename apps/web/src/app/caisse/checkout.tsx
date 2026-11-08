@@ -22,6 +22,7 @@ import {
   CircleCheck,
   CreditCard,
   HandCoins,
+  LayoutGrid,
   Minus,
   Package,
   Percent,
@@ -32,6 +33,7 @@ import {
   Split,
   Tag,
   Trash2,
+  Wrench,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -580,22 +582,31 @@ export function Checkout({
     () => new Map(products.map((p) => [p.id, p])),
     [products],
   );
+  // Products or services, when the shop sells both (ADR-045).
+  const bothKinds =
+    products.some((p) => p.kind === 'product') &&
+    products.some((p) => p.kind === 'service');
+  const [kind, setKind] = useState<'product' | 'service' | null>(null);
+  const ofKind = useMemo(
+    () => (kind ? products.filter((p) => p.kind === kind) : products),
+    [products, kind],
+  );
   // Categories of the products, to sell from a shelf in one tap.
   const [category, setCategory] = useState<string | null>(null);
   const categories = useMemo(() => {
     const found = new Map<string, string>();
-    for (const p of products)
+    for (const p of ofKind)
       if (p.category) found.set(p.category.id, p.category.name);
     return [...found].map(([id, name]) => ({ id, name }));
-  }, [products]);
+  }, [ofKind]);
   const showCategories =
     categories.length > 1 ||
-    (categories.length === 1 && products.some((p) => !p.category));
+    (categories.length === 1 && ofKind.some((p) => !p.category));
   const visible = useMemo(() => {
     const text = query.trim().toLowerCase();
     const shelf = category
-      ? products.filter((p) => p.category?.id === category)
-      : products;
+      ? ofKind.filter((p) => p.category?.id === category)
+      : ofKind;
     if (!text) return shelf;
     // A search looks everywhere: the seller may not know the shelf.
     return products.filter(
@@ -604,7 +615,7 @@ export function Checkout({
         p.barcode === query.trim() ||
         p.units.some((u) => u.barcode === query.trim()),
     );
-  }, [products, query, category]);
+  }, [products, ofKind, query, category]);
 
   const lines = priceCart(cart, byId);
   const linesValid = lines.every(
@@ -1352,7 +1363,11 @@ export function Checkout({
             <span className="flex size-10 items-center justify-center rounded-xl bg-surface text-stock-ink shadow-sm">
               <Package aria-hidden className="size-6" />
             </span>
-            {noun === 'service' ? 'Services' : 'Produits'}
+            {bothKinds
+              ? 'Produits et services'
+              : noun === 'service'
+                ? 'Services'
+                : 'Produits'}
           </h2>
           <div className="relative min-w-0 flex-1 basis-56 sm:ml-auto sm:max-w-sm">
             <label htmlFor={`${ids}-search`} className="sr-only">
@@ -1373,6 +1388,40 @@ export function Checkout({
             />
           </div>
         </div>
+        {bothKinds && (
+          <div
+            role="group"
+            aria-label="Produits ou services"
+            className="grid grid-cols-3 gap-1 rounded-2xl bg-surface-muted p-1"
+          >
+            {(
+              [
+                { key: null, label: 'Tout', icon: LayoutGrid },
+                { key: 'product', label: 'Produits', icon: Package },
+                { key: 'service', label: 'Services', icon: Wrench },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.key ?? 'all'}
+                type="button"
+                aria-pressed={kind === option.key}
+                onClick={() => {
+                  setKind(option.key);
+                  // A category of the other kind would show nothing.
+                  setCategory(null);
+                }}
+                className={`flex min-h-12 items-center justify-center gap-2 rounded-xl text-base font-bold ${
+                  kind === option.key
+                    ? 'bg-surface text-stock-ink shadow-sm'
+                    : 'text-ink-muted'
+                }`}
+              >
+                <option.icon aria-hidden className="size-5 shrink-0" />
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
         {showCategories && (
           <div
             role="group"
