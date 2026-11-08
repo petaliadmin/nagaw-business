@@ -81,7 +81,7 @@ async function NewDocument() {
 
 export default function NewDocumentPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="form" />}>
       <NewDocument />
     </Suspense>
   );

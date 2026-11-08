@@ -214,7 +214,7 @@ async function Customer({ params }: PageProps<'/espace/clients/[id]'>) {
 
 export default function CustomerPage(props: PageProps<'/espace/clients/[id]'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="detail" />}>
       <Customer {...props} />
     </Suspense>
   );

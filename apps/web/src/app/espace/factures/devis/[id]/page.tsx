@@ -164,7 +164,7 @@ export default function QuotePage(
   props: PageProps<'/espace/factures/devis/[id]'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="detail" />}>
       <Quote {...props} />
     </Suspense>
   );

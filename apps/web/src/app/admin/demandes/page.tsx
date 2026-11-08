@@ -101,7 +101,7 @@ async function Requests({ searchParams }: PageProps<'/admin/demandes'>) {
 
 export default function RequestsPage(props: PageProps<'/admin/demandes'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Requests {...props} />
     </Suspense>
   );

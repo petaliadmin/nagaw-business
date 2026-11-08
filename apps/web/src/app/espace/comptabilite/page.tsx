@@ -387,7 +387,7 @@ export default function AccountingPage(
   props: PageProps<'/espace/comptabilite'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="dashboard" />}>
       <Accounting {...props} />
     </Suspense>
   );

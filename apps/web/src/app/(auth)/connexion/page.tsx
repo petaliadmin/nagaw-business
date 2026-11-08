@@ -51,7 +51,7 @@ export default function SignInPage() {
   return (
     <>
       <h1 className="text-3xl font-extrabold">Connexion</h1>
-      <Suspense fallback={<PageFallback />}>
+      <Suspense fallback={<PageFallback variant="form" />}>
         <SignIn />
       </Suspense>
     </>

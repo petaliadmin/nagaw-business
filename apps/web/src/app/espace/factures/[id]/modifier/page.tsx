@@ -49,7 +49,7 @@ export default function EditInvoicePage(
   props: PageProps<'/espace/factures/[id]/modifier'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="form" />}>
       <EditInvoice {...props} />
     </Suspense>
   );

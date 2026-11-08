@@ -254,7 +254,7 @@ export default function ExpensesPage(
   props: PageProps<'/espace/tresorerie/depenses'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Expenses {...props} />
     </Suspense>
   );

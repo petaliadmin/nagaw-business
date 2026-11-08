@@ -285,7 +285,7 @@ async function Sale({
 
 export default function SalePage(props: PageProps<'/espace/ventes/[id]'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="detail" />}>
       <Sale {...props} />
     </Suspense>
   );

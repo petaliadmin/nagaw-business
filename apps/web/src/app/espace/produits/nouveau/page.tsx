@@ -80,7 +80,7 @@ async function NewProduct() {
 
 export default function NewProductPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="form" />}>
       <NewProduct />
     </Suspense>
   );

@@ -296,7 +296,7 @@ async function Invoice({ params }: PageProps<'/espace/factures/[id]'>) {
 
 export default function InvoicePage(props: PageProps<'/espace/factures/[id]'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="detail" />}>
       <Invoice {...props} />
     </Suspense>
   );

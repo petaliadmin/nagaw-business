@@ -242,7 +242,7 @@ async function Subscription() {
 
 export default function SubscriptionPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="detail" />}>
       <Subscription />
     </Suspense>
   );

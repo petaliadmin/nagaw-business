@@ -305,7 +305,7 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
 
 export default function SalesPage(props: PageProps<'/espace/ventes'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Sales {...props} />
     </Suspense>
   );

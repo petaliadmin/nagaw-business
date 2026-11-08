@@ -43,7 +43,7 @@ export default function NewQuotePage(
   props: PageProps<'/espace/factures/devis/nouveau'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="form" />}>
       <NewQuote {...props} />
     </Suspense>
   );

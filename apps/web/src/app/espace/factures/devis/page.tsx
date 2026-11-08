@@ -25,7 +25,7 @@ async function Quotes({ searchParams }: PageProps<'/espace/factures/devis'>) {
 
 export default function QuotesPage(props: PageProps<'/espace/factures/devis'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Quotes {...props} />
     </Suspense>
   );

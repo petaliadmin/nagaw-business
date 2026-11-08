@@ -136,7 +136,7 @@ async function AuditLog({ searchParams }: PageProps<'/espace/journal'>) {
 
 export default function AuditLogPage(props: PageProps<'/espace/journal'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <AuditLog {...props} />
     </Suspense>
   );

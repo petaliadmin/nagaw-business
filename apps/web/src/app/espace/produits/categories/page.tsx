@@ -49,7 +49,7 @@ async function Categories() {
 
 export default function CategoriesPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Categories />
     </Suspense>
   );

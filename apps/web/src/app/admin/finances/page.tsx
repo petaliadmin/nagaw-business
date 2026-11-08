@@ -217,7 +217,7 @@ async function Finances() {
 
 export default function FinancesPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="dashboard" />}>
       <Finances />
     </Suspense>
   );

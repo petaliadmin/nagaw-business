@@ -188,7 +188,7 @@ export default function DocumentsSummaryPage(
   props: PageProps<'/espace/factures'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Summary {...props} />
     </Suspense>
   );

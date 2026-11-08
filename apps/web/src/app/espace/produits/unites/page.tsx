@@ -100,7 +100,7 @@ async function Units() {
 
 export default function UnitsPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Units />
     </Suspense>
   );

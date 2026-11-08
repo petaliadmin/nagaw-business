@@ -39,7 +39,7 @@ export default function InvoicePreviewPage(
   props: PageProps<'/espace/factures/[id]/apercu'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="detail" />}>
       <Preview {...props} />
     </Suspense>
   );

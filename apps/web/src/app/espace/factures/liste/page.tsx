@@ -29,7 +29,7 @@ export default function InvoicesPage(
   props: PageProps<'/espace/factures/liste'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Invoices {...props} />
     </Suspense>
   );

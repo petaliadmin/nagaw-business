@@ -349,7 +349,7 @@ async function Overview() {
 
 export default function AdminPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="dashboard" />}>
       <Overview />
     </Suspense>
   );

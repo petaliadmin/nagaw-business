@@ -288,7 +288,7 @@ export default function StatisticsPage(
   props: PageProps<'/espace/statistiques'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="dashboard" />}>
       <Statistics {...props} />
     </Suspense>
   );

@@ -96,7 +96,7 @@ async function Feedback({ searchParams }: PageProps<'/espace/avis'>) {
 
 export default function FeedbackPage(props: PageProps<'/espace/avis'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Feedback {...props} />
     </Suspense>
   );

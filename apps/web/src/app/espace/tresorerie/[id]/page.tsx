@@ -206,7 +206,7 @@ export default function AccountPage(
   props: PageProps<'/espace/tresorerie/[id]'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="detail" />}>
       <Account {...props} />
     </Suspense>
   );

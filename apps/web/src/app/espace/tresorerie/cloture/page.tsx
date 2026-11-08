@@ -168,7 +168,7 @@ export default function ClosingPage(
   props: PageProps<'/espace/tresorerie/cloture'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="form" />}>
       <Closing {...props} />
     </Suspense>
   );

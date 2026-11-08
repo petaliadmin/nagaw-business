@@ -158,7 +158,7 @@ async function Sync() {
 
 export default function SyncPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="dashboard" />}>
       <Sync />
     </Suspense>
   );

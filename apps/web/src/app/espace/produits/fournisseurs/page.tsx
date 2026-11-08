@@ -58,7 +58,7 @@ async function Suppliers() {
 
 export default function SuppliersPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Suppliers />
     </Suspense>
   );

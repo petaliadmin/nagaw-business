@@ -34,7 +34,7 @@ export default function NewInvoicePage(
   props: PageProps<'/espace/factures/nouvelle'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="form" />}>
       <NewInvoice {...props} />
     </Suspense>
   );

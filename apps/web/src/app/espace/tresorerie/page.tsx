@@ -187,7 +187,7 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
 
 export default function TreasuryPage(props: PageProps<'/espace/tresorerie'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="dashboard" />}>
       <Treasury {...props} />
     </Suspense>
   );

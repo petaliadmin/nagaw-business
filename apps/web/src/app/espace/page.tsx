@@ -775,7 +775,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
 
 export default function OverviewPage(props: PageProps<'/espace'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="dashboard" />}>
       <Overview {...props} />
     </Suspense>
   );

@@ -205,7 +205,7 @@ async function Team() {
 
 export default function TeamPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Team />
     </Suspense>
   );

@@ -49,7 +49,7 @@ export default function EditQuotePage(
   props: PageProps<'/espace/factures/devis/[id]/modifier'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="form" />}>
       <EditQuote {...props} />
     </Suspense>
   );

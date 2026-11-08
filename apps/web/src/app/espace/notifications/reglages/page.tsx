@@ -57,7 +57,7 @@ async function Settings() {
 
 export default function NotificationSettingsPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="form" />}>
       <Settings />
     </Suspense>
   );

@@ -184,7 +184,7 @@ export default function NotificationsPage(
   props: PageProps<'/espace/notifications'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Notifications {...props} />
     </Suspense>
   );

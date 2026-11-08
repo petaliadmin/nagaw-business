@@ -317,7 +317,7 @@ async function Settings() {
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="form" />}>
       <Settings />
     </Suspense>
   );

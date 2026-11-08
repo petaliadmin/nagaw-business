@@ -217,7 +217,7 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
 
 export default function ShopPage(props: PageProps<'/admin/boutiques/[id]'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="detail" />}>
       <Shop {...props} />
     </Suspense>
   );

@@ -71,7 +71,7 @@ async function ArchivedProducts() {
 
 export default function ArchivedProductsPage() {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <ArchivedProducts />
     </Suspense>
   );

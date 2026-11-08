@@ -104,7 +104,7 @@ async function Feedback({ searchParams }: PageProps<'/admin/avis'>) {
 
 export default function AdminFeedbackPage(props: PageProps<'/admin/avis'>) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="list" />}>
       <Feedback {...props} />
     </Suspense>
   );

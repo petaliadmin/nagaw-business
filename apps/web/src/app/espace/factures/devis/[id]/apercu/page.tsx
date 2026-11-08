@@ -40,7 +40,7 @@ export default function QuotePreviewPage(
   props: PageProps<'/espace/factures/devis/[id]/apercu'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="detail" />}>
       <Preview {...props} />
     </Suspense>
   );

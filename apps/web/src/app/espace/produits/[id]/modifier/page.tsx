@@ -80,7 +80,7 @@ export default function EditProductPage(
   props: PageProps<'/espace/produits/[id]/modifier'>,
 ) {
   return (
-    <Suspense fallback={<PageFallback />}>
+    <Suspense fallback={<PageFallback variant="form" />}>
       <EditProduct {...props} />
     </Suspense>
   );
