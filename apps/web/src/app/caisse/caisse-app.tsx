@@ -954,10 +954,8 @@ export function CaisseApp() {
             type="button"
             disabled={syncing}
             onClick={() => void onSyncNow()}
-            className={buttonClasses(
-              'secondary',
-              'w-full md:w-auto md:self-end',
-            )}
+            // Beside the title, not above the products: the checkout first.
+            className={buttonClasses('secondary', 'self-end')}
           >
             <RefreshCw
               aria-hidden

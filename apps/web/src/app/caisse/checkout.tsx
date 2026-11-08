@@ -22,10 +22,12 @@ import {
   CreditCard,
   HandCoins,
   Minus,
+  Percent,
   Plus,
   Search,
   ShoppingCart,
   Smartphone,
+  Split,
   Tag,
   Trash2,
   X,
@@ -61,6 +63,7 @@ import {
   type PricedLine,
 } from '@/lib/sales/cart';
 import { OperatorLogo } from '@/components/sales/operator-logo';
+import { cashSuggestions } from '@/lib/sales/cash';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 
 const METHOD_ICONS: Record<PaymentMethod, LucideIcon> = {
@@ -197,9 +200,10 @@ function PriceEditor({
   return (
     <details
       open={priced.agreedTotal !== null || undefined}
-      className="rounded-xl bg-surface-muted p-3"
+      // Closed, a discreet link: the cart stays short. Open, its panel.
+      className="rounded-xl open:bg-surface-muted open:p-3"
     >
-      <summary className="flex min-h-12 cursor-pointer items-center gap-2 font-bold">
+      <summary className="inline-flex min-h-12 cursor-pointer list-none items-center gap-2 font-semibold text-brand-ink underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
         <Tag aria-hidden className="size-5" />
         Changer le prix
       </summary>
@@ -561,16 +565,31 @@ export function Checkout({
     () => new Map(products.map((p) => [p.id, p])),
     [products],
   );
+  // Categories of the products, to sell from a shelf in one tap.
+  const [category, setCategory] = useState<string | null>(null);
+  const categories = useMemo(() => {
+    const found = new Map<string, string>();
+    for (const p of products)
+      if (p.category) found.set(p.category.id, p.category.name);
+    return [...found].map(([id, name]) => ({ id, name }));
+  }, [products]);
+  const showCategories =
+    categories.length > 1 ||
+    (categories.length === 1 && products.some((p) => !p.category));
   const visible = useMemo(() => {
     const text = query.trim().toLowerCase();
-    if (!text) return products;
+    const shelf = category
+      ? products.filter((p) => p.category?.id === category)
+      : products;
+    if (!text) return shelf;
+    // A search looks everywhere: the seller may not know the shelf.
     return products.filter(
       (p) =>
         p.name.toLowerCase().includes(text) ||
         p.barcode === query.trim() ||
         p.units.some((u) => u.barcode === query.trim()),
     );
-  }, [products, query]);
+  }, [products, query, category]);
 
   const lines = priceCart(cart, byId);
   const linesValid = lines.every(
@@ -783,7 +802,10 @@ export function Checkout({
         Panier
       </h2>
       {cart.length === 0 ? (
-        <p className="text-ink-muted">Touchez un {noun} pour l’ajouter.</p>
+        <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-line px-4 py-8 text-center text-ink-muted">
+          <ShoppingCart aria-hidden className="size-8" />
+          <p>Touchez un {noun} pour l’ajouter.</p>
+        </div>
       ) : (
         <ul
           aria-label="Articles du panier"
@@ -908,8 +930,9 @@ export function Checkout({
       )}
       {cart.length > 0 && (
         <>
-          <details className="rounded-xl bg-surface-muted p-3">
-            <summary className="flex min-h-12 cursor-pointer items-center font-bold">
+          <details className="rounded-xl open:bg-surface-muted open:p-3">
+            <summary className="inline-flex min-h-12 cursor-pointer list-none items-center gap-2 font-semibold text-brand-ink underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
+              <Percent aria-hidden className="size-5" />
               Faire une remise
             </summary>
             <label
@@ -938,8 +961,10 @@ export function Checkout({
               </p>
             )}
           </details>
-          <div className="flex items-end justify-between gap-2 border-t border-line pt-3">
-            <span className="text-lg font-semibold">À payer</span>
+          <div className="flex items-end justify-between gap-2 rounded-xl bg-sales-soft px-4 py-3">
+            <span className="text-lg font-semibold text-sales-ink">
+              À payer
+            </span>
             <span className="text-3xl font-extrabold tabular-nums text-sales-ink">
               {money(totals.total)}
             </span>
@@ -984,12 +1009,12 @@ export function Checkout({
         type="button"
         aria-pressed={method === 'split'}
         onClick={() => setMethod('split')}
-        className={`min-h-12 rounded-xl border-2 px-3 text-base font-bold ${
-          method === 'split'
-            ? 'border-sales-strong bg-sales-soft text-sales-ink'
-            : 'border-line-strong'
+        // A rarer choice: a link under the four usual ones.
+        className={`inline-flex min-h-12 items-center gap-2 self-start text-base font-bold underline underline-offset-4 ${
+          method === 'split' ? 'text-sales-ink' : 'text-brand-ink'
         }`}
       >
+        <Split aria-hidden className="size-5" />
         Payer avec plusieurs moyens
       </button>
 
@@ -1005,6 +1030,28 @@ export function Checkout({
             onChange={(event) => setCashText(event.currentTarget.value)}
             className={CONTROL}
           />
+          {/* What customers usually hand over: one tap, the change shows. */}
+          <div
+            role="group"
+            aria-label="Somme reçue en un toucher"
+            className="flex flex-wrap gap-2"
+          >
+            {cashSuggestions(totals.total, currency).map((amount, index) => (
+              <button
+                key={amount}
+                type="button"
+                aria-pressed={cashReceived === amount}
+                onClick={() => setCashText(String(amount))}
+                className={`min-h-12 rounded-xl border-2 px-4 text-base font-bold tabular-nums ${
+                  cashReceived === amount
+                    ? 'border-sales-strong bg-sales-strong text-white'
+                    : 'border-line-strong bg-surface text-ink'
+                }`}
+              >
+                {index === 0 ? 'Montant exact' : money(amount)}
+              </button>
+            ))}
+          </div>
           {/* Present before it fills, so that screen readers speak it. */}
           <div aria-live="polite">
             {change !== null && (
@@ -1225,18 +1272,21 @@ export function Checkout({
         </Alert>
       )}
       {error && <Alert tone="error">{error}</Alert>}
-      <button
-        type="button"
-        onClick={submit}
-        disabled={pending || cart.length === 0 || refusal !== null}
-        className={buttonClasses('sell', 'min-h-16 w-full text-xl')}
-      >
-        {pending
-          ? 'Enregistrement…'
-          : shortages.length > 0
-            ? `Vendre quand même — ${money(totals.total)}`
-            : `Valider la vente — ${money(totals.total)}`}
-      </button>
+      {/* On a phone the button stays at the bottom of the screen. */}
+      <div className="sticky bottom-0 -mx-4 -mb-4 rounded-b-2xl border-t border-line bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:static lg:m-0 lg:border-0 lg:p-0">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={pending || cart.length === 0 || refusal !== null}
+          className={buttonClasses('sell', 'min-h-16 w-full text-xl')}
+        >
+          {pending
+            ? 'Enregistrement…'
+            : shortages.length > 0
+              ? `Vendre quand même — ${money(totals.total)}`
+              : `Valider la vente — ${money(totals.total)}`}
+        </button>
+      </div>
     </section>
   );
 
@@ -1263,6 +1313,29 @@ export function Checkout({
             className={`${CONTROL} pl-12`}
           />
         </div>
+        {showCategories && (
+          <div
+            role="group"
+            aria-label="Catégories"
+            className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:px-0"
+          >
+            {[{ id: null, name: 'Tout' }, ...categories].map((c) => (
+              <button
+                key={c.id ?? 'all'}
+                type="button"
+                aria-pressed={category === c.id}
+                onClick={() => setCategory(c.id)}
+                className={`min-h-12 shrink-0 rounded-full border-2 px-4 text-base font-bold ${
+                  category === c.id
+                    ? 'border-sales-strong bg-sales-strong text-white'
+                    : 'border-line-strong bg-surface text-ink'
+                }`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
         {visible.length === 0 ? (
           <p className="text-ink-muted">Aucun {noun} ne correspond.</p>
         ) : (
@@ -1280,10 +1353,10 @@ export function Checkout({
                   <button
                     type="button"
                     onClick={() => tap(product)}
-                    className={`relative flex h-full min-h-40 w-full flex-col items-center gap-2 rounded-2xl border-2 bg-surface p-3 text-center shadow-sm ${
+                    className={`relative flex h-full min-h-40 w-full flex-col items-center gap-2 rounded-2xl border-2 p-3 text-center shadow-sm transition-transform active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 ${
                       inCart.length > 0
-                        ? 'border-sales-strong'
-                        : 'border-line hover:border-sales'
+                        ? 'border-sales-strong bg-sales-soft/40'
+                        : 'border-line bg-surface hover:border-sales'
                     }`}
                   >
                     {/* No aria-label: the stock and the cart are read too. */}
@@ -1292,14 +1365,14 @@ export function Checkout({
                     <span className="line-clamp-2 font-semibold">
                       {product.name}
                     </span>
-                    <span className="text-lg font-extrabold tabular-nums text-sales-ink">
+                    <span className="mt-auto rounded-full bg-sales-soft px-3 py-0.5 text-lg font-extrabold tabular-nums text-sales-ink">
                       {money(product.salePrice)}
-                      {several && (
-                        <span className="block text-base font-semibold text-ink-muted">
-                          {perUnit(product.unit)} · autres unités
-                        </span>
-                      )}
                     </span>
+                    {several && (
+                      <span className="text-base font-semibold text-ink-muted">
+                        {perUnit(product.unit)} · autres unités
+                      </span>
+                    )}
                     {product.stockLevel === 'out' && (
                       <span className="text-base text-danger-ink">
                         {STOCK_LEVEL_LABELS.out}
@@ -1346,7 +1419,7 @@ export function Checkout({
       </div>
 
       {step === 'cart' && cart.length > 0 && (
-        <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 px-4 lg:hidden">
+        <div className="fixed inset-x-0 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-20 px-4 lg:hidden">
           <button
             type="button"
             onClick={() => goTo('pay')}
