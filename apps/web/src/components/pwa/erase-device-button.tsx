@@ -4,6 +4,7 @@ import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { eraseLocalData } from '@/lib/offline/db';
 import { outboxStatus } from '@/lib/offline/store';
 
@@ -14,6 +15,7 @@ import { outboxStatus } from '@/lib/offline/store';
 export function EraseDeviceButton() {
   const [waiting, setWaiting] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [confirm, confirmDialog] = useConfirm();
 
   useEffect(() => {
     outboxStatus()
@@ -43,31 +45,35 @@ export function EraseDeviceButton() {
       </p>
     );
   return (
-    <button
-      type="button"
-      className={buttonClasses('secondary')}
-      onClick={() => {
-        if (
-          !window.confirm(
-            'Effacer tout ce que garde ce téléphone : produits, clients et tickets ? Ce qui a été envoyé reste sur le serveur.',
-          )
-        )
-          return;
-        eraseLocalData()
-          .then(() => {
-            localStorage.clear();
-            setMessage('Ce téléphone a été vidé.');
-          })
-          .catch((error: unknown) => {
-            console.error('Effacement de ce téléphone', error);
-            setMessage(
-              'Ce téléphone n’a pas pu être vidé. Rechargez la page, puis réessayez.',
-            );
+    <>
+      {confirmDialog}
+      <button
+        type="button"
+        className={buttonClasses('secondary')}
+        onClick={async () => {
+          const ok = await confirm({
+            title: 'Effacer ce téléphone ?',
+            message:
+              'Tout ce qu’il garde sera effacé : produits, clients et tickets. Ce qui a été envoyé reste sur le serveur.',
+            confirmLabel: 'Effacer',
           });
-      }}
-    >
-      <Trash2 aria-hidden className="size-5" />
-      Effacer ce téléphone
-    </button>
+          if (!ok) return;
+          eraseLocalData()
+            .then(() => {
+              localStorage.clear();
+              setMessage('Ce téléphone a été vidé.');
+            })
+            .catch((error: unknown) => {
+              console.error('Effacement de ce téléphone', error);
+              setMessage(
+                'Ce téléphone n’a pas pu être vidé. Rechargez la page, puis réessayez.',
+              );
+            });
+        }}
+      >
+        <Trash2 aria-hidden className="size-5" />
+        Effacer ce téléphone
+      </button>
+    </>
   );
 }

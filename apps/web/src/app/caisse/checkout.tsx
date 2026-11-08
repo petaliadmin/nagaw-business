@@ -42,6 +42,7 @@ import {
   useTransition,
 } from 'react';
 import { CONTROL } from '@/components/form-field';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { ProductTile } from '@/components/catalog/product-tile';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
@@ -521,6 +522,7 @@ export function Checkout({
 }) {
   const ids = useId();
   const money = (value: number) => formatAmount(value, currency);
+  const [confirm, confirmDialog] = useConfirm();
 
   const [query, setQuery] = useState('');
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -788,13 +790,13 @@ export function Checkout({
   }
 
   /** Empties the cart, after a confirmation: a full cart is work. */
-  function clearCart() {
-    if (
-      !window.confirm(
-        'Vider le panier ? Tous les articles et la remise seront retirés.',
-      )
-    )
-      return;
+  async function clearCart() {
+    const ok = await confirm({
+      title: 'Vider le panier ?',
+      message: 'Tous les articles et la remise seront retirés.',
+      confirmLabel: 'Vider le panier',
+    });
+    if (!ok) return;
     setCart([]);
     setDiscountText('');
     setCashText('');
@@ -823,7 +825,7 @@ export function Checkout({
         {cart.length > 0 && (
           <button
             type="button"
-            onClick={clearCart}
+            onClick={() => void clearCart()}
             className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border-2 border-white/70 px-3 text-base font-bold text-white hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             <Trash2 aria-hidden className="size-5" />
@@ -1474,6 +1476,7 @@ export function Checkout({
       <p role="status" className="sr-only">
         {announcement}
       </p>
+      {confirmDialog}
     </div>
   );
 }

@@ -359,10 +359,13 @@ test('a withdrawn phone stays out, loses its copy, and a manager can bring it ba
   await openCheckoutOnline(page);
 
   await page.goto('/espace/parametres');
-  page.once('dialog', (dialog) => void dialog.accept());
   await page
     .getByRole('button', { name: /^Retirer l’appareil/ })
     .first()
+    .click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Retirer l’appareil' })
     .click();
   await expect(
     page.getByRole('button', { name: /^Remettre l’appareil/ }),
@@ -443,8 +446,11 @@ test('only « Effacer ce téléphone » empties it, never while sales wait', asy
   await page.goto('/caisse');
   await expect(banner(page)).toHaveCount(0, { timeout: 15_000 });
   await page.goto('/espace/parametres');
-  page.once('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: 'Effacer ce téléphone' }).click();
+  await page
+    .getByRole('alertdialog', { name: 'Effacer ce téléphone ?' })
+    .getByRole('button', { name: 'Effacer' })
+    .click();
   await expect(page.getByText('Ce téléphone a été vidé.')).toBeVisible();
   const databases = await page.evaluate(async () =>
     (await indexedDB.databases()).map((db) => db.name),

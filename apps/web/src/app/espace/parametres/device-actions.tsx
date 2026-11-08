@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
+import { useConfirmedSubmit } from '@/components/ui/confirm-dialog';
 import { initialFormState } from '@/lib/auth/schemas';
 import { restoreDevice, revokeDevice } from '../vendre/actions';
 
@@ -46,19 +47,21 @@ export function RevokeDeviceButton({
   label: string;
 }) {
   const [state, action] = useActionState(revokeDevice, initialFormState);
+  const [guard, confirmDialog] = useConfirmedSubmit();
   return (
     <form
       action={action}
-      onSubmit={(event) => {
-        if (
-          !window.confirm(
-            `Retirer « ${label} » ? Sa caisse se ferme dès qu’il se connecte, et ses ventes pas encore envoyées seront refusées.`,
-          )
-        )
-          event.preventDefault();
-      }}
+      onSubmit={(event) =>
+        guard(event, {
+          title: `Retirer « ${label} » ?`,
+          message:
+            'Sa caisse se ferme dès qu’il se connecte, et ses ventes pas encore envoyées seront refusées.',
+          confirmLabel: 'Retirer l’appareil',
+        })
+      }
       className="flex flex-col gap-2"
     >
+      {confirmDialog}
       <input type="hidden" name="organizationId" value={organizationId} />
       <input type="hidden" name="deviceId" value={deviceId} />
       <FormMessage state={state} />

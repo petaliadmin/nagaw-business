@@ -240,8 +240,11 @@ test('an owner edits a product and archives it', async ({
     .click();
   await expect(page.getByText('800 F CFA')).toBeVisible();
 
-  page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Archiver ce produit' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Archiver' })
+    .click();
   await expect(page.getByText('Ce produit est archivé')).toBeVisible();
   await page.goto('/espace/produits/archives');
   await expect(

@@ -10,6 +10,7 @@ import {
   type UnitTemplateDto,
 } from '@nagaw/shared';
 import { Scale } from 'lucide-react';
+import { useConfirmedSubmit } from '@/components/ui/confirm-dialog';
 import { useActionState, useId, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
 import { FormField } from '@/components/form-field';
@@ -43,26 +44,30 @@ function UnitChangeForm({
     updateProductUnit,
     initialFormState,
   );
+  const [guard, confirmDialog] = useConfirmedSubmit();
   const ids = useId();
   const computed = displayPriceOf({ ...unit, price: null }, product.salePrice);
   return (
     <ActionForm
       action={action}
       pending={pending}
-      onSubmitCapture={(event) => {
-        if (
-          intent === 'archive' &&
-          !window.confirm(
-            `Retirer « ${unit.label} » ? Elle ne sera plus proposée à la caisse ; les ventes passées la gardent.`,
-          )
-        ) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-      }}
+      onSubmitCapture={(event) =>
+        guard(
+          event,
+          intent === 'archive'
+            ? {
+                title: `Retirer « ${unit.label} » ?`,
+                message:
+                  'Elle ne sera plus proposée à la caisse ; les ventes passées la gardent.',
+                confirmLabel: 'Retirer l’unité',
+              }
+            : null,
+        )
+      }
       className="flex flex-col gap-2"
       noValidate
     >
+      {confirmDialog}
       <input type="hidden" name="organizationId" value={organizationId} />
       <input type="hidden" name="productId" value={product.id} />
       <input type="hidden" name="unitId" value={unit.id} />

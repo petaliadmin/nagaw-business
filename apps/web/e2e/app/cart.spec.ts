@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { expectAccessible } from '../support/a11y';
 import { resetBackend, signInAs } from '../support/session';
 
 test.beforeAll(async () => {
@@ -23,13 +24,26 @@ test('« Vider le panier » asks first, then empties the cart', async ({
   const cart = page.getByRole('list', { name: 'Articles du panier' });
   await expect(cart.getByRole('listitem')).toHaveCount(1);
 
-  // Refused: nothing changes.
-  page.once('dialog', (dialog) => void dialog.dismiss());
+  // The app's own window, not the browser's: refused, nothing changes.
+  const ask = page.getByRole('alertdialog', { name: 'Vider le panier ?' });
   await page.getByRole('button', { name: 'Vider le panier' }).click();
+  await expect(ask).toBeVisible();
+  await expect(ask).toContainText('Tous les articles et la remise');
+  // « Annuler » has the focus: a hurried tap never empties the cart.
+  await expect(ask.getByRole('button', { name: 'Annuler' })).toBeFocused();
+  await expectAccessible(page, 'confirmation');
+  await ask.getByRole('button', { name: 'Annuler' }).click();
+  await expect(ask).toBeHidden();
   await expect(cart.getByRole('listitem')).toHaveCount(1);
 
-  page.once('dialog', (dialog) => void dialog.accept());
+  // Escape cancels too.
   await page.getByRole('button', { name: 'Vider le panier' }).click();
+  await page.keyboard.press('Escape');
+  await expect(ask).toBeHidden();
+  await expect(cart.getByRole('listitem')).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Vider le panier' }).click();
+  await ask.getByRole('button', { name: 'Vider le panier' }).click();
   await expect(cart).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Vider le panier' }),
