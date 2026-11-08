@@ -851,7 +851,7 @@ export function CaisseApp() {
           <span className="truncate text-lg font-extrabold">
             {snapshot.shop.name}
           </span>
-          <span className="flex items-center gap-1 text-base font-semibold text-sales-ink">
+          <span className="flex items-center gap-1 text-base font-semibold text-brand-ink">
             <ShoppingCart aria-hidden className="size-4" />
             Caisse
           </span>
@@ -968,7 +968,7 @@ export function CaisseApp() {
               }}
               className={`flex min-h-12 items-center justify-center gap-2 rounded-xl text-base font-bold ${
                 !ticket && view === tab.key
-                  ? 'bg-surface text-sales-ink shadow-sm'
+                  ? 'bg-surface text-brand-ink shadow-sm'
                   : 'text-ink-muted'
               }`}
             >

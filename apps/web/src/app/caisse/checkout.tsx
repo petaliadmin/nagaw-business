@@ -33,6 +33,7 @@ import {
   Split,
   Tag,
   Trash2,
+  Wallet,
   Wrench,
   X,
   type LucideIcon,
@@ -89,6 +90,20 @@ const optionName = (product: ProductDto, option: SellingOption) =>
   option.label ?? UNITS[product.unit].label;
 
 /** « 650 F le kg », « 30 000 F », « 0,65 F le g » shown as « 650 F le kg ». */
+/**
+ * Colour roles of the checkout (DESIGN.md, « La caisse ») : the brand
+ * purple for the structure and for what is chosen, green for the money
+ * and the sale only (prices, total, « Encaisser », « Valider la vente »),
+ * red for what removes. A choice never looks like the button that sells.
+ */
+const CHOSEN = 'border-brand-strong bg-brand-soft text-brand-ink';
+const NOT_CHOSEN = 'border-line-strong bg-surface text-ink hover:border-brand';
+/** Header band of a section: products, cart, payment. */
+const SECTION_HEAD =
+  '-mx-4 -mt-4 flex min-h-16 items-center justify-between gap-3 bg-brand-strong px-4 py-2 text-white';
+const HEAD_BADGE =
+  'flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface text-brand-ink shadow-sm';
+
 function optionPrice(
   product: ProductDto,
   option: SellingOption,
@@ -301,9 +316,7 @@ function MethodButton({
       aria-pressed={selected}
       onClick={onSelect}
       className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-2 text-base font-bold ${
-        selected
-          ? 'border-sales-strong bg-sales-strong text-white'
-          : 'border-line-strong bg-surface text-ink'
+        selected ? CHOSEN : NOT_CHOSEN
       }`}
     >
       <Icon aria-hidden className="size-6" />
@@ -336,15 +349,13 @@ function ProviderPicker({
               aria-pressed={selected}
               onClick={() => onChange(provider)}
               className={`relative flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 px-2 py-3 text-center text-base leading-tight font-bold ${
-                selected
-                  ? 'border-sales-strong bg-sales-soft text-ink'
-                  : 'border-line-strong bg-surface text-ink hover:border-sales'
+                selected ? CHOSEN : NOT_CHOSEN
               }`}
             >
               {selected && (
                 <CircleCheck
                   aria-hidden
-                  className="absolute top-2 right-2 size-5 text-sales-ink"
+                  className="absolute top-2 right-2 size-5 text-brand-ink"
                 />
               )}
               <OperatorLogo provider={provider} className="size-10" />
@@ -835,16 +846,16 @@ export function Checkout({
       aria-labelledby={`${ids}-cart`}
       className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-sm"
     >
-      {/* Vivid green of the sales module, with the dark on-vivid text:
-          white falls under 4.5:1 on it (DESIGN.md). */}
-      <div className="-mx-4 -mt-4 flex min-h-16 items-center justify-between gap-3 bg-sales px-4 py-2 text-on-vivid">
+      {/* Same header as the products and the payment (brand purple,
+          white text 7.10:1). */}
+      <div className={SECTION_HEAD}>
         <h2
           id={`${ids}-cart`}
           ref={cartTitleRef}
           tabIndex={-1}
           className="flex items-center gap-3 text-xl font-bold focus:outline-none"
         >
-          <span className="flex size-10 items-center justify-center rounded-xl bg-surface text-sales-ink shadow-sm">
+          <span className={HEAD_BADGE}>
             <ShoppingCart aria-hidden className="size-6" />
           </span>
           Panier
@@ -1020,8 +1031,9 @@ export function Checkout({
               </p>
             )}
           </details>
-          {/* Dark green, white text (5.48:1): the total stands out. */}
-          <div className="flex items-end justify-between gap-2 rounded-xl bg-sales-strong px-4 py-3 text-white shadow-sm">
+          {/* Money in green, on its light shade: the large figure
+              stands out, and solid green stays for « Valider la vente ». */}
+          <div className="flex items-end justify-between gap-2 rounded-xl border-2 border-sales/40 bg-sales-soft px-4 py-3 text-sales-ink">
             <span className="text-lg font-semibold">À payer</span>
             <span className="text-3xl font-extrabold tabular-nums">
               {money(totals.total)}
@@ -1048,11 +1060,19 @@ export function Checkout({
   const paymentPanel = (
     <section
       aria-labelledby={`${ids}-pay`}
-      className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 shadow-sm"
+      className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-sm"
     >
-      <h2 id={`${ids}-pay`} className="text-xl font-bold">
-        Paiement
-      </h2>
+      <div className={SECTION_HEAD}>
+        <h2
+          id={`${ids}-pay`}
+          className="flex items-center gap-3 text-xl font-bold"
+        >
+          <span className={HEAD_BADGE}>
+            <Wallet aria-hidden className="size-6" />
+          </span>
+          Paiement
+        </h2>
+      </div>
       {/* Four in a row on a wide phone; two in the narrow cart column
           of a computer. */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
@@ -1071,7 +1091,7 @@ export function Checkout({
         onClick={() => setMethod('split')}
         // A rarer choice: a link under the four usual ones.
         className={`inline-flex min-h-12 items-center gap-2 self-start text-base font-bold underline underline-offset-4 ${
-          method === 'split' ? 'text-sales-ink' : 'text-brand-ink'
+          method === 'split' ? 'text-brand-ink decoration-2' : 'text-brand-ink'
         }`}
       >
         <Split aria-hidden className="size-5" />
@@ -1103,9 +1123,7 @@ export function Checkout({
                 aria-pressed={cashReceived === amount}
                 onClick={() => setCashText(String(amount))}
                 className={`min-h-12 rounded-xl border-2 px-4 text-base font-bold tabular-nums ${
-                  cashReceived === amount
-                    ? 'border-sales-strong bg-sales-strong text-white'
-                    : 'border-line-strong bg-surface text-ink'
+                  cashReceived === amount ? CHOSEN : NOT_CHOSEN
                 }`}
               >
                 {index === 0 ? 'Montant exact' : money(amount)}
@@ -1358,9 +1376,9 @@ export function Checkout({
         {/* Header of the products, as the cart's: title, then search. */}
         {/* Vivid blue of the products and stock module, white text
             (DESIGN.md): the shelf stands out. */}
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-stock p-3 text-white shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-brand-strong p-3 text-white shadow-sm">
           <h2 className="flex items-center gap-3 text-xl font-bold">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-surface text-stock-ink shadow-sm">
+            <span className={HEAD_BADGE}>
               <Package aria-hidden className="size-6" />
             </span>
             {bothKinds
@@ -1412,7 +1430,7 @@ export function Checkout({
                 }}
                 className={`flex min-h-12 items-center justify-center gap-2 rounded-xl text-base font-bold ${
                   kind === option.key
-                    ? 'bg-surface text-stock-ink shadow-sm'
+                    ? 'bg-surface text-brand-ink shadow-sm'
                     : 'text-ink-muted'
                 }`}
               >
@@ -1435,9 +1453,7 @@ export function Checkout({
                 aria-pressed={category === c.id}
                 onClick={() => setCategory(c.id)}
                 className={`min-h-12 shrink-0 rounded-full border-2 px-4 text-base font-bold ${
-                  category === c.id
-                    ? 'border-sales-strong bg-sales-strong text-white'
-                    : 'border-line-strong bg-surface text-ink'
+                  category === c.id ? CHOSEN : NOT_CHOSEN
                 }`}
               >
                 {c.name}
