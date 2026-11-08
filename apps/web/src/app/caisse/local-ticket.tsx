@@ -1,13 +1,14 @@
 'use client';
 
 import { describeSaleLine, type SaleDto } from '@nagaw/shared';
-import { CloudOff, MessageCircle, Printer, ShoppingCart } from 'lucide-react';
+import { CloudOff, Printer, ShoppingCart } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
-import { ticketLabel, ticketText, whatsappLink } from '@/lib/sales/ticket';
+import { ticketLabel, ticketText } from '@/lib/sales/ticket';
 import type { LocalTicket, ShopSnapshot } from '@/lib/offline/store';
+import { ShareReceipt } from './share-receipt';
 
 function Row({
   label,
@@ -163,19 +164,11 @@ export function LocalTicketView({
           <Printer aria-hidden className="size-5" />
           Imprimer le ticket
         </button>
-        <a
-          href={whatsappLink(
-            share,
-            sale.customer?.phone,
-            shop.phoneCountryCode,
-          )}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={buttonClasses('secondary')}
-        >
-          <MessageCircle aria-hidden className="size-5" />
-          Envoyer sur WhatsApp
-        </a>
+        {/* A photo or a PDF of the ticket, made on the phone. */}
+        <ShareReceipt
+          text={share}
+          fileName={`Ticket ${label.replace(/[^\w -]/g, '')}`}
+        />
       </div>
     </>
   );

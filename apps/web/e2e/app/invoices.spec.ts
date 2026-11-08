@@ -175,6 +175,14 @@ test('a sale paid at the counter gets a settled invoice', async ({
   await page.getByRole('button', { name: /^Valider la vente/ }).click();
   await expect(page.getByText('Vente enregistrée.')).toBeVisible();
 
+  // The checkout keeps its ticket; the invoice of a sale is made from the
+  // sale, in the list of sales.
+  await page.goto('/espace/ventes');
+  await page
+    .getByRole('list', { name: 'Liste des ventes' })
+    .getByRole('link')
+    .first()
+    .click();
   await page
     .getByLabel('Facture au nom de')
     .selectOption({ label: 'Fatou Ndiaye' });

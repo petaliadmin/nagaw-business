@@ -72,7 +72,7 @@ test('online, a sale from the checkout is sent at once and numbered', async ({
   await addToCart(page, 'Eau minérale 1,5 L', 2);
   await openPayment(page, isMobile);
   await page.getByRole('button', { name: /^Valider la vente/ }).click();
-  await expect(page).toHaveURL(/\/espace\/ventes\/[^/?]+\?nouvelle=1$/);
+  await expect(page).toHaveURL(/\/caisse$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     /Ticket n° \d{6} \([A-Z]-\d{6}\)/,
   );
@@ -131,7 +131,7 @@ test('a customer created at the counter buys on credit, both sent together', asy
   await page.getByLabel('Nom du nouveau client').fill('Ndèye Fall');
   await page.getByRole('button', { name: 'Ajouter le client' }).click();
   await page.getByRole('button', { name: /^Valider la vente/ }).click();
-  await expect(page).toHaveURL(/\/espace\/ventes\/[^/?]+\?nouvelle=1$/);
+  await expect(page.getByText('Vente enregistrée.')).toBeVisible();
   await page.goto('/espace/clients?doivent=1');
   await expect(
     page.getByRole('list', { name: 'Liste des clients' }),

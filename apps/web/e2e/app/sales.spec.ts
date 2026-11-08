@@ -31,6 +31,12 @@ test('a cash sale shows the change, the ticket and lowers the stock', async ({
   baseURL,
   isMobile,
 }) => {
+  // No share sheet here: the ticket files are downloaded instead.
+  await page.addInitScript(() =>
+    Object.defineProperty(Navigator.prototype, 'canShare', {
+      value: undefined,
+    }),
+  );
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/vendre');
   await addToCart(page, 'Eau minérale 1,5 L', 3);
@@ -64,17 +70,23 @@ test('a cash sale shows the change, the ticket and lowers the stock', async ({
   await expect(page.getByText(/À rendre : 500/)).toBeVisible();
   await page.getByRole('button', { name: /^Valider la vente/ }).click();
 
-  await expect(page).toHaveURL(/\/espace\/ventes\/[^/?]+\?nouvelle=1$/);
+  // The ticket shows in the checkout: the seller stays there.
+  await expect(page).toHaveURL(/\/caisse$/);
   await expect(page.getByText('Vente enregistrée.')).toBeVisible();
   const ticket = page.getByRole('article', { name: /^Ticket n° 000001/ });
   await expect(ticket).toContainText('Eau minérale 1,5 L');
   expect(plain(await ticket.textContent())).toContain('TOTAL1 500 F CFA');
   expect(plain(await ticket.textContent())).toContain('Rendu500 F CFA');
-  const whatsapp = page.getByRole('link', { name: 'Envoyer sur WhatsApp' });
-  await expect(whatsapp).toHaveAttribute(
-    'href',
-    /^https:\/\/wa\.me\/\?text=Acme%20Dakar/,
-  );
+  // Sent as a PDF or a photo; without a share sheet, the file is saved.
+  const pdf = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Envoyer en PDF' }).click();
+  const pdfFile = await pdf;
+  expect(pdfFile.suggestedFilename()).toMatch(/^Ticket .*\.pdf$/);
+  const pdfBytes = await (await pdfFile.createReadStream()).toArray();
+  expect(Buffer.concat(pdfBytes).subarray(0, 8).toString()).toBe('%PDF-1.4');
+  const png = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Envoyer en photo' }).click();
+  expect((await png).suggestedFilename()).toMatch(/^Ticket .*\.png$/);
   await expect(
     page.getByRole('button', { name: 'Imprimer le ticket' }),
   ).toBeVisible();

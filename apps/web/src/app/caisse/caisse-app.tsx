@@ -752,12 +752,10 @@ export function CaisseApp() {
     // A new round, so that this sale is in it; each sending has a delay.
     await flushOutboxNow();
     const sent = await readTicket(clientOperationId);
-    if (sent?.status === 'sent' && sent.saleId) {
-      router.push(`/espace/ventes/${sent.saleId}?nouvelle=1`);
-      return null;
-    }
-    // Refused, or lost on the way: the ticket says it, and the phone keeps
-    // the sale under its operation id, never sent twice.
+    // The ticket shows in the checkout, sent or not: the seller prints or
+    // sends it, then starts the next sale, without leaving. Refused or
+    // lost on the way, it says so, and the phone keeps the sale under its
+    // operation id, never sent twice.
     setTicket(sent ?? local);
     return null;
   }

@@ -48,7 +48,7 @@ test('a seller corrects the stock at the counter, then sells', async ({
   await cart.getByRole('button', { name: 'Enregistrer le stock' }).click();
   await expect(cart.getByText(/^Stock insuffisant/)).toHaveCount(0);
   await page.getByRole('button', { name: /^Valider la vente/ }).click();
-  await expect(page).toHaveURL(/\/espace\/ventes\/[^/?]+\?nouvelle=1$/);
+  await expect(page.getByText('Vente enregistrée.')).toBeVisible();
   // Corrected before the sale: the sale is not flagged.
   await expect(page.getByText(/^Stock à vérifier/)).toHaveCount(0);
 
@@ -69,7 +69,14 @@ test('a sale beyond the stock goes through, flagged for the manager', async ({
   await addToCart(page, 'Savon de Marseille');
   await openPayment(page, isMobile);
   await page.getByRole('button', { name: /^Vendre quand même/ }).click();
-  await expect(page).toHaveURL(/\/espace\/ventes\/[^/?]+\?nouvelle=1$/);
+  await expect(page.getByText('Vente enregistrée.')).toBeVisible();
+  // The flag is on the sale, in the list of sales.
+  await page.goto('/espace/ventes');
+  await page
+    .getByRole('list', { name: 'Liste des ventes' })
+    .getByRole('link')
+    .first()
+    .click();
   await expect(page.getByText(/^Stock à vérifier/)).toBeVisible();
 });
 
