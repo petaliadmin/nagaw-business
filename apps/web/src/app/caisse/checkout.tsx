@@ -1387,7 +1387,6 @@ export function Checkout({
               const inCart = cart.filter(
                 (line) => line.productId === product.id,
               );
-              const several = sellingOptionsOf(product).length > 1;
               return (
                 <li key={product.id}>
                   <button
@@ -1408,11 +1407,6 @@ export function Checkout({
                     <span className="mt-auto rounded-full bg-sales-soft px-3 py-0.5 text-lg font-extrabold tabular-nums text-sales-ink">
                       {money(product.salePrice)}
                     </span>
-                    {several && (
-                      <span className="text-base font-semibold text-ink-muted">
-                        {perUnit(product.unit)} · autres unités
-                      </span>
-                    )}
                     {product.stockLevel === 'out' && (
                       <span className="text-base text-danger-ink">
                         {STOCK_LEVEL_LABELS.out}
