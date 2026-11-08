@@ -22,6 +22,7 @@ import {
   CreditCard,
   HandCoins,
   Minus,
+  Package,
   Percent,
   Plus,
   Search,
@@ -1327,23 +1328,30 @@ export function Checkout({
       <div
         className={`flex flex-col gap-4 ${step === 'pay' ? 'hidden lg:flex' : ''}`}
       >
-        <div className="relative">
-          <label htmlFor={`${ids}-search`} className="sr-only">
-            Chercher un {noun} à vendre
-          </label>
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted"
-          />
-          <input
-            id={`${ids}-search`}
-            ref={searchRef}
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.currentTarget.value)}
-            placeholder={`Chercher un ${noun}`}
-            className={`${CONTROL} pl-12`}
-          />
+        {/* Header of the products, as the cart's: title, then search. */}
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-gradient-to-r from-sales-strong to-brand-strong p-3 text-white shadow-sm">
+          <h2 className="flex items-center gap-2 px-1 text-xl font-bold">
+            <Package aria-hidden className="size-6" />
+            {noun === 'service' ? 'Services' : 'Produits'}
+          </h2>
+          <div className="relative min-w-0 flex-1 basis-56 sm:ml-auto sm:max-w-sm">
+            <label htmlFor={`${ids}-search`} className="sr-only">
+              Chercher un {noun} à vendre
+            </label>
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted"
+            />
+            <input
+              id={`${ids}-search`}
+              ref={searchRef}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.currentTarget.value)}
+              placeholder={`Chercher un ${noun}`}
+              className={`${CONTROL} border-white/70 pl-12 text-ink`}
+            />
+          </div>
         </div>
         {showCategories && (
           <div

@@ -920,11 +920,10 @@ export function CaisseApp() {
           />
         ) : (
           <>
-            <h1
-              ref={sellTitleRef}
-              tabIndex={-1}
-              className="text-2xl font-extrabold focus:outline-none md:text-3xl"
-            >
+            {/* Not shown: the products and the cart have their own
+                headers. Kept for screen readers, and to take the focus
+                back after a sale. */}
+            <h1 ref={sellTitleRef} tabIndex={-1} className="sr-only">
               Vendre
             </h1>
             <Checkout

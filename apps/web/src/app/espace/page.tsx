@@ -288,6 +288,9 @@ function Products({
               name: (
                 <Link
                   href={`/espace/produits/${p.productId}`}
+                  // Secondary link: the product page is not prefetched on a first
+                  // visit (weight budget, Phase 17).
+                  prefetch={false}
                   className="underline-offset-4 hover:underline"
                 >
                   {p.label}
@@ -325,6 +328,9 @@ function Products({
                 >
                   <Link
                     href={`/espace/produits/${p.id}`}
+                    // Secondary link: the product page is not prefetched on a first
+                    // visit (weight budget, Phase 17).
+                    prefetch={false}
                     className="inline-flex min-h-12 items-center font-semibold underline-offset-4 hover:underline"
                   >
                     {p.name}
@@ -551,6 +557,9 @@ function StockCard({
                 <li key={alert.id}>
                   <Link
                     href={`/espace/produits/${alert.id}`}
+                    // Secondary link: the product page is not prefetched on a first
+                    // visit (weight budget, Phase 17).
+                    prefetch={false}
                     className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-line px-3 py-2 hover:bg-surface-muted"
                   >
                     <span className="font-semibold">{alert.name}</span>
