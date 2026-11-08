@@ -19,6 +19,7 @@ import {
 import {
   ArrowLeft,
   Banknote,
+  CircleCheck,
   CreditCard,
   HandCoins,
   Minus,
@@ -321,23 +322,34 @@ function ProviderPicker({
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="mb-1 text-base font-semibold">{label}</legend>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {MOBILE_MONEY_PROVIDERS.map((provider) => (
-          <button
-            key={provider}
-            type="button"
-            aria-pressed={value === provider}
-            onClick={() => onChange(provider)}
-            className={`flex min-h-14 items-center gap-2 rounded-xl border-2 px-2 text-left text-base leading-tight font-bold ${
-              value === provider
-                ? 'border-brand-strong bg-brand-soft text-brand-ink ring-2 ring-brand-strong'
-                : 'border-line-strong bg-surface text-ink'
-            }`}
-          >
-            <OperatorLogo provider={provider} />
-            {PROVIDER_LABELS[provider]}
-          </button>
-        ))}
+      {/* Two per row whatever the width: in the narrow cart column, four
+          squeezed the names letter by letter. Logo above the name. */}
+      <div className="grid grid-cols-2 gap-2">
+        {MOBILE_MONEY_PROVIDERS.map((provider) => {
+          const selected = value === provider;
+          return (
+            <button
+              key={provider}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange(provider)}
+              className={`relative flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 px-2 py-3 text-center text-base leading-tight font-bold ${
+                selected
+                  ? 'border-sales-strong bg-sales-soft text-ink'
+                  : 'border-line-strong bg-surface text-ink hover:border-sales'
+              }`}
+            >
+              {selected && (
+                <CircleCheck
+                  aria-hidden
+                  className="absolute top-2 right-2 size-5 text-sales-ink"
+                />
+              )}
+              <OperatorLogo provider={provider} className="size-10" />
+              {PROVIDER_LABELS[provider]}
+            </button>
+          );
+        })}
       </div>
     </fieldset>
   );
@@ -1031,7 +1043,9 @@ export function Checkout({
       <h2 id={`${ids}-pay`} className="text-xl font-bold">
         Paiement
       </h2>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {/* Four in a row on a wide phone; two in the narrow cart column
+          of a computer. */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
         {PAYMENT_METHODS.map((m) => (
           <MethodButton
             key={m}

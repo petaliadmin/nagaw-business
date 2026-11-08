@@ -864,7 +864,10 @@ export function CaisseApp() {
           className={buttonClasses('secondary', 'shrink-0')}
         >
           <LogOut aria-hidden className="size-5" />
-          Quitter<span className="sr-only sm:not-sr-only"> la caisse</span>
+          <span>
+            Quitter
+            <span className="sr-only sm:not-sr-only"> la caisse</span>
+          </span>
         </button>
         {confirmDialog}
       </header>
