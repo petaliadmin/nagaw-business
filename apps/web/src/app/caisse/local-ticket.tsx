@@ -8,6 +8,7 @@ import { buttonClasses } from '@/components/ui/button-styles';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 import { ticketLabel, ticketText } from '@/lib/sales/ticket';
 import type { LocalTicket, ShopSnapshot } from '@/lib/offline/store';
+import { SaleSteps } from './sale-steps';
 import { ShareReceipt } from './share-receipt';
 
 function Row({
@@ -39,12 +40,15 @@ export function LocalTicketView({
   sale,
   shop,
   money,
+  justSold = false,
   onNext,
 }: {
   ticket: LocalTicket;
   sale: SaleDto;
   shop: ShopSnapshot['shop'];
   money: (value: number) => string;
+  /** Shown right after the sale: the last of its three steps. */
+  justSold?: boolean;
   onNext: () => void;
 }) {
   const label = ticketLabel(sale);
@@ -65,6 +69,7 @@ export function LocalTicketView({
         {'@media print { @page { size: 58mm auto; margin: 2mm; } }'}
       </style>
       <div className="flex flex-col gap-3 print:hidden">
+        {justSold && <SaleSteps step={3} label="Remettez le ticket" />}
         <div ref={confirmationRef} tabIndex={-1} className="focus:outline-none">
           <Alert tone="success">
             Vente enregistrée.

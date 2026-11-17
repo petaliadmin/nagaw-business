@@ -428,6 +428,8 @@ export function CaisseApp() {
   const router = useRouter();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [ticket, setTicket] = useState<LocalTicket | null>(null);
+  // The sale just made: its ticket is the third step, an older one is not.
+  const [soldId, setSoldId] = useState<string | null>(null);
   // Selling, or the sales of this phone: both inside the checkout.
   const [view, setView] = useState<'sell' | 'sales'>('sell');
   const [confirm, confirmDialog] = useConfirm();
@@ -756,6 +758,7 @@ export function CaisseApp() {
     // sends it, then starts the next sale, without leaving. Refused or
     // lost on the way, it says so, and the phone keeps the sale under its
     // operation id, never sent twice.
+    setSoldId((sent ?? local).clientOperationId);
     setTicket(sent ?? local);
     return null;
   }
@@ -983,6 +986,7 @@ export function CaisseApp() {
             sale={asSale(ticket)}
             shop={snapshot.shop}
             money={money}
+            justSold={ticket.clientOperationId === soldId}
             onNext={() => {
               backToSell.current = true;
               setView('sell');

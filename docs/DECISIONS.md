@@ -741,3 +741,22 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 - **Limites** :
   - clore une version ne vaut pas mise en production : les réserves de la version restent à lever par le propriétaire avant le pilote ;
   - `APP_VERSION` est réglé à la main sur Vercel et peut diverger du `package.json`.
+
+## ADR-062 — Refonte de l'interface : trois actions pour un résultat
+
+- **Statut** : **Proposée** (demande du propriétaire du 2026-11-16 : « repenser complètement le design, simple — trois actions pour un résultat —, plus doux, aux normes des grandes applications »). Choix confirmés par le propriétaire le même jour : tout en une fois, Nunito gardée, cinq entrées avec « Vendre » au centre, caisse selon la maquette. À accepter avec la PR de la branche `refont-ux-ui`.
+- **Contexte** : l'audit du site et de l'application a montré que les deux promesses du produit (qui me doit, où est mon argent) étaient derrière « Plus », que l'Accueil alignait six chiffres de même poids, et qu'une relance de crédit demandait cinq touchers.
+- **Décision** :
+  - **teintes adoucies**, mêmes rôles et mêmes jetons : marque `#5746C9`, ventes `#0B7A5C`, attention `#8F5A00`, fonds `#EEEBFB`, `#E3F4EE`, `#FFF0D4`, encre `#1C1A27`, fond `#F5F4F9`. Contrastes recalculés dans `DESIGN.md`, tous ≥ 4,5:1. La police reste **Nunito**, les textes restent à 16 px au moins et les cibles à 48 px ;
+  - **barre du bas** du téléphone : Accueil, Stock, **Vendre** (rond vert au centre), Crédit, Argent. Remplace « trois entrées au plus et Plus » (ADR-021) et le « Vendre » flottant sur téléphone (ADR-044, gardé sur ordinateur). Les autres pages sont dans « Menu », dans l'en-tête. La barre latérale de l'ordinateur ne change pas ;
+  - **la réponse d'abord** : Accueil = « Vous avez gagné » (bénéfice estimé) en grand, l'argent disponible, ce qu'on doit, puis « À faire aujourd'hui », tiré des chiffres déjà chargés (crédit à relancer, produits à racheter, prix d'achat manquants, clôture) ; les six chiffres comparés sont sous « Tous les chiffres » ;
+  - **trois actions** : vendre = toucher, encaisser, ticket (étapes annoncées sur téléphone) ; relancer = Crédit, « Relancer » sur la carte du client, envoyer sur WhatsApp ; clôturer = Argent, « Clôturer la caisse », compter ;
+  - **caisse** : en-têtes sobres, sans bandes violettes (revient sur le choix du 2026-11-08) ; le violet clair reste la couleur de ce qui est choisi, le vert celle de l'argent ;
+  - **site public** : page d'accueil raccourcie (promesse, « Trois gestes, et c'est fait », trois étapes, tarifs, questions, guides), un seul libellé d'inscription, captures refaites.
+- **Limites** :
+  - aucun changement d'API ni de base : seule l'application web est touchée ;
+  - les écrans Produits, Ventes, Factures, Statistiques, Paramètres et la connexion ne changent que par les jetons ;
+  - « À faire aujourd'hui » propose toujours de compter la caisse à qui en a le droit : l'API ne dit pas encore si la journée est déjà clôturée ;
+  - les sections retirées de la page d'accueil (soucis du commerçant, six modules, galerie de captures, hors ligne, sécurité) portaient des mots-clés : effet sur le référencement à suivre ;
+  - l'icône de l'application et l'image de partage gardent l'ancien violet `#6D28D9` ;
+  - pas encore de test avec des commerçants : à faire pendant le pilote (Phase 18).

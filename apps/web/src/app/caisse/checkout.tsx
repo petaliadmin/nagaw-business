@@ -69,6 +69,7 @@ import {
   type PricedLine,
 } from '@/lib/sales/cart';
 import { OperatorLogo } from '@/components/sales/operator-logo';
+import { SaleSteps } from './sale-steps';
 import { cashSuggestions } from '@/lib/sales/cash';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 
@@ -91,18 +92,18 @@ const optionName = (product: ProductDto, option: SellingOption) =>
 
 /** « 650 F le kg », « 30 000 F », « 0,65 F le g » shown as « 650 F le kg ». */
 /**
- * Colour roles of the checkout (DESIGN.md, « La caisse ») : the brand
- * purple for the structure and for what is chosen, green for the money
- * and the sale only (prices, total, « Encaisser », « Valider la vente »),
- * red for what removes. A choice never looks like the button that sells.
+ * Colour roles of the checkout (DESIGN.md, « La caisse », ADR-062): soft
+ * brand purple for what is chosen, green for the money and the sale only
+ * (prices, total, the steps, « Encaisser », « Valider la vente »), red for
+ * what removes. A choice never looks like the button that sells. Section
+ * headers are plain: a title and its icon, no coloured band.
  */
 const CHOSEN = 'border-brand-strong bg-brand-soft text-brand-ink';
 const NOT_CHOSEN = 'border-line-strong bg-surface text-ink hover:border-brand';
-/** Header band of a section: products, cart, payment. */
-const SECTION_HEAD =
-  '-mx-4 -mt-4 flex min-h-16 items-center justify-between gap-3 bg-brand-strong px-4 py-2 text-white';
+/** Header of a section: products, cart, payment. */
+const SECTION_HEAD = 'flex min-h-12 items-center justify-between gap-3';
 const HEAD_BADGE =
-  'flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface text-brand-ink shadow-sm';
+  'flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-ink';
 
 function optionPrice(
   product: ProductDto,
@@ -846,8 +847,7 @@ export function Checkout({
       aria-labelledby={`${ids}-cart`}
       className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-sm"
     >
-      {/* Same header as the products and the payment (brand purple,
-          white text 7.10:1). */}
+      {/* Same plain header as the products and the payment. */}
       <div className={SECTION_HEAD}>
         <h2
           id={`${ids}-cart`}
@@ -1373,10 +1373,9 @@ export function Checkout({
       <div
         className={`flex flex-col gap-4 ${step === 'pay' ? 'hidden lg:flex' : ''}`}
       >
+        <SaleSteps step={1} label="Touchez ce que vous vendez" />
         {/* Header of the products, as the cart's: title, then search. */}
-        {/* Vivid blue of the products and stock module, white text
-            (DESIGN.md): the shelf stands out. */}
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-brand-strong p-3 text-white shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-3 shadow-sm">
           <h2 className="flex items-center gap-3 text-xl font-bold">
             <span className={HEAD_BADGE}>
               <Package aria-hidden className="size-6" />
@@ -1523,6 +1522,9 @@ export function Checkout({
       <div
         className={`flex flex-col gap-4 ${step === 'cart' ? 'hidden lg:flex' : ''}`}
       >
+        {step === 'pay' && (
+          <SaleSteps step={2} label="Comment le client paie ?" />
+        )}
         {step === 'pay' && (
           <button
             type="button"

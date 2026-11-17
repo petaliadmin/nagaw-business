@@ -52,7 +52,7 @@ for (const path of PAGES) {
   });
 }
 
-test('the « Plus » sheet meets WCAG 2.2 AA', async ({
+test('the « Menu » sheet meets WCAG 2.2 AA', async ({
   page,
   context,
   baseURL,
@@ -61,7 +61,7 @@ test('the « Plus » sheet meets WCAG 2.2 AA', async ({
   test.skip(!isMobile, 'Mobile-only sheet');
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace');
-  await page.getByRole('button', { name: 'Plus' }).click();
-  await expect(page.getByRole('dialog', { name: 'Plus' })).toBeVisible();
-  await expectAccessible(page, 'menu « Plus »');
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(page.getByRole('dialog', { name: 'Menu' })).toBeVisible();
+  await expectAccessible(page, 'menu « Menu »');
 });

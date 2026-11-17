@@ -1,5 +1,7 @@
 # Design et accessibilité
 
+> **Refonte du 2026-11-16 (ADR-062)** : teintes adoucies, barre du bas à cinq entrées avec « Vendre » au centre, « Menu » dans l'en-tête, la réponse d'abord sur chaque écran, trois étapes pour vendre. Les sections ci-dessous sont à jour.
+>
 > **État** : accepté (ADR-021) et **implémenté en Phase 8** : jetons dans `apps/web/src/app/globals.css`, composants dans `apps/web/src/components`. Les couleurs de modules (ventes, stock, factures…) servent dès que ces modules sont livrés.
 
 ## Pour qui
@@ -18,20 +20,21 @@ Des commerçants et vendeurs **peu à l'aise avec le numérique**, sur un smartp
 
 ## Palette
 
-Couleurs vives, une par module, pour se repérer d'un coup d'œil. Chaque couleur a trois teintes : **vive** (illustrations, icônes, grandes surfaces avec texte foncé), **foncée** (boutons et textes sur fond blanc, texte blanc dessus), **claire** (fonds de cartes et badges, texte foncé dessus). Contrastes calculés selon WCAG 2.x.
+Une couleur par module, pour se repérer d'un coup d'œil ; depuis ADR-062, la marque, le vert des ventes et l'ambre sont moins saturés, pour un écran plus calme. Chaque couleur a trois teintes : **vive** (illustrations, icônes, grandes surfaces avec texte foncé), **foncée** (boutons et textes sur fond blanc, texte blanc dessus), **claire** (fonds de cartes et badges, texte foncé dessus). Contrastes calculés selon WCAG 2.x.
 
 | Rôle                  | Vive      | Foncée    | Claire    | Blanc sur foncée | Foncée sur claire |
 | --------------------- | --------- | --------- | --------- | :--------------: | :---------------: |
-| Marque (navigation)   | `#7C3AED` | `#6D28D9` | `#EDE9FE` |      7,10 ✔      |      5,98 ✔       |
-| Ventes (émeraude)     | `#059669` | `#047857` | `#D1FAE5` |      5,48 ✔      |      4,84 ✔       |
+| Marque (navigation)   | `#6655D6` | `#5746C9` | `#EEEBFB` |      6,72 ✔      |      7,42 ✔       |
+| Ventes (émeraude)     | `#0F9D76` | `#0B7A5C` | `#E3F4EE` |      5,31 ✔      |      6,83 ✔       |
 | Produits et stock     | `#2563EB` | `#1D4ED8` | `#DBEAFE` |      6,70 ✔      |      5,49 ✔       |
 | Factures et devis     | `#DB2777` | `#BE185D` | `#FCE7F3` |      6,04 ✔      |      5,14 ✔       |
 | Statistiques          | `#F97316` | `#C2410C` | `#FFEDD5` |      5,18 ✔      |      4,52 ✔       |
 | Comptabilité          | `#0D9488` | `#0F766E` | `#CCFBF1` |      5,47 ✔      |      4,86 ✔       |
 | Erreur / danger       | `#DC2626` | `#B91C1C` | `#FEE2E2` |      6,47 ✔      |      5,30 ✔       |
-| Attention (stock bas) | `#F59E0B` | `#B45309` | `#FEF3C7` |      5,02 ✔      |      4,51 ✔       |
+| Attention (stock bas) | `#F59E0B` | `#8F5A00` | `#FFF0D4` |      5,78 ✔      |      6,46 ✔       |
 
-- Texte principal `#111827` sur blanc : 17,74 ; texte secondaire `#4B5563` : 7,56 ; fond d'application `#F8F7FC`.
+- Texte principal `#1C1A27` sur blanc : 17,12 ; texte secondaire `#5E5A72` : 6,60 (6,03 sur le fond) ; fond d'application `#F5F4F9`.
+- Pour la marque, les ventes et l'attention, la colonne « Foncée sur claire » mesure l'**encre** (`brand-ink` `#4636B0`, `sales-ink` `#075E46`, `warning-ink` `#7A4D00`), plus sombre que la teinte foncée depuis ADR-062.
 - Les teintes **vives** de Ventes, Statistiques, Comptabilité et Attention ne portent **jamais de texte blanc** (contraste inférieur à 4,5) : texte `#111827` dessus.
 - Un mode sombre est prévu dans les jetons mais n'est pas prioritaire : en plein soleil, le mode clair est plus lisible.
 - **Séries de graphiques** (ADR-041) : `--chart-1` (bleu `#2563EB`), `--chart-2` (orange `#C2410C`), `--chart-3` (violet `#6D28D9`), en sombre `#3B82F6`, `#EA580C`, `#8B5CF6`, dans cet ordre fixe ; une série seule prend `--chart-1`. Vérifiées avec l'outil de contrôle de palette (luminosité, saturation, séparation pour les daltoniens et à vue normale, contraste 3:1 sur la surface) ; toute nouvelle couleur de série passe le même contrôle. Une couleur de série ne porte jamais de texte, et chaque graphique a son tableau de chiffres.
@@ -48,14 +51,15 @@ Ces valeurs deviennent des jetons CSS (`@theme` de Tailwind 4) dans `apps/web/sr
 
 ## Mise en page
 
-- **Mobile (< 768 px)** : barre de navigation en bas avec **trois entrées au plus et « Plus »**, pour garder des libellés de 16 px sur 360 px de large. Aujourd'hui : Accueil, Équipe, Historique ; Vendre, Produits et Factures les remplaceront à mesure de leur livraison. Le reste (Paramètres, boutique, compte) est dans le panneau « Plus ».
+- **Mobile (< 768 px)** (ADR-062) : barre de navigation en bas avec **quatre entrées au plus autour de « Vendre »**, rond vert relevé au centre : Accueil, Stock, Vendre, Crédit, Argent. Libellés de sept lettres au plus, pour rester à 16 px sur 360 px de large. « Crédit » ouvre les clients qui doivent ; un vendeur ne voit pas « Argent ». Le reste (Ventes, Factures, Fournisseurs, Dépenses, Rapports, Paramètres, compte) est dans le panneau « Menu », ouvert depuis l'en-tête.
+- **La réponse d'abord** (ADR-062) : chaque écran commence par le chiffre qu'on vient chercher, en grand — « Vous avez gagné » sur l'Accueil, « On vous doit » sur Crédit, le total sur Argent — puis ce qu'il y a à faire (« À faire aujourd'hui », « Relancer », « Clôturer la caisse »). Le détail est un toucher plus loin (« Tous les chiffres »).
 - **Tablette et ordinateur (≥ 768 px)** : barre latérale colorée, contenu en grille, écran de vente en deux colonnes (produits à gauche, panier à droite).
 - Marges latérales de 16 px minimum sur mobile ; aucun défilement horizontal.
-- **« Vendre » flottant** sur Accueil et Ventes, au-dessus de la barre du bas, pour qui a le droit de vendre (ADR-044).
+- **« Vendre »** : au centre de la barre du bas sur téléphone ; flottant sur Accueil et Ventes sur tablette et ordinateur, pour qui a le droit de vendre (ADR-044, ADR-062).
 - **Filtres d'une liste** : dans un panneau ouvert par « Filtrer », à côté de la recherche ; le filtre choisi reste visible sur la page et se retire d'un toucher.
 - **Listes longues** : 20 lignes par page, « Précédent », « Page n », « Suivant » dessous ; rien quand tout tient sur une page.
-- **Harmonie des couleurs** (2026-11-03) : les couleurs de module vont sur les **icônes**, pas sur de grandes surfaces. Les chiffres clés sont sur des tuiles blanches avec une pastille d'icône colorée ; les chiffres secondaires sur un fond neutre (`surface-muted`), l'icône seule en couleur. Le vert plein est réservé au bouton « Vendre » ; la bande « Aujourd'hui » est en vert clair. Le vert est un émeraude (`#047857`), plus accordé au violet de la marque que l'ancien `#15803D`.
-- **La caisse** (2026-11-08, demande du propriétaire) : une couleur par rôle, pour que le vendeur sache d'un coup d'œil quoi toucher. **Violet de la marque** = structure et choix : bandes d'en-tête des sections (Produits, Panier, Paiement) en `brand-strong` avec texte blanc (7,10:1) et icône sur pastille blanche ; ce qui est choisi (catégorie, moyen de paiement, opérateur, somme reçue, « Vendre / Ventes ») en `brand-soft` bordé de `brand-strong`, texte `brand-ink` (5,98:1) ; liens en `brand-ink`. **Vert** = l'argent et la vente seulement : prix, total « À payer » sur `sales-soft`, et seuls boutons verts pleins « Encaisser » et « Valider la vente ». **Rouge** = retirer (« Vider le panier », corbeilles). Un choix ne ressemble jamais au bouton qui vend. Le bleu du module Produits n'y apparaît pas : la caisse est le module Ventes. Rôles posés en tête de `apps/web/src/app/caisse/checkout.tsx` (`CHOSEN`, `SECTION_HEAD`).
+- **Harmonie des couleurs** (2026-11-03) : les couleurs de module vont sur les **icônes**, pas sur de grandes surfaces. Les chiffres clés sont sur des tuiles blanches avec une pastille d'icône colorée ; les chiffres secondaires sur un fond neutre (`surface-muted`), l'icône seule en couleur. Le vert plein est réservé au bouton « Vendre » ; la bande « Aujourd'hui » est en vert clair. Le vert est un émeraude (`#0B7A5C` depuis ADR-062). Seule grande surface de couleur : la carte « Vous avez gagné » de l'Accueil, en `brand-strong`, texte blanc (6,72:1).
+- **La caisse** (2026-11-08, revue le 2026-11-16, ADR-062) : une couleur par rôle, pour que le vendeur sache d'un coup d'œil quoi toucher. Sur téléphone, trois étapes annoncées en haut (« Étape 1 sur 3 · Touchez ce que vous vendez », puis le paiement, puis le ticket), avec une barre verte qui avance. Les en-têtes des sections (Produits, Panier, Paiement) sont sobres : un titre et son icône sur pastille `brand-soft`, sans bande de couleur. **Violet de la marque** = choix : ce qui est choisi (catégorie, moyen de paiement, opérateur, somme reçue, « Vendre / Ventes ») en `brand-soft` bordé de `brand-strong`, texte `brand-ink` (7,42:1) ; liens en `brand-ink`. **Vert** = l'argent et la vente seulement : prix, total « À payer » sur `sales-soft`, et seuls boutons verts pleins « Encaisser » et « Valider la vente ». **Rouge** = retirer (« Vider le panier », corbeilles). Un choix ne ressemble jamais au bouton qui vend. Le bleu du module Produits n'y apparaît pas : la caisse est le module Ventes. Rôles posés en tête de `apps/web/src/app/caisse/checkout.tsx` (`CHOSEN`, `SECTION_HEAD`) ; étapes dans `sale-steps.tsx`.
 - **Chiffres en tuile** : composant `Figure` dans un conteneur `@container` : un chiffre ne sort jamais de sa tuile et ne se coupe jamais entre ses chiffres.
 - **Sensation d'application installée** : panneaux depuis le bas (composant `BottomSheet`), « Retour » dans l'en-tête des sous-pages, retour visuel au toucher (ADR-044).
 - Bandeau d'état de connexion permanent mais discret : « Hors ligne — vos ventes sont gardées sur ce téléphone » / « 3 ventes en attente d'envoi » / « Tout est à jour ».

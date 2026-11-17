@@ -16,11 +16,13 @@ import {
   Banknote,
   CalendarDays,
   ChartColumn,
+  ChevronDown,
   ChevronRight,
   Coins,
   CreditCard,
   HandCoins,
   History,
+  ListChecks,
   Package,
   PackageX,
   PiggyBank,
@@ -32,7 +34,7 @@ import {
 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import {
   BarList,
   Change,
@@ -144,19 +146,23 @@ function TodayCard({
 }
 
 /**
- * The key figures of the period, first on the page, each compared with
- * the period before: two per row on a phone, so that they show at once.
+ * The answer first (ADR-062): what the shop earned over the period, in
+ * large, with its sales and its expenses. Every key figure, each compared
+ * with the period before, is one touch away under « Tous les chiffres ».
  */
 function Essentials({
   stats,
   before,
   beforeRange,
   currency,
+  children,
 }: {
   stats: StatsSummaryDto;
   before: ApiResult<StatsSummaryDto>;
   beforeRange: string;
   currency: string;
+  /** Shown right under the profit: the money and what to do today. */
+  children?: ReactNode;
 }) {
   const money = (value: number) => formatAmount(value, currency);
   const previous = before.ok ? before.data : null;
@@ -182,77 +188,125 @@ function Essentials({
       <h2 id="essentials" className="sr-only">
         L’essentiel
       </h2>
-      <dl className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
-        <KpiTile
-          label="Chiffre d’affaires"
-          value={money(stats.revenue)}
-          tone="sales"
-          icon={Banknote}
-        >
-          {change((s) => s.revenue)}
-        </KpiTile>
-        <KpiTile
-          label="Nombre de ventes"
-          value={stats.salesCount}
-          tone="stock"
-          icon={Receipt}
-        >
-          {change((s) => s.salesCount)}
-        </KpiTile>
-        <KpiTile
-          label="Panier moyen"
-          value={money(stats.averageBasket)}
-          tone="invoices"
-          icon={ShoppingBasket}
-        >
-          {change((s) => s.averageBasket)}
-        </KpiTile>
-        <KpiTile
-          label="Marge brute"
-          value={money(stats.margin.amount)}
-          tone="stats"
-          icon={ChartColumn}
-        >
-          {stats.margin.costedRevenue > 0 && (
-            <p className="text-base">{percent(marginRate)} des ventes</p>
-          )}
-          {change((s) => s.margin.amount)}
-        </KpiTile>
-        <KpiTile
-          label="Dépenses"
-          value={money(stats.expenses)}
-          tone="accounting"
-          icon={HandCoins}
-        >
-          {change((s) => s.expenses, true)}
-        </KpiTile>
-        <KpiTile
-          label="Bénéfice estimé"
-          value={money(profit(stats))}
-          tone="brand"
-          icon={PiggyBank}
-        >
-          <p className="text-base">Marge − dépenses</p>
-          {change(profit)}
-        </KpiTile>
+      <dl className="grid grid-cols-2 gap-x-2 gap-y-4 rounded-3xl bg-brand-strong p-5 text-white shadow-sm md:p-6">
+        <div className="@container col-span-2 flex min-w-0 flex-col gap-1">
+          <dt className="text-base font-semibold">
+            {profit(stats) < 0 ? 'Vous avez perdu' : 'Vous avez gagné'}
+          </dt>
+          <dd className="flex flex-col gap-1">
+            <Figure
+              value={money(Math.abs(profit(stats)))}
+              className="font-extrabold tabular-nums [--figure-max:2.5rem]"
+            />
+            <span className="text-base">
+              Bénéfice estimé : marge − dépenses
+            </span>
+          </dd>
+        </div>
+        <div className="@container flex min-w-0 flex-col gap-0.5 rounded-2xl bg-black/15 p-3">
+          <dt className="text-base">
+            {stats.salesCount} vente{stats.salesCount > 1 ? 's' : ''}
+          </dt>
+          <dd className="font-extrabold tabular-nums">
+            <Figure
+              value={money(stats.revenue)}
+              className="[--figure-max:1.25rem]"
+            />
+          </dd>
+        </div>
+        <div className="@container flex min-w-0 flex-col gap-0.5 rounded-2xl bg-black/15 p-3">
+          <dt className="text-base">Dépenses</dt>
+          <dd className="font-extrabold tabular-nums">
+            <Figure
+              value={money(stats.expenses)}
+              className="[--figure-max:1.25rem]"
+            />
+          </dd>
+        </div>
       </dl>
-      <p className="text-ink-muted">
-        {before.ok
-          ? `Comparé à la période d’avant (${beforeRange}).`
-          : `Comparaison indisponible : ${before.message}`}
-      </p>
-      {stats.revenue > 0 && stats.margin.coverageBasisPoints < 10000 && (
-        <p className="text-ink-muted">
-          Marge sur {percent(stats.margin.coverageBasisPoints)} des ventes :{' '}
-          <Link
-            href="/espace/produits"
-            className="font-semibold text-brand-ink underline"
-          >
-            ajoutez les prix d’achat
-          </Link>
-          .
-        </p>
-      )}
+      {children}
+      <details className="group rounded-2xl border border-line bg-surface shadow-sm">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-2 rounded-2xl px-4 text-lg font-bold md:px-6 [&::-webkit-details-marker]:hidden">
+          <span className="flex-1">Tous les chiffres</span>
+          <ChevronDown
+            aria-hidden
+            className="size-6 shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none"
+          />
+        </summary>
+        <div className="flex flex-col gap-2 px-3 pb-3 md:px-6 md:pb-6">
+          <dl className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
+            <KpiTile
+              label="Chiffre d’affaires"
+              value={money(stats.revenue)}
+              tone="sales"
+              icon={Banknote}
+            >
+              {change((s) => s.revenue)}
+            </KpiTile>
+            <KpiTile
+              label="Nombre de ventes"
+              value={stats.salesCount}
+              tone="stock"
+              icon={Receipt}
+            >
+              {change((s) => s.salesCount)}
+            </KpiTile>
+            <KpiTile
+              label="Panier moyen"
+              value={money(stats.averageBasket)}
+              tone="invoices"
+              icon={ShoppingBasket}
+            >
+              {change((s) => s.averageBasket)}
+            </KpiTile>
+            <KpiTile
+              label="Marge brute"
+              value={money(stats.margin.amount)}
+              tone="stats"
+              icon={ChartColumn}
+            >
+              {stats.margin.costedRevenue > 0 && (
+                <p className="text-base">{percent(marginRate)} des ventes</p>
+              )}
+              {change((s) => s.margin.amount)}
+            </KpiTile>
+            <KpiTile
+              label="Dépenses"
+              value={money(stats.expenses)}
+              tone="accounting"
+              icon={HandCoins}
+            >
+              {change((s) => s.expenses, true)}
+            </KpiTile>
+            <KpiTile
+              label="Bénéfice estimé"
+              value={money(profit(stats))}
+              tone="brand"
+              icon={PiggyBank}
+            >
+              <p className="text-base">Marge − dépenses</p>
+              {change(profit)}
+            </KpiTile>
+          </dl>
+          <p className="text-ink-muted">
+            {before.ok
+              ? `Comparé à la période d’avant (${beforeRange}).`
+              : `Comparaison indisponible : ${before.message}`}
+          </p>
+          {stats.revenue > 0 && stats.margin.coverageBasisPoints < 10000 && (
+            <p className="text-ink-muted">
+              Marge sur {percent(stats.margin.coverageBasisPoints)} des ventes :{' '}
+              <Link
+                href="/espace/produits"
+                className="font-semibold text-brand-ink underline"
+              >
+                ajoutez les prix d’achat
+              </Link>
+              .
+            </p>
+          )}
+        </div>
+      </details>
     </section>
   );
 }
@@ -441,46 +495,85 @@ function MyFiguresCard({
   );
 }
 
-/** Money on hand and owed: today, whatever the period. */
-function MoneyCard({
+/** Money on hand and owed, today: two tiles that lead to their page. */
+function MoneyLinks({
   treasury,
   currency,
 }: {
   treasury: ApiResult<TreasuryDto>;
   currency: string;
 }) {
+  if (!treasury.ok)
+    return (
+      <Alert tone="error">Trésorerie indisponible : {treasury.message}</Alert>
+    );
+  const owed =
+    treasury.data.receivables.customers + treasury.data.receivables.invoices;
+  const tile =
+    '@container flex min-w-0 flex-col gap-1 rounded-2xl border border-line bg-surface p-4 shadow-sm hover:bg-surface-muted';
   return (
-    <Card
-      title="Trésorerie"
-      titleId="treasury-summary"
-      icon={Wallet}
-      tone="stats"
-      action={<SeeAll href="/espace/tresorerie" what="trésorerie" />}
-    >
-      {!treasury.ok ? (
-        <Alert tone="error">Trésorerie indisponible : {treasury.message}</Alert>
-      ) : (
-        <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-          <SoftStat
-            label="Argent disponible"
-            value={formatAmount(treasury.data.total, currency)}
-            tone="stats"
-            icon={Wallet}
-            hint="Caisse, Mobile Money, banque"
-          />
-          <SoftStat
-            label="On vous doit"
-            value={formatAmount(
-              treasury.data.receivables.customers +
-                treasury.data.receivables.invoices,
-              currency,
-            )}
-            tone="invoices"
-            icon={HandCoins}
-            hint="Crédits et factures"
-          />
-        </dl>
-      )}
+    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+      <Link href="/espace/tresorerie" className={tile}>
+        <span className="flex items-center gap-1.5 text-base leading-tight font-bold text-ink-muted">
+          <Wallet aria-hidden className="size-5 shrink-0" />
+          Argent disponible
+        </span>
+        <Figure
+          value={formatAmount(treasury.data.total, currency)}
+          className="font-extrabold tabular-nums [--figure-max:1.25rem]"
+        />
+      </Link>
+      <Link href="/espace/clients?doivent=1" className={tile}>
+        <span className="flex items-center gap-1.5 text-base leading-tight font-bold text-warning-ink">
+          <HandCoins aria-hidden className="size-5 shrink-0" />
+          On vous doit
+        </span>
+        <Figure
+          value={formatAmount(owed, currency)}
+          className="font-extrabold tabular-nums [--figure-max:1.25rem]"
+        />
+      </Link>
+    </div>
+  );
+}
+
+interface Task {
+  key: string;
+  title: string;
+  detail: string;
+  href: string;
+  action: string;
+}
+
+/**
+ * What deserves a touch today, from the figures already on the page:
+ * nothing is invented, and the card is not shown when nothing is due.
+ */
+function TodoCard({ tasks }: { tasks: Task[] }) {
+  if (tasks.length === 0) return null;
+  return (
+    <Card title="À faire aujourd’hui" titleId="todo" icon={ListChecks}>
+      <ul aria-labelledby="todo" className="flex flex-col divide-y divide-line">
+        {tasks.map((task) => (
+          <li
+            key={task.key}
+            className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3 first:pt-0 last:pb-0"
+          >
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="font-bold">{task.title}</span>
+              <span className="text-base text-ink-muted">{task.detail}</span>
+            </span>
+            <Link
+              href={task.href}
+              prefetch={false}
+              className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-brand-soft px-4 text-base font-bold text-brand-ink hover:bg-surface-muted"
+            >
+              {task.action}
+              <span className="sr-only"> : {task.title}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }
@@ -638,8 +731,8 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
   const role = organization.role;
   const currency = organization.defaultCurrency;
   const canReadAudit = roleHasPermission(role, 'audit.read');
-  // Key figures first; otherwise today's sales come first. « Vendre »
-  // floats over the page for those who sell.
+  // The profit first; otherwise today's sales come first. « Vendre » is in
+  // the bottom bar on a phone and floats over the page on a computer.
   const canReadStats = roleHasPermission(role, 'stats.read');
   const canReadTreasury = roleHasPermission(role, 'treasury.read');
   const canSell = roleHasPermission(role, 'sales.create');
@@ -698,6 +791,52 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
         : null,
     ]);
 
+  const money = (value: number) => formatAmount(value, currency);
+  const plural = (count: number) => (count > 1 ? 's' : '');
+  const tasks: Task[] = [];
+  if (treasury?.ok && treasury.data.receivables.customers > 0)
+    tasks.push({
+      key: 'credit',
+      title: 'Des clients vous doivent',
+      detail: `${money(treasury.data.receivables.customers)} de crédit`,
+      href: '/espace/clients?doivent=1',
+      action: 'Relancer',
+    });
+  if (countsStock && stock.ok) {
+    const toBuy = stock.data.outOfStock + stock.data.lowStock;
+    if (toBuy > 0)
+      tasks.push({
+        key: 'stock',
+        title: `${toBuy} produit${plural(toBuy)} à racheter`,
+        detail: 'Épuisé ou bientôt épuisé',
+        href: `/espace/produits?stock=${stock.data.lowStock > 0 ? 'low' : 'out'}`,
+        action: 'Voir',
+      });
+    const unvalued = stock.data.unvaluedProducts;
+    if (unvalued > 0 && roleHasPermission(role, 'catalog.manage'))
+      tasks.push({
+        key: 'cost',
+        title: `${unvalued} produit${plural(unvalued)} sans prix d’achat`,
+        detail: 'Pour un bénéfice juste',
+        href: '/espace/produits',
+        action: 'Compléter',
+      });
+  }
+  if (roleHasPermission(role, 'treasury.manage'))
+    tasks.push({
+      key: 'closing',
+      title: 'Compter la caisse ce soir',
+      detail: 'La clôture dit s’il manque de l’argent',
+      href: '/espace/tresorerie/cloture',
+      action: 'Clôturer',
+    });
+  const today = (
+    <>
+      {treasury && <MoneyLinks treasury={treasury} currency={currency} />}
+      <TodoCard tasks={tasks} />
+    </>
+  );
+
   const emailById = new Map(
     members?.ok ? members.data.map((m) => [m.userId, m.email]) : [],
   );
@@ -730,10 +869,14 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
               before={statsBefore}
               beforeRange={range(before.from, before.to)}
               currency={currency}
-            />
+            >
+              {today}
+            </Essentials>
           )}
         </>
       )}
+
+      {!stats?.ok && today}
 
       {showToday && <TodayCard summary={sales} currency={currency} />}
 
@@ -753,19 +896,14 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
         </Card>
       )}
 
-      {(stats?.ok || treasury) && (
+      {stats?.ok && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {stats?.ok && (
-            <>
-              <Products
-                stats={stats.data}
-                currency={currency}
-                countsStock={countsStock}
-              />
-              <PaymentsCard stats={stats.data} currency={currency} />
-            </>
-          )}
-          {treasury && <MoneyCard treasury={treasury} currency={currency} />}
+          <Products
+            stats={stats.data}
+            currency={currency}
+            countsStock={countsStock}
+          />
+          <PaymentsCard stats={stats.data} currency={currency} />
         </div>
       )}
 

@@ -107,8 +107,8 @@ function CenteredState({ children }: { children: ReactNode }) {
  * Authenticated application frame. Resolves the session and the active
  * shop once per request (shared with the page through `loadWorkspace`),
  * then renders navigation around the page: a dark sidebar from
- * tablets up; on phones, a white bottom tab bar with « Plus », the
- * current page marked like in the sidebar (DESIGN.md).
+ * tablets up; on phones, a white bottom tab bar with « Vendre » in the
+ * middle and « Menu » in the top bar (ADR-062, DESIGN.md).
  */
 export async function AppShell({ children }: { children: ReactNode }) {
   await connection();
@@ -206,6 +206,17 @@ export async function AppShell({ children }: { children: ReactNode }) {
             organizationId={organization.id}
             tone="surface"
           />
+          <MoreMenu>
+            <nav aria-label="Autres pages">
+              <NavLinks
+                role={organization.role}
+                offer={organization.offer}
+                only="secondary"
+                tone="sheet"
+              />
+            </nav>
+            <Account me={me} organization={organization} tone="surface" />
+          </MoreMenu>
         </header>
         <main
           id="contenu"
@@ -226,19 +237,8 @@ export async function AppShell({ children }: { children: ReactNode }) {
         aria-label="Navigation principale"
         className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgb(0_0_0/0.06)] md:hidden print:hidden"
       >
-        <ul className="mx-auto flex max-w-xl gap-1 px-2 py-1">
+        <ul className="mx-auto flex max-w-xl px-1 py-1">
           <BottomNavLinks role={organization.role} offer={organization.offer} />
-          <MoreMenu>
-            <nav aria-label="Autres pages">
-              <NavLinks
-                role={organization.role}
-                offer={organization.offer}
-                only="secondary"
-                tone="sheet"
-              />
-            </nav>
-            <Account me={me} organization={organization} tone="surface" />
-          </MoreMenu>
         </ul>
       </nav>
     </div>

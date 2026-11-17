@@ -1,27 +1,4 @@
-import {
-  ArrowRight,
-  BookOpenCheck,
-  Calculator,
-  ChartColumn,
-  Check,
-  ChevronDown,
-  CircleAlert,
-  CircleCheck,
-  FileText,
-  HandCoins,
-  History,
-  Lock,
-  Package,
-  ShieldCheck,
-  ShoppingCart,
-  Smartphone,
-  TrendingUp,
-  UserCheck,
-  Users,
-  Wallet,
-  WifiOff,
-  type LucideIcon,
-} from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, CircleCheck } from 'lucide-react';
 import { formatAmount, type PlanDto } from '@nagaw/shared';
 import type { Metadata } from 'next';
 import Image from 'next/image';
@@ -34,7 +11,6 @@ import { SiteHeader } from '@/components/marketing/site-header';
 import { WhatsAppButton } from '@/components/marketing/whatsapp-button';
 import { Alert } from '@/components/ui/alert';
 import { ButtonLink } from '@/components/ui/button-link';
-import { ScrollRegion } from '@/components/ui/scroll-region';
 import { apiPublic } from '@/lib/api/server';
 import { getArticle } from '@/lib/blog/articles';
 import { siteUrl } from '@/lib/env';
@@ -93,114 +69,42 @@ const SHOP_KINDS = [
   'Pièces détachées',
 ];
 
-/** Everyday problems, and what the app does about each. */
-const PAINS: { before: string; after: string; icon: LucideIcon }[] = [
-  {
-    before: 'Les clients à crédit oublient de payer.',
-    after:
-      '« Ils me doivent » : qui vous doit et combien. Un toucher, et le message de relance poli part sur WhatsApp.',
-    icon: HandCoins,
-  },
-  {
-    before: 'Je vends beaucoup, mais est-ce que je gagne ?',
-    after:
-      'Chiffre d’affaires, marge et bénéfice estimé, du jour, de la semaine ou du mois.',
-    icon: TrendingUp,
-  },
-  {
-    before: 'Je ne sais plus ce qui reste en stock.',
-    after:
-      'Chaque vente retire le stock toute seule, et la liste « bientôt épuisés » vous dit quoi racheter.',
-    icon: Package,
-  },
-  {
-    before: 'Mon argent est partout : caisse, Wave, Orange Money.',
-    after:
-      'Chaque caisse a son solde, calculé à partir des ventes et des dépenses.',
-    icon: Wallet,
-  },
-  {
-    before: 'Le soir, il manque de l’argent et je ne sais pas pourquoi.',
-    after:
-      'Clôturez la caisse : vous comptez, l’application dit tout de suite s’il manque quelque chose.',
-    icon: Calculator,
-  },
-  {
-    before: 'Mes vendeurs voient tout.',
-    after:
-      'Chacun a son rôle : un vendeur encaisse, il ne voit ni la caisse ni les chiffres.',
-    icon: UserCheck,
-  },
-];
-
-const MODULES: {
-  title: string;
-  text: string;
-  icon: LucideIcon;
-  card: string;
-  badge: string;
-}[] = [
+/**
+ * What a shopkeeper does every day, each in three touches (ADR-062). The
+ * words are those of the buttons of the application.
+ */
+const GESTURES = [
   {
     title: 'Vendre',
-    text: 'De grandes tuiles, le total en grand, la monnaie à rendre calculée. Espèces, Mobile Money, carte ou crédit. Ticket sur WhatsApp ou à l’imprimante.',
-    icon: ShoppingCart,
-    card: 'bg-sales-soft text-sales-ink',
-    badge: 'bg-sales-strong text-white',
+    steps: [
+      'Touchez les produits',
+      'Choisissez le paiement',
+      'Remettez le ticket',
+    ],
+    text: 'Le stock et la caisse se mettent à jour tout seuls, même sans internet.',
+    tone: { card: 'bg-sales-soft', ink: 'text-sales-ink' },
   },
   {
-    title: 'Stock et produits',
-    text: 'Entrées de marchandise, pertes et inventaire. Le stock n’est jamais écrasé : chaque mouvement est gardé.',
-    icon: Package,
-    card: 'bg-stock-soft text-stock-ink',
-    badge: 'bg-stock-strong text-white',
+    title: 'Récupérer un crédit',
+    steps: [
+      'Ouvrez « Crédit »',
+      'Touchez « Relancer »',
+      'Envoyez sur WhatsApp',
+    ],
+    text: 'Le message poli est déjà écrit pour vous.',
+    tone: { card: 'bg-warning-soft', ink: 'text-warning-ink' },
   },
   {
-    title: 'Factures et devis',
-    text: 'Numérotés sans trou, impossibles à réécrire une fois émis. Le PDF part sur WhatsApp ou par e-mail depuis le téléphone.',
-    icon: FileText,
-    card: 'bg-invoices-soft text-invoices-ink',
-    badge: 'bg-invoices-strong text-white',
+    title: 'Clôturer la caisse',
+    steps: [
+      'Touchez « Clôturer la caisse »',
+      'Comptez votre argent',
+      'Voyez s’il manque quelque chose',
+    ],
+    text: 'Caisse, Wave, Orange Money : chaque solde à part.',
+    tone: { card: 'bg-brand-soft', ink: 'text-brand-ink' },
   },
-  {
-    title: 'Argent et chiffres',
-    text: 'Caisse, Wave, Orange Money, Free Money et banque. Dépenses, clôture de caisse, produits qui se vendent et ceux qui dorment.',
-    icon: ChartColumn,
-    card: 'bg-stats-soft text-stats-ink',
-    badge: 'bg-stats-strong text-white',
-  },
-  {
-    title: 'Équipe et boutiques',
-    text: 'Invitez vos vendeurs, gérez plusieurs boutiques avec un seul compte et comparez leurs chiffres.',
-    icon: Users,
-    card: 'bg-brand-soft text-brand-ink',
-    badge: 'bg-brand-strong text-white',
-  },
-  {
-    title: 'Comptabilité SYSCOHADA',
-    text: 'Le journal des recettes et dépenses se remplit tout seul. Votre comptable l’exporte en tableur, sans rien ressaisir.',
-    icon: BookOpenCheck,
-    card: 'bg-accounting-soft text-accounting-ink',
-    badge: 'bg-accounting-strong text-white',
-  },
-];
-
-const TRUST: { title: string; text: string; icon: LucideIcon }[] = [
-  {
-    title: 'Hébergé à Paris',
-    text: 'Vos données sont gardées en ligne, sur des serveurs en France. Un téléphone perdu ne fait pas perdre la boutique.',
-    icon: ShieldCheck,
-  },
-  {
-    title: 'Chaque boutique à part',
-    text: 'Personne d’autre ne voit vos produits, vos clients ni vos chiffres. Vérifié par le serveur à chaque action.',
-    icon: Lock,
-  },
-  {
-    title: 'Un historique qu’on n’efface pas',
-    text: 'Qui a vendu, annulé ou modifié, et quand. Une vente ne se supprime pas : elle s’annule avec un motif.',
-    icon: History,
-  },
-];
+] as const;
 
 const STEPS = [
   {
@@ -278,56 +182,9 @@ const FAQ: { question: string; answer: string }[] = [
 // says so above the gallery.
 type Device = 'mobile' | 'desktop';
 /** Folder of the last capture run (dated, so that caches never serve old ones). */
-const SCREENS_DIR = '/screens/2026-10-26';
+const SCREENS_DIR = '/screens/2026-11-16';
 const screen = (device: Device, name: string) =>
   `${SCREENS_DIR}/${device}/${name}.png`;
-
-const SCREENS: {
-  name: string;
-  title: string;
-  alt: Record<Device, string>;
-}[] = [
-  {
-    name: 'vendre',
-    title: 'La caisse',
-    alt: {
-      mobile:
-        'Écran Vendre sur téléphone : trois téléphones avec leur prix en F CFA, un Samsung Galaxy A15 choisi et le bouton Encaisser — 139 500 F CFA.',
-      desktop:
-        'Écran Vendre sur ordinateur : tout le catalogue en tuiles avec les prix en F CFA, et le panier à droite avec 139 500 F CFA à payer.',
-    },
-  },
-  {
-    name: 'produits',
-    title: 'Le stock',
-    alt: {
-      mobile:
-        'Téléphones en stock sur téléphone : iPhone 13 bientôt épuisé (2 pièces), Itel A70, Samsung Galaxy A15 et Tecno Spark 20, avec leur prix.',
-      desktop:
-        'Produits sur ordinateur, filtrés sur les téléphones : iPhone 13 bientôt épuisé, Itel A70, Samsung Galaxy A15 et Tecno Spark 20, avec prix et stock.',
-    },
-  },
-  {
-    name: 'facture',
-    title: 'Une facture',
-    alt: {
-      mobile:
-        'Facture sur téléphone pour le Cabinet Ndiaye & Associés : 3 Samsung Galaxy A15, 3 chargeurs et 2 souris, TVA 18 % et total TTC de 374 500 F CFA.',
-      desktop:
-        'Facture F-2026-0001 sur ordinateur pour le Cabinet Ndiaye & Associés : trois lignes, total hors taxes, TVA 18 % et 374 500 F CFA à payer.',
-    },
-  },
-  {
-    name: 'statistiques',
-    title: 'Les chiffres',
-    alt: {
-      mobile:
-        'Statistiques du jour sur téléphone : 350 500 F CFA de chiffre d’affaires, 7 ventes, panier moyen, marge brute et dépenses.',
-      desktop:
-        'Statistiques sur ordinateur : chiffre d’affaires, ventes, panier moyen, marge, dépenses et graphique du chiffre d’affaires par jour.',
-    },
-  },
-];
 
 function PhoneScreen({
   src,
@@ -497,7 +354,7 @@ async function Pricing() {
                 href="/inscription"
                 variant={free ? 'primary' : 'secondary'}
               >
-                {free ? 'Commencer gratuitement' : 'Créer ma boutique'}
+                {free ? 'Créer ma boutique gratuitement' : 'Créer ma boutique'}
               </ButtonLink>
             </li>
           );
@@ -530,13 +387,13 @@ export default function Home() {
 
       <main className="flex flex-1 flex-col">
         {/* Hero: the promise, the action, and the proof next to it. */}
-        <section className="bg-brand-soft">
+        <section>
           <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-12 md:grid-cols-[1fr_1.2fr] md:py-20">
             <div className="flex flex-col gap-5">
               <p className="text-base font-bold tracking-wide text-brand-ink uppercase">
                 Le crédit, la caisse et le stock de votre boutique
               </p>
-              <h1 className="text-4xl font-extrabold tracking-tight text-brand-ink md:text-6xl">
+              <h1 className="text-4xl font-extrabold tracking-tight md:text-6xl">
                 Sachez qui vous doit et ce que vous gagnez, depuis votre
                 téléphone
               </h1>
@@ -548,18 +405,20 @@ export default function Home() {
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <ButtonLink
                   href="/inscription"
-                  className="text-lg whitespace-nowrap"
+                  variant="sell"
+                  className="min-h-14 text-lg whitespace-nowrap"
                 >
                   Créer ma boutique gratuitement
                   <ArrowRight aria-hidden className="size-5" />
                 </ButtonLink>
-                <ButtonLink
+                {/* A plain link: one main action, and nothing under the
+                    floating WhatsApp button on a phone. */}
+                <a
                   href="#tarifs"
-                  variant="secondary"
-                  className="whitespace-nowrap"
+                  className="inline-flex min-h-12 items-center self-start font-bold text-brand-ink underline underline-offset-4"
                 >
                   Voir les tarifs
-                </ButtonLink>
+                </a>
               </div>
               <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {REASSURANCE.map((item) => (
@@ -579,13 +438,13 @@ export default function Home() {
             <div className="relative md:pb-12 md:pl-10">
               <DesktopScreen
                 src={screen('desktop', 'accueil')}
-                alt="Tableau de bord sur ordinateur : menu à gauche, six chiffres clés en couleur (350 500 F CFA de chiffre d’affaires, 53 000 F CFA de bénéfice estimé), choix de la période et ventes du jour."
+                alt="Tableau de bord sur ordinateur : menu à gauche, « Vous avez gagné 53 000 F CFA » en grand, 7 ventes pour 350 500 F CFA, l’argent disponible, ce qu’on vous doit et la liste « À faire aujourd’hui »."
                 priority
                 className="hidden md:block"
               />
               <PhoneScreen
                 src={screen('mobile', 'accueil')}
-                alt="Tableau de bord sur téléphone : chiffre d’affaires de 350 500 F CFA, 7 ventes, panier moyen, marge brute, dépenses et bénéfice estimé dans des cartes de couleur, avec le bouton Vendre."
+                alt="Tableau de bord sur téléphone : « Vous avez gagné 53 000 F CFA » en grand, 7 ventes, les dépenses, l’argent disponible, ce qu’on vous doit, et le bouton Vendre au milieu de la barre du bas."
                 priority
                 className="mx-auto w-full max-w-64 md:absolute md:bottom-0 md:left-0 md:w-36"
               />
@@ -615,168 +474,49 @@ export default function Home() {
           </div>
         </section>
 
-        {/* The problems, then what changes. */}
-        <section
-          aria-labelledby="pains-title"
-          className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-14"
-        >
-          <SectionTitle
-            id="pains-title"
-            eyebrow="Fini le cahier et la calculatrice"
-            title="Ce qui vous fait perdre de l’argent, réglé"
-            text="Les soucis de tous les jours d’un commerçant, et ce que Nagaw Business fait pour chacun."
-          />
-          <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {PAINS.map(({ before, after, icon: Icon }) => (
-              <li
-                key={before}
-                className="flex flex-col gap-3 rounded-3xl border border-line bg-surface p-5 shadow-sm"
-              >
-                <span className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand-ink">
-                  <Icon aria-hidden className="size-7" />
-                </span>
-                <p className="flex items-start gap-2 font-semibold text-danger-ink">
-                  <CircleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
-                  <span>« {before} »</span>
-                </p>
-                <p className="flex items-start gap-2 text-ink">
-                  <CircleCheck
-                    aria-hidden
-                    className="mt-0.5 size-5 shrink-0 text-sales-ink"
-                  />
-                  <span>{after}</span>
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* Features. */}
+        {/* Three touches for a result (ADR-062): the three things a
+            shopkeeper does every day, each in three steps. */}
         <section
           id="fonctions"
-          aria-labelledby="modules-title"
-          className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pb-14"
+          aria-labelledby="gestures-title"
+          className="border-y border-line bg-surface"
         >
-          <SectionTitle
-            id="modules-title"
-            eyebrow="Une seule application"
-            title="Tout pour tenir votre boutique"
-            text="Une couleur par partie de l’application, pour vous repérer d’un coup d’œil. De grands boutons et des mots simples."
-          />
-          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {MODULES.map(({ title, text, icon: Icon, card, badge }) => (
-              <li
-                key={title}
-                className={`flex flex-col gap-3 rounded-3xl p-5 ${card}`}
-              >
-                <span
-                  className={`flex size-12 items-center justify-center rounded-2xl ${badge}`}
-                >
-                  <Icon aria-hidden className="size-7" />
-                </span>
-                <h3 className="text-xl font-extrabold">{title}</h3>
-                <p className="text-base text-ink">{text}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* Proof: the real app. */}
-        <section
-          aria-labelledby="screens-title"
-          className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-14"
-        >
-          <SectionTitle
-            id="screens-title"
-            title="Voyez l’application"
-            text="Captures de l’application, avec une boutique d’électronique de démonstration."
-          />
-          <h3 className="text-xl font-extrabold">Sur téléphone</h3>
-          <ScrollRegion label="Captures sur téléphone" className="-mx-4">
-            <ul className="flex snap-x snap-mandatory gap-4 px-4 pb-4 lg:grid lg:grid-cols-4">
-              {SCREENS.map(({ name, title, alt }) => (
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-14">
+            <SectionTitle
+              id="gestures-title"
+              title="Trois gestes, et c’est fait"
+              text="De grands boutons, des mots simples. Rien à apprendre."
+            />
+            <ul className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {GESTURES.map(({ title, steps, text, tone }) => (
                 <li
-                  key={name}
-                  className="flex w-60 shrink-0 snap-center flex-col gap-3 lg:w-auto"
+                  key={title}
+                  className={`flex flex-col gap-4 rounded-3xl p-6 ${tone.card}`}
                 >
-                  <PhoneScreen src={screen('mobile', name)} alt={alt.mobile} />
-                  <p className="text-center text-lg font-bold">{title}</p>
+                  <h3 className={`text-2xl font-extrabold ${tone.ink}`}>
+                    {title}
+                  </h3>
+                  <ol className="flex flex-col gap-3">
+                    {steps.map((step, index) => (
+                      <li
+                        key={step}
+                        className="flex items-center gap-3 font-bold"
+                      >
+                        <span
+                          aria-hidden
+                          className={`flex size-9 shrink-0 items-center justify-center rounded-full bg-surface font-extrabold ${tone.ink}`}
+                        >
+                          {index + 1}
+                        </span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="text-base">{text}</p>
                 </li>
               ))}
             </ul>
-          </ScrollRegion>
-          <h3 className="text-xl font-extrabold">Sur ordinateur</h3>
-          <ul className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {SCREENS.map(({ name, title, alt }) => (
-              <li key={name} className="flex flex-col gap-3">
-                <DesktopScreen
-                  src={screen('desktop', name)}
-                  alt={alt.desktop}
-                />
-                <p className="text-center text-lg font-bold">{title}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* The two differences that matter most on the ground. */}
-        <section aria-labelledby="offline-title" className="bg-brand-strong">
-          <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 text-white md:grid-cols-2">
-            <div className="flex flex-col gap-4">
-              <span className="flex size-14 items-center justify-center rounded-2xl bg-white text-brand-strong">
-                <WifiOff aria-hidden className="size-8" />
-              </span>
-              <h2 id="offline-title" className="text-3xl font-extrabold">
-                Plus de réseau ? Continuez à vendre.
-              </h2>
-              <p className="text-lg">
-                La caisse s’ouvre même sans connexion. Les ventes sont gardées
-                sur le téléphone, avec leur ticket, puis envoyées toutes seules
-                dès que le réseau revient. Aucun client ne repart sans payer
-                parce que la connexion a coupé.
-              </p>
-            </div>
-            <div className="flex flex-col gap-4">
-              <span className="flex size-14 items-center justify-center rounded-2xl bg-white text-brand-strong">
-                <Smartphone aria-hidden className="size-8" />
-              </span>
-              <h2 className="text-3xl font-extrabold">
-                Votre téléphone suffit
-              </h2>
-              <p className="text-lg">
-                Pas de caisse enregistreuse à acheter, rien à télécharger dans
-                un magasin d’applications : ajoutez Nagaw Business à l’écran
-                d’accueil. Sur ordinateur aussi, pour les factures et les
-                chiffres.
-              </p>
-            </div>
           </div>
-        </section>
-
-        {/* Trust. */}
-        <section
-          aria-labelledby="trust-title"
-          className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-14"
-        >
-          <SectionTitle
-            id="trust-title"
-            eyebrow="Vos chiffres sont à vous"
-            title="Des comptes sûrs, qu’on ne peut pas trafiquer"
-          />
-          <ul className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {TRUST.map(({ title, text, icon: Icon }) => (
-              <li
-                key={title}
-                className="flex flex-col gap-3 rounded-3xl border border-line bg-surface p-5 shadow-sm"
-              >
-                <span className="flex size-12 items-center justify-center rounded-2xl bg-sales-soft text-sales-ink">
-                  <Icon aria-hidden className="size-7" />
-                </span>
-                <h3 className="text-xl font-extrabold">{title}</h3>
-                <p className="text-base text-ink-muted">{text}</p>
-              </li>
-            ))}
-          </ul>
         </section>
 
         {/* Steps. */}
@@ -905,7 +645,7 @@ export default function Home() {
 
         {/* Last call. */}
         <section className="px-4 pb-16">
-          <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-5 rounded-3xl bg-sales-strong p-6 text-white md:flex-row md:items-center md:justify-between md:p-10">
+          <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-5 rounded-3xl bg-sidebar p-6 text-white md:flex-row md:items-center md:justify-between md:p-10">
             <div className="flex flex-col gap-2">
               <h2 className="text-3xl font-extrabold">
                 Votre boutique mérite mieux qu’un cahier
@@ -918,7 +658,7 @@ export default function Home() {
             <ButtonLink
               href="/inscription"
               variant="secondary"
-              // Violet ring on the green band: 1.1:1, white instead.
+              // Violet ring on the dark band: under 3:1, white instead.
               className="shrink-0 text-lg focus-visible:outline-white"
             >
               Créer ma boutique gratuitement

@@ -1,15 +1,15 @@
 'use client';
 
-import { Ellipsis } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 
 /**
- * « Plus » entry of the phone bottom bar: opens a bottom sheet with the
- * remaining navigation, the shop switcher and the account. Closes on
- * navigation too; focus moves into the sheet when it opens and back to
- * the button when it closes.
+ * « Menu » in the phone top bar: opens a bottom sheet with the pages that
+ * are not in the bottom bar, the shop switcher and the account (ADR-062).
+ * Closes on navigation too; focus moves into the sheet when it opens and
+ * back to the button when it closes.
  */
 export function MoreMenu({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -29,7 +29,7 @@ export function MoreMenu({ children }: { children: ReactNode }) {
   };
 
   return (
-    <li className="flex-1">
+    <>
       <button
         ref={buttonRef}
         type="button"
@@ -39,22 +39,16 @@ export function MoreMenu({ children }: { children: ReactNode }) {
           setOpenedAt(pathname);
           setOpen((value) => !value);
         }}
-        className={`flex min-h-16 w-full flex-col items-center justify-center gap-0.5 rounded-xl text-base font-bold ${
-          open ? 'text-brand-ink' : 'text-ink-muted'
+        className={`-mr-2 flex min-h-12 shrink-0 items-center gap-1.5 rounded-xl px-2 text-base font-bold ${
+          open ? 'bg-brand-soft text-brand-ink' : 'text-ink'
         }`}
       >
-        <span
-          className={`flex h-8 w-14 items-center justify-center rounded-full ${
-            open ? 'bg-brand-strong text-white shadow-sm' : ''
-          }`}
-        >
-          <Ellipsis aria-hidden className="size-6" />
-        </span>
-        Plus
+        <Menu aria-hidden className="size-6" />
+        Menu
       </button>
-      <BottomSheet id={panelId} open={open} title="Plus" onClose={close}>
+      <BottomSheet id={panelId} open={open} title="Menu" onClose={close}>
         {children}
       </BottomSheet>
-    </li>
+    </>
   );
 }

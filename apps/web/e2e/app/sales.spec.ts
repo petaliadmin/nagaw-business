@@ -19,6 +19,18 @@ async function addToCart(page: Page, name: string, times = 1) {
   for (let i = 0; i < times; i++) await tile.click();
 }
 
+/**
+ * « Vendre »: in the middle of the bottom bar on a phone, floating over
+ * the page on a computer (ADR-062).
+ */
+function sellLink(page: Page, isMobile: boolean) {
+  return page
+    .getByRole(isMobile ? 'navigation' : 'main', {
+      name: isMobile ? 'Navigation principale' : undefined,
+    })
+    .getByRole('link', { name: 'Vendre', exact: true });
+}
+
 /** On phones the payment is a second step; on desktop it is beside. */
 async function openPayment(page: Page, isMobile: boolean) {
   if (isMobile) await page.getByRole('button', { name: /^Encaisser/ }).click();
@@ -234,6 +246,7 @@ test('sales of the day are listed with their totals, and on the home page', asyn
   page,
   context,
   baseURL,
+  isMobile,
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/ventes');
@@ -241,9 +254,7 @@ test('sales of the day are listed with their totals, and on the home page', asyn
   await expect(list.getByRole('listitem').first()).toBeVisible();
   const summary = page.getByRole('region', { name: 'Aujourd’hui' });
   await expect(summary.getByText('Ventes', { exact: true })).toBeVisible();
-  await expect(
-    page.getByRole('main').getByRole('link', { name: 'Vendre', exact: true }),
-  ).toBeVisible();
+  await expect(sellLink(page, isMobile)).toBeVisible();
   await page.getByRole('link', { name: 'Hier' }).click();
   await expect(page.getByText('Aucune vente ce jour-là')).toBeVisible();
 
@@ -253,9 +264,7 @@ test('sales of the day are listed with their totals, and on the home page', asyn
       exact: true,
     }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('main').getByRole('link', { name: 'Vendre', exact: true }),
-  ).toBeVisible();
+  await expect(sellLink(page, isMobile)).toBeVisible();
 });
 
 test('a seller sells and sees only their own sales, and cannot cancel', async ({
