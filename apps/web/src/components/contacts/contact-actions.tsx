@@ -110,14 +110,20 @@ export function SaveContactButton({
       <button
         type="button"
         onClick={save}
-        className={tone ? ACTION_ROW : buttonClasses('secondary')}
+        className={tone ? ACTION_ROW : buttonClasses('secondary', 'shrink-0')}
       >
         {tone ? (
           <ActionIcon icon={Contact} tone={tone} />
         ) : (
           <Contact aria-hidden className="size-5" />
         )}
-        {tone ? 'Ajouter à mes contacts' : 'Enregistrer dans mon téléphone'}
+        {tone ? (
+          'Ajouter à mes contacts'
+        ) : (
+          <>
+            Enregistrer<span className="sr-only"> dans mon téléphone</span>
+          </>
+        )}
       </button>
       {saved === 'done' && (
         <p role="status" className="basis-full text-ink-muted">

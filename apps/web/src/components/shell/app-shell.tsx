@@ -210,7 +210,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 bg-canvas px-4 pt-[env(safe-area-inset-top)] md:hidden print:hidden">
+        <header className="group/top sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 bg-canvas px-4 pt-[env(safe-area-inset-top)] md:hidden print:hidden">
           <BackLink className="-ml-2 flex" />
           <ShopSwitcher
             organization={organization}

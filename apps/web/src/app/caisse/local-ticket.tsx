@@ -1,7 +1,7 @@
 'use client';
 
 import { describeSaleLine, type SaleDto } from '@nagaw/shared';
-import { CloudOff, Printer, ShoppingCart } from 'lucide-react';
+import { Check, CloudOff, Printer, ShoppingCart } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
@@ -70,15 +70,29 @@ export function LocalTicketView({
       </style>
       <div className="flex flex-col gap-3 print:hidden">
         {justSold && <SaleSteps step={3} label="Remettez le ticket" />}
-        <div ref={confirmationRef} tabIndex={-1} className="focus:outline-none">
-          <Alert tone="success">
+        {/* The result in large, as a payment confirmed (ADR-063). */}
+        <div
+          ref={confirmationRef}
+          tabIndex={-1}
+          className="flex flex-col items-center gap-2 py-4 text-center focus:outline-none"
+        >
+          <span
+            aria-hidden
+            className="flex size-20 items-center justify-center rounded-full bg-sales-strong text-white ring-[10px] ring-sales-soft"
+          >
+            <Check className="size-10" strokeWidth={3} />
+          </span>
+          <p role="status" className="mt-3 text-2xl font-extrabold">
             Vente enregistrée.
-            {sale.changeGiven !== null && sale.changeGiven > 0 && (
-              <strong className="block text-2xl">
-                À rendre : {money(sale.changeGiven)}
-              </strong>
-            )}
-          </Alert>
+          </p>
+          <p className="text-4xl font-extrabold tracking-tight text-sales-ink tabular-nums">
+            {money(sale.total)}
+          </p>
+          {sale.changeGiven !== null && sale.changeGiven > 0 && (
+            <p className="rounded-full bg-warning-soft px-4 py-2 text-lg font-extrabold text-warning-ink">
+              À rendre : {money(sale.changeGiven)}
+            </p>
+          )}
         </div>
         {ticket.status === 'pending' && (
           <p

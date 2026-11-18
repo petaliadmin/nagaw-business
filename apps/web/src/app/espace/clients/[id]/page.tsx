@@ -56,15 +56,17 @@ async function Customer({ params }: PageProps<'/espace/clients/[id]'>) {
           <PageHeader title={c.name} description={c.notes || undefined} />
         </div>
       </div>
+      {/* The actions in one row of short pills, like the header of a chat
+          (ADR-063); each keeps its full name for screen readers. */}
       {(c.phone || canDocument) && (
-        <div className="flex flex-wrap gap-3">
+        <div className="relative -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
           {c.phone && (
             <a
               href={`tel:${c.phone.replace(/\s/g, '')}`}
-              className={buttonClasses('secondary')}
+              className={buttonClasses('secondary', 'shrink-0')}
             >
               <Phone aria-hidden className="size-5" />
-              Appeler le {c.phone}
+              Appeler<span className="sr-only"> le {c.phone}</span>
             </a>
           )}
           {c.phone && (
@@ -78,16 +80,18 @@ async function Customer({ params }: PageProps<'/espace/clients/[id]'>) {
               <ButtonLink
                 href={`/espace/factures/nouvelle?client=${c.id}`}
                 variant="secondary"
+                className="shrink-0"
               >
                 <FilePlus2 aria-hidden className="size-5" />
-                Faire une facture
+                <span className="sr-only">Faire une </span>Facture
               </ButtonLink>
               <ButtonLink
                 href={`/espace/factures/devis/nouveau?client=${c.id}`}
                 variant="secondary"
+                className="shrink-0"
               >
                 <FileText aria-hidden className="size-5" />
-                Faire un devis
+                <span className="sr-only">Faire un </span>Devis
               </ButtonLink>
             </>
           )}
@@ -102,7 +106,7 @@ async function Customer({ params }: PageProps<'/espace/clients/[id]'>) {
           {c.balance > 0 ? 'Reste à payer' : 'Ce que le client doit'}
         </h2>
         <div
-          className={`@container min-w-0 font-extrabold tabular-nums [--figure-max:2rem] ${c.balance > 0 ? 'text-warning-ink' : 'text-sales-ink'}`}
+          className={`@container min-w-40 flex-1 text-right font-extrabold tabular-nums [--figure-max:2rem] ${c.balance > 0 ? 'text-warning-ink' : 'text-sales-ink'}`}
         >
           <Figure value={money(c.balance)} />
         </div>

@@ -33,7 +33,9 @@ export function ShopSwitcher({
         version={organization.logoVersion}
         size={sidebar ? 'sm' : 'md'}
       />
-      <span className="min-w-0 flex-1 truncate text-left text-lg font-extrabold">
+      {/* On a phone page with « Retour », the name would be cut to a letter:
+          the mark alone stays (the name is still read aloud). */}
+      <span className="min-w-0 flex-1 truncate text-left text-lg font-extrabold group-has-[[data-back]]/top:sr-only">
         {organization.name}
       </span>
     </>
