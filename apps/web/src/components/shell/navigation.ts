@@ -26,8 +26,10 @@ export interface NavItem {
   /** Label in the phone bottom bar, where 16 px must fit on 360 px. */
   shortLabel?: string;
   icon: LucideIcon;
-  /** Shown in the phone bottom bar; the others live under « Plus ». */
+  /** Shown in the phone bottom bar; the others live under « Menu ». */
   bottomBar: boolean;
+  /** Where the bottom bar leads, when it is a filtered view of the page. */
+  bottomHref?: string;
   /** Other sections shown as tabs of this entry (see SECTION_TABS). */
   matches?: readonly string[];
   /** Hidden from the roles without it (the API refuses them anyway). */
@@ -38,8 +40,10 @@ export interface NavItem {
  * Menu in the owner's order (2026-10-25). Every entry points to a page that
  * exists: « Commandes » and « Achats » join it when their module ships (no
  * dead links). Accounting, team, history and subscription are tabs of
- * their section. The phone bottom bar holds at most three entries
- * next to « Plus » (DESIGN.md).
+ * their section. The phone bottom bar holds at most four of them, around
+ * « Vendre » in the middle (ADR-062, DESIGN.md): what a shopkeeper asks
+ * every day — what is left, who owes, where the money is. The others are
+ * in « Menu », in the top bar.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   {
@@ -53,12 +57,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     href: '/espace/ventes',
     label: 'Ventes',
     icon: Receipt,
-    bottomBar: true,
+    bottomBar: false,
   },
   {
     href: '/espace/produits',
     label: 'Produits et services',
-    shortLabel: 'Produits',
+    shortLabel: 'Stock',
     icon: Package,
     bottomBar: true,
   },
@@ -72,8 +76,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
   {
     href: '/espace/clients',
     label: 'Clients',
+    shortLabel: 'Crédit',
     icon: Contact,
-    bottomBar: false,
+    bottomBar: true,
+    // « Crédit » opens on who owes; « Tous » is one touch away.
+    bottomHref: '/espace/clients?doivent=1',
   },
   {
     href: '/espace/produits/fournisseurs',
@@ -91,8 +98,9 @@ export const NAV_ITEMS: readonly NavItem[] = [
   {
     href: '/espace/tresorerie',
     label: 'Trésorerie / Caisse',
+    shortLabel: 'Argent',
     icon: Wallet,
-    bottomBar: false,
+    bottomBar: true,
     permission: 'treasury.read',
   },
   {
@@ -123,7 +131,8 @@ export function navItemsFor(role: Role, offer: ShopOffer = 'both'): NavItem[] {
       ? {
           ...item,
           label: CATALOG_TITLES[offer],
-          shortLabel: CATALOG_TITLES[offer],
+          // A shop of services has no stock to count.
+          shortLabel: offer === 'services' ? CATALOG_TITLES[offer] : 'Stock',
         }
       : item,
   );
@@ -149,6 +158,27 @@ export function activeHref(
       if (isActive(path, pathname) && (!best || path.length > best.length))
         best = { href: item.href, length: path.length };
   return best?.href ?? null;
+}
+
+/** How many entries the phone bottom bar holds beside « Vendre ». */
+export const BOTTOM_BAR_MAX = 4;
+
+/**
+ * The phone bottom bar for a role: its entries in two halves, « Vendre »
+ * between them for who may sell. The entry to mark is the closest one of
+ * the bar: « Dépenses » lights « Argent », « Fournisseurs » lights « Stock ».
+ */
+export function bottomBarFor(
+  role: Role,
+  offer: ShopOffer = 'both',
+): { before: NavItem[]; after: NavItem[]; sell: boolean } {
+  const items = navItemsFor(role, offer).filter((item) => item.bottomBar);
+  const half = Math.ceil(items.length / 2);
+  return {
+    before: items.slice(0, half),
+    after: items.slice(half),
+    sell: roleHasPermission(role, 'sales.create'),
+  };
 }
 
 /**

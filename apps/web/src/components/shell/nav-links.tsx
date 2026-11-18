@@ -4,11 +4,17 @@ import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { Role, ShopOffer } from '@nagaw/shared';
-import { activeHref, navItemsFor } from './navigation';
+import { ShoppingCart } from 'lucide-react';
+import {
+  activeHref,
+  bottomBarFor,
+  navItemsFor,
+  type NavItem,
+} from './navigation';
 
 /**
  * Vertical links: the dark sidebar (tablet and desktop), or the
- * « Plus » sheet on phones (`only="secondary"`: entries not in the bottom bar).
+ * « Menu » sheet on phones (`only="secondary"`: entries not in the bottom bar).
  */
 export function NavLinks({
   role,
@@ -71,8 +77,8 @@ function TabIcon({
   const { pending } = useLinkStatus();
   return (
     <span
-      className={`flex h-8 w-14 items-center justify-center rounded-full ${
-        active || pending ? 'bg-brand-strong text-white shadow-sm' : ''
+      className={`flex h-8 w-12 items-center justify-center rounded-full ${
+        active || pending ? 'bg-brand-soft text-brand-ink' : ''
       }`}
     >
       {children}
@@ -80,7 +86,30 @@ function TabIcon({
   );
 }
 
-/** Bottom tab bar entries (phones). */
+function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
+  const { href, bottomHref, label, shortLabel, icon: Icon } = item;
+  return (
+    <li className="min-w-0 flex-1">
+      <Link
+        href={bottomHref ?? href}
+        aria-current={active ? 'page' : undefined}
+        className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl text-base ${
+          active ? 'font-extrabold text-brand-ink' : 'font-bold text-ink-muted'
+        }`}
+      >
+        <TabIcon active={active}>
+          <Icon aria-hidden className="size-6" />
+        </TabIcon>
+        {shortLabel ?? label}
+      </Link>
+    </li>
+  );
+}
+
+/**
+ * Bottom tab bar entries (phones): « Vendre » raised in the middle, the
+ * only green of the bar, between the pages of every day (ADR-062).
+ */
 export function BottomNavLinks({
   role,
   offer,
@@ -89,31 +118,30 @@ export function BottomNavLinks({
   offer: ShopOffer;
 }) {
   const pathname = usePathname();
-  const all = navItemsFor(role, offer);
-  const current = activeHref(all, pathname);
+  const { before, after, sell } = bottomBarFor(role, offer);
+  const current = activeHref([...before, ...after], pathname);
   return (
     <>
-      {all
-        .filter((item) => item.bottomBar)
-        .map(({ href, label, shortLabel, icon: Icon }) => {
-          const active = href === current;
-          return (
-            <li key={href} className="flex-1">
-              <Link
-                href={href}
-                aria-current={active ? 'page' : undefined}
-                className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl text-base font-bold ${
-                  active ? 'text-brand-ink' : 'text-ink-muted'
-                }`}
-              >
-                <TabIcon active={active}>
-                  <Icon aria-hidden className="size-6" />
-                </TabIcon>
-                {shortLabel ?? label}
-              </Link>
-            </li>
-          );
-        })}
+      {before.map((item) => (
+        <BottomTab key={item.href} item={item} active={item.href === current} />
+      ))}
+      {sell && (
+        <li className="min-w-0 flex-1">
+          <Link
+            href="/caisse"
+            prefetch={false}
+            className="flex min-h-16 flex-col items-center justify-end gap-0.5 rounded-xl text-base font-extrabold text-sales-ink"
+          >
+            <span className="-mt-7 flex size-14 items-center justify-center rounded-full bg-sales-strong text-white shadow-md ring-4 ring-surface">
+              <ShoppingCart aria-hidden className="size-7" />
+            </span>
+            Vendre
+          </Link>
+        </li>
+      )}
+      {after.map((item) => (
+        <BottomTab key={item.href} item={item} active={item.href === current} />
+      ))}
     </>
   );
 }

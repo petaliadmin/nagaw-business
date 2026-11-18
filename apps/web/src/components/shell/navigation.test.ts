@@ -1,8 +1,10 @@
 import type { ShopOffer } from '@nagaw/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  BOTTOM_BAR_MAX,
   NAV_ITEMS,
   activeHref,
+  bottomBarFor,
   canGoBack,
   isActive,
   navItemsFor,
@@ -64,12 +66,41 @@ describe('navigation', () => {
     expect(active('/espace/abonnement')).toBe('/espace/parametres');
   });
 
-  it('keeps at most three short entries in the phone bottom bar', () => {
+  it('keeps at most four short entries around « Vendre » in the phone bottom bar', () => {
     const bottom = NAV_ITEMS.filter((item) => item.bottomBar);
-    expect(bottom.length).toBeLessThanOrEqual(3);
+    expect(bottom.length).toBeLessThanOrEqual(BOTTOM_BAR_MAX);
     expect(bottom[0]?.href).toBe('/espace');
+    // 16 px on 360 px shared by five entries: seven letters at most.
     for (const item of bottom)
-      expect((item.shortLabel ?? item.label).length).toBeLessThanOrEqual(8);
+      expect((item.shortLabel ?? item.label).length).toBeLessThanOrEqual(7);
+  });
+
+  it('puts « Vendre » in the middle of the bottom bar for who may sell', () => {
+    const labels = (items: { shortLabel?: string; label: string }[]) =>
+      items.map((item) => item.shortLabel ?? item.label);
+    const owner = bottomBarFor('owner');
+    expect(labels(owner.before)).toEqual(['Accueil', 'Stock']);
+    expect(labels(owner.after)).toEqual(['Crédit', 'Argent']);
+    expect(owner.sell).toBe(true);
+    // A seller does not see the money (ADR-036).
+    const seller = bottomBarFor('member');
+    expect(labels([...seller.before, ...seller.after])).toEqual([
+      'Accueil',
+      'Stock',
+      'Crédit',
+    ]);
+    expect(seller.sell).toBe(true);
+    expect(bottomBarFor('viewer').sell).toBe(false);
+  });
+
+  it('marks the closest entry of the bottom bar', () => {
+    const bar = bottomBarFor('owner');
+    const active = (path: string) =>
+      activeHref([...bar.before, ...bar.after], path);
+    expect(active('/espace/tresorerie/depenses')).toBe('/espace/tresorerie');
+    expect(active('/espace/produits/fournisseurs')).toBe('/espace/produits');
+    expect(active('/espace/clients/7')).toBe('/espace/clients');
+    expect(active('/espace/ventes')).toBeNull();
   });
 
   it('hides the money and the reports from the sellers', () => {
@@ -132,7 +163,8 @@ describe('navigation', () => {
     const catalog = (offer: ShopOffer) =>
       navItemsFor('owner', offer).find((i) => i.href === '/espace/produits');
     expect(catalog('both')?.label).toBe('Produits et services');
-    expect(catalog('products')?.shortLabel).toBe('Produits');
+    expect(catalog('both')?.shortLabel).toBe('Stock');
+    expect(catalog('products')?.shortLabel).toBe('Stock');
     expect(catalog('services')?.shortLabel).toBe('Services');
     const hrefs = (offer: ShopOffer) =>
       navItemsFor('owner', offer).map((item) => item.href);

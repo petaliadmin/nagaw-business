@@ -16,7 +16,7 @@ test('a seller tells the platform about a problem and reads its answer', async (
 }) => {
   await signInAs(context, 'moussa', baseURL!);
   await page.goto('/espace/produits');
-  if (isMobile) await page.getByRole('button', { name: 'Plus' }).click();
+  if (isMobile) await page.getByRole('button', { name: 'Menu' }).click();
   await page.getByRole('link', { name: 'Donner mon avis' }).first().click();
   await expect(page).toHaveURL(/\/espace\/avis\?depuis=%2Fespace%2Fproduits$/);
   await expectAccessible(page, 'avis');

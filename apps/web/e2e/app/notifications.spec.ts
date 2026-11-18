@@ -77,7 +77,9 @@ test('a sale beyond the stock goes through, flagged for the manager', async ({
     .getByRole('link')
     .first()
     .click();
-  await expect(page.getByText(/^Stock à vérifier/)).toBeVisible();
+  // The warning of the sale page; the list just left may still be kept,
+  // hidden, with its own « Stock à vérifier » badge.
+  await expect(page.getByText(/^Stock à vérifier :/)).toBeVisible();
 });
 
 test('sellers record deliveries, not losses', async ({

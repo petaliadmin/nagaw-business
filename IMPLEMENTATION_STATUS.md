@@ -1002,3 +1002,20 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   7. mener le pilote (`docs/PILOT.md`).
 - **Tests exécutés** (2026-11-04, sur ce poste) : format vérifié en ignorant les fins de ligne (CRLF dus à `core.autocrlf`), lint et types verts ; unitaires 411 (shared 100, web 246, api 65) ; intégration 236 sur 18 fichiers, verts avec `--testTimeout=90000 --hookTimeout=180000` (avec les délais par défaut, 10 tests dépassent 15 s sur ce poste chargé, sans échec d'assertion propre) ; build vert. E2e non relancés : aucun code modifié.
 - **Après la fusion** : poser l'étiquette `v1.0.0` sur le commit de fusion (`git tag -a v1.0.0 -m "Version 1.0.0"` puis `git push origin v1.0.0`) et, si souhaité, publier la version GitHub à partir de la section 1.0.0 de `CHANGELOG.md`.
+
+## Refonte de l'interface — trois actions pour un résultat (ADR-062)
+
+- **Statut** : **livrée sur la branche `refont-ux-ui`** le 2026-11-16, à valider par le propriétaire (ADR-062 proposée). Rien n'est fusionné dans `main`.
+- **Fonctionnalités terminées** (application web seulement, aucune modification d'API ni de base) :
+  - jetons adoucis dans `apps/web/src/app/globals.css`, contrastes recalculés dans `docs/DESIGN.md` ;
+  - barre du bas du téléphone : Accueil, Stock, Vendre au centre, Crédit, Argent ; « Menu » dans l'en-tête (`components/shell`) ;
+  - Accueil : « Vous avez gagné », argent disponible, « On vous doit », « À faire aujourd'hui », « Tous les chiffres » repliés ;
+  - caisse : étapes « 1 sur 3 » sur téléphone (`caisse/sale-steps.tsx`), en-têtes sobres ;
+  - Crédit : total « On vous doit » en tête, « Relancer » (WhatsApp) sur la carte de chaque client qui doit ;
+  - Argent : total, « Clôturer la caisse » et « Dépenses » en deux grandes tuiles ;
+  - site public : page d'accueil raccourcie, section « Trois gestes, et c'est fait », captures du 2026-11-16.
+- **Non fait** : Produits, Ventes, Factures, Statistiques, Paramètres et connexion ne changent que par les couleurs ; icône de l'application et image de partage inchangées ; pas de test avec des commerçants.
+- **Tests exécutés** (2026-11-17) : format, lint et types verts ; tests unitaires 419/419 (shared 100, API 65, web 254) ; intégration 236/236 sur une base PostgreSQL locale ; build vert ; bout en bout : site public et ordinateur 222 réussis, téléphone 173 réussis.
+- **Tests modifiés** : la navigation téléphone (« Menu » au lieu de « Plus », cinq entrées, « Vendre » dans la barre du bas) ; `notifications.spec.ts` vise le message de la fiche de vente (« Stock à vérifier : »), car la liste des ventes, gardée cachée par Next.js après la navigation, porte le même libellé.
+- **Échec connu, hors refonte** : `supplier-contacts.spec.ts` (« a supplier is created, changed, removed and put back ») échoue aussi sur `main`, à la vérification du nom du fichier téléchargé.
+- **Alerte** : le build signale une faille de sécurité connue de Next.js 16.4.2 ; mise à jour à décider par le propriétaire.

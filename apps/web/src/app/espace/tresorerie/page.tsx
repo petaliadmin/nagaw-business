@@ -71,41 +71,47 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
   return (
     <>
       <PageHeader
-        title="Trésorerie"
+        title="Argent"
         description="L’argent de la boutique, caisse par caisse."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <ButtonLink href="/espace/tresorerie/cloture">
-              <Calculator aria-hidden className="size-5" />
-              Clôturer la caisse
-            </ButtonLink>
-            <ButtonLink href="/espace/tresorerie/depenses" variant="secondary">
-              <Receipt aria-hidden className="size-5" />
-              Dépenses
-            </ButtonLink>
-          </div>
-        }
       />
 
+      {/* The answer first, then the two things done every day (ADR-062). */}
       <section
         aria-labelledby="treasury-total"
-        className="flex flex-col gap-2 rounded-2xl bg-accounting-soft p-4 text-accounting-ink md:p-6"
+        className="flex flex-col gap-1 rounded-3xl border border-line bg-surface p-5 shadow-sm md:p-6"
       >
-        <h2 id="treasury-total" className="text-lg font-bold">
+        <h2 id="treasury-total" className="text-base font-bold text-ink-muted">
           Total de la trésorerie
         </h2>
-        <div className="@container font-extrabold tabular-nums [--figure-max:2.25rem]">
+        <div className="@container font-extrabold tabular-nums [--figure-max:2.5rem]">
           <Figure value={money(t.total)} />
         </div>
-        <p>
+        <p className="text-base text-ink-muted">
           Aujourd’hui : {money(t.today.moneyIn)} entrés,{' '}
           {money(t.today.moneyOut)} sortis.
         </p>
       </section>
 
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <Link
+          href="/espace/tresorerie/cloture"
+          className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl bg-brand-strong p-3 text-center text-base font-bold text-white shadow-sm hover:bg-brand"
+        >
+          <Calculator aria-hidden className="size-7" />
+          Clôturer la caisse
+        </Link>
+        <Link
+          href="/espace/tresorerie/depenses"
+          className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface p-3 text-center text-base font-bold shadow-sm hover:bg-surface-muted"
+        >
+          <Receipt aria-hidden className="size-7 text-brand-ink" />
+          Dépenses
+        </Link>
+      </div>
+
       <section aria-labelledby="accounts-title" className="flex flex-col gap-3">
         <h2 id="accounts-title" className="text-xl font-bold">
-          Caisses
+          Mes caisses
         </h2>
         <ul
           aria-labelledby="accounts-title"
@@ -120,7 +126,7 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
                   className="flex min-h-16 items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3"
                 >
                   <span className="flex items-center gap-3">
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-accounting-soft text-accounting-ink">
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
                       <Icon aria-hidden className="size-6" />
                     </span>
                     <span className="font-bold">{account.name}</span>

@@ -2,6 +2,10 @@
 
 Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est close par une PR fusionnée dans `main`, puis l'étiquette `vX.Y.Z` posée par le propriétaire sur le commit de fusion.
 
+## Non publié — branche `refont-ux-ui`
+
+- **Refonte de l'interface (ADR-062)** : teintes adoucies, barre du bas à cinq entrées avec « Vendre » au centre et « Menu » dans l'en-tête, Accueil qui commence par « Vous avez gagné » et « À faire aujourd'hui », caisse en trois étapes annoncées, « Relancer » sur la carte du client qui doit, écran Argent simplifié, page d'accueil publique raccourcie avec de nouvelles captures.
+
 ## 1.0.0 — 2026-11-04
 
 Première version complète de l'application de gestion de boutique (ADR-019). Elle couvre les phases 8 à 18 de `docs/ROADMAP.md`, les lots du plan d'amélioration fusionnés jusqu'au 2026-11-03 et les ADR jusqu'à ADR-060.

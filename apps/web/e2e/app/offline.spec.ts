@@ -181,7 +181,7 @@ test('signing out keeps everything, closes the checkout, and the sales still lea
   await sellUnsent(page, isMobile);
 
   await page.goto('/espace');
-  if (isMobile) await page.getByRole('button', { name: 'Plus' }).click();
+  if (isMobile) await page.getByRole('button', { name: 'Menu' }).click();
   await page.getByRole('button', { name: 'Se déconnecter' }).first().click();
   await expect(page).toHaveURL(/\/connexion$/);
   const databases = await page.evaluate(async () =>

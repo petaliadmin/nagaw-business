@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#f8f7fc',
+    background_color: '#f5f4f9',
     theme_color: '#ffffff',
     categories: ['business', 'finance', 'productivity'],
     // From a shortcut or a link: back to the open application, not a second one.

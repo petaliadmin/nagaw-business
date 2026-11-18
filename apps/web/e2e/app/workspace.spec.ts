@@ -8,22 +8,24 @@ test.beforeAll(async () => {
   await resetBackend();
 });
 
-const IN_BOTTOM_BAR = ['Accueil', 'Ventes', 'Produits'];
+const IN_BOTTOM_BAR = ['Accueil', 'Stock', 'Vendre', 'Crédit', 'Argent'];
 // Same entries in the sidebar, with their full label.
 const SIDEBAR_LABEL: Record<string, string> = {
   Accueil: 'Tableau de bord',
-  Produits: 'Produits et services',
+  Stock: 'Produits et services',
+  Crédit: 'Clients',
+  Argent: 'Trésorerie / Caisse',
 };
 
 /**
- * Desktop: the sidebar. Phones: the bottom bar, or the « Plus » sheet for
- * the other pages. Only one « Navigation principale » is visible at a time.
+ * Desktop: the sidebar. Phones: the bottom bar, or the « Menu » sheet of
+ * the top bar for the other pages (ADR-062). Only one « Navigation principale » is visible at a time.
  */
 async function navigate(page: Page, isMobile: boolean, label: string) {
   if (isMobile && !IN_BOTTOM_BAR.includes(label)) {
-    await page.getByRole('button', { name: 'Plus' }).click();
+    await page.getByRole('button', { name: 'Menu' }).click();
     await page
-      .getByRole('dialog', { name: 'Plus' })
+      .getByRole('dialog', { name: 'Menu' })
       .getByRole('navigation', { name: 'Autres pages' })
       .getByRole('link', { name: label })
       .click();
@@ -37,7 +39,6 @@ async function navigate(page: Page, isMobile: boolean, label: string) {
     .click();
 }
 
-/** Where the shop switcher lives: sidebar, or the « Plus » sheet. */
 /** The shop is changed in Paramètres, not in the menu (2026-10-26). */
 async function shopSwitcher(page: Page) {
   await page.goto('/espace/parametres');
@@ -112,10 +113,10 @@ test('navigation reaches every section and marks the current page', async ({
     'page',
   );
   if (isMobile) {
-    await page.getByRole('button', { name: 'Plus' }).click();
+    await page.getByRole('button', { name: 'Menu' }).click();
     await expect(
       page
-        .getByRole('dialog', { name: 'Plus' })
+        .getByRole('dialog', { name: 'Menu' })
         .getByRole('link', { name: 'Paramètres' }),
     ).toHaveAttribute('aria-current', 'page');
     await page.keyboard.press('Escape');
@@ -305,7 +306,7 @@ test('an API failure is reported, not hidden', async ({
   );
 });
 
-test('phone navigation: bottom bar and a keyboard-friendly « Plus » sheet', async ({
+test('phone navigation: bottom bar and a keyboard-friendly « Menu » sheet', async ({
   page,
   context,
   baseURL,
@@ -324,10 +325,10 @@ test('phone navigation: bottom bar and a keyboard-friendly « Plus » sheet', as
     'page',
   );
 
-  const button = page.getByRole('button', { name: 'Plus' });
+  const button = page.getByRole('button', { name: 'Menu' });
   await expect(button).toHaveAttribute('aria-expanded', 'false');
   await button.click();
-  const dialog = page.getByRole('dialog', { name: 'Plus' });
+  const dialog = page.getByRole('dialog', { name: 'Menu' });
   await expect(dialog).toBeVisible();
   await expect(button).toHaveAttribute('aria-expanded', 'true');
   await expect(dialog).toContainText('awa@acme.test');

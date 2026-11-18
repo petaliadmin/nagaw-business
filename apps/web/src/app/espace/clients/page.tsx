@@ -17,6 +17,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { apiAsUser } from '@/lib/api/server';
 import { pageNumber, pageParams, pageRows } from '@/lib/pagination';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { Figure } from '@/components/ui/figure';
 import { CustomerRow } from './customer-row';
 import { NewCustomerFab } from './new-customer-fab';
 
@@ -44,19 +45,21 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
       ])}`,
       organizationId: organization.id,
     }),
-    // The total counts everyone, not only the people of this page.
-    owing
-      ? apiAsUser<CustomerDto[]>(accessToken, {
-          path: `/customers?${query}`,
-          organizationId: organization.id,
-        })
-      : null,
+    // What is owed, by everyone: first on the page, whatever the filter
+    // and the search (ADR-062).
+    apiAsUser<CustomerDto[]>(accessToken, {
+      path: '/customers?owing=true',
+      organizationId: organization.id,
+    }),
   ]);
   const list = customers.ok ? pageRows(customers.data) : null;
   const money = (value: number) =>
     formatAmount(value, organization.defaultCurrency);
   const canManage = roleHasPermission(organization.role, 'customers.manage');
-  const owed = debtors?.ok
+  const owingCount = debtors.ok
+    ? debtors.data.filter((c) => c.balance > 0).length
+    : 0;
+  const owed = debtors.ok
     ? debtors.data.reduce((sum, c) => sum + Math.max(c.balance, 0), 0)
     : 0;
 
@@ -66,6 +69,24 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
         title="Clients"
         description="Vos clients habitués, et ce qu’ils vous doivent."
       />
+
+      {debtors.ok && owed > 0 && (
+        <section
+          aria-labelledby="owed-total"
+          className="@container flex flex-col gap-1 rounded-3xl bg-warning-soft p-5"
+        >
+          <h2 id="owed-total" className="text-base font-bold text-warning-ink">
+            On vous doit
+          </h2>
+          <Figure
+            value={money(owed)}
+            className="font-extrabold tabular-nums [--figure-max:2.25rem]"
+          />
+          <p className="text-base">
+            {owingCount} client{owingCount > 1 ? 's' : ''} à relancer
+          </p>
+        </section>
+      )}
 
       <form action="/espace/clients" role="search" className="flex gap-2">
         {owing && <input type="hidden" name="doivent" value="1" />}
@@ -112,12 +133,6 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
         />
       ) : (
         <>
-          {debtors?.ok && (
-            <p className="text-lg font-bold">
-              Total à récupérer :{' '}
-              <span className="text-warning-ink">{money(owed)}</span>
-            </p>
-          )}
           <ul aria-label="Liste des clients" className="flex flex-col gap-2">
             {list.rows.map((customer) => (
               <CustomerRow

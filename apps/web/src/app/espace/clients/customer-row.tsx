@@ -1,7 +1,7 @@
 'use client';
 
 import type { CustomerDto } from '@nagaw/shared';
-import { EllipsisVertical } from 'lucide-react';
+import { EllipsisVertical, MessageCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useId, useState } from 'react';
@@ -11,6 +11,7 @@ import {
 } from '@/components/contacts/contact-actions';
 import { Badge } from '@/components/ui/badge';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { creditReminderText, whatsappLink } from '@/lib/sales/ticket';
 
 // Loaded when « ⋮ » is touched: the list stays light (performance budget).
 const CustomerActions = dynamic(
@@ -20,7 +21,8 @@ const CustomerActions = dynamic(
 
 /**
  * One customer of the list: avatar, name and what they owe open the card;
- * « ⋮ » opens the actions on this customer in a sheet.
+ * « ⋮ » opens the actions on this customer in a sheet. Who owes, and has a
+ * number, gets « Relancer » on the card itself (ADR-062).
  */
 export function CustomerRow({
   customer,
@@ -46,7 +48,7 @@ export function CustomerRow({
 
   return (
     // One card: the link fills it, « ⋮ » sits discreetly at its end.
-    <li className="flex items-center rounded-2xl border border-line bg-surface pr-1">
+    <li className="flex flex-wrap items-center rounded-2xl border border-line bg-surface pr-1">
       <Link
         href={href}
         className="flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-2xl py-3 pl-3 md:pl-4"
@@ -78,6 +80,25 @@ export function CustomerRow({
       >
         <EllipsisVertical aria-hidden className="size-5" />
       </button>
+      {/* One touch to remind who owes: the message is already written. */}
+      {canManage && owed && customer.phone && (
+        <div className="w-full px-3 pb-3 md:px-4">
+          <a
+            href={whatsappLink(
+              creditReminderText(customer.name, shopName, owed),
+              customer.phone,
+              countryCode,
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sales-soft px-4 text-base font-bold text-sales-ink hover:bg-surface-muted"
+          >
+            <MessageCircle aria-hidden className="size-5 shrink-0" />
+            Relancer
+            <span className="sr-only"> {customer.name} sur WhatsApp</span>
+          </a>
+        </div>
+      )}
       <BottomSheet
         id={sheetId}
         open={open}

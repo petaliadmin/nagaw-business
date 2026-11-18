@@ -11,29 +11,32 @@
  *   soft   — card and badge backgrounds
  *   ink    — text on `soft`, links and accents on the canvas
  * Text on a vivid shade is always `on-vivid` (dark, in both themes).
+ *
+ * Softer shades since the redesign of 2026-11-16 (ADR-062): same roles,
+ * less saturation, contrasts recomputed in DESIGN.md.
  */
 :root {
-  --canvas: #f8f7fc;
+  --canvas: #f5f4f9;
   --surface: #ffffff;
-  --surface-muted: #f3f1f9;
-  --ink: #111827;
-  --ink-muted: #4b5563;
-  --line: #e4e1ee;
+  --surface-muted: #efedf6;
+  --ink: #1c1a27;
+  --ink-muted: #5e5a72;
+  --line: #e7e4f0;
   --line-strong: #767189;
-  --focus: #7c3aed;
+  --focus: #5746c9;
   --on-vivid: #111827;
   /* Sidebar: dark in both themes, white text (16:1). */
-  --sidebar: #1e1b2e;
+  --sidebar: #1c1a27;
 
-  --brand: #7c3aed;
-  --brand-strong: #6d28d9;
-  --brand-soft: #ede9fe;
-  --brand-ink: #6d28d9;
+  --brand: #6655d6;
+  --brand-strong: #5746c9;
+  --brand-soft: #eeebfb;
+  --brand-ink: #4636b0;
 
-  --sales: #059669;
-  --sales-strong: #047857;
-  --sales-soft: #d1fae5;
-  --sales-ink: #047857;
+  --sales: #0f9d76;
+  --sales-strong: #0b7a5c;
+  --sales-soft: #e3f4ee;
+  --sales-ink: #075e46;
 
   --stock: #2563eb;
   --stock-strong: #1d4ed8;
@@ -73,9 +76,9 @@
   --danger-ink: #b91c1c;
 
   --warning: #f59e0b;
-  --warning-strong: #b45309;
-  --warning-soft: #fef3c7;
-  --warning-ink: #b45309;
+  --warning-strong: #8f5a00;
+  --warning-soft: #fff0d4;
+  --warning-ink: #7a4d00;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -90,7 +93,7 @@
     --focus: #ddd6fe;
     --sidebar: #0b0a12;
 
-    --brand-soft: #2e1f5e;
+    --brand-soft: #2a2456;
     --brand-ink: #ddd6fe;
     --sales-soft: #073b2c;
     --sales-ink: #a7f3d0;
