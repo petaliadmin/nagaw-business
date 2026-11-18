@@ -1019,3 +1019,11 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Tests modifiés** : la navigation téléphone (« Menu » au lieu de « Plus », cinq entrées, « Vendre » dans la barre du bas) ; `notifications.spec.ts` vise le message de la fiche de vente (« Stock à vérifier : »), car la liste des ventes, gardée cachée par Next.js après la navigation, porte le même libellé.
 - **Échec connu, hors refonte** : `supplier-contacts.spec.ts` (« a supplier is created, changed, removed and put back ») échoue aussi sur `main`, à la vérification du nom du fichier téléchargé.
 - **Alerte** : le build signale une faille de sécurité connue de Next.js 16.4.2 ; mise à jour à décider par le propriétaire.
+
+## V3 « Teranga » (ADR-063)
+
+- **Statut** : **livrée sur la branche `refonte-v3`** le 2026-11-18, à valider par le propriétaire (ADR-063 proposée). Rien n'est fusionné dans `main`.
+- **Fait** (application web seulement) : jetons V3 ; navigation (Caisse au centre, Ventes dans la barre, Menu en grille, barre latérale blanche avec Caisse) ; Accueil (carte sombre, raccourcis, Ils vous doivent, dernières ventes) ; « Masquer » (`components/ui/hide-amounts.tsx`) ; fiche client en discussion (`clients/[id]/reminder-composer.tsx`) ; Ventes avec deux coches ; Argent ; vue rapide du stock ; caisse épurée ; site public.
+- **Non fait** : rappels enregistrés, ventes hors ligne dans la liste des Ventes, filtre « Dorment », mise en page propre des écrans de détail.
+- **Tests exécutés** (2026-11-18) : format, lint et types verts ; tests unitaires 419/419 (shared 100, API 65, web 254) ; intégration 236/236 sur une base PostgreSQL locale ; build vert ; bout en bout : site public et ordinateur 222 réussis, téléphone 178 réussis. Seul échec : `supplier-contacts.spec.ts`, qui échoue aussi sur `main`.
+- **Tests modifiés** : barre du bas (Ventes, Caisse), lien « Caisse » à la place de « Vendre » (barre latérale sur ordinateur), fiche client (« Reste à payer », bouton d'envoi du rappel), dernières ventes sur l'Accueil, « Clôturer la journée », accroche du site.

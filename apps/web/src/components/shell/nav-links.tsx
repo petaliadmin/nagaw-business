@@ -31,18 +31,38 @@ export function NavLinks({
   const all = navItemsFor(role, offer);
   const current = activeHref(all, pathname);
   const items = all.filter((item) => only === 'all' || !item.bottomBar);
-  const styles =
-    tone === 'sidebar'
-      ? {
-          link: 'focus-visible:outline-white',
-          active: 'bg-brand-strong text-white shadow-sm',
-          idle: 'text-white hover:bg-white/10',
-        }
-      : {
-          link: '',
-          active: 'bg-brand-strong text-white shadow-sm',
-          idle: 'text-ink hover:bg-surface-muted',
-        };
+  // The « Menu » sheet on a phone: round tiles, three per row (ADR-063).
+  if (tone === 'sheet')
+    return (
+      <ul className="grid grid-cols-3 gap-2">
+        {items.map(({ href, label, icon: Icon }) => {
+          const active = href === current;
+          return (
+            <li key={href}>
+              <Link
+                href={href}
+                aria-current={active ? 'page' : undefined}
+                className={`flex min-h-26 flex-col items-center justify-center gap-2 rounded-3xl px-1 py-3 text-center text-base leading-tight font-bold ${
+                  active
+                    ? 'bg-brand-soft text-brand-ink'
+                    : 'bg-surface text-ink'
+                }`}
+              >
+                <span className="flex size-12 items-center justify-center rounded-full bg-canvas">
+                  <Icon aria-hidden className="size-6 shrink-0" />
+                </span>
+                {label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  const styles = {
+    link: '',
+    active: 'bg-brand-soft text-brand-ink',
+    idle: 'text-ink hover:bg-surface',
+  };
   return (
     <ul className="flex flex-col gap-1">
       {items.map(({ href, label, icon: Icon }) => {
@@ -52,7 +72,7 @@ export function NavLinks({
             <Link
               href={href}
               aria-current={active ? 'page' : undefined}
-              className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-bold transition-colors ${styles.link} ${
+              className={`flex min-h-12 items-center gap-3 rounded-full px-4 text-base font-bold transition-colors ${styles.link} ${
                 active ? styles.active : styles.idle
               }`}
             >
@@ -107,8 +127,8 @@ function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
 }
 
 /**
- * Bottom tab bar entries (phones): « Vendre » raised in the middle, the
- * only green of the bar, between the pages of every day (ADR-062).
+ * Bottom tab bar entries (phones): « Caisse » raised in the middle, a dark
+ * square, between the pages of every day (ADR-063).
  */
 export function BottomNavLinks({
   role,
@@ -130,12 +150,12 @@ export function BottomNavLinks({
           <Link
             href="/caisse"
             prefetch={false}
-            className="flex min-h-16 flex-col items-center justify-end gap-0.5 rounded-xl text-base font-extrabold text-sales-ink"
+            className="flex min-h-16 flex-col items-center justify-end gap-0.5 rounded-xl text-base font-extrabold text-ink"
           >
-            <span className="-mt-7 flex size-14 items-center justify-center rounded-full bg-sales-strong text-white shadow-md ring-4 ring-surface">
+            <span className="-mt-7 flex size-15 items-center justify-center rounded-2xl bg-ink text-canvas ring-4 ring-canvas">
               <ShoppingCart aria-hidden className="size-7" />
             </span>
-            Vendre
+            Caisse
           </Link>
         </li>
       )}

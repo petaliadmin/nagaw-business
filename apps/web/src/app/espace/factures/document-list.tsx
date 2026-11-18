@@ -100,7 +100,7 @@ export async function DocumentList({
                 <li key={doc.id}>
                   <Link
                     href={href}
-                    className="flex min-h-16 flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3"
+                    className="flex min-h-16 flex-wrap items-center justify-between gap-3 rounded-3xl bg-surface px-4 py-3"
                   >
                     <span className="flex min-w-0 flex-col">
                       <span className="font-bold">{documentTitle(doc)}</span>

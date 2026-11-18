@@ -75,19 +75,19 @@ describe('navigation', () => {
       expect((item.shortLabel ?? item.label).length).toBeLessThanOrEqual(7);
   });
 
-  it('puts « Vendre » in the middle of the bottom bar for who may sell', () => {
+  it('puts « Caisse » in the middle of the bottom bar for who may sell', () => {
     const labels = (items: { shortLabel?: string; label: string }[]) =>
       items.map((item) => item.shortLabel ?? item.label);
     const owner = bottomBarFor('owner');
-    expect(labels(owner.before)).toEqual(['Accueil', 'Stock']);
-    expect(labels(owner.after)).toEqual(['Crédit', 'Argent']);
+    expect(labels(owner.before)).toEqual(['Accueil', 'Ventes']);
+    expect(labels(owner.after)).toEqual(['Stock', 'Argent']);
     expect(owner.sell).toBe(true);
     // A seller does not see the money (ADR-036).
     const seller = bottomBarFor('member');
     expect(labels([...seller.before, ...seller.after])).toEqual([
       'Accueil',
+      'Ventes',
       'Stock',
-      'Crédit',
     ]);
     expect(seller.sell).toBe(true);
     expect(bottomBarFor('viewer').sell).toBe(false);
@@ -99,8 +99,8 @@ describe('navigation', () => {
       activeHref([...bar.before, ...bar.after], path);
     expect(active('/espace/tresorerie/depenses')).toBe('/espace/tresorerie');
     expect(active('/espace/produits/fournisseurs')).toBe('/espace/produits');
-    expect(active('/espace/clients/7')).toBe('/espace/clients');
-    expect(active('/espace/ventes')).toBeNull();
+    expect(active('/espace/ventes/7')).toBe('/espace/ventes');
+    expect(active('/espace/clients')).toBeNull();
   });
 
   it('hides the money and the reports from the sellers', () => {

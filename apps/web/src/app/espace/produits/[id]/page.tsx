@@ -180,7 +180,7 @@ async function Product({
       ) : (
         <section
           aria-labelledby="stock-title"
-          className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm md:p-6"
+          className="flex flex-col gap-3 rounded-3xl bg-surface p-4 shadow-sm md:p-6"
         >
           <h2 id="stock-title" className="text-xl font-bold">
             Ce qui reste

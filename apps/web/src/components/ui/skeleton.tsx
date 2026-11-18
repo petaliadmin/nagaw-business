@@ -37,7 +37,7 @@ export function CardSkeleton({ lines = 3 }: { lines?: number }) {
   return (
     <div
       aria-hidden
-      className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 md:p-6"
+      className="flex flex-col gap-3 rounded-3xl bg-surface p-4 md:p-6"
     >
       <div className="flex items-center gap-3">
         <Skeleton className="size-10 shrink-0" />
@@ -58,10 +58,7 @@ export function KpiSkeleton({ count = 6 }: { count?: number }) {
   return (
     <div aria-hidden className="grid grid-cols-2 gap-3 lg:grid-cols-3">
       {Array.from({ length: count }, (_, i) => (
-        <div
-          key={i}
-          className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4"
-        >
+        <div key={i} className="flex flex-col gap-3 rounded-3xl bg-surface p-4">
           <div className="flex items-center gap-2">
             <Skeleton className="size-9 shrink-0" />
             <Skeleton className="h-5 w-24" />
@@ -81,7 +78,7 @@ export function ListSkeleton({ rows = 6 }: { rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <li
           key={i}
-          className="flex min-h-20 items-center gap-4 rounded-2xl border border-line bg-surface p-3"
+          className="flex min-h-20 items-center gap-4 rounded-3xl bg-surface p-3"
         >
           <Skeleton className="size-14 shrink-0 rounded-2xl" />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -100,7 +97,7 @@ export function FormSkeleton({ fields = 4 }: { fields?: number }) {
   return (
     <div
       aria-hidden
-      className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 md:p-6"
+      className="flex flex-col gap-4 rounded-3xl bg-surface p-4 md:p-6"
     >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {Array.from({ length: fields }, (_, i) => (

@@ -60,7 +60,7 @@ async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
             <li key={shop.id}>
               <Link
                 href={`/admin/boutiques/${shop.id}`}
-                className="flex min-h-16 flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3"
+                className="flex min-h-16 flex-wrap items-center justify-between gap-3 rounded-3xl bg-surface px-4 py-3"
               >
                 <span className="flex min-w-0 flex-col">
                   <span className="font-bold">{shop.name}</span>

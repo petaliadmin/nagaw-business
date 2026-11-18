@@ -117,7 +117,7 @@ async function Expenses({
             {list.rows.map((expense) => (
               <li
                 key={expense.id}
-                className="flex flex-col gap-2 rounded-2xl border border-line bg-surface px-4 py-3"
+                className="flex flex-col gap-2 rounded-3xl bg-surface px-4 py-3"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <span className="flex flex-col">

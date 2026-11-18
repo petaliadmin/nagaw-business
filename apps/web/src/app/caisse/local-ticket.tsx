@@ -113,7 +113,7 @@ export function LocalTicketView({
 
       <article
         aria-label={`Ticket ${label}`}
-        className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-line bg-surface p-5 font-mono text-base shadow-sm print:max-w-none print:border-0 print:p-0 print:text-sm print:shadow-none"
+        className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-3xl bg-surface p-5 font-mono text-base shadow-sm print:max-w-none print:border-0 print:p-0 print:text-sm print:shadow-none"
       >
         <header className="text-center">
           <p className="text-lg font-bold">{shop.name}</p>

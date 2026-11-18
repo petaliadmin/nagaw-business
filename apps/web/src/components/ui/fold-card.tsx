@@ -26,7 +26,7 @@ export function FoldCard({
     <section aria-label={title}>
       <details
         open={defaultOpen || undefined}
-        className="group rounded-2xl border border-line bg-surface shadow-sm"
+        className="group rounded-3xl bg-surface shadow-sm"
       >
         <summary className="flex min-h-16 cursor-pointer list-none items-center gap-2 rounded-2xl p-4 text-xl font-bold md:px-6 [&::-webkit-details-marker]:hidden">
           {Icon && (

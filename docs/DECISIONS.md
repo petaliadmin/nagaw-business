@@ -760,3 +760,24 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - les sections retirées de la page d'accueil (soucis du commerçant, six modules, galerie de captures, hors ligne, sécurité) portaient des mots-clés : effet sur le référencement à suivre ;
   - l'icône de l'application et l'image de partage gardent l'ancien violet `#6D28D9` ;
   - pas encore de test avec des commerçants : à faire pendant le pilote (Phase 18).
+
+## ADR-063 — V3 « Teranga » : les gestes des applications que les commerçants utilisent déjà
+
+- **Statut** : **Proposée** (demande du propriétaire du 2026-11-18 : « refonte V3 inspirée des applications qui ont fait leur preuve au Sénégal et en Afrique de l'Ouest — Wave, Djamo, WhatsApp — simple, facile, utile, efficace, claire, jolie », puis « épurer, moderne max »). Maquettes validées par le propriétaire sur le canevas V3 le même jour. À accepter avec la PR de la branche `refonte-v3`. Prolonge ADR-062 sans l'annuler.
+- **Décision** :
+  - **look** : page blanche, cartes gris très clair (`surface` `#F5F5F7`) sans bordure ni ombre, boutons principaux noirs (encre `#12101C`, texte blanc 18,8:1) en pilules, vert gardé pour l'argent (montants, « Vente enregistrée »), ambre pour ce qu'on vous doit. Nunito, 16 px au moins, cibles de 48 px, AA ;
+  - **navigation** : barre du bas Accueil, Ventes, **Caisse** (carré noir au centre), Stock, Argent ; « Menu » en grille de tuiles rondes ; sur ordinateur, barre latérale blanche avec « Caisse » en haut, et plus de bouton flottant « Vendre ». Les clients et le crédit passent dans le Menu et sur l'Accueil ;
+  - **Accueil** : carte sombre « Ventes · période » avec ce qui est gagné et dépensé, raccourcis ronds (Encaisser un crédit, Dépense, Produit, Facture / devis) selon le rôle, « Ils vous doivent » en visages ronds, dernières ventes ;
+  - **« Masquer »** : floute les montants marqués sur l'Accueil et l'écran Argent, comme le solde d'une application de paiement ; le choix est gardé sur le téléphone (stockage local du navigateur), rien n'est envoyé ;
+  - **crédit en discussion** : la fiche client montre achats à crédit (à gauche) et remboursements (à droite) en bulles, le rappel déjà écrit et modifiable, un toucher pour l'ouvrir dans WhatsApp, puis « Il a payé » ;
+  - **deux coches** sur les ventes enregistrées (liste des ventes, Accueil) ;
+  - **Argent** : total en grand, actions rondes (Clôturer la journée, Dépenses, Déplacer), une carte par compte, la première sombre ; « Clôturer la caisse » devient « Clôturer la journée » ;
+  - **Stock** : vue rapide Tout, À racheter, Épuisés ;
+  - **site public** : accroche « Votre boutique dans votre téléphone. Simple comme envoyer un message. », bande des moyens de paiement, gestes mis à jour.
+- **Limites** :
+  - aucun changement d'API ni de base : seule l'application web est touchée ;
+  - les rappels envoyés ne sont pas enregistrés : le fil du client n'en montre donc pas ;
+  - les ventes encore sur le téléphone (hors ligne) ne figurent pas dans la liste des Ventes : leur horloge reste dans l'onglet « Ventes » de la caisse ;
+  - le filtre « Dorment » de la maquette n'existe pas encore dans l'API ;
+  - les écrans de détail (produit, facture, paramètres…) ne changent que par les jetons ;
+  - pas encore de test avec des commerçants.

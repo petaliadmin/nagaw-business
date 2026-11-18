@@ -46,7 +46,7 @@ async function ArchivedProducts() {
             <li key={product.id}>
               <Link
                 href={`/espace/produits/${product.id}`}
-                className="flex min-h-20 items-center gap-4 rounded-2xl border border-line bg-surface p-3"
+                className="flex min-h-20 items-center gap-4 rounded-3xl bg-surface p-3"
               >
                 <ProductTile product={product} />
                 <span className="flex min-w-0 flex-col">

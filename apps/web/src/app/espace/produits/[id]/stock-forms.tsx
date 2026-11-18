@@ -73,7 +73,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <details className="group rounded-2xl border border-line bg-surface">
+    <details className="group rounded-3xl bg-surface">
       <summary className="flex min-h-16 cursor-pointer items-center gap-3 px-4 text-lg font-bold">
         <span
           className={`flex size-10 items-center justify-center rounded-xl ${tone}`}

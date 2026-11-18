@@ -88,7 +88,7 @@ export function KpiTile({
 }) {
   const colors = MODULE_TONES[tone];
   return (
-    <div className="@container flex min-w-0 flex-col gap-1.5 rounded-2xl border border-line bg-surface p-3 shadow-sm sm:p-4">
+    <div className="@container flex min-w-0 flex-col gap-1.5 rounded-3xl bg-surface p-3 shadow-sm sm:p-4">
       <dt className="flex items-center gap-2 text-base leading-tight font-bold text-ink-muted">
         <span
           className={`flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-9 sm:rounded-xl ${colors.badge}`}

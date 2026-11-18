@@ -20,15 +20,15 @@ async function addToCart(page: Page, name: string, times = 1) {
 }
 
 /**
- * « Vendre »: in the middle of the bottom bar on a phone, floating over
- * the page on a computer (ADR-062).
+ * « Caisse »: in the middle of the bottom bar on a phone, on top of the
+ * sidebar on a computer (ADR-063).
  */
 function sellLink(page: Page, isMobile: boolean) {
-  return page
-    .getByRole(isMobile ? 'navigation' : 'main', {
-      name: isMobile ? 'Navigation principale' : undefined,
-    })
-    .getByRole('link', { name: 'Vendre', exact: true });
+  return (
+    isMobile
+      ? page.getByRole('navigation', { name: 'Navigation principale' })
+      : page.getByRole('complementary', { name: 'Barre latérale' })
+  ).getByRole('link', { name: 'Caisse', exact: true });
 }
 
 /** On phones the payment is a second step; on desktop it is beside. */
@@ -158,10 +158,12 @@ test('a sale on credit shows on the customer, who pays back later', async ({
 
   await page.goto(FATOU);
   await expect(
-    page.getByRole('region', { name: 'Ce que le client doit' }),
+    page.getByRole('region', { name: 'Reste à payer' }),
   ).toContainText(/1\s000/);
   await expect(
-    page.getByRole('link', { name: 'Relancer sur WhatsApp' }),
+    page.getByRole('link', {
+      name: 'Envoyer le rappel à Fatou Ndiaye sur WhatsApp',
+    }),
   ).toHaveAttribute(
     'href',
     /^https:\/\/wa\.me\/221771112233\?text=Bonjour%20Fatou/,
@@ -172,7 +174,7 @@ test('a sale on credit shows on the customer, who pays back later', async ({
     .click();
   await expect(page.getByText('Remboursement enregistré.')).toBeVisible();
   await expect(
-    page.getByRole('region', { name: 'Ce que le client doit' }),
+    page.getByRole('region', { name: 'Reste à payer' }),
   ).toContainText(/600/);
   const history = page.getByRole('list', { name: 'Historique du client' });
   await expect(history.getByRole('listitem')).toHaveCount(2);
@@ -258,11 +260,13 @@ test('sales of the day are listed with their totals, and on the home page', asyn
   await page.getByRole('link', { name: 'Hier' }).click();
   await expect(page.getByText('Aucune vente ce jour-là')).toBeVisible();
 
+  // The home page lists the last sales (ADR-063).
   await page.goto('/espace');
   await expect(
-    page.getByRole('region', { name: 'Aujourd’hui' }).getByText('Ventes', {
-      exact: true,
-    }),
+    page
+      .getByRole('region', { name: 'Dernières ventes' })
+      .getByRole('link', { name: /^Ticket/ })
+      .first(),
   ).toBeVisible();
   await expect(sellLink(page, isMobile)).toBeVisible();
 });

@@ -376,7 +376,7 @@ function SalesView({
   return (
     <section
       aria-labelledby="sales-view-title"
-      className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm print:hidden"
+      className="flex flex-col gap-3 rounded-3xl bg-surface p-4 shadow-sm print:hidden"
     >
       <h2 id="sales-view-title" className="text-xl font-bold">
         Ventes de ce téléphone
@@ -847,7 +847,7 @@ export function CaisseApp() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 border-b border-line bg-surface px-4 pt-[env(safe-area-inset-top)] print:hidden">
+      <header className="sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 border-b border-line bg-canvas px-4 pt-[env(safe-area-inset-top)] print:hidden">
         {/* No link out: the checkout is left on purpose only. */}
         <ShopMark version={snapshot.shop.logoVersion} />
         <span className="flex min-w-0 flex-1 flex-col">

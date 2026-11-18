@@ -9,7 +9,7 @@ import {
 import {
   Banknote,
   CalendarDays,
-  ChevronRight,
+  CheckCheck,
   CreditCard,
   HandCoins,
   Receipt,
@@ -20,7 +20,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { SoftStat } from '@/components/dashboard/kpi';
-import { SellFab } from '@/components/dashboard/sell-fab';
 import type { ModuleTone } from '@/components/dashboard/tones';
 import { CONTROL } from '@/components/form-field';
 import { Alert } from '@/components/ui/alert';
@@ -186,7 +185,7 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
           <dl className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             {/* The total first, on its own line on a phone: the largest
                 figure of the screen (DESIGN.md). */}
-            <div className="@container col-span-2 flex min-w-0 flex-col gap-1 rounded-xl bg-sales-soft p-4">
+            <div className="@container col-span-2 flex min-w-0 flex-col gap-1 rounded-2xl bg-sales-soft p-4">
               <dt className="flex items-center gap-2 font-bold text-sales-ink">
                 <Banknote aria-hidden className="size-5 shrink-0" />
                 Total
@@ -229,18 +228,21 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
           }
         />
       ) : (
-        <ul aria-label="Liste des ventes" className="flex flex-col gap-2">
+        <ul
+          aria-label="Liste des ventes"
+          className="flex flex-col divide-y divide-line rounded-3xl bg-surface px-2 sm:px-3"
+        >
           {list.rows.map((sale) => (
             <li key={sale.id}>
               <Link
                 href={`/espace/ventes/${sale.id}`}
-                className="flex min-h-16 items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-3 shadow-sm transition-colors hover:bg-surface-muted sm:px-4"
+                className="flex min-h-18 items-center gap-3 rounded-2xl px-2 py-3 transition-colors hover:bg-surface-muted"
               >
                 <span
-                  className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
+                  className={`flex size-11 shrink-0 items-center justify-center rounded-full bg-canvas ${
                     sale.status === 'cancelled'
-                      ? 'bg-surface-muted text-ink-muted'
-                      : 'bg-sales-soft text-sales-ink'
+                      ? 'text-ink-muted'
+                      : 'text-sales-ink'
                   }`}
                 >
                   <Receipt aria-hidden className="size-5" />
@@ -282,10 +284,15 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
                 >
                   {money(sale.total)}
                 </span>
-                <ChevronRight
-                  aria-hidden
-                  className="hidden size-5 shrink-0 text-ink-muted sm:block"
-                />
+                {/* Listed here, the sale is on the server: two ticks, as a
+                    message delivered (ADR-063). */}
+                {sale.status !== 'cancelled' && (
+                  <CheckCheck
+                    role="img"
+                    aria-label="Enregistrée"
+                    className="size-5 shrink-0 text-sales-ink"
+                  />
+                )}
               </Link>
             </li>
           ))}
@@ -297,8 +304,6 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
         page={page}
         hasNext={list?.hasNext ?? false}
       />
-
-      {roleHasPermission(organization.role, 'sales.create') && <SellFab />}
     </>
   );
 }

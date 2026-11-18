@@ -84,9 +84,7 @@ export function PinPad({
           <span
             key={i}
             className={`size-5 rounded-full border-2 ${
-              i < typed
-                ? 'border-brand-strong bg-brand-strong'
-                : 'border-line-strong'
+              i < typed ? 'border-ink bg-ink' : 'border-line-strong'
             }`}
           />
         ))}

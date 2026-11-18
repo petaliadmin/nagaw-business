@@ -41,9 +41,9 @@ export interface NavItem {
  * exists: « Commandes » and « Achats » join it when their module ships (no
  * dead links). Accounting, team, history and subscription are tabs of
  * their section. The phone bottom bar holds at most four of them, around
- * « Vendre » in the middle (ADR-062, DESIGN.md): what a shopkeeper asks
- * every day — what is left, who owes, where the money is. The others are
- * in « Menu », in the top bar.
+ * « Caisse » in the middle (ADR-063, DESIGN.md): what a shopkeeper opens
+ * every day — today, what was sold, what is left, where the money is. The
+ * others, credit included, are in « Menu », in the top bar.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   {
@@ -57,7 +57,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     href: '/espace/ventes',
     label: 'Ventes',
     icon: Receipt,
-    bottomBar: false,
+    bottomBar: true,
   },
   {
     href: '/espace/produits',
@@ -76,11 +76,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   {
     href: '/espace/clients',
     label: 'Clients',
-    shortLabel: 'Crédit',
     icon: Contact,
-    bottomBar: true,
-    // « Crédit » opens on who owes; « Tous » is one touch away.
-    bottomHref: '/espace/clients?doivent=1',
+    bottomBar: false,
   },
   {
     href: '/espace/produits/fournisseurs',
@@ -160,11 +157,11 @@ export function activeHref(
   return best?.href ?? null;
 }
 
-/** How many entries the phone bottom bar holds beside « Vendre ». */
+/** How many entries the phone bottom bar holds beside « Caisse ». */
 export const BOTTOM_BAR_MAX = 4;
 
 /**
- * The phone bottom bar for a role: its entries in two halves, « Vendre »
+ * The phone bottom bar for a role: its entries in two halves, « Caisse »
  * between them for who may sell. The entry to mark is the closest one of
  * the bar: « Dépenses » lights « Argent », « Fournisseurs » lights « Stock ».
  */

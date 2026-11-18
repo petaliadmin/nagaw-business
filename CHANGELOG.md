@@ -2,7 +2,11 @@
 
 Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est close par une PR fusionnée dans `main`, puis l'étiquette `vX.Y.Z` posée par le propriétaire sur le commit de fusion.
 
-## Non publié — branche `refont-ux-ui`
+## Non publié — branche `refonte-v3`
+
+- **V3 « Teranga » (ADR-063)** : design épuré (page blanche, cartes grises sans ombre, boutons noirs), barre du bas Accueil · Ventes · Caisse · Stock · Argent, Menu en grille, Accueil avec carte sombre des ventes, raccourcis ronds et « Ils vous doivent », bouton « Masquer » les montants, crédit du client en discussion avec rappel WhatsApp modifiable, deux coches sur les ventes enregistrées, écran Argent avec une carte par compte, vue rapide du stock, site public réécrit.
+
+## 2026-11-17 — fusionné (PR #53)
 
 - **Refonte de l'interface (ADR-062)** : teintes adoucies, barre du bas à cinq entrées avec « Vendre » au centre et « Menu » dans l'en-tête, Accueil qui commence par « Vous avez gagné » et « À faire aujourd'hui », caisse en trois étapes annoncées, « Relancer » sur la carte du client qui doit, écran Argent simplifié, page d'accueil publique raccourcie avec de nouvelles captures.
 

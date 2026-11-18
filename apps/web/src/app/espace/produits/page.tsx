@@ -264,6 +264,37 @@ async function Products({ searchParams }: PageProps<'/espace/produits'>) {
         </ProductFilters>
       </div>
 
+      {/* The two questions of every day, one touch away (ADR-063). */}
+      {sellsGoods(offer) && (
+        <nav aria-label="Vue rapide du stock">
+          <ul className="flex flex-wrap gap-2">
+            {[
+              { value: '', label: 'Tout' },
+              { value: 'low', label: 'À racheter' },
+              { value: 'out', label: 'Épuisés' },
+            ].map((chip) => {
+              const current = (stock ?? '') === chip.value;
+              const href = chip.value
+                ? `/espace/produits?stock=${chip.value}`
+                : '/espace/produits';
+              return (
+                <li key={chip.label}>
+                  <Link
+                    href={href}
+                    aria-current={current ? 'true' : undefined}
+                    className={`inline-flex min-h-12 items-center rounded-full px-5 text-base font-bold ${
+                      current ? 'bg-ink text-canvas' : 'bg-surface text-ink'
+                    }`}
+                  >
+                    {chip.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      )}
+
       {(stockFilter || kindFilter || category) && (
         <ul aria-label="Filtres choisis" className="flex flex-wrap gap-2">
           {kindFilter && (
@@ -319,14 +350,14 @@ async function Products({ searchParams }: PageProps<'/espace/produits'>) {
                 // forms) is not prefetched on a first visit (weight budget,
                 // Phase 17); it loads on the tap.
                 prefetch={false}
-                className="flex min-h-24 items-center gap-4 rounded-2xl border border-line bg-surface p-3 shadow-sm hover:border-stock"
+                className="flex min-h-24 items-center gap-4 rounded-3xl bg-surface p-3 hover:bg-line"
               >
                 <ProductTile product={product} />
                 <span className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="truncate text-lg font-bold">
                     {product.name}
                   </span>
-                  <span className="text-xl font-extrabold tabular-nums text-stock-ink">
+                  <span className="text-xl font-extrabold tabular-nums">
                     {formatAmount(
                       product.salePrice,
                       organization.defaultCurrency,

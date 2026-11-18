@@ -39,8 +39,8 @@ export function MoreMenu({ children }: { children: ReactNode }) {
           setOpenedAt(pathname);
           setOpen((value) => !value);
         }}
-        className={`-mr-2 flex min-h-12 shrink-0 items-center gap-1.5 rounded-xl px-2 text-base font-bold ${
-          open ? 'bg-brand-soft text-brand-ink' : 'text-ink'
+        className={`flex min-h-12 shrink-0 items-center gap-1.5 rounded-full px-4 text-base font-bold ${
+          open ? 'bg-ink text-canvas' : 'bg-surface text-ink'
         }`}
       >
         <Menu aria-hidden className="size-6" />

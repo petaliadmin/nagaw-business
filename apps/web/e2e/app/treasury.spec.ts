@@ -161,9 +161,9 @@ test('counting the drawer tells what is missing and closes the day', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/tresorerie');
-  await page.getByRole('link', { name: 'Clôturer la caisse' }).click();
+  await page.getByRole('link', { name: 'Clôturer la journée' }).click();
   await expect(
-    page.getByRole('heading', { level: 1, name: 'Clôturer la caisse' }),
+    page.getByRole('heading', { level: 1, name: 'Clôturer la journée' }),
   ).toBeVisible();
   await expectAccessible(page, 'clôture');
   await page.getByLabel('Ce que vous avez compté').fill('350');

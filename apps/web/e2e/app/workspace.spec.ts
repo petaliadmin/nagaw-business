@@ -8,12 +8,11 @@ test.beforeAll(async () => {
   await resetBackend();
 });
 
-const IN_BOTTOM_BAR = ['Accueil', 'Stock', 'Vendre', 'Crédit', 'Argent'];
+const IN_BOTTOM_BAR = ['Accueil', 'Ventes', 'Caisse', 'Stock', 'Argent'];
 // Same entries in the sidebar, with their full label.
 const SIDEBAR_LABEL: Record<string, string> = {
   Accueil: 'Tableau de bord',
   Stock: 'Produits et services',
-  Crédit: 'Clients',
   Argent: 'Trésorerie / Caisse',
 };
 

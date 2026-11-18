@@ -202,7 +202,7 @@ export default async function ArticlePage({
           <ul className="flex flex-col gap-3">
             {article.faq.map(({ question, answer }) => (
               <li key={question}>
-                <details className="group rounded-2xl border border-line bg-surface">
+                <details className="group rounded-3xl bg-surface">
                   <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 p-4 text-lg font-bold [&::-webkit-details-marker]:hidden">
                     <span className="flex-1">{question}</span>
                     <ChevronDown

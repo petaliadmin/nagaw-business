@@ -20,7 +20,7 @@ import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { ClosingForm } from '../forms';
 
 export const metadata: Metadata = {
-  title: 'Clôturer la caisse — Nagaw Business',
+  title: 'Clôturer la journée — Nagaw Business',
 };
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -34,7 +34,7 @@ async function Closing({
   if (!roleHasPermission(organization.role, 'treasury.manage'))
     return (
       <>
-        <PageHeader title="Clôturer la caisse" />
+        <PageHeader title="Clôturer la journée" />
         <Alert>Seuls le propriétaire et les gérants clôturent la caisse.</Alert>
       </>
     );
@@ -45,7 +45,7 @@ async function Closing({
   if (!treasury.ok)
     return (
       <>
-        <PageHeader title="Clôturer la caisse" />
+        <PageHeader title="Clôturer la journée" />
         <Alert tone="error">Trésorerie indisponible : {treasury.message}</Alert>
       </>
     );
@@ -72,7 +72,7 @@ async function Closing({
   return (
     <>
       <PageHeader
-        title="Clôturer la caisse"
+        title="Clôturer la journée"
         description="Comptez l’argent, l’application dit s’il manque quelque chose."
       />
       <form

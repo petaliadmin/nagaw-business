@@ -251,7 +251,7 @@ export function DocumentEditor({
               <li
                 key={line.key}
                 aria-label={`Ligne ${index + 1}`}
-                className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-muted p-4"
+                className="flex flex-col gap-3 rounded-3xl bg-surface-muted p-4"
               >
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor={fieldId('product')} className={LABEL}>
