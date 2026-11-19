@@ -3,17 +3,10 @@ import {
   roleHasPermission,
   type TreasuryDto,
 } from '@nagaw/shared';
-import {
-  ArrowLeftRight,
-  Banknote,
-  Calculator,
-  Landmark,
-  Receipt,
-  Smartphone,
-  Wallet,
-} from 'lucide-react';
+import { ArrowLeftRight, Calculator, Receipt, Wallet } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { HideAmountsButton } from '@/components/ui/hide-amounts';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { ButtonLink } from '@/components/ui/button-link';
@@ -25,15 +18,10 @@ import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { accountOptions } from '@/lib/treasury/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { AccountIcon } from '@/components/treasury/account-icon';
 import { TransferForm } from './forms';
 
 export const metadata: Metadata = { title: 'Trésorerie — Nagaw Business' };
-
-const ICONS = {
-  cash: Banknote,
-  mobile_money: Smartphone,
-  bank: Landmark,
-} as const;
 
 async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
   const workspace = await requireReadyWorkspace();
@@ -46,7 +34,10 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
         <Alert>Votre rôle ne donne pas accès à l’argent de la boutique.</Alert>
       </>
     );
-  const all = (await searchParams).toutes === '1';
+  const params = await searchParams;
+  const all = params.toutes === '1';
+  // « Déplacer » opens the transfer form right away.
+  const moving = params.deplacer === '1';
   const result = await apiAsUser<TreasuryDto>(accessToken, {
     path: '/treasury',
     organizationId: organization.id,
@@ -75,15 +66,19 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
         description="L’argent de la boutique, caisse par caisse."
       />
 
-      {/* The answer first, then the two things done every day (ADR-062). */}
-      <section
-        aria-labelledby="treasury-total"
-        className="flex flex-col gap-1 rounded-3xl border border-line bg-surface p-5 shadow-sm md:p-6"
-      >
-        <h2 id="treasury-total" className="text-base font-bold text-ink-muted">
-          Total de la trésorerie
-        </h2>
-        <div className="@container font-extrabold tabular-nums [--figure-max:2.5rem]">
+      {/* The answer first, blurred by « Masquer », then the gestures of
+          every day in round buttons (ADR-063). */}
+      <section aria-labelledby="treasury-total" className="flex flex-col gap-1">
+        <div className="flex items-center justify-between gap-3">
+          <h2
+            id="treasury-total"
+            className="text-base font-bold text-ink-muted"
+          >
+            Total de la trésorerie
+          </h2>
+          <HideAmountsButton tone="light" />
+        </div>
+        <div className="montant-prive @container font-extrabold tracking-tight tabular-nums [--figure-max:2.75rem]">
           <Figure value={money(t.total)} />
         </div>
         <p className="text-base text-ink-muted">
@@ -92,49 +87,80 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
         </p>
       </section>
 
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
-        <Link
-          href="/espace/tresorerie/cloture"
-          className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl bg-brand-strong p-3 text-center text-base font-bold text-white shadow-sm hover:bg-brand"
-        >
-          <Calculator aria-hidden className="size-7" />
-          Clôturer la caisse
-        </Link>
-        <Link
-          href="/espace/tresorerie/depenses"
-          className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface p-3 text-center text-base font-bold shadow-sm hover:bg-surface-muted"
-        >
-          <Receipt aria-hidden className="size-7 text-brand-ink" />
-          Dépenses
-        </Link>
-      </div>
+      <nav aria-label="Actions sur l’argent">
+        <ul className="grid grid-cols-3 gap-2 sm:max-w-md">
+          {canManage && (
+            <li>
+              <Link
+                href="/espace/tresorerie/cloture"
+                className="flex flex-col items-center gap-2 py-1 text-center text-base leading-tight font-bold"
+              >
+                <span className="flex size-15 items-center justify-center rounded-full bg-brand-soft text-brand-ink">
+                  <Calculator aria-hidden className="size-6" />
+                </span>
+                Clôturer la journée
+              </Link>
+            </li>
+          )}
+          <li>
+            <Link
+              href="/espace/tresorerie/depenses"
+              className="flex flex-col items-center gap-2 py-1 text-center text-base leading-tight font-bold"
+            >
+              <span className="flex size-15 items-center justify-center rounded-full bg-stats-soft text-stats-ink">
+                <Receipt aria-hidden className="size-6" />
+              </span>
+              Dépenses
+            </Link>
+          </li>
+          {canManage && (
+            <li>
+              <Link
+                href="/espace/tresorerie?deplacer=1#deplacer"
+                className="flex flex-col items-center gap-2 py-1 text-center text-base leading-tight font-bold"
+              >
+                <span className="flex size-15 items-center justify-center rounded-full bg-stock-soft text-stock-ink">
+                  <ArrowLeftRight aria-hidden className="size-6" />
+                </span>
+                Déplacer
+              </Link>
+            </li>
+          )}
+        </ul>
+      </nav>
 
       <section aria-labelledby="accounts-title" className="flex flex-col gap-3">
         <h2 id="accounts-title" className="text-xl font-bold">
           Mes caisses
         </h2>
+        {/* One card per account, the main one dark (ADR-063). */}
         <ul
           aria-labelledby="accounts-title"
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+          className="grid grid-cols-2 gap-3 lg:grid-cols-3"
         >
-          {shown.map((account) => {
-            const Icon = ICONS[account.kind];
+          {shown.map((account, index) => {
+            const first = index === 0;
             return (
               <li key={account.id}>
                 <Link
                   href={`/espace/tresorerie/${account.id}`}
-                  className="flex min-h-16 items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3"
+                  className={`@container flex min-h-32 flex-col justify-between gap-3 rounded-3xl p-4 ${
+                    first ? 'bg-ink text-canvas' : 'bg-surface'
+                  }`}
                 >
-                  <span className="flex items-center gap-3">
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
-                      <Icon aria-hidden className="size-6" />
-                    </span>
-                    <span className="font-bold">{account.name}</span>
+                  <span className="flex items-center gap-2 font-bold">
+                    <AccountIcon account={account} />
+                    <span className="min-w-0 break-words">{account.name}</span>
                   </span>
                   <span
-                    className={`text-lg font-extrabold tabular-nums ${account.balance < 0 ? 'text-danger-ink' : ''}`}
+                    className={`montant-prive font-extrabold tabular-nums ${
+                      account.balance < 0 && !first ? 'text-danger-ink' : ''
+                    }`}
                   >
-                    {money(account.balance)}
+                    <Figure
+                      value={money(account.balance)}
+                      className="[--figure-max:1.375rem]"
+                    />
                   </span>
                 </Link>
               </li>
@@ -175,17 +201,23 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
       </Card>
 
       {canManage && (
-        <FoldCard title="Déplacer de l’argent" icon={ArrowLeftRight}>
-          <p className="mb-4 text-ink-muted">
-            Pour un dépôt à la banque ou un retrait Mobile Money : l’argent
-            change de caisse, il ne sort pas de la boutique.
-          </p>
-          <TransferForm
-            organizationId={organization.id}
-            accounts={accountOptions(t.accounts)}
-            today={t.today.day}
-          />
-        </FoldCard>
+        <div id="deplacer" className="scroll-mt-20">
+          <FoldCard
+            title="Déplacer de l’argent"
+            icon={ArrowLeftRight}
+            defaultOpen={moving}
+          >
+            <p className="mb-4 text-ink-muted">
+              Pour un dépôt à la banque ou un retrait Mobile Money : l’argent
+              change de caisse, il ne sort pas de la boutique.
+            </p>
+            <TransferForm
+              organizationId={organization.id}
+              accounts={accountOptions(t.accounts)}
+              today={t.today.day}
+            />
+          </FoldCard>
+        </div>
       )}
     </>
   );

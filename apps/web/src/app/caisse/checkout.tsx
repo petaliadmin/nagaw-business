@@ -19,6 +19,7 @@ import {
 import {
   ArrowLeft,
   Banknote,
+  ChevronRight,
   CircleCheck,
   CreditCard,
   HandCoins,
@@ -33,7 +34,6 @@ import {
   Split,
   Tag,
   Trash2,
-  Wallet,
   Wrench,
   X,
   type LucideIcon,
@@ -92,14 +92,14 @@ const optionName = (product: ProductDto, option: SellingOption) =>
 
 /** « 650 F le kg », « 30 000 F », « 0,65 F le g » shown as « 650 F le kg ». */
 /**
- * Colour roles of the checkout (DESIGN.md, « La caisse », ADR-062): soft
- * brand purple for what is chosen, green for the money and the sale only
- * (prices, total, the steps, « Encaisser », « Valider la vente »), red for
- * what removes. A choice never looks like the button that sells. Section
- * headers are plain: a title and its icon, no coloured band.
+ * Roles of the checkout (DESIGN.md, « La caisse », ADR-063): what is chosen
+ * is outlined in ink on white; the button that sells is filled with ink, so
+ * a choice never looks like it. Green is for the money (prices, total, the
+ * steps), red for what removes. Section headers are plain: a title and its
+ * icon, no coloured band.
  */
-const CHOSEN = 'border-brand-strong bg-brand-soft text-brand-ink';
-const NOT_CHOSEN = 'border-line-strong bg-surface text-ink hover:border-brand';
+const CHOSEN = 'border-ink bg-canvas text-ink';
+const NOT_CHOSEN = 'border-transparent bg-surface text-ink hover:border-line';
 /** Header of a section: products, cart, payment. */
 const SECTION_HEAD = 'flex min-h-12 items-center justify-between gap-3';
 const HEAD_BADGE =
@@ -316,11 +316,21 @@ function MethodButton({
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
-      className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-2 text-base font-bold ${
-        selected ? CHOSEN : NOT_CHOSEN
-      }`}
+      className="flex min-h-24 flex-col items-center gap-2 rounded-2xl px-1 py-1 text-center text-base leading-tight font-bold"
     >
-      <Icon aria-hidden className="size-6" />
+      <span
+        aria-hidden
+        className={`relative flex size-14 items-center justify-center rounded-full border-2 ${
+          selected
+            ? 'border-ink bg-canvas text-ink'
+            : 'border-transparent bg-canvas text-ink-muted'
+        }`}
+      >
+        <Icon className="size-6" />
+        {selected && (
+          <CircleCheck className="absolute -right-1 -bottom-1 size-5 rounded-full bg-canvas text-ink" />
+        )}
+      </span>
       {PAYMENT_LABELS[method]}
     </button>
   );
@@ -845,7 +855,7 @@ export function Checkout({
   const cartPanel = (
     <section
       aria-labelledby={`${ids}-cart`}
-      className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-sm"
+      className="flex flex-col gap-4 overflow-hidden rounded-3xl bg-surface p-4 shadow-sm"
     >
       {/* Same plain header as the products and the payment. */}
       <div className={SECTION_HEAD}>
@@ -1060,22 +1070,20 @@ export function Checkout({
   const paymentPanel = (
     <section
       aria-labelledby={`${ids}-pay`}
-      className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-sm"
+      className="flex flex-col gap-4 overflow-hidden rounded-3xl bg-surface p-4 shadow-sm"
     >
-      <div className={SECTION_HEAD}>
-        <h2
-          id={`${ids}-pay`}
-          className="flex items-center gap-3 text-xl font-bold"
-        >
-          <span className={HEAD_BADGE}>
-            <Wallet aria-hidden className="size-6" />
-          </span>
-          Paiement
-        </h2>
-      </div>
-      {/* Four in a row on a wide phone; two in the narrow cart column
-          of a computer. */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
+      {/* V3 « Encaisser »: what is to be paid first, big (ADR-063). */}
+      <h2 id={`${ids}-pay`} className="flex flex-col gap-1">
+        <span className="sr-only">Paiement — </span>
+        <span className="text-base font-bold text-ink-muted">
+          À payer · {cart.length} article{cart.length > 1 ? 's' : ''}
+        </span>
+        <span className="text-5xl font-extrabold tracking-tight tabular-nums">
+          {money(totals.total)}
+        </span>
+      </h2>
+      {/* Four round choices in a row, as in mobile money apps. */}
+      <div className="grid grid-cols-4 gap-2">
         {PAYMENT_METHODS.map((m) => (
           <MethodButton
             key={m}
@@ -1101,7 +1109,7 @@ export function Checkout({
       {method === 'cash' && (
         <div className="flex flex-col gap-2">
           <label htmlFor={`${ids}-cash`} className="font-semibold">
-            Somme reçue du client (facultatif)
+            Le client vous donne (facultatif)
           </label>
           <input
             id={`${ids}-cash`}
@@ -1122,19 +1130,22 @@ export function Checkout({
                 type="button"
                 aria-pressed={cashReceived === amount}
                 onClick={() => setCashText(String(amount))}
-                className={`min-h-12 rounded-xl border-2 px-4 text-base font-bold tabular-nums ${
+                className={`min-h-12 rounded-full border-2 px-4 text-base font-bold tabular-nums ${
                   cashReceived === amount ? CHOSEN : NOT_CHOSEN
                 }`}
               >
-                {index === 0 ? 'Montant exact' : money(amount)}
+                {index === 0 ? 'Le compte' : money(amount)}
               </button>
             ))}
           </div>
           {/* Present before it fills, so that screen readers speak it. */}
           <div aria-live="polite">
             {change !== null && (
-              <p className="rounded-xl bg-sales-soft p-3 text-2xl font-extrabold text-sales-ink">
-                À rendre : {money(change)}
+              <p className="flex flex-wrap items-baseline justify-between gap-2 rounded-2xl bg-sales-soft px-4 py-3 text-sales-ink">
+                <span className="font-bold">Monnaie à rendre : </span>
+                <span className="text-2xl font-extrabold tabular-nums">
+                  {money(change)}
+                </span>
               </p>
             )}
           </div>
@@ -1375,7 +1386,7 @@ export function Checkout({
       >
         <SaleSteps step={1} label="Touchez ce que vous vendez" />
         {/* Header of the products, as the cart's: title, then search. */}
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-3xl bg-surface p-3 shadow-sm">
           <h2 className="flex items-center gap-3 text-xl font-bold">
             <span className={HEAD_BADGE}>
               <Package aria-hidden className="size-6" />
@@ -1396,6 +1407,7 @@ export function Checkout({
             />
             <input
               id={`${ids}-search`}
+              data-checkout-search
               ref={searchRef}
               type="search"
               value={query}
@@ -1476,20 +1488,22 @@ export function Checkout({
                   <button
                     type="button"
                     onClick={() => tap(product)}
-                    className={`relative flex h-full min-h-40 w-full flex-col items-center gap-2 rounded-2xl border-2 p-3 text-center shadow-sm transition-transform active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 ${
+                    className={`relative flex h-full min-h-36 w-full flex-col items-start gap-3 rounded-3xl bg-surface p-3.5 text-left transition-transform active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 ${
                       inCart.length > 0
-                        ? 'border-sales-strong bg-sales-soft/40'
-                        : 'border-line bg-surface hover:border-sales'
+                        ? 'ring-[2.5px] ring-sales-strong ring-inset'
+                        : 'hover:ring-2 hover:ring-line hover:ring-inset'
                     }`}
                   >
                     {/* No aria-label: the stock and the cart are read too. */}
                     <span className="sr-only">Ajouter </span>
-                    <ProductTile product={product} />
-                    <span className="line-clamp-2 font-semibold">
-                      {product.name}
-                    </span>
-                    <span className="mt-auto rounded-full bg-sales-soft px-3 py-0.5 text-lg font-extrabold tabular-nums text-sales-ink">
-                      {money(product.salePrice)}
+                    <ProductTile product={product} size="sm" />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="line-clamp-2 font-bold">
+                        {product.name}
+                      </span>
+                      <span className="font-extrabold tabular-nums text-sales-ink">
+                        {money(product.salePrice)}
+                      </span>
                     </span>
                     {product.stockLevel === 'out' && (
                       <span className="text-base text-danger-ink">
@@ -1502,8 +1516,16 @@ export function Checkout({
                         {formatQuantity(product.stockQuantity, product.unit)}
                       </span>
                     )}
+                    {inCart.length === 0 && (
+                      <span
+                        aria-hidden
+                        className="absolute top-2.5 right-2.5 flex size-7.5 items-center justify-center rounded-full bg-canvas"
+                      >
+                        <Plus className="size-4.5" strokeWidth={2.4} />
+                      </span>
+                    )}
                     {inCart.length > 0 && (
-                      <span className="absolute top-2 right-2 rounded-full bg-sales-strong px-2.5 py-0.5 text-base font-extrabold text-white">
+                      <span className="absolute top-2.5 right-2.5 flex h-7.5 min-w-7.5 items-center justify-center rounded-full bg-ink px-2 text-base font-extrabold text-canvas">
                         <span className="sr-only">, </span>
                         {inCart.length === 1
                           ? inCart[0]!.quantityText
@@ -1535,8 +1557,19 @@ export function Checkout({
             Ajouter d’autres {noun}s
           </button>
         )}
-        {cartPanel}
-        {cart.length > 0 && paymentPanel}
+        {/* On a phone, the second step opens on what is to be paid. */}
+        <div
+          className={`flex flex-col gap-4 ${step === 'pay' ? 'order-2 lg:order-none' : ''}`}
+        >
+          {cartPanel}
+        </div>
+        {cart.length > 0 && (
+          <div
+            className={`flex flex-col gap-4 ${step === 'pay' ? 'order-1 lg:order-none' : ''}`}
+          >
+            {paymentPanel}
+          </div>
+        )}
       </div>
 
       {step === 'cart' && cart.length > 0 && (
@@ -1544,13 +1577,21 @@ export function Checkout({
           <button
             type="button"
             onClick={() => goTo('pay')}
-            className={buttonClasses(
-              'sell',
-              'min-h-16 w-full text-lg shadow-lg',
-            )}
+            aria-label={`Encaisser — ${money(totals.total)}, ${cart.length} article${cart.length > 1 ? 's' : ''}`}
+            className="flex min-h-16 w-full items-center gap-3 rounded-full bg-ink py-2 pr-2.5 pl-6 text-left text-canvas"
           >
-            <ShoppingCart aria-hidden className="size-6" />
-            Encaisser — {money(totals.total)}
+            <span className="flex flex-1 flex-col">
+              <span className="font-bold">
+                {cart.length} article{cart.length > 1 ? 's' : ''}
+              </span>
+              <span className="text-xl font-extrabold tabular-nums">
+                {money(totals.total)}
+              </span>
+            </span>
+            <span className="flex min-h-12 items-center gap-1.5 rounded-full bg-surface px-5 text-lg font-extrabold text-sales-ink">
+              Encaisser
+              <ChevronRight aria-hidden className="size-5" />
+            </span>
           </button>
         </div>
       )}

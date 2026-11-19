@@ -14,7 +14,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
-import { Table, type Column } from '@/components/ui/table';
+import { ContactAvatar } from '@/components/contacts/contact-actions';
 import { apiAsUser } from '@/lib/api/server';
 import {
   formatContact,
@@ -25,6 +25,7 @@ import {
 import {
   INVITATION_STATUS_LABELS,
   MEMBER_STATUS_LABELS,
+  ROLE_HINTS,
   ROLE_LABELS,
 } from '@/lib/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
@@ -61,59 +62,10 @@ async function Team() {
       null,
   );
 
-  const memberColumns: Column<MemberDto>[] = [
-    {
-      header: 'Personne',
-      cell: (member) => (
-        <div className="flex flex-col">
-          <span className="font-semibold">
-            {member.displayName ?? formatContact(member.email)}
-            {member.userId === me.id && ' (vous)'}
-          </span>
-          {member.displayName && (
-            <span className="text-ink-muted">
-              {formatContact(member.email)}
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      header: 'Rôle',
-      cell: (member) => <Badge>{ROLE_LABELS[member.role]}</Badge>,
-    },
-    {
-      header: 'Statut',
-      cell: (member) => MEMBER_STATUS_LABELS[member.status],
-    },
-    {
-      // Negotiated prices and discount together (ADR-038).
-      header: 'Baisse de prix',
-      cell: (member) =>
-        member.maxDiscountBasisPoints === null
-          ? 'Sans limite'
-          : `${String(member.maxDiscountBasisPoints / 100).replace('.', ',')} % au plus`,
-    },
-    {
-      header: 'Depuis le',
-      cell: (member) => formatDate(member.joinedAt, organization.timezone),
-    },
-  ];
-  if (canManage) {
-    memberColumns.push({
-      header: 'Actions',
-      cell: (member) =>
-        memberChangeRefusal(actor, member, {}) === null ? (
-          <MemberActions
-            organizationId={organization.id}
-            member={member}
-            assignableRoles={assignableRoles}
-          />
-        ) : (
-          <span className="text-ink-muted">—</span>
-        ),
-    });
-  }
+  const discount = (member: MemberDto) =>
+    member.maxDiscountBasisPoints === null
+      ? 'baisse de prix sans limite'
+      : `baisse de prix de ${String(member.maxDiscountBasisPoints / 100).replace('.', ',')} % au plus`;
 
   return (
     <>
@@ -126,18 +78,62 @@ async function Team() {
         }
       />
       {members.ok ? (
-        <Table
-          caption={`Équipe de ${organization.name}`}
-          rows={members.data}
-          rowKey={(member) => member.userId}
-          columns={memberColumns}
-        />
+        <ul
+          aria-label={`Équipe de ${organization.name}`}
+          className="flex flex-col divide-y divide-line rounded-3xl bg-surface px-4"
+        >
+          {members.data.map((member) => {
+            const name = member.displayName ?? formatContact(member.email);
+            const editable =
+              canManage && memberChangeRefusal(actor, member, {}) === null;
+            return (
+              <li key={member.userId} className="flex flex-col gap-3 py-4">
+                <div className="flex items-center gap-3">
+                  <ContactAvatar person={{ id: member.userId, name }} />
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-lg font-extrabold break-words">
+                      {name}
+                      {member.userId === me.id && ' (vous)'}
+                    </span>
+                    {member.displayName && (
+                      <span className="text-ink-muted break-all">
+                        {formatContact(member.email)}
+                      </span>
+                    )}
+                    <span className="text-ink-muted">
+                      {ROLE_LABELS[member.role]} · {ROLE_HINTS[member.role]}
+                    </span>
+                    <span className="text-ink-muted">
+                      {MEMBER_STATUS_LABELS[member.status]} · {discount(member)}{' '}
+                      · depuis le{' '}
+                      {formatDate(member.joinedAt, organization.timezone)}
+                    </span>
+                  </div>
+                </div>
+                {editable && (
+                  <details className="group">
+                    <summary className="inline-flex min-h-12 cursor-pointer list-none items-center rounded-full bg-canvas px-5 font-bold">
+                      Modifier<span className="sr-only"> {name}</span>
+                    </summary>
+                    <div className="pt-3">
+                      <MemberActions
+                        organizationId={organization.id}
+                        member={member}
+                        assignableRoles={assignableRoles}
+                      />
+                    </div>
+                  </details>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       ) : (
         <Alert tone="error">Équipe indisponible : {members.message}</Alert>
       )}
 
       {canInvite && (
-        <Card title="Inviter un collaborateur" titleId="invite" icon={UserPlus}>
+        <Card title="Inviter quelqu’un" titleId="invite" icon={UserPlus}>
           <InviteForm
             organizationId={organization.id}
             timeZone={organization.timezone}

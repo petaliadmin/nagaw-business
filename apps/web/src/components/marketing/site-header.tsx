@@ -12,7 +12,7 @@ const LINKS = [
 /** Header of the public pages: home page and guides. */
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-line bg-canvas/95 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-2">
         <Logo href="/" />
         <nav aria-label="Principal" className="hidden md:block">

@@ -6,7 +6,7 @@ import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { NextField } from '@/components/next-field';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { signInWithEmail } from '../../actions';
 
 /** Accounts opened with an e-mail before ADR-058. */

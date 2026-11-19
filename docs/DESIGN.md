@@ -1,5 +1,7 @@
 # Design et accessibilité
 
+> **V3 « Teranga » du 2026-11-18 (ADR-063)** : page blanche, cartes `#F5F5F7` sans bordure ni ombre, boutons principaux noirs en pilules, vert pour l'argent, ambre pour le crédit. Barre du bas : Accueil, Ventes, **Caisse** au centre, Stock, Argent ; « Menu » en grille. « Masquer » floute les montants. Le crédit d'un client se lit comme une discussion. Contrastes : encre `#12101C` sur blanc 18,81 ; texte secondaire `#5D5970` 6,71 sur blanc et 6,17 sur `#F5F5F7` ; marque `#4F3FD1` 7,08 ; `sales-ink` `#07603F` 7,63 ; `warning-ink` `#8A4B00` 6,25 sur `#F5F5F7` ; champs bordés de `#767189` (4,6:1). Là où les sections ci-dessous disent autre chose, ADR-063 l'emporte.
+>
 > **Refonte du 2026-11-16 (ADR-062)** : teintes adoucies, barre du bas à cinq entrées avec « Vendre » au centre, « Menu » dans l'en-tête, la réponse d'abord sur chaque écran, trois étapes pour vendre. Les sections ci-dessous sont à jour.
 >
 > **État** : accepté (ADR-021) et **implémenté en Phase 8** : jetons dans `apps/web/src/app/globals.css`, composants dans `apps/web/src/components`. Les couleurs de modules (ventes, stock, factures…) servent dès que ces modules sont livrés.

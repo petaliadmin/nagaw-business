@@ -1,18 +1,15 @@
 'use client';
 
-import {
-  amountInputValue,
-  MOBILE_MONEY_PROVIDERS,
-  type CustomerDto,
-} from '@nagaw/shared';
+import { amountInputValue, type CustomerDto } from '@nagaw/shared';
 import { useActionState, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
-import { FormField, SelectField } from '@/components/form-field';
+import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState, type FormState } from '@/lib/auth/schemas';
+import { initialFormState, type FormState } from '@/lib/auth/form-state';
 import type { CustomerContact } from '@/lib/customers/contact';
-import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
+import { MethodPills, ProviderPills } from '@/components/sales/payment-choice';
+import { PAYMENT_LABELS } from '@/lib/sales/labels';
 import {
   createCustomer,
   recordRepayment,
@@ -180,37 +177,17 @@ export function RepaymentForm({
           required
           error={errors.amount}
         />
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="repay-method" className="text-base font-semibold">
-            Payé en
-          </label>
-          <select
-            id="repay-method"
-            name="method"
-            value={method}
-            onChange={(event) => setMethod(event.currentTarget.value)}
-            className="min-h-12 w-full rounded-xl border-2 border-line-strong bg-surface px-4 py-2 text-base text-ink"
-          >
-            {(['cash', 'mobile_money', 'card'] as const).map((m) => (
-              <option key={m} value={m}>
-                {PAYMENT_LABELS[m]}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MethodPills
+          methods={(['cash', 'mobile_money', 'card'] as const).map((m) => ({
+            value: m,
+            label: PAYMENT_LABELS[m],
+          }))}
+          value={method}
+          onChange={setMethod}
+        />
         {method === 'mobile_money' && (
           <>
-            <SelectField
-              label="Opérateur"
-              name="provider"
-              id="repay-provider"
-              defaultValue="wave"
-              options={MOBILE_MONEY_PROVIDERS.map((p) => ({
-                value: p,
-                label: PROVIDER_LABELS[p],
-              }))}
-              error={errors.provider}
-            />
+            <ProviderPills error={errors.provider} />
             <FormField
               label="Numéro de transaction (facultatif)"
               name="reference"

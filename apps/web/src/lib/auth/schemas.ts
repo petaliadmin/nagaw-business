@@ -1,9 +1,5 @@
-import {
-  accountPhone,
-  invitableRoleSchema,
-  newPinSchema,
-  pinSchema,
-} from '@nagaw/shared';
+import { invitableRoleSchema, newPinSchema, pinSchema } from '@nagaw/shared';
+import { accountPhone } from '@nagaw/shared/phone-check';
 import { z } from 'zod';
 
 const email = z
@@ -28,25 +24,32 @@ const phoneFields = {
   number: z.string().trim().min(1, 'Numéro de téléphone requis'),
 };
 
-/** The account number from the country and what was typed. */
-function withPhone<T extends { country: string; number: string }>(
-  value: T,
-  ctx: z.RefinementCtx,
-) {
-  const phone = accountPhone(value.country, value.number);
-  if (!phone) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['number'],
-      message: 'Numéro de téléphone invalide pour ce pays',
-    });
-    return z.NEVER;
-  }
-  const rest: Partial<T> = { ...value };
-  delete rest.country;
-  delete rest.number;
-  return { ...(rest as Omit<T, 'country' | 'number'>), phone };
-}
+/**
+ * The account number from the country and what was typed: a number of
+ * the country's telephone plan (ADR-064), or of the right length only to
+ * sign in, so that no account is ever locked out.
+ */
+const withPhoneChecked =
+  (check: 'valid' | 'possible') =>
+  <T extends { country: string; number: string }>(
+    value: T,
+    ctx: z.RefinementCtx,
+  ) => {
+    const phone = accountPhone(value.country, value.number, check);
+    if (!phone) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['number'],
+        message: 'Numéro de téléphone invalide pour ce pays',
+      });
+      return z.NEVER;
+    }
+    const rest: Partial<T> = { ...value };
+    delete rest.country;
+    delete rest.number;
+    return { ...(rest as Omit<T, 'country' | 'number'>), phone };
+  };
+const withPhone = withPhoneChecked('valid');
 
 const confirmed = <T extends { pin: string; confirmation: string }>(v: T) =>
   v.pin === v.confirmation;
@@ -58,7 +61,7 @@ const NOT_CONFIRMED = {
 /** Phone number and secret code (ADR-058). */
 export const phoneSignInSchema = z
   .object({ ...phoneFields, pin: pinSchema })
-  .transform(withPhone);
+  .transform(withPhoneChecked('possible'));
 
 /** A new account, or an e-mail account taking a number: code chosen twice. */
 export const phoneCredentialsFormSchema = z
@@ -88,13 +91,8 @@ export const newPasswordSchema = z
     message: 'Les mots de passe ne correspondent pas',
   });
 
-export type FormState = {
-  status: 'idle' | 'error' | 'success';
-  message?: string;
-  fieldErrors?: Record<string, string>;
-};
-
-export const initialFormState: FormState = { status: 'idle' };
+export { initialFormState, type FormState } from './form-state';
+import type { FormState } from './form-state';
 
 /**
  * Form fields as a plain object, without the hidden `$ACTION_*` fields React

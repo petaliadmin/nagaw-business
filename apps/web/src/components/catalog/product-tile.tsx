@@ -19,10 +19,15 @@ export function ProductTile({
   size = 'md',
 }: {
   product: Pick<ProductDto, 'id' | 'name' | 'photoVersion' | 'category'>;
-  size?: 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg';
 }) {
   const url = productPhotoUrl(product);
-  const box = size === 'lg' ? 'size-40 text-6xl' : 'size-16 text-2xl';
+  const box =
+    size === 'lg'
+      ? 'size-40 text-6xl'
+      : size === 'sm'
+        ? 'size-13 text-2xl'
+        : 'size-16 text-2xl';
   if (url) {
     return (
       // Proxied private photo: next/image would need a public loader.

@@ -6,14 +6,17 @@ import { OfferField } from '@/components/catalog/offer-field';
 import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { createOrganization } from './actions';
 
 export function CreateOrganizationForm({
   ownerName,
+  phone,
 }: {
   /** Already known for a second shop. */
   ownerName?: string | null;
+  /** International digits of the account, when it signed up by phone. */
+  phone?: string | null;
 }) {
   const [state, action, pending] = useActionState(
     createOrganization,
@@ -31,34 +34,50 @@ export function CreateOrganizationForm({
         label="Nom de la boutique"
         name="name"
         autoComplete="organization"
+        hint="Il apparaît sur vos tickets et vos factures."
         required
         minLength={2}
         maxLength={120}
         error={state.fieldErrors?.name}
       />
-      <FormField
-        label="Votre nom complet"
-        name="ownerName"
-        autoComplete="name"
-        defaultValue={ownerName ?? undefined}
-        required
-        minLength={2}
-        maxLength={120}
-        error={state.fieldErrors?.ownerName}
+      {/* V3: only what is not known yet is asked (ADR-063). */}
+      {ownerName ? (
+        <input type="hidden" name="ownerName" value={ownerName} />
+      ) : (
+        <FormField
+          label="Votre nom complet"
+          name="ownerName"
+          autoComplete="name"
+          required
+          minLength={2}
+          maxLength={120}
+          error={state.fieldErrors?.ownerName}
+        />
+      )}
+      {phone && !state.fieldErrors?.phone ? (
+        <input type="hidden" name="phone" value={`+${phone}`} />
+      ) : (
+        <FormField
+          label="Votre téléphone"
+          name="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          hint="Il figure sur vos factures et vos devis. Vous pourrez le changer dans Paramètres."
+          required
+          maxLength={30}
+          error={state.fieldErrors?.phone}
+        />
+      )}
+      <OfferField
+        value="products"
+        legend="Vous vendez surtout"
+        error={state.fieldErrors?.offer}
       />
-      <FormField
-        label="Votre téléphone"
-        name="phone"
-        type="tel"
-        inputMode="tel"
-        autoComplete="tel"
-        hint="Il figure sur vos factures et vos devis. Vous pourrez le changer dans Paramètres."
-        required
-        maxLength={30}
-        error={state.fieldErrors?.phone}
-      />
-      <OfferField value="products" error={state.fieldErrors?.offer} />
-      <SubmitButton pendingLabel="Création…">Créer la boutique</SubmitButton>
+      <p className="text-ink-muted">
+        Gratuit pour commencer, sans carte bancaire.
+      </p>
+      <SubmitButton pendingLabel="Création…">Créer ma boutique</SubmitButton>
     </ActionForm>
   );
 }

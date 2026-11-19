@@ -74,8 +74,18 @@ test('the home page shows the essentials of the period', async ({
     Number(/Nombre de ventes(\d+)/.exec(text)?.[1]);
   await page.goto('/espace');
   expect(await essentials()).toContain('Chiffre d’affaires'); // this month
-  await page.getByRole('link', { name: 'Aujourd’hui' }).click();
+  // The period is one pill on the dark card; it opens the others.
+  const period = page.getByRole('button', { name: 'Période : Ce mois' });
+  await expect(period).toHaveAttribute('aria-expanded', 'false');
+  await period.click();
+  await page
+    .getByRole('list', { name: 'Période' })
+    .getByRole('link', { name: 'Aujourd’hui' })
+    .click();
   await expect(page).toHaveURL(/periode=jour/);
+  await expect(
+    page.getByRole('button', { name: 'Période : Aujourd’hui' }),
+  ).toBeVisible();
   const text = await essentials();
   expect(salesCount(text)).toBeGreaterThanOrEqual(1);
   expect(text).toMatch(/Panier moyen[\d ]+ F CFA/);
@@ -89,19 +99,47 @@ test('the home page shows the essentials of the period', async ({
   await expectAccessible(page, 'tableau de bord');
 });
 
+test('the expense steps ask for what is missing, and go back', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/tresorerie/depenses/nouvelle');
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Tapez le montant payé.')).toBeVisible();
+  await expect(page.getByText('Étape 1 sur 3')).toBeVisible();
+  await page.getByRole('button', { name: '5', exact: true }).click();
+  await page.getByRole('button', { name: '0', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(
+    page.getByText('Choisissez pour quoi vous avez payé.'),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Retour' }).click();
+  await expect(page.getByLabel('Montant', { exact: true })).toHaveValue('50');
+});
+
 test('an expense lowers the drawer until it is cancelled', async ({
   page,
   context,
   baseURL,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/tresorerie/depenses');
-  await page.locator('summary', { hasText: 'Ajouter une dépense' }).click();
-  await page.getByLabel('Ce qui a été payé').fill('Ticket de bus');
+  await page.goto('/espace/tresorerie/depenses/nouvelle');
+  // Three steps (ADR-063): how much, what for, paid with what.
+  await expect(page.getByText('Étape 1 sur 3')).toBeVisible();
   await page.getByLabel('Montant', { exact: true }).fill('200');
-  await page
-    .getByLabel('Catégorie', { exact: true })
-    .selectOption({ label: 'Autres dépenses' });
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Étape 2 sur 3')).toBeVisible();
+  await page.locator('label', { hasText: /^Autres dépenses$/ }).click();
+  await expect(
+    page.getByRole('radio', { name: 'Autres dépenses' }),
+  ).toBeChecked();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Étape 3 sur 3')).toBeVisible();
+  await page.locator('summary', { hasText: 'Détail et date' }).click();
+  await page.getByLabel('Ce qui a été payé').fill('Ticket de bus');
   await page.getByRole('button', { name: 'Enregistrer la dépense' }).click();
   await expect(page.getByText('Dépense enregistrée.')).toBeVisible();
   const list = page.getByRole('list', { name: 'Liste des dépenses' });
@@ -134,8 +172,20 @@ test('money moved to the bank stays in the shop', async ({
   const card = page.getByRole('region', { name: 'Déplacer de l’argent' });
   // Folded until asked for: the balances come first.
   await card.locator('summary').click();
-  await card.getByLabel('Sortir de').selectOption({ label: 'Caisse' });
-  await card.getByLabel('Mettre dans').selectOption({ label: 'Banque' });
+  // Accounts as pictures with their names (ADR-063).
+  await card
+    .getByRole('group', { name: 'Sortir de' })
+    .locator('label', { hasText: /^Caisse$/ })
+    .click();
+  await card
+    .getByRole('group', { name: 'Mettre dans' })
+    .locator('label', { hasText: /^Banque$/ })
+    .click();
+  await expect(
+    card.getByRole('group', { name: 'Mettre dans' }).getByRole('radio', {
+      name: 'Banque',
+    }),
+  ).toBeChecked();
   await card.getByLabel('Montant').fill('100');
   await card.getByRole('button', { name: 'Déplacer l’argent' }).click();
   await expect(card.getByText('Argent déplacé.')).toBeVisible();
@@ -161,21 +211,21 @@ test('counting the drawer tells what is missing and closes the day', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/tresorerie');
-  await page.getByRole('link', { name: 'Clôturer la caisse' }).click();
+  await page.getByRole('link', { name: 'Clôturer la journée' }).click();
   await expect(
-    page.getByRole('heading', { level: 1, name: 'Clôturer la caisse' }),
+    page.getByRole('heading', { level: 1, name: 'Clôturer la journée' }),
   ).toBeVisible();
   await expectAccessible(page, 'clôture');
-  await page.getByLabel('Ce que vous avez compté').fill('350');
+  await page.getByLabel('Caisse : ce que vous avez compté').fill('350');
   await expect(page.getByText(/Il manque 50/)).toBeVisible();
   await page.getByRole('button', { name: 'Clôturer la journée' }).click();
-  // The page then shows the day as counted, instead of the form.
+  // The drawer then shows the day as counted, instead of its field.
   await expect(
     page.getByText(/Journée clôturée par .*il manquait 50/),
   ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Clôturer la journée' }),
-  ).toHaveCount(0);
+  await expect(page.getByLabel('Caisse : ce que vous avez compté')).toHaveCount(
+    0,
+  );
   await page.reload();
   await expect(
     page.getByText(/Journée clôturée par .*il manquait 50/),

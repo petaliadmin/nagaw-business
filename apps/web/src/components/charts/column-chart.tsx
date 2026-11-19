@@ -52,7 +52,7 @@ export function ColumnChart({
         <ul className="flex flex-wrap gap-x-5 gap-y-1" aria-label="Légende">
           {series.map((s) => (
             <li key={s.key} className="flex items-center gap-2 text-base">
-              <span aria-hidden className={`size-3 rounded-sm ${s.fill}`} />
+              <span aria-hidden className={`size-3 rounded-full ${s.fill}`} />
               {s.label}
             </li>
           ))}
@@ -61,24 +61,25 @@ export function ColumnChart({
       {max === 0 ? (
         <p className="text-ink-muted">{empty}</p>
       ) : (
-        <div aria-hidden className="flex flex-col gap-1">
-          <span className="text-base text-ink-muted tabular-nums">
+        <div aria-hidden className="flex flex-col gap-2">
+          <span className="text-base font-bold text-ink-muted tabular-nums">
             {format(max)}
           </span>
-          <div className="relative flex h-44 items-end gap-0.5 border-b border-line-strong">
-            <span className="pointer-events-none absolute inset-x-0 top-0 border-t border-line" />
-            <span className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-line" />
+          <div className="relative flex h-44 items-end gap-1">
             {points.map((p) => {
               const sum = total(p);
               return (
                 <div
                   key={p.key}
-                  className="group relative flex h-full min-w-0 flex-1 items-end justify-center hover:bg-surface-muted"
+                  className="group relative flex h-full min-w-0 flex-1 items-end justify-center"
                 >
+                  {sum === 0 && (
+                    <div className="h-1 w-full max-w-8 rounded-md bg-line" />
+                  )}
                   {sum > 0 && (
                     <div
-                      className="flex w-full max-w-8 flex-col-reverse gap-0.5 overflow-hidden rounded-t-[4px]"
-                      style={{ height: `max(2px, ${(sum / max) * 100}%)` }}
+                      className="flex w-full max-w-8 flex-col-reverse gap-0.5 overflow-hidden rounded-md transition-opacity group-hover:opacity-80"
+                      style={{ height: `max(6px, ${(sum / max) * 100}%)` }}
                     >
                       {series.map((s, i) =>
                         p.values[i]! > 0 ? (
@@ -91,8 +92,8 @@ export function ColumnChart({
                       )}
                     </div>
                   )}
-                  <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-max max-w-56 -translate-x-1/2 rounded-lg border border-line bg-surface px-3 py-2 text-base text-ink shadow-md group-hover:block">
-                    <p className="font-semibold">{p.label}</p>
+                  <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-max max-w-56 -translate-x-1/2 rounded-2xl bg-ink px-3 py-2 text-base text-canvas group-hover:block">
+                    <p className="font-bold">{p.label}</p>
                     {series.map((s, i) => (
                       <p key={s.key} className="flex items-center gap-2">
                         {series.length > 1 && (
@@ -104,13 +105,13 @@ export function ColumnChart({
                         </span>
                       </p>
                     ))}
-                    {p.detail && <p className="text-ink-muted">{p.detail}</p>}
+                    {p.detail && <p className="text-[#c9c5ff]">{p.detail}</p>}
                   </div>
                 </div>
               );
             })}
           </div>
-          <div className="flex justify-between gap-2 text-base text-ink-muted">
+          <div className="flex justify-between gap-2 text-base font-bold text-ink-muted">
             <span>{points[0]!.tick}</span>
             {points.length > 2 && <span>{middle!.tick}</span>}
             {points.length > 1 && <span>{points.at(-1)!.tick}</span>}
@@ -188,7 +189,7 @@ export function ShareBar({
       {total > 0 && (
         <div
           aria-hidden
-          className="flex h-4 gap-0.5 overflow-hidden rounded-full bg-surface-muted"
+          className="flex h-3 gap-1 overflow-hidden rounded-full bg-canvas"
         >
           {parts.map((p) =>
             p.value > 0 ? (
@@ -208,7 +209,7 @@ export function ShareBar({
             className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
           >
             <span className="flex items-center gap-2 font-semibold">
-              <span aria-hidden className={`size-3 rounded-sm ${p.fill}`} />
+              <span aria-hidden className={`size-3 rounded-full ${p.fill}`} />
               {p.label}
             </span>
             <span className="tabular-nums">{p.text}</span>

@@ -26,7 +26,7 @@ export function Table<T>({
       role="region"
       aria-label={caption}
       tabIndex={0}
-      className="relative overflow-x-auto rounded-2xl border border-line bg-surface"
+      className="relative overflow-x-auto rounded-3xl bg-surface"
     >
       <table className="w-full min-w-[32rem] text-left text-base">
         <caption className="sr-only">{caption}</caption>

@@ -5,7 +5,7 @@ import { useActionState } from 'react';
 import { CONTROL } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { formatContact } from '@/lib/format';
 import { ROLE_LABELS } from '@/lib/labels';
 import { revokeInvitation, setDiscountLimit, updateMember } from './actions';

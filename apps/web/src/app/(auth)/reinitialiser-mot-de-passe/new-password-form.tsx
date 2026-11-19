@@ -5,7 +5,7 @@ import { ActionForm } from '@/components/action-form';
 import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { updatePassword } from '../actions';
 
 export function NewPasswordForm() {

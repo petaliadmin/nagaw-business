@@ -261,7 +261,7 @@ test('« Envoyer maintenant » in the banner does it from any page', async ({
   await expect(banner(page)).toContainText('Le serveur ne répond pas bien', {
     timeout: 15_000,
   });
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=telephone');
   await page.unroute('**/caisse/synchroniser');
   await page.getByRole('button', { name: 'Envoyer maintenant' }).click();
   await expect(banner(page)).toHaveCount(0, { timeout: 15_000 });
@@ -358,7 +358,7 @@ test('a withdrawn phone stays out, loses its copy, and a manager can bring it ba
   await signInAs(context, 'awa', baseURL!);
   await openCheckoutOnline(page);
 
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=appareils');
   await page
     .getByRole('button', { name: /^Retirer l’appareil/ })
     .first()
@@ -407,7 +407,7 @@ test('a withdrawn phone stays out, loses its copy, and a manager can bring it ba
   expect(copy?.products).toEqual([]);
   expect(copy?.nextTicket).toBeGreaterThan(0);
 
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=appareils');
   await page.getByRole('button', { name: /^Remettre l’appareil/ }).click();
   await expect(
     page.getByRole('button', { name: /^Remettre l’appareil/ }),
@@ -434,7 +434,7 @@ test('only « Effacer ce téléphone » empties it, never while sales wait', asy
   await openCheckoutOnline(page);
   await failSending(page);
   await sellUnsent(page, isMobile);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=telephone');
   await expect(
     page.getByText(/ne peut pas être vidé avant leur envoi/),
   ).toBeVisible();
@@ -445,7 +445,7 @@ test('only « Effacer ce téléphone » empties it, never while sales wait', asy
 
   await page.goto('/caisse');
   await expect(banner(page)).toHaveCount(0, { timeout: 15_000 });
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=telephone');
   await page.getByRole('button', { name: 'Effacer ce téléphone' }).click();
   await page
     .getByRole('alertdialog', { name: 'Effacer ce téléphone ?' })

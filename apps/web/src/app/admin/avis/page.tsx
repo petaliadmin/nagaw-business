@@ -61,7 +61,7 @@ async function Feedback({ searchParams }: PageProps<'/admin/avis'>) {
           {result.data.map((f) => (
             <li
               key={f.id}
-              className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4"
+              className="flex flex-col gap-3 rounded-3xl bg-surface p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <span className="flex flex-col">

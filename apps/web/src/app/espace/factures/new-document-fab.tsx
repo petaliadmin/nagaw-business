@@ -4,12 +4,11 @@ import { FilePlus2, FileText, Plus, X, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
 
-// Above the phone bottom bar, under the « Plus » sheet, as « Vendre »
-// (SellFab).
+// Above the phone bottom bar, under the « Menu » sheet.
 const PLACE =
   'fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 md:right-8 md:bottom-8 print:hidden';
 const PILL =
-  'inline-flex min-h-16 items-center justify-center gap-2 rounded-full bg-invoices-strong px-7 text-xl font-bold text-white shadow-lg transition-shadow hover:shadow-xl';
+  'inline-flex min-h-16 items-center justify-center gap-2 rounded-full bg-ink px-7 text-xl font-bold text-canvas shadow-lg transition-shadow hover:shadow-xl';
 
 const NEW_INVOICE = {
   href: '/espace/factures/nouvelle',
@@ -117,7 +116,7 @@ export function NewDocumentMenuFab() {
           aria-controls={open ? menuId : undefined}
           aria-label={open ? 'Fermer' : 'Créer une facture ou un devis'}
           onClick={() => setOpen((o) => !o)}
-          className="inline-flex size-16 items-center justify-center rounded-full bg-invoices-strong text-white shadow-lg transition-shadow hover:shadow-xl"
+          className="inline-flex size-16 items-center justify-center rounded-full bg-ink text-canvas shadow-lg transition-shadow hover:shadow-xl"
         >
           {open ? (
             <X aria-hidden className="size-8" />

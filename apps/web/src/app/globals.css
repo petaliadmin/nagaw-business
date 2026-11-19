@@ -12,31 +12,34 @@
  *   ink    — text on `soft`, links and accents on the canvas
  * Text on a vivid shade is always `on-vivid` (dark, in both themes).
  *
- * Softer shades since the redesign of 2026-11-16 (ADR-062): same roles,
- * less saturation, contrasts recomputed in DESIGN.md.
+ * V3 « Teranga » (ADR-063): a white page, cards in a light grey
+ * (`surface`) with neither border weight nor shadow, ink for the main
+ * buttons, colour kept for what it means (money in green, what is owed in
+ * amber). Contrasts recomputed in DESIGN.md.
  */
 :root {
-  --canvas: #f5f4f9;
-  --surface: #ffffff;
-  --surface-muted: #efedf6;
-  --ink: #1c1a27;
-  --ink-muted: #5e5a72;
-  --line: #e7e4f0;
+  --canvas: #ffffff;
+  --surface: #f5f5f7;
+  /* Inside a grey card, a nested tile or a hover is white. */
+  --surface-muted: #ffffff;
+  --ink: #12101c;
+  --ink-muted: #5d5970;
+  --line: #e6e6eb;
   --line-strong: #767189;
-  --focus: #5746c9;
+  --focus: #4f3fd1;
   --on-vivid: #111827;
   /* Sidebar: dark in both themes, white text (16:1). */
-  --sidebar: #1c1a27;
+  --sidebar: #12101c;
 
   --brand: #6655d6;
-  --brand-strong: #5746c9;
-  --brand-soft: #eeebfb;
-  --brand-ink: #4636b0;
+  --brand-strong: #4f3fd1;
+  --brand-soft: #efedff;
+  --brand-ink: #4f3fd1;
 
   --sales: #0f9d76;
-  --sales-strong: #0b7a5c;
-  --sales-soft: #e3f4ee;
-  --sales-ink: #075e46;
+  --sales-strong: #0a7d55;
+  --sales-soft: #e3f6ec;
+  --sales-ink: #07603f;
 
   --stock: #2563eb;
   --stock-strong: #1d4ed8;
@@ -76,14 +79,14 @@
   --danger-ink: #b91c1c;
 
   --warning: #f59e0b;
-  --warning-strong: #8f5a00;
-  --warning-soft: #fff0d4;
-  --warning-ink: #7a4d00;
+  --warning-strong: #8a4b00;
+  --warning-soft: #fff1dc;
+  --warning-ink: #8a4b00;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --canvas: #13111c;
+    --canvas: #0f0e15;
     --surface: #1c1a27;
     --surface-muted: #272335;
     --ink: #f4f3f8;
@@ -118,6 +121,10 @@
 
 @theme inline {
   --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+  /* V3: flat. Small shadows are gone; a floating button keeps its own. */
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
+  --shadow: 0 0 #0000;
 
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
@@ -280,4 +287,13 @@ textarea {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/*
+ * « Masquer » (ADR-063): amounts marked `montant-prive` are blurred while
+ * the shopkeeper hides them, and cannot be selected or copied.
+ */
+:root[data-masquer] .montant-prive {
+  filter: blur(0.55em);
+  user-select: none;
 }

@@ -1,16 +1,23 @@
-import type { MeDto, OrganizationWithRoleDto } from '@nagaw/shared';
+import {
+  roleHasPermission,
+  type MeDto,
+  type OrganizationWithRoleDto,
+} from '@nagaw/shared';
+import { ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
 import { closeShopAccess } from '@/app/admin/actions';
 import { CreateOrganizationForm } from '@/app/espace/create-organization-form';
 import { InstallButton, InstallDialog } from '@/components/pwa/install-app';
+import { formatContact } from '@/lib/format';
+import { ContactAvatar } from '@/components/contacts/contact-actions';
 import { SignOutButton } from '@/components/pwa/sign-out-button';
 import { SubmitButton } from '@/components/submit-button';
 import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Logo } from '@/components/ui/logo';
+import { buttonClasses } from '@/components/ui/button-styles';
 import { ROLE_LABELS } from '@/lib/labels';
 import { loadWorkspace } from '@/lib/workspace/load';
 import { FeedbackLink } from './feedback-link';
@@ -31,24 +38,31 @@ function Account({
   organization: OrganizationWithRoleDto;
   tone: Tone;
 }) {
+  const who =
+    me.displayName ||
+    (me.email
+      ? formatContact(me.email)
+      : me.phone
+        ? `+${me.phone}`
+        : 'Mon compte');
   return (
     <div
       className={`flex flex-col gap-3 border-t pt-4 ${
         tone === 'sidebar' ? 'border-white/30' : 'border-line'
       }`}
     >
-      <div className="flex min-w-0 flex-col gap-1">
-        <span className="truncate text-base font-semibold" title={me.email}>
-          {me.email}
-        </span>
-        <span>
-          <Badge tone={tone === 'sidebar' ? 'neutral' : 'brand'}>
+      <div className="flex min-w-0 items-center gap-3">
+        <ContactAvatar person={{ id: me.id, name: who }} />
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate text-lg font-extrabold" title={who}>
+            {who}
+          </span>
+          <span className="text-ink-muted">
             {ROLE_LABELS[organization.role]}
-          </Badge>
-        </span>
+          </span>
+        </div>
       </div>
       <InstallButton tone={tone} />
-      <FeedbackLink tone={tone} />
       {me.platformAdmin && (
         <Link
           href="/admin"
@@ -61,7 +75,10 @@ function Account({
           Administration de la plateforme
         </Link>
       )}
-      <SignOutButton tone={tone} />
+      <div className="flex gap-2">
+        <FeedbackLink tone={tone} pill={tone === 'surface'} />
+        <SignOutButton tone={tone} />
+      </div>
     </div>
   );
 }
@@ -106,9 +123,9 @@ function CenteredState({ children }: { children: ReactNode }) {
 /**
  * Authenticated application frame. Resolves the session and the active
  * shop once per request (shared with the page through `loadWorkspace`),
- * then renders navigation around the page: a dark sidebar from
- * tablets up; on phones, a white bottom tab bar with « Vendre » in the
- * middle and « Menu » in the top bar (ADR-062, DESIGN.md).
+ * then renders navigation around the page: a white sidebar with
+ * « Caisse » on top from tablets up; on phones, a white bottom tab bar with
+ * « Caisse » in the middle and « Menu » in the top bar (ADR-063, DESIGN.md).
  */
 export async function AppShell({ children }: { children: ReactNode }) {
   await connection();
@@ -142,14 +159,15 @@ export async function AppShell({ children }: { children: ReactNode }) {
     return (
       <CenteredState>
         <Logo href="/espace" />
-        <h1 className="text-3xl font-extrabold">Créez votre boutique</h1>
-        <p className="text-ink-muted">
-          Connecté en tant que <strong>{workspace.me.email}</strong>. Votre
-          boutique regroupe votre équipe et, bientôt, vos produits et vos
-          ventes.
+        <p className="font-bold text-ink-muted">
+          Étape 2 sur 2 · c’est presque fini
         </p>
+        <h1 className="text-3xl font-extrabold">Créez votre boutique</h1>
         <Card>
-          <CreateOrganizationForm ownerName={workspace.me.displayName} />
+          <CreateOrganizationForm
+            ownerName={workspace.me.displayName}
+            phone={workspace.me.phone}
+          />
         </Card>
         <div>
           <SignOutButton />
@@ -171,30 +189,40 @@ export async function AppShell({ children }: { children: ReactNode }) {
       </a>
       <aside
         aria-label="Barre latérale"
-        className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col gap-6 overflow-y-auto bg-sidebar p-4 text-white md:flex print:hidden"
+        className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col gap-5 overflow-y-auto border-r border-line bg-canvas p-4 text-ink md:flex print:hidden"
       >
         <div className="flex items-center justify-between gap-2">
-          <Logo href="/espace" tone="sidebar" />
+          <Logo href="/espace" />
           <NotificationBell
             accessToken={accessToken}
             organizationId={organization.id}
-            tone="sidebar"
+            tone="surface"
           />
         </div>
+        {roleHasPermission(organization.role, 'sales.create') && (
+          <Link
+            href="/caisse"
+            prefetch={false}
+            className={buttonClasses('primary', 'min-h-14 text-lg')}
+          >
+            <ShoppingCart aria-hidden className="size-6" />
+            Caisse
+          </Link>
+        )}
         <ShopSwitcher
           organization={organization}
           organizations={me.organizations}
-          tone="sidebar"
+          tone="surface"
         />
         <nav aria-label="Navigation principale">
           <NavLinks role={organization.role} offer={organization.offer} />
         </nav>
         <div className="mt-auto">
-          <Account me={me} organization={organization} tone="sidebar" />
+          <Account me={me} organization={organization} tone="surface" />
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 border-b border-line bg-surface px-4 pt-[env(safe-area-inset-top)] md:hidden print:hidden">
+        <header className="group/top sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 bg-canvas px-4 pt-[env(safe-area-inset-top)] md:hidden print:hidden">
           <BackLink className="-ml-2 flex" />
           <ShopSwitcher
             organization={organization}
@@ -235,7 +263,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
       </div>
       <nav
         aria-label="Navigation principale"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgb(0_0_0/0.06)] md:hidden print:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas pb-[env(safe-area-inset-bottom)] md:hidden print:hidden"
       >
         <ul className="mx-auto flex max-w-xl px-1 py-1">
           <BottomNavLinks role={organization.role} offer={organization.offer} />

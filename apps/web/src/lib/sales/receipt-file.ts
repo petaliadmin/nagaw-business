@@ -30,6 +30,12 @@ function wrap(
   return lines;
 }
 
+/**
+ * Drawn twice as fine as its layout, so that the photo stays sharp when
+ * WhatsApp shows it on a phone screen.
+ */
+const SCALE = 2;
+
 /** The ticket text (`ticketText`) drawn as a till receipt. */
 export function drawReceipt(text: string): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
@@ -52,11 +58,14 @@ export function drawReceipt(text: string): HTMLCanvasElement {
       });
   });
   const lineHeight = (size: number) => Math.round(size * 1.45);
-  canvas.width = WIDTH;
-  canvas.height =
+  const height =
     PADDING * 2 + rows.reduce((sum, row) => sum + lineHeight(row.size), 0);
+  // Resizing the canvas resets its context: the scale comes after.
+  canvas.width = WIDTH * SCALE;
+  canvas.height = height * SCALE;
+  context.scale(SCALE, SCALE);
   context.fillStyle = '#ffffff';
-  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillRect(0, 0, WIDTH, height);
   context.fillStyle = '#111827';
   context.textBaseline = 'top';
   let y = PADDING;
@@ -92,13 +101,14 @@ export async function receiptPdf(text: string): Promise<Blob> {
   const jpeg = new Uint8Array(
     await (await toBlob(canvas, 'image/jpeg')).arrayBuffer(),
   );
-  return new Blob([jpegToPdf(jpeg, canvas.width, canvas.height)], {
+  // The page keeps the size of the layout; the picture is finer.
+  return new Blob([jpegToPdf(jpeg, canvas.width, canvas.height, 2 * SCALE)], {
     type: 'application/pdf',
   });
 }
 
 /**
- * A one-page PDF showing a JPEG at 2 px per point (PDF 1.4: the JPEG goes
+ * A one-page PDF showing a JPEG at 2 px per point by default (PDF 1.4: the JPEG goes
  * in as is, with the DCTDecode filter). Offsets of the cross-reference
  * table are counted in bytes.
  */
@@ -106,9 +116,11 @@ export function jpegToPdf(
   jpeg: Uint8Array,
   widthPx: number,
   heightPx: number,
+  /** Pixels per point: 2 for the layout, more for a finer picture. */
+  pxPerPoint = 2,
 ): Uint8Array<ArrayBuffer> {
-  const w = (widthPx / 2).toFixed(2);
-  const h = (heightPx / 2).toFixed(2);
+  const w = (widthPx / pxPerPoint).toFixed(2);
+  const h = (heightPx / pxPerPoint).toFixed(2);
   const ascii = (text: string) => new TextEncoder().encode(text);
   const content = `q ${w} 0 0 ${h} 0 0 cm /Im0 Do Q`;
   const parts: Uint8Array[] = [];
@@ -159,4 +171,18 @@ export function jpegToPdf(
     at += part.length;
   }
   return out;
+}
+
+/**
+ * « Ticket 000001 A-000001 » from « n° 000001 (A-000001) »: a name that
+ * reads well in WhatsApp, without signs some phones refuse in file names.
+ */
+export function receiptFileName(label: string): string {
+  const clean = label
+    .replace(/^n°\s*/, '')
+    .replace(/[()]/g, '')
+    .replace(/[^\p{L}\p{N} -]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return `Ticket ${clean}`;
 }

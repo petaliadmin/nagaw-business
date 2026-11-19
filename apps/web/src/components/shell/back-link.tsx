@@ -37,7 +37,8 @@ export function BackLink({ className = '' }: { className?: string }) {
         event.preventDefault();
         router.back();
       }}
-      className={`min-h-12 shrink-0 items-center gap-0.5 rounded-xl pr-2 text-base font-bold text-brand-ink print:hidden ${className}`}
+      data-back
+      className={`min-h-12 shrink-0 items-center gap-0.5 rounded-full pr-3 text-base font-bold text-ink print:hidden ${className}`}
     >
       <ChevronLeft aria-hidden className="size-7" />
       Retour

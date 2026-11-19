@@ -7,7 +7,7 @@ import { FormMessage } from '@/components/form-message';
 import { NextField } from '@/components/next-field';
 import { PhoneField, PinField } from '@/components/phone-field';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { signUp } from '../actions';
 
 export function SignUpForm() {
@@ -53,7 +53,9 @@ export function SignUpForm() {
         </Link>
         .
       </p>
-      <SubmitButton pendingLabel="Création…">Créer mon compte</SubmitButton>
+      <SubmitButton pendingLabel="Création…" className="min-h-14 text-lg">
+        Créer mon compte
+      </SubmitButton>
     </ActionForm>
   );
 }

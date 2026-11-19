@@ -7,6 +7,14 @@ export const ROLE_LABELS: Record<Role, string> = {
   viewer: 'Lecteur',
 };
 
+/** What each role can do, in everyday words (V3 « Équipe »). */
+export const ROLE_HINTS: Record<Role, string> = {
+  owner: 'Voit et gère tout',
+  admin: 'Voit aussi l’argent',
+  member: 'Encaisse et voit le stock',
+  viewer: 'Regarde sans rien changer',
+};
+
 const AUDIT_ACTION_LABELS: Record<string, string> = {
   'organization.created': 'Boutique créée',
   'organization.updated': 'Paramètres de la boutique modifiés',

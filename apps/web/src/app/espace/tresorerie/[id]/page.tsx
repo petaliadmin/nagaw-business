@@ -107,7 +107,7 @@ async function Account({
         ) : (
           <ul
             aria-labelledby="movements-title"
-            className="flex flex-col divide-y divide-line rounded-2xl border border-line bg-surface px-4"
+            className="flex flex-col divide-y divide-line rounded-3xl bg-surface px-4"
           >
             {s.movements.map((m, index) => (
               <li

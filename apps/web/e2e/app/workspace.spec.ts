@@ -8,12 +8,11 @@ test.beforeAll(async () => {
   await resetBackend();
 });
 
-const IN_BOTTOM_BAR = ['Accueil', 'Stock', 'Vendre', 'Crédit', 'Argent'];
+const IN_BOTTOM_BAR = ['Accueil', 'Ventes', 'Caisse', 'Stock', 'Argent'];
 // Same entries in the sidebar, with their full label.
 const SIDEBAR_LABEL: Record<string, string> = {
   Accueil: 'Tableau de bord',
   Stock: 'Produits et services',
-  Crédit: 'Clients',
   Argent: 'Trésorerie / Caisse',
 };
 
@@ -41,7 +40,7 @@ async function navigate(page: Page, isMobile: boolean, label: string) {
 
 /** The shop is changed in Paramètres, not in the menu (2026-10-26). */
 async function shopSwitcher(page: Page) {
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=boutiques');
   return page.getByRole('region', { name: 'Mes boutiques' });
 }
 
@@ -85,39 +84,31 @@ test('navigation reaches every section and marks the current page', async ({
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace');
 
-  // Team and history are tabs of « Paramètres ».
+  // Team and history are rows of the « Paramètres » menu (ADR-063).
   await navigate(page, isMobile, 'Paramètres');
   await expect(page).toHaveURL(/\/espace\/parametres$/);
-  const tabs = page.getByRole('navigation', { name: 'Paramètres' });
-  await expect(tabs.getByRole('link', { name: 'Boutique' })).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
-
-  await tabs.getByRole('link', { name: 'Équipe' }).click();
+  const settings = page.getByRole('main');
+  await settings.getByRole('link', { name: 'Équipe' }).click();
   await expect(page).toHaveURL(/\/espace\/equipe$/);
-  const members = page.getByRole('table', { name: 'Équipe de Acme Dakar' });
-  await expect(members.getByRole('row')).toHaveCount(3);
+  const members = page.getByRole('list', { name: 'Équipe de Acme Dakar' });
+  await expect(members.getByRole('listitem')).toHaveCount(2);
   await expect(members).toContainText('moussa@acme.test');
   await expect(members).toContainText('Vendeur');
 
-  await tabs.getByRole('link', { name: 'Historique' }).click();
+  await page.goto('/espace/parametres');
+  await settings.getByRole('link', { name: 'Historique' }).click();
   await expect(page).toHaveURL(/\/espace\/journal$/);
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(26); // header + 25
   await page.getByRole('link', { name: 'Entrées plus anciennes' }).click();
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(3); // header + 2
   await expect(page.getByRole('table')).toContainText('Boutique créée');
-  // The tab and the menu entry of its section are both marked.
-  await expect(tabs.getByRole('link', { name: 'Historique' })).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
+  // The menu entry of its section is marked.
   if (isMobile) {
     await page.getByRole('button', { name: 'Menu' }).click();
     await expect(
       page
         .getByRole('dialog', { name: 'Menu' })
-        .getByRole('link', { name: 'Paramètres' }),
+        .getByRole('link', { name: 'Historique' }),
     ).toHaveAttribute('aria-current', 'page');
     await page.keyboard.press('Escape');
   } else {
@@ -146,7 +137,7 @@ test('withdrawn modules are gone', async ({ page, context, baseURL }) => {
 
 test('owner updates the shop settings', async ({ page, context, baseURL }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=boutique');
   await page.getByLabel('Nom de la boutique').fill('Acme Dakar SA');
   await page.getByLabel('Fuseau horaire').selectOption('Africa/Abidjan');
   const shop = page.getByRole('region', { name: 'Boutique' });
@@ -172,7 +163,7 @@ test('settings validate input before calling the API', async ({
   baseURL,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=boutique');
   await page.getByLabel('Nom de la boutique').fill('A');
   await page
     .getByRole('region', { name: 'Boutique' })
@@ -235,7 +226,7 @@ test('switching shop changes data and permissions', async ({
   await expect(
     main.getByRole('region', { name: 'Activité récente' }),
   ).toHaveCount(0);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=boutique');
   await expect(page.getByRole('button', { name: 'Enregistrer' })).toHaveCount(
     0,
   );
@@ -280,9 +271,11 @@ test('a user without a shop is guided to create one', async ({
   ).toBeVisible();
   await page.getByLabel('Nom de la boutique').fill('Binta Conseil');
   await page.getByLabel('Votre nom complet').fill('Binta Sow');
-  await page.getByLabel('Votre téléphone').fill('78 000 00 00');
+  // Her number is known from sign-up: it is not asked again.
+  await expect(page.getByLabel('Votre téléphone')).toHaveCount(0);
+  await expect(page.getByText('Étape 2 sur 2')).toBeVisible();
   await page.locator('label', { hasText: 'Des services' }).click();
-  await page.getByRole('button', { name: 'Créer la boutique' }).click();
+  await page.getByRole('button', { name: 'Créer ma boutique' }).click();
   await expect(
     page
       .getByRole('main')

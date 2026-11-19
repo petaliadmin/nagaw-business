@@ -13,16 +13,21 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { ButtonLink } from '@/components/ui/button-link';
-import { buttonClasses } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { ShopLogo } from '@/components/ui/shop-logo';
+import {
+  TICKET_ACTIONS_4,
+  TicketActionLink,
+} from '@/components/ui/ticket-action';
 import { apiAsUser } from '@/lib/api/server';
 import { formatContact, formatDateTime } from '@/lib/format';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 import { ticketLabel, ticketText, whatsappLink } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { InvoiceFromSaleForm } from '../../factures/document-actions';
+import { receiptFileName } from '@/lib/sales/receipt-file';
+import { ShareReceipt } from '../../../caisse/share-receipt';
 import { CancelSaleForm, PrintButton } from './ticket-actions';
 
 export const metadata: Metadata = { title: 'Vente — Nagaw Business' };
@@ -137,7 +142,7 @@ async function Sale({
 
       <article
         aria-label={`Ticket ${ticketLabel(s)}`}
-        className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-line bg-surface p-5 font-mono text-base shadow-sm print:max-w-none print:border-0 print:p-0 print:text-sm print:shadow-none"
+        className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-3xl bg-surface p-5 font-mono text-base shadow-sm print:max-w-none print:border-0 print:p-0 print:text-sm print:shadow-none"
       >
         <div
           aria-hidden
@@ -213,21 +218,20 @@ async function Sale({
         <p className="text-center">Merci de votre visite !</p>
       </article>
 
-      <div className="flex flex-wrap justify-center gap-3 print:hidden">
+      <div role="group" aria-label="Le ticket" className={TICKET_ACTIONS_4}>
         <PrintButton />
-        <a
+        {/* A photo or a PDF of the ticket, for WhatsApp (ADR-063). */}
+        <ShareReceipt text={share} fileName={receiptFileName(ticketLabel(s))} />
+        <TicketActionLink
+          icon={MessageCircle}
+          verb="Envoyer"
+          rest="sur WhatsApp"
           href={whatsappLink(
             share,
             s.customer?.phone,
             organization.phoneCountryCode,
           )}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={buttonClasses('secondary')}
-        >
-          <MessageCircle aria-hidden className="size-5" />
-          Envoyer sur WhatsApp
-        </a>
+        />
       </div>
       <p className="text-center text-ink-muted print:hidden">
         Vendu par {formatContact(s.seller.email)}. L’impression passe par

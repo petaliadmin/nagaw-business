@@ -40,7 +40,7 @@ export function SupplierRow({
 
   return (
     // One card: « ⋮ » sits discreetly at its end.
-    <li className="flex min-h-16 items-center gap-3 rounded-2xl border border-line bg-surface py-3 pr-1 pl-3 md:pl-4">
+    <li className="flex min-h-16 items-center gap-3 rounded-3xl bg-surface py-3 pr-1 pl-3 md:pl-4">
       <ContactAvatar person={supplier} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="flex flex-wrap items-center gap-2">

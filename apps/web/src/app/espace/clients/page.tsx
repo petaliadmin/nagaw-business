@@ -66,8 +66,12 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
   return (
     <>
       <PageHeader
-        title="Clients"
-        description="Vos clients habitués, et ce qu’ils vous doivent."
+        title={owing ? 'Ils vous doivent' : 'Clients'}
+        description={
+          owing
+            ? 'Touchez un client pour voir son crédit et le relancer.'
+            : 'Vos clients habitués, et ce qu’ils vous doivent.'
+        }
       />
 
       {debtors.ok && owed > 0 && (

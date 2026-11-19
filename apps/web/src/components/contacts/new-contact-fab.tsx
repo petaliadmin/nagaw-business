@@ -36,12 +36,11 @@ const noSubscription = () => () => {};
 /** A contact file is a few kilobytes; a photo inside can make it bigger. */
 const MAX_CARD_BYTES = 1_000_000;
 
-// Above the phone bottom bar, under the « Plus » sheet, as « Vendre »
-// (SellFab).
+// Above the phone bottom bar, under the « Menu » sheet.
 const PLACE =
   'fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 md:right-8 md:bottom-8 print:hidden';
 const PILL =
-  'inline-flex min-h-16 items-center justify-center gap-2 rounded-full bg-brand-strong px-7 text-xl font-bold text-white shadow-lg transition-shadow hover:shadow-xl';
+  'inline-flex min-h-16 items-center justify-center gap-2 rounded-full bg-ink px-7 text-xl font-bold text-canvas shadow-lg transition-shadow hover:shadow-xl';
 
 type Notice = { tone: 'info' | 'error'; text: string };
 
@@ -268,7 +267,7 @@ export function NewContactFab({
           aria-controls={menuOpen ? menuId : undefined}
           aria-label={menuOpen ? 'Fermer' : label}
           onClick={() => setMenuOpen((open) => !open)}
-          className="inline-flex size-16 items-center justify-center rounded-full bg-brand-strong text-white shadow-lg transition-shadow hover:shadow-xl"
+          className="inline-flex size-16 items-center justify-center rounded-full bg-ink text-canvas shadow-lg transition-shadow hover:shadow-xl"
         >
           {menuOpen ? (
             <X aria-hidden className="size-8" />

@@ -2,7 +2,18 @@
 
 Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est close par une PR fusionnée dans `main`, puis l'étiquette `vX.Y.Z` posée par le propriétaire sur le commit de fusion.
 
-## Non publié — branche `refont-ux-ui`
+## Non publié — branche `refonte-v3`
+
+- **V3 « Teranga » (ADR-063)** : design épuré (page blanche, cartes grises sans ombre, boutons noirs), barre du bas Accueil · Ventes · Caisse · Stock · Argent, Menu en grille, Accueil avec carte sombre des ventes, raccourcis ronds et « Ils vous doivent », bouton « Masquer » les montants, crédit du client en discussion avec rappel WhatsApp modifiable, deux coches sur les ventes enregistrées, écran Argent avec une carte par compte, vue rapide du stock, site public réécrit.
+- **Écrans alignés sur les maquettes V3** : dépense au pavé numérique, clôture de tous les comptes en une fois, Paramètres en menu, Équipe avec invitation WhatsApp et rôle en cartes, Factures qui s'ouvrent sur « À encaisser », fiche produit courte, création de boutique en une étape, caisse et paiement redessinés, Menu enrichi, Ventes compactes.
+- **Gros montants** : `9,99 Md F CFA`, `2,42 M F CFA`, `12,5 k F CFA` seulement quand le montant entier ne tient pas, le montant exact restant en infobulle et pour les lecteurs d'écran (ADR-065).
+- **Numéro de téléphone avec drapeau** : pays avec drapeau et indicatif, numéro mis en forme et vérifié selon le plan du pays (ADR-064) ; pages de connexion et d'inscription redessinées ; plus de lien « ancien compte avec une adresse e-mail ».
+- **Diagrammes à la charte V3** : colonnes vertes arrondies, barres violettes fines, moyens de paiement en barres avec images.
+- **Ticket en photo et en PDF** : fichiers préparés à l'avance (partage immédiat, iPhone compris), image plus nette, nom de fichier lisible, envoi possible aussi depuis la fiche d'une vente.
+- **Images pour guider** : pavé numérique commun (connexion, dépense), logos et images des comptes, des catégories de dépense et des moyens de paiement.
+- **Nouvelle dépense en trois étapes**, boutons du ticket en actions rondes, Accueil allégé avec la période en pastille dans la carte des ventes.
+
+## 2026-11-17 — fusionné (PR #53)
 
 - **Refonte de l'interface (ADR-062)** : teintes adoucies, barre du bas à cinq entrées avec « Vendre » au centre et « Menu » dans l'en-tête, Accueil qui commence par « Vous avez gagné » et « À faire aujourd'hui », caisse en trois étapes annoncées, « Relancer » sur la carte du client qui doit, écran Argent simplifié, page d'accueil publique raccourcie avec de nouvelles captures.
 

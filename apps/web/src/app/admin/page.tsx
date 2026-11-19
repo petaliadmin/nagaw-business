@@ -47,7 +47,7 @@ const linkClass =
 function Alerts({ o }: { o: AdminOverviewDto }) {
   if (o.alerts.length === 0)
     return (
-      <p className="flex items-center gap-2 rounded-2xl border border-line bg-surface px-4 py-3 font-semibold">
+      <p className="flex items-center gap-2 rounded-3xl bg-surface px-4 py-3 font-semibold">
         <CircleCheck aria-hidden className="size-6 shrink-0 text-sales-ink" />
         Aucune alerte : tout fonctionne.
       </p>

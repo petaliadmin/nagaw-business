@@ -74,7 +74,7 @@ Les semaines avant la fête font une grande part du chiffre de l’année, et au
 
 ## Dans Nagaw Business
 
-Indiquez que votre atelier vend des services, et ajoutez vos modèles au catalogue, au forfait ou à la prestation. Vous préparez un devis numéroté, envoyé au client en PDF avec votre logo, puis vous le transformez en facture sans rien ressaisir quand il est accepté. Une facture peut être payée en plusieurs fois : l’application montre ce qui a été payé et le reste à payer, et le Résumé indique les factures en retard. Le suivi de l’avancement de la couture et les mesures des clients ne sont pas gérés : gardez-les dans votre carnet.
+Indiquez que votre atelier vend des services, et ajoutez vos modèles au catalogue, au forfait ou à la prestation. Vous préparez un devis numéroté, envoyé au client en PDF avec votre logo, puis vous le transformez en facture sans rien ressaisir quand il est accepté. Une facture peut être payée en plusieurs fois : l’application montre ce qui a été payé et le reste à payer, et l’onglet « À encaisser » indique les factures en retard. Le suivi de l’avancement de la couture et les mesures des clients ne sont pas gérés : gardez-les dans votre carnet.
 
 Pour vos documents, voir aussi [comment faire une facture sur téléphone](/blog/faire-facture-telephone).
 `,

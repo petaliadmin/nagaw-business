@@ -48,7 +48,7 @@ export function CustomerRow({
 
   return (
     // One card: the link fills it, « ⋮ » sits discreetly at its end.
-    <li className="flex flex-wrap items-center rounded-2xl border border-line bg-surface pr-1">
+    <li className="flex flex-wrap items-center rounded-3xl bg-surface pr-1">
       <Link
         href={href}
         className="flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-2xl py-3 pl-3 md:pl-4"

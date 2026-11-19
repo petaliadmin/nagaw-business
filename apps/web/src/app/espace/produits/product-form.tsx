@@ -17,7 +17,7 @@ import { FormMessage } from '@/components/form-message';
 import { PhotoField } from '@/components/catalog/photo-field';
 import { productPhotoUrl } from '@/components/catalog/product-tile';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { GOODS_UNIT_OPTIONS, SERVICE_UNIT_OPTIONS } from '@/lib/catalog/labels';
 import { createProduct, updateProduct } from './actions';
 
@@ -151,6 +151,13 @@ export function ProductForm({
         <input type="hidden" name="kind" value={kind} />
       )}
 
+      {/* V3 « Nouveau produit »: photo, name, two prices, stock and unit;
+          the rest folded (ADR-063). */}
+      <PhotoField
+        currentUrl={product ? productPhotoUrl(product) : null}
+        error={errors.photo}
+      />
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
           <FormField
@@ -173,10 +180,31 @@ export function ProductForm({
           required
           error={errors.salePrice}
         />
+        <FormField
+          label={`${service ? 'Ce qu’il vous coûte' : 'Prix d’achat'} (${symbol})`}
+          name="purchasePrice"
+          inputMode="decimal"
+          hint="Pour calculer votre bénéfice"
+          defaultValue={
+            product?.purchasePrice != null
+              ? amountInputValue(product.purchasePrice, currency)
+              : undefined
+          }
+          error={errors.purchasePrice}
+        />
+        {!service && trackStock && !product && (
+          <FormField
+            label="En stock"
+            name="initialStock"
+            inputMode="decimal"
+            placeholder="0"
+            error={errors.initialStock}
+          />
+        )}
         {/* A new list of units: the choice starts again with the first. */}
         <SelectField
           key={kind}
-          label={service ? 'Facturé à' : 'Vendu à la'}
+          label={service ? 'Facturé à' : 'Unité'}
           name="unit"
           defaultValue={
             product?.kind === kind
@@ -188,91 +216,23 @@ export function ProductForm({
           options={service ? SERVICE_UNIT_OPTIONS : GOODS_UNIT_OPTIONS}
           error={errors.unit}
         />
-        <div className="md:col-span-2">
-          <SelectField
-            label="Catégorie"
-            name="categoryId"
-            defaultValue={product?.category?.id ?? ''}
-            options={categoryOptions}
-            error={errors.categoryId}
-          />
-        </div>
       </div>
 
-      <PhotoField
-        currentUrl={product ? productPhotoUrl(product) : null}
-        error={errors.photo}
-      />
-
-      {!service && (
-        <fieldset className="flex flex-col gap-4 rounded-2xl bg-surface-muted p-4">
-          <legend className="sr-only">Stock</legend>
-          <label className="flex min-h-12 items-center gap-3 text-base font-semibold">
-            <input
-              type="checkbox"
-              name="trackStock"
-              checked={trackStock}
-              onChange={(event) => setTrackStock(event.currentTarget.checked)}
-              className="size-6 accent-brand-strong"
-            />
-            Suivre le stock de ce produit
-          </label>
-          {trackStock && (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {!product && (
-                <FormField
-                  label="Quantité en stock aujourd’hui"
-                  name="initialStock"
-                  inputMode="decimal"
-                  placeholder="0"
-                  error={errors.initialStock}
-                />
-              )}
-              <FormField
-                label="Me prévenir quand il en reste"
-                name="lowStockThreshold"
-                inputMode="decimal"
-                defaultValue={quantityText(product?.lowStockThreshold ?? null)}
-                error={errors.lowStockThreshold}
-              />
-            </div>
-          )}
-          {!trackStock && (
-            <p className="text-ink-muted">
-              Pour les produits que vous ne comptez pas.
-            </p>
-          )}
-        </fieldset>
-      )}
-
       <details
-        className="rounded-2xl border border-line p-4"
+        className="rounded-3xl bg-surface p-4"
         open={Boolean(
-          errors.purchasePrice || errors.taxRateId || errors.barcode,
+          errors.categoryId ||
+          errors.taxRateId ||
+          errors.barcode ||
+          errors.lowStockThreshold,
         )}
       >
         <summary className="flex min-h-12 cursor-pointer items-center text-base font-bold">
-          Plus de détails : prix d’achat, taxe, code-barres
+          {service
+            ? 'Catégorie et taxe'
+            : 'Code-barres, catégorie, seuil d’alerte'}
         </summary>
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField
-            label={`${service ? 'Ce qu’il vous coûte' : 'Prix d’achat'} (${symbol})`}
-            name="purchasePrice"
-            inputMode="decimal"
-            defaultValue={
-              product?.purchasePrice != null
-                ? amountInputValue(product.purchasePrice, currency)
-                : undefined
-            }
-            error={errors.purchasePrice}
-          />
-          <SelectField
-            label="Taxe comprise dans le prix"
-            name="taxRateId"
-            defaultValue={product?.taxRate?.id ?? ''}
-            options={taxOptions}
-            error={errors.taxRateId}
-          />
           {!service && (
             <FormField
               label="Code-barres"
@@ -283,6 +243,51 @@ export function ProductForm({
               error={errors.barcode}
             />
           )}
+          <SelectField
+            label="Catégorie"
+            name="categoryId"
+            defaultValue={product?.category?.id ?? ''}
+            options={categoryOptions}
+            error={errors.categoryId}
+          />
+          {!service && (
+            <div className="flex flex-col gap-4 md:col-span-2">
+              <label className="flex min-h-12 items-center gap-3 text-base font-semibold">
+                <input
+                  type="checkbox"
+                  name="trackStock"
+                  checked={trackStock}
+                  onChange={(event) =>
+                    setTrackStock(event.currentTarget.checked)
+                  }
+                  className="size-6 accent-brand-strong"
+                />
+                Suivre le stock de ce produit
+              </label>
+              {trackStock ? (
+                <FormField
+                  label="Me prévenir quand il en reste"
+                  name="lowStockThreshold"
+                  inputMode="decimal"
+                  defaultValue={quantityText(
+                    product?.lowStockThreshold ?? null,
+                  )}
+                  error={errors.lowStockThreshold}
+                />
+              ) : (
+                <p className="text-ink-muted">
+                  Pour les produits que vous ne comptez pas.
+                </p>
+              )}
+            </div>
+          )}
+          <SelectField
+            label="Taxe comprise dans le prix"
+            name="taxRateId"
+            defaultValue={product?.taxRate?.id ?? ''}
+            options={taxOptions}
+            error={errors.taxRateId}
+          />
         </div>
       </details>
 

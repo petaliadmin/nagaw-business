@@ -67,7 +67,7 @@ export function ReferenceList<T extends ReferenceItem>({
           {sorted.map((item) => (
             <li
               key={item.id}
-              className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4"
+              className="flex flex-col gap-3 rounded-3xl bg-surface p-4"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-lg font-bold">{item.name}</span>

@@ -1,5 +1,4 @@
-import { SectionLayout } from '@/components/shell/section-layout';
-
+// No tabs since V3: the « Paramètres » menu lists this page (ADR-063).
 export default function Layout({ children }: LayoutProps<'/espace/journal'>) {
-  return <SectionLayout section="parametres">{children}</SectionLayout>;
+  return children;
 }

@@ -3,7 +3,6 @@
 import { LogOut } from 'lucide-react';
 import { useRef } from 'react';
 import { signOut } from '@/app/(auth)/actions';
-import { buttonClasses } from '@/components/ui/button-styles';
 import { flushOutbox, lockCheckout } from '@/lib/offline/store';
 
 /**
@@ -20,6 +19,7 @@ export function SignOutButton({
   const done = useRef(false);
   return (
     <form
+      className={tone === 'surface' ? 'flex-1' : undefined}
       action={signOut}
       onSubmit={(event) => {
         if (done.current) return;
@@ -43,7 +43,7 @@ export function SignOutButton({
         className={
           tone === 'sidebar'
             ? 'flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-white/70 px-4 text-base font-bold text-white hover:bg-white/15 focus-visible:outline-white'
-            : buttonClasses('secondary', 'w-full')
+            : 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-surface px-3 text-base font-bold whitespace-nowrap text-ink'
         }
       >
         <LogOut aria-hidden className="size-5" />

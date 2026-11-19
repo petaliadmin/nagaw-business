@@ -25,17 +25,17 @@ export function Card({
   return (
     <section
       aria-labelledby={title ? titleId : undefined}
-      className={`rounded-2xl border border-line bg-surface p-4 shadow-sm md:p-6 ${className}`}
+      className={`rounded-3xl bg-surface p-4 md:p-6 ${className}`}
     >
       {title && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3">
           <h2
             id={titleId}
-            className="flex items-center gap-2 text-xl font-bold"
+            className="flex items-center gap-2 text-lg font-extrabold"
           >
             {Icon && (
               <span
-                className={`flex size-9 items-center justify-center rounded-xl ${
+                className={`flex size-9 items-center justify-center rounded-full ${
                   tone
                     ? MODULE_TONES[tone].badge
                     : 'bg-brand-soft text-brand-ink'
@@ -66,7 +66,7 @@ export function Stat({
 }) {
   return (
     <div
-      className={`@container flex min-w-0 flex-col gap-1 rounded-xl bg-surface-muted p-3 ${className}`}
+      className={`@container flex min-w-0 flex-col gap-1 rounded-2xl bg-surface-muted p-3 ${className}`}
     >
       <dt className="text-base text-ink-muted">{label}</dt>
       <dd className="font-extrabold tabular-nums">

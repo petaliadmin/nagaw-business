@@ -69,17 +69,27 @@ const SHOP_KINDS = [
   'Pièces détachées',
 ];
 
+/** The ways to pay that the checkout takes, as its buttons name them. */
+const PAYMENT_WAYS = [
+  { label: 'Espèces', tone: 'bg-sales-soft text-sales-ink' },
+  { label: 'Wave', tone: 'bg-stock-soft text-stock-ink' },
+  { label: 'Orange Money', tone: 'bg-stats-soft text-stats-ink' },
+  { label: 'Free Money', tone: 'bg-accounting-soft text-accounting-ink' },
+  { label: 'Carte', tone: 'bg-brand-soft text-brand-ink' },
+  { label: 'Crédit', tone: 'bg-warning-soft text-warning-ink' },
+] as const;
+
 /**
  * What a shopkeeper does every day, each in three touches (ADR-062). The
  * words are those of the buttons of the application.
  */
 const GESTURES = [
   {
-    title: 'Vendre',
+    title: 'Encaisser',
     steps: [
-      'Touchez les produits',
-      'Choisissez le paiement',
-      'Remettez le ticket',
+      'Touchez « Caisse » puis les produits',
+      'Choisissez Espèces, Wave ou Orange Money',
+      'Envoyez le reçu sur WhatsApp',
     ],
     text: 'Le stock et la caisse se mettent à jour tout seuls, même sans internet.',
     tone: { card: 'bg-sales-soft', ink: 'text-sales-ink' },
@@ -87,17 +97,17 @@ const GESTURES = [
   {
     title: 'Récupérer un crédit',
     steps: [
-      'Ouvrez « Crédit »',
-      'Touchez « Relancer »',
-      'Envoyez sur WhatsApp',
+      'Ouvrez « Ils vous doivent »',
+      'Le message poli est déjà écrit',
+      'Touchez Envoyer',
     ],
     text: 'Le message poli est déjà écrit pour vous.',
     tone: { card: 'bg-warning-soft', ink: 'text-warning-ink' },
   },
   {
-    title: 'Clôturer la caisse',
+    title: 'Clôturer la journée',
     steps: [
-      'Touchez « Clôturer la caisse »',
+      'Touchez « Clôturer la journée »',
       'Comptez votre argent',
       'Voyez s’il manque quelque chose',
     ],
@@ -182,7 +192,7 @@ const FAQ: { question: string; answer: string }[] = [
 // says so above the gallery.
 type Device = 'mobile' | 'desktop';
 /** Folder of the last capture run (dated, so that caches never serve old ones). */
-const SCREENS_DIR = '/screens/2026-11-16';
+const SCREENS_DIR = '/screens/2026-11-18';
 const screen = (device: Device, name: string) =>
   `${SCREENS_DIR}/${device}/${name}.png`;
 
@@ -394,13 +404,15 @@ export default function Home() {
                 Le crédit, la caisse et le stock de votre boutique
               </p>
               <h1 className="text-4xl font-extrabold tracking-tight md:text-6xl">
-                Sachez qui vous doit et ce que vous gagnez, depuis votre
-                téléphone
+                Votre boutique dans votre téléphone. Simple comme envoyer un
+                message.
               </h1>
-              <p className="text-xl">
-                Suivez le crédit de vos clients, relancez-les sur WhatsApp,
-                encaissez vite et voyez ce qui reste en stock.{' '}
-                <strong>Même quand le réseau coupe.</strong>
+              <p className="text-xl text-ink-muted">
+                Encaissez en espèces, Wave ou Orange Money, relancez ceux qui
+                vous doivent sur WhatsApp et sachez ce que vous gagnez.{' '}
+                <strong className="text-ink">
+                  Même quand le réseau coupe.
+                </strong>
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <ButtonLink
@@ -438,13 +450,13 @@ export default function Home() {
             <div className="relative md:pb-12 md:pl-10">
               <DesktopScreen
                 src={screen('desktop', 'accueil')}
-                alt="Tableau de bord sur ordinateur : menu à gauche, « Vous avez gagné 53 000 F CFA » en grand, 7 ventes pour 350 500 F CFA, l’argent disponible, ce qu’on vous doit et la liste « À faire aujourd’hui »."
+                alt="Tableau de bord sur ordinateur : barre latérale blanche avec le bouton Caisse en haut, carte sombre « Ventes · ce mois · 7 ventes » à 350 500 F CFA, 53 000 F CFA gagnés, 15 000 F CFA de dépenses, et les raccourcis ronds."
                 priority
                 className="hidden md:block"
               />
               <PhoneScreen
                 src={screen('mobile', 'accueil')}
-                alt="Tableau de bord sur téléphone : « Vous avez gagné 53 000 F CFA » en grand, 7 ventes, les dépenses, l’argent disponible, ce qu’on vous doit, et le bouton Vendre au milieu de la barre du bas."
+                alt="Tableau de bord sur téléphone : carte sombre des ventes du mois à 350 500 F CFA avec le bouton Masquer, quatre raccourcis ronds, « Ils vous doivent · 52 000 F CFA », et le bouton Caisse au milieu de la barre du bas."
                 priority
                 className="mx-auto w-full max-w-64 md:absolute md:bottom-0 md:left-0 md:w-36"
               />
@@ -468,6 +480,25 @@ export default function Home() {
                   className="rounded-full bg-surface-muted px-4 py-2 font-semibold"
                 >
                   {kind}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* How customers pay: the words of the checkout (ADR-063). */}
+        <section aria-labelledby="pay-title" className="border-b border-line">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-6 md:flex-row md:items-center">
+            <h2 id="pay-title" className="shrink-0 text-lg font-bold">
+              Vos clients paient comme ils veulent :
+            </h2>
+            <ul className="flex flex-wrap gap-2">
+              {PAYMENT_WAYS.map(({ label, tone }) => (
+                <li
+                  key={label}
+                  className={`rounded-full px-4 py-2 font-bold ${tone}`}
+                >
+                  {label}
                 </li>
               ))}
             </ul>
@@ -535,7 +566,7 @@ export default function Home() {
                 key={title}
                 className="flex gap-4 rounded-3xl border border-line bg-surface p-5"
               >
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-strong text-xl font-extrabold text-white">
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-ink text-xl font-extrabold text-canvas">
                   {index + 1}
                 </span>
                 <div className="flex flex-col gap-1">
@@ -604,7 +635,7 @@ export default function Home() {
           <ul className="flex flex-col gap-3">
             {FAQ.map(({ question, answer }) => (
               <li key={question}>
-                <details className="group rounded-2xl border border-line bg-surface">
+                <details className="group rounded-3xl bg-surface">
                   <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 p-4 text-lg font-bold [&::-webkit-details-marker]:hidden">
                     <span className="flex-1">{question}</span>
                     <ChevronDown

@@ -5,7 +5,7 @@ test('home page links to sign-up and sign-in', async ({ page }) => {
   await expect(
     page.getByRole('heading', {
       level: 1,
-      name: 'Sachez qui vous doit et ce que vous gagnez, depuis votre téléphone',
+      name: 'Votre boutique dans votre téléphone. Simple comme envoyer un message.',
     }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Créer ma boutique' }).first().click();
@@ -117,12 +117,10 @@ test('sign-in uses the phone number; a forgotten code goes through the team', as
 test('an older account still signs in with its e-mail and can reset its password', async ({
   page,
 }) => {
+  // No more link on the sign-in page (ADR-064): the team gives the address.
   await page.goto('/connexion');
-  await page
-    .getByRole('link', {
-      name: 'J’ai un ancien compte avec une adresse e-mail',
-    })
-    .click();
+  await expect(page.getByText(/ancien compte/i)).toHaveCount(0);
+  await page.goto('/connexion/email');
   await expect(
     page.getByRole('heading', { name: 'Ancien compte' }),
   ).toBeVisible();

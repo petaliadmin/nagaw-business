@@ -1,7 +1,7 @@
 'use client';
 
 import { describeSaleLine, type SaleDto } from '@nagaw/shared';
-import { CloudOff, Printer, ShoppingCart } from 'lucide-react';
+import { Check, CloudOff, Printer, ShoppingCart } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
@@ -9,6 +9,11 @@ import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 import { ticketLabel, ticketText } from '@/lib/sales/ticket';
 import type { LocalTicket, ShopSnapshot } from '@/lib/offline/store';
 import { SaleSteps } from './sale-steps';
+import {
+  TICKET_ACTIONS,
+  TicketActionButton,
+} from '@/components/ui/ticket-action';
+import { receiptFileName } from '@/lib/sales/receipt-file';
 import { ShareReceipt } from './share-receipt';
 
 function Row({
@@ -70,15 +75,29 @@ export function LocalTicketView({
       </style>
       <div className="flex flex-col gap-3 print:hidden">
         {justSold && <SaleSteps step={3} label="Remettez le ticket" />}
-        <div ref={confirmationRef} tabIndex={-1} className="focus:outline-none">
-          <Alert tone="success">
+        {/* The result in large, as a payment confirmed (ADR-063). */}
+        <div
+          ref={confirmationRef}
+          tabIndex={-1}
+          className="flex flex-col items-center gap-2 py-4 text-center focus:outline-none"
+        >
+          <span
+            aria-hidden
+            className="flex size-20 items-center justify-center rounded-full bg-sales-strong text-white ring-[10px] ring-sales-soft"
+          >
+            <Check className="size-10" strokeWidth={3} />
+          </span>
+          <p role="status" className="mt-3 text-2xl font-extrabold">
             Vente enregistrée.
-            {sale.changeGiven !== null && sale.changeGiven > 0 && (
-              <strong className="block text-2xl">
-                À rendre : {money(sale.changeGiven)}
-              </strong>
-            )}
-          </Alert>
+          </p>
+          <p className="text-4xl font-extrabold tracking-tight text-sales-ink tabular-nums">
+            {money(sale.total)}
+          </p>
+          {sale.changeGiven !== null && sale.changeGiven > 0 && (
+            <p className="rounded-full bg-warning-soft px-4 py-2 text-lg font-extrabold text-warning-ink">
+              À rendre : {money(sale.changeGiven)}
+            </p>
+          )}
         </div>
         {ticket.status === 'pending' && (
           <p
@@ -113,7 +132,7 @@ export function LocalTicketView({
 
       <article
         aria-label={`Ticket ${label}`}
-        className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-line bg-surface p-5 font-mono text-base shadow-sm print:max-w-none print:border-0 print:p-0 print:text-sm print:shadow-none"
+        className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-3xl bg-surface p-5 font-mono text-base shadow-sm print:max-w-none print:border-0 print:p-0 print:text-sm print:shadow-none"
       >
         <header className="text-center">
           <p className="text-lg font-bold">{shop.name}</p>
@@ -160,20 +179,15 @@ export function LocalTicketView({
         <p className="text-center">Merci de votre visite !</p>
       </article>
 
-      <div className="flex flex-wrap justify-center gap-3 print:hidden">
-        <button
-          type="button"
+      <div role="group" aria-label="Le ticket" className={TICKET_ACTIONS}>
+        <TicketActionButton
+          icon={Printer}
+          verb="Imprimer"
+          rest="le ticket"
           onClick={() => window.print()}
-          className={buttonClasses('secondary')}
-        >
-          <Printer aria-hidden className="size-5" />
-          Imprimer le ticket
-        </button>
-        {/* A photo or a PDF of the ticket, made on the phone. */}
-        <ShareReceipt
-          text={share}
-          fileName={`Ticket ${label.replace(/[^\w -]/g, '')}`}
         />
+        {/* A photo or a PDF of the ticket, made on the phone. */}
+        <ShareReceipt text={share} fileName={receiptFileName(label)} />
       </div>
     </>
   );

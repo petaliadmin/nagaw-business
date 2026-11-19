@@ -1,16 +1,16 @@
 import { z } from 'zod';
 
 /**
- * Countries offered when signing in with a phone number (ADR-058). Senegal
- * comes first and is the default. `nationalDigits`: length of a number
- * written without the code, when known; `dropTrunkZero`: the leading 0 of a
- * national number is not dialled from abroad.
+ * Countries offered when signing in with a phone number (ADR-058), each
+ * with its flag in the field. Senegal comes first and is the default.
+ * Numbers are checked with the telephone plans of `libphonenumber-js`
+ * (ADR-064), not by length only.
  */
 export const ACCOUNT_COUNTRIES = [
-  { iso: 'SN', name: 'Sénégal', code: '221', nationalDigits: 9 },
-  { iso: 'CI', name: 'Côte d’Ivoire', code: '225', nationalDigits: 10 },
-  { iso: 'ML', name: 'Mali', code: '223', nationalDigits: 8 },
-  { iso: 'BF', name: 'Burkina Faso', code: '226', nationalDigits: 8 },
+  { iso: 'SN', name: 'Sénégal', code: '221' },
+  { iso: 'CI', name: 'Côte d’Ivoire', code: '225' },
+  { iso: 'ML', name: 'Mali', code: '223' },
+  { iso: 'BF', name: 'Burkina Faso', code: '226' },
   { iso: 'GN', name: 'Guinée', code: '224' },
   { iso: 'MR', name: 'Mauritanie', code: '222' },
   { iso: 'GM', name: 'Gambie', code: '220' },
@@ -22,52 +22,15 @@ export const ACCOUNT_COUNTRIES = [
   { iso: 'GA', name: 'Gabon', code: '241' },
   { iso: 'CG', name: 'Congo', code: '242' },
   { iso: 'CD', name: 'RD Congo', code: '243' },
-  { iso: 'MA', name: 'Maroc', code: '212', dropTrunkZero: true },
-  {
-    iso: 'FR',
-    name: 'France',
-    code: '33',
-    nationalDigits: 9,
-    dropTrunkZero: true,
-  },
-] as const satisfies readonly {
-  iso: string;
-  name: string;
-  code: string;
-  nationalDigits?: number;
-  dropTrunkZero?: boolean;
-}[];
+  { iso: 'MA', name: 'Maroc', code: '212' },
+  { iso: 'FR', name: 'France', code: '33' },
+] as const satisfies readonly { iso: string; name: string; code: string }[];
 
 export type AccountCountry = (typeof ACCOUNT_COUNTRIES)[number];
 export const DEFAULT_ACCOUNT_COUNTRY: AccountCountry['iso'] = 'SN';
 
 /** International digits without `+`, as Supabase stores a phone. */
 export const ACCOUNT_PHONE_RE = /^[1-9][0-9]{7,14}$/;
-
-/**
- * The number of an account from the chosen country and what was typed:
- * `SN` + `77 123 45 67` → `221771234567`. A number typed with `+` or `00`
- * keeps its own code. Null when it cannot be a number of that country.
- */
-export function accountPhone(iso: string, typed: string): string | null {
-  const written = typed.trim();
-  let digits = written.replace(/\D/g, '');
-  if (written.startsWith('+') || digits.startsWith('00')) {
-    if (digits.startsWith('00')) digits = digits.slice(2);
-    return ACCOUNT_PHONE_RE.test(digits) ? digits : null;
-  }
-  const country = ACCOUNT_COUNTRIES.find((c) => c.iso === iso);
-  if (!country) return null;
-  if ('dropTrunkZero' in country && digits.startsWith('0')) {
-    digits = digits.slice(1);
-  }
-  const expected = 'nationalDigits' in country ? country.nationalDigits : null;
-  if (expected !== null ? digits.length !== expected : digits.length < 7) {
-    return null;
-  }
-  const phone = `${country.code}${digits}`;
-  return ACCOUNT_PHONE_RE.test(phone) ? phone : null;
-}
 
 /** `221771234567` → `+221 77 123 45 67` when the country is known. */
 export function formatAccountPhone(phone: string): string {

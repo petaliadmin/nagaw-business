@@ -8,7 +8,7 @@ import { useActionState, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { updatePreferences } from '../actions';
 
 const CHECKBOX = 'size-6 shrink-0 accent-brand-strong';

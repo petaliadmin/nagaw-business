@@ -28,7 +28,11 @@ export function movementLabel(kind: CashMovementKind, label: string): string {
 
 /** Accounts as select options, cash drawer first. */
 export function accountOptions(
-  accounts: Pick<CashAccountDto, 'id' | 'name'>[],
+  accounts: Pick<CashAccountDto, 'id' | 'name' | 'kind' | 'provider'>[],
 ) {
-  return accounts.map((a) => ({ value: a.id, label: a.name }));
+  return accounts.map((a) => ({
+    value: a.id,
+    label: a.name,
+    account: { kind: a.kind, provider: a.provider },
+  }));
 }

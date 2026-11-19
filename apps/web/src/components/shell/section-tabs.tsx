@@ -32,8 +32,8 @@ export function SectionTabs({
                 aria-current={active ? 'page' : undefined}
                 className={`inline-flex min-h-12 items-center rounded-full border-2 px-4 text-base font-bold ${
                   active
-                    ? 'border-brand-strong bg-brand-strong text-white'
-                    : 'border-line-strong bg-surface text-ink hover:bg-surface-muted'
+                    ? 'border-ink bg-ink text-canvas'
+                    : 'border-transparent bg-surface text-ink hover:bg-line'
                 }`}
               >
                 {tab.label}

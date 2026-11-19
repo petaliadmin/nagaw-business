@@ -10,10 +10,17 @@ import {
   type SalesDaySummaryDto,
   type StatsSummaryDto,
   type StockSummaryDto,
-  type TreasuryDto,
+  type CustomerDto,
+  type SaleListItemDto,
 } from '@nagaw/shared';
 import {
+  ArrowDownToLine,
   Banknote,
+  CheckCheck,
+  FileText,
+  Plus,
+  ShoppingCart,
+  type LucideIcon,
   CalendarDays,
   ChartColumn,
   ChevronDown,
@@ -22,7 +29,6 @@ import {
   CreditCard,
   HandCoins,
   History,
-  ListChecks,
   Package,
   PackageX,
   PiggyBank,
@@ -30,7 +36,6 @@ import {
   ShoppingBasket,
   TriangleAlert,
   Trophy,
-  Wallet,
 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -43,8 +48,9 @@ import {
   SeeAll,
   SoftStat,
 } from '@/components/dashboard/kpi';
-import { SellFab } from '@/components/dashboard/sell-fab';
-import { PeriodPicker } from '@/components/treasury/period-picker';
+import { PeriodMenu } from '@/components/treasury/period-menu';
+import { MethodName } from '@/components/sales/method-name';
+import { InlineAmount } from '@/components/ui/inline-amount';
 import { SalesChart } from '@/components/treasury/sales-chart';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -52,7 +58,6 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Figure } from '@/components/ui/figure';
 import { PageFallback } from '@/components/ui/page-fallback';
-import { PageHeader } from '@/components/ui/page-header';
 import type { ApiResult } from '@/lib/api/call-api';
 import { apiAsUser } from '@/lib/api/server';
 import {
@@ -62,7 +67,9 @@ import {
 } from '@/lib/catalog/labels';
 import { formatCalendarDate, formatDateTime, todayIn } from '@/lib/format';
 import { auditActionLabel } from '@/lib/labels';
-import { PAYMENT_LABELS } from '@/lib/sales/labels';
+import { PAYMENT_LABELS, ticketNumber } from '@/lib/sales/labels';
+import { ContactAvatar } from '@/components/contacts/contact-actions';
+import { HideAmountsButton } from '@/components/ui/hide-amounts';
 import { previousPeriod, resolvePeriod } from '@/lib/treasury/period';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 
@@ -78,9 +85,6 @@ function range(from: string, to: string): string {
     ? `le ${formatCalendarDate(from)}`
     : `du ${formatCalendarDate(from)} au ${formatCalendarDate(to)}`;
 }
-
-const capitalize = (text: string) =>
-  text.charAt(0).toUpperCase() + text.slice(1);
 
 /** Today's sales, whatever the period of the figures: one green band. */
 function TodayCard({
@@ -146,21 +150,25 @@ function TodayCard({
 }
 
 /**
- * The answer first (ADR-062): what the shop earned over the period, in
- * large, with its sales and its expenses. Every key figure, each compared
- * with the period before, is one touch away under « Tous les chiffres ».
+ * The answer first (ADR-063): what the shop sold over the period, in large
+ * on a dark card that « Masquer » blurs, with what it earned and spent.
+ * Every key figure, each compared with the period before, is one touch away
+ * under « Tous les chiffres ».
  */
 function Essentials({
   stats,
   before,
   beforeRange,
   currency,
+  period,
   children,
 }: {
   stats: StatsSummaryDto;
   before: ApiResult<StatsSummaryDto>;
   beforeRange: string;
   currency: string;
+  /** The period, as a pill that opens the others. */
+  period: ReactNode;
   /** Shown right under the profit: the money and what to do today. */
   children?: ReactNode;
 }) {
@@ -188,44 +196,50 @@ function Essentials({
       <h2 id="essentials" className="sr-only">
         L’essentiel
       </h2>
-      <dl className="grid grid-cols-2 gap-x-2 gap-y-4 rounded-3xl bg-brand-strong p-5 text-white shadow-sm md:p-6">
-        <div className="@container col-span-2 flex min-w-0 flex-col gap-1">
-          <dt className="text-base font-semibold">
-            {profit(stats) < 0 ? 'Vous avez perdu' : 'Vous avez gagné'}
-          </dt>
-          <dd className="flex flex-col gap-1">
-            <Figure
-              value={money(Math.abs(profit(stats)))}
-              className="font-extrabold tabular-nums [--figure-max:2.5rem]"
-            />
-            <span className="text-base">
-              Bénéfice estimé : marge − dépenses
-            </span>
-          </dd>
+      <div className="flex flex-col gap-4 rounded-[2rem] bg-ink p-5 text-canvas md:p-7">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            {period}
+            <p className="text-base font-bold text-[#c9c5ff]">
+              {stats.salesCount} vente{stats.salesCount > 1 ? 's' : ''}
+            </p>
+          </div>
+          <HideAmountsButton compact />
         </div>
-        <div className="@container flex min-w-0 flex-col gap-0.5 rounded-2xl bg-black/15 p-3">
-          <dt className="text-base">
-            {stats.salesCount} vente{stats.salesCount > 1 ? 's' : ''}
-          </dt>
-          <dd className="font-extrabold tabular-nums">
-            <Figure
-              value={money(stats.revenue)}
-              className="[--figure-max:1.25rem]"
-            />
-          </dd>
-        </div>
-        <div className="@container flex min-w-0 flex-col gap-0.5 rounded-2xl bg-black/15 p-3">
-          <dt className="text-base">Dépenses</dt>
-          <dd className="font-extrabold tabular-nums">
-            <Figure
-              value={money(stats.expenses)}
-              className="[--figure-max:1.25rem]"
-            />
-          </dd>
-        </div>
-      </dl>
+        <dl className="grid grid-cols-2 gap-x-2 gap-y-3">
+          <div className="@container col-span-2 flex min-w-0 flex-col">
+            <dt className="sr-only">Chiffre d’affaires</dt>
+            <dd className="montant-prive font-extrabold tracking-tight tabular-nums">
+              <Figure
+                value={money(stats.revenue)}
+                className="[--figure-max:2.75rem]"
+              />
+            </dd>
+          </div>
+          <div className="@container flex min-w-0 flex-col gap-0.5 rounded-2xl bg-white/10 p-3">
+            <dt className="text-base text-[#9be7c4]">
+              {profit(stats) < 0 ? 'Vous avez perdu' : 'Vous avez gagné'}
+            </dt>
+            <dd className="montant-prive font-extrabold tabular-nums">
+              <Figure
+                value={money(Math.abs(profit(stats)))}
+                className="[--figure-max:1.25rem]"
+              />
+            </dd>
+          </div>
+          <div className="@container flex min-w-0 flex-col gap-0.5 rounded-2xl bg-white/10 p-3">
+            <dt className="text-base">Dépenses</dt>
+            <dd className="montant-prive font-extrabold tabular-nums">
+              <Figure
+                value={money(stats.expenses)}
+                className="[--figure-max:1.25rem]"
+              />
+            </dd>
+          </div>
+        </dl>
+      </div>
       {children}
-      <details className="group rounded-2xl border border-line bg-surface shadow-sm">
+      <details className="group rounded-3xl bg-surface">
         <summary className="flex min-h-14 cursor-pointer list-none items-center gap-2 rounded-2xl px-4 text-lg font-bold md:px-6 [&::-webkit-details-marker]:hidden">
           <span className="flex-1">Tous les chiffres</span>
           <ChevronDown
@@ -427,7 +441,7 @@ function PaymentsCard({
           rows={(['cash', 'mobile_money', 'card', 'credit'] as const).map(
             (m) => ({
               key: m,
-              name: PAYMENT_LABELS[m],
+              name: <MethodName method={m} />,
               value: stats.byMethod[m],
               text: `${formatAmount(stats.byMethod[m], currency)} · ${percent(shareBasisPoints(stats.byMethod[m], paid))}`,
             }),
@@ -495,86 +509,183 @@ function MyFiguresCard({
   );
 }
 
-/** Money on hand and owed, today: two tiles that lead to their page. */
-function MoneyLinks({
-  treasury,
-  currency,
-}: {
-  treasury: ApiResult<TreasuryDto>;
-  currency: string;
-}) {
-  if (!treasury.ok)
-    return (
-      <Alert tone="error">Trésorerie indisponible : {treasury.message}</Alert>
-    );
-  const owed =
-    treasury.data.receivables.customers + treasury.data.receivables.invoices;
-  const tile =
-    '@container flex min-w-0 flex-col gap-1 rounded-2xl border border-line bg-surface p-4 shadow-sm hover:bg-surface-muted';
-  return (
-    <div className="grid grid-cols-2 gap-2 sm:gap-3">
-      <Link href="/espace/tresorerie" className={tile}>
-        <span className="flex items-center gap-1.5 text-base leading-tight font-bold text-ink-muted">
-          <Wallet aria-hidden className="size-5 shrink-0" />
-          Argent disponible
-        </span>
-        <Figure
-          value={formatAmount(treasury.data.total, currency)}
-          className="font-extrabold tabular-nums [--figure-max:1.25rem]"
-        />
-      </Link>
-      <Link href="/espace/clients?doivent=1" className={tile}>
-        <span className="flex items-center gap-1.5 text-base leading-tight font-bold text-warning-ink">
-          <HandCoins aria-hidden className="size-5 shrink-0" />
-          On vous doit
-        </span>
-        <Figure
-          value={formatAmount(owed, currency)}
-          className="font-extrabold tabular-nums [--figure-max:1.25rem]"
-        />
-      </Link>
-    </div>
-  );
-}
-
-interface Task {
-  key: string;
-  title: string;
-  detail: string;
+interface Shortcut {
   href: string;
-  action: string;
+  label: string;
+  icon: LucideIcon;
+  /** Background and colour of its round icon. */
+  tone: string;
 }
 
 /**
- * What deserves a touch today, from the figures already on the page:
- * nothing is invented, and the card is not shown when nothing is due.
+ * The gestures of every day in round buttons (ADR-063), for who may do
+ * them: a shop without the right sees fewer, never a dead button.
  */
-function TodoCard({ tasks }: { tasks: Task[] }) {
-  if (tasks.length === 0) return null;
+function Shortcuts({ items }: { items: Shortcut[] }) {
+  if (items.length === 0) return null;
   return (
-    <Card title="À faire aujourd’hui" titleId="todo" icon={ListChecks}>
-      <ul aria-labelledby="todo" className="flex flex-col divide-y divide-line">
-        {tasks.map((task) => (
-          <li
-            key={task.key}
-            className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3 first:pt-0 last:pb-0"
-          >
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="font-bold">{task.title}</span>
-              <span className="text-base text-ink-muted">{task.detail}</span>
-            </span>
+    <nav aria-label="Raccourcis">
+      <ul className="grid grid-cols-4 gap-2 md:max-w-xl">
+        {items.map(({ href, label, icon: Icon, tone }) => (
+          <li key={href}>
             <Link
-              href={task.href}
-              prefetch={false}
-              className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-brand-soft px-4 text-base font-bold text-brand-ink hover:bg-surface-muted"
+              href={href}
+              className="flex flex-col items-center gap-2 rounded-2xl py-1 text-center text-base leading-tight font-bold"
             >
-              {task.action}
-              <span className="sr-only"> : {task.title}</span>
+              <span
+                className={`flex size-15 items-center justify-center rounded-full ${tone}`}
+              >
+                <Icon aria-hidden className="size-6" />
+              </span>
+              {label}
             </Link>
           </li>
         ))}
       </ul>
-    </Card>
+    </nav>
+  );
+}
+
+/** Who owes the shop, as round faces: one touch opens their thread. */
+function Debtors({
+  customers,
+  currency,
+}: {
+  customers: ApiResult<CustomerDto[]>;
+  currency: string;
+}) {
+  if (!customers.ok)
+    return (
+      <Alert tone="error">Crédit indisponible : {customers.message}</Alert>
+    );
+  const owing = customers.data
+    .filter((c) => c.balance > 0)
+    .sort((a, b) => b.balance - a.balance);
+  if (owing.length === 0) return null;
+  const total = owing.reduce((sum, c) => sum + c.balance, 0);
+  return (
+    <section aria-labelledby="debtors" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3">
+        <h2 id="debtors" className="text-lg font-extrabold">
+          Ils vous doivent ·{' '}
+          <span className="montant-prive text-warning-ink">
+            {formatAmount(total, currency)}
+          </span>
+        </h2>
+        <Link
+          href="/espace/clients?doivent=1"
+          className="inline-flex min-h-12 items-center font-bold text-brand-ink"
+        >
+          Tout voir
+        </Link>
+      </div>
+      <ul className="flex gap-3 overflow-x-auto pb-1">
+        {owing.slice(0, 8).map((c) => (
+          <li key={c.id} className="w-20 shrink-0">
+            <Link
+              href={`/espace/clients/${c.id}`}
+              className="flex flex-col items-center gap-1 text-center"
+            >
+              <span className="rounded-full p-0.5 ring-2 ring-warning">
+                <ContactAvatar person={c} size="size-14 text-lg" />
+              </span>
+              <span className="w-full truncate text-base font-bold">
+                {c.name.split(' ')[0]}
+              </span>
+              <InlineAmount
+                minor={c.balance}
+                currency={currency}
+                fit="box"
+                className="montant-prive text-base font-extrabold text-warning-ink"
+              />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** The last sales, like the history of a mobile money application. */
+function RecentSales({
+  sales,
+  currency,
+  timezone,
+}: {
+  sales: ApiResult<SaleListItemDto[]>;
+  currency: string;
+  timezone: string;
+}) {
+  return (
+    <section aria-labelledby="recent" className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-3">
+        <h2 id="recent" className="text-lg font-extrabold">
+          Dernières ventes
+        </h2>
+        <Link
+          href="/espace/ventes"
+          className="inline-flex min-h-12 items-center font-bold text-brand-ink"
+        >
+          Voir les ventes
+        </Link>
+      </div>
+      {!sales.ok ? (
+        <Alert tone="error">Ventes indisponibles : {sales.message}</Alert>
+      ) : sales.data.length === 0 ? (
+        <p className="rounded-3xl bg-surface px-4 py-5 text-ink-muted">
+          Pas encore de vente. Touchez « Caisse » pour commencer.
+        </p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-line rounded-3xl bg-surface px-4">
+          {sales.data.slice(0, 4).map((sale) => {
+            const cancelled = sale.status === 'cancelled';
+            return (
+              <li key={sale.id}>
+                <Link
+                  href={`/espace/ventes/${sale.id}`}
+                  className="flex min-h-16 items-center gap-3 py-2"
+                >
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-canvas text-sales-ink">
+                    <ShoppingCart aria-hidden className="size-5" />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="font-bold">
+                      Ticket {ticketNumber(sale.saleNumber)}
+                    </span>
+                    <span className="truncate text-base text-ink-muted">
+                      {sale.methods.map((m) => PAYMENT_LABELS[m]).join(', ')}
+                      {' · '}
+                      {formatDateTime(sale.occurredAt, timezone)}
+                    </span>
+                  </span>
+                  <InlineAmount
+                    minor={sale.total}
+                    currency={currency}
+                    className={`montant-prive font-extrabold ${
+                      cancelled
+                        ? 'text-ink-muted line-through'
+                        : 'text-sales-ink'
+                    }`}
+                  />
+                  {/* On the server: sent (two ticks, ADR-063). */}
+                  {cancelled ? (
+                    <span className="text-base font-bold text-danger-ink">
+                      Annulée
+                    </span>
+                  ) : (
+                    <CheckCheck
+                      role="img"
+                      aria-label="Enregistrée"
+                      className="size-5 shrink-0 text-sales-ink"
+                    />
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -734,7 +845,6 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
   // The profit first; otherwise today's sales come first. « Vendre » is in
   // the bottom bar on a phone and floats over the page on a computer.
   const canReadStats = roleHasPermission(role, 'stats.read');
-  const canReadTreasury = roleHasPermission(role, 'treasury.read');
   const canSell = roleHasPermission(role, 'sales.create');
   const countsStock = sellsGoods(organization.offer);
 
@@ -752,115 +862,126 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
 
   // Sellers see their own figures, not the shop's.
   const showMine = canSell && !canReadStats;
-  const [members, sales, stock, audit, treasury, stats, statsBefore, mine] =
-    await Promise.all([
-      // Only to name the authors of the recent activity.
-      canReadAudit
-        ? apiAsUser<MemberDto[]>(accessToken, {
-            path: '/organizations/current/members',
-            organizationId: organization.id,
-          })
-        : null,
-      apiAsUser<SalesDaySummaryDto>(accessToken, {
-        path: '/sales/summary',
-        organizationId: organization.id,
-      }),
-      apiAsUser<StockSummaryDto>(accessToken, {
-        path: '/stock/summary',
-        organizationId: organization.id,
-      }),
-      canReadAudit
-        ? apiAsUser<Paginated<AuditLogDto>>(accessToken, {
-            path: '/audit-logs?limit=5',
-            organizationId: organization.id,
-          })
-        : null,
-      canReadTreasury
-        ? apiAsUser<TreasuryDto>(accessToken, {
-            path: '/treasury',
-            organizationId: organization.id,
-          })
-        : null,
-      canReadStats ? statsOf(period) : null,
-      canReadStats ? statsOf(before) : null,
-      showMine
-        ? apiAsUser<MySalesStatsDto>(accessToken, {
-            path: '/sales/my-stats',
-            organizationId: organization.id,
-          })
-        : null,
-    ]);
+  const canReadCustomers = roleHasPermission(role, 'customers.read');
+  const [
+    members,
+    sales,
+    stock,
+    audit,
+    stats,
+    statsBefore,
+    mine,
+    debtors,
+    recent,
+  ] = await Promise.all([
+    // Only to name the authors of the recent activity.
+    canReadAudit
+      ? apiAsUser<MemberDto[]>(accessToken, {
+          path: '/organizations/current/members',
+          organizationId: organization.id,
+        })
+      : null,
+    apiAsUser<SalesDaySummaryDto>(accessToken, {
+      path: '/sales/summary',
+      organizationId: organization.id,
+    }),
+    apiAsUser<StockSummaryDto>(accessToken, {
+      path: '/stock/summary',
+      organizationId: organization.id,
+    }),
+    canReadAudit
+      ? apiAsUser<Paginated<AuditLogDto>>(accessToken, {
+          path: '/audit-logs?limit=5',
+          organizationId: organization.id,
+        })
+      : null,
+    canReadStats ? statsOf(period) : null,
+    canReadStats ? statsOf(before) : null,
+    showMine
+      ? apiAsUser<MySalesStatsDto>(accessToken, {
+          path: '/sales/my-stats',
+          organizationId: organization.id,
+        })
+      : null,
+    canReadCustomers
+      ? apiAsUser<CustomerDto[]>(accessToken, {
+          path: '/customers?owing=true',
+          organizationId: organization.id,
+        })
+      : null,
+    apiAsUser<SaleListItemDto[]>(accessToken, {
+      path: `/sales?${new URLSearchParams({ all: 'true', limit: '4', offset: '0' })}`,
+      organizationId: organization.id,
+    }),
+  ]);
 
-  const money = (value: number) => formatAmount(value, currency);
-  const plural = (count: number) => (count > 1 ? 's' : '');
-  const tasks: Task[] = [];
-  if (treasury?.ok && treasury.data.receivables.customers > 0)
-    tasks.push({
-      key: 'credit',
-      title: 'Des clients vous doivent',
-      detail: `${money(treasury.data.receivables.customers)} de crédit`,
-      href: '/espace/clients?doivent=1',
-      action: 'Relancer',
-    });
-  if (countsStock && stock.ok) {
-    const toBuy = stock.data.outOfStock + stock.data.lowStock;
-    if (toBuy > 0)
-      tasks.push({
-        key: 'stock',
-        title: `${toBuy} produit${plural(toBuy)} à racheter`,
-        detail: 'Épuisé ou bientôt épuisé',
-        href: `/espace/produits?stock=${stock.data.lowStock > 0 ? 'low' : 'out'}`,
-        action: 'Voir',
-      });
-    const unvalued = stock.data.unvaluedProducts;
-    if (unvalued > 0 && roleHasPermission(role, 'catalog.manage'))
-      tasks.push({
-        key: 'cost',
-        title: `${unvalued} produit${plural(unvalued)} sans prix d’achat`,
-        detail: 'Pour un bénéfice juste',
-        href: '/espace/produits',
-        action: 'Compléter',
-      });
-  }
-  if (roleHasPermission(role, 'treasury.manage'))
-    tasks.push({
-      key: 'closing',
-      title: 'Compter la caisse ce soir',
-      detail: 'La clôture dit s’il manque de l’argent',
-      href: '/espace/tresorerie/cloture',
-      action: 'Clôturer',
-    });
+  const shortcuts: Shortcut[] = [
+    ...(roleHasPermission(role, 'customers.manage')
+      ? [
+          {
+            href: '/espace/clients?doivent=1',
+            label: 'Encaisser un crédit',
+            icon: HandCoins,
+            tone: 'bg-warning-soft text-warning-ink',
+          },
+        ]
+      : []),
+    ...(roleHasPermission(role, 'treasury.manage')
+      ? [
+          {
+            href: '/espace/tresorerie/depenses/nouvelle',
+            label: 'Dépense',
+            icon: ArrowDownToLine,
+            tone: 'bg-stats-soft text-stats-ink',
+          },
+        ]
+      : []),
+    ...(roleHasPermission(role, 'catalog.manage')
+      ? [
+          {
+            href: '/espace/produits/nouveau',
+            label: 'Produit',
+            icon: Plus,
+            tone: 'bg-stock-soft text-stock-ink',
+          },
+        ]
+      : []),
+    ...(roleHasPermission(role, 'documents.read')
+      ? [
+          {
+            href: '/espace/factures',
+            label: 'Facture / devis',
+            icon: FileText,
+            tone: 'bg-brand-soft text-brand-ink',
+          },
+        ]
+      : []),
+  ];
   const today = (
     <>
-      {treasury && <MoneyLinks treasury={treasury} currency={currency} />}
-      <TodoCard tasks={tasks} />
+      <Shortcuts items={shortcuts} />
+      {debtors && <Debtors customers={debtors} currency={currency} />}
+      <RecentSales
+        sales={recent}
+        currency={currency}
+        timezone={organization.timezone}
+      />
     </>
   );
 
   const emailById = new Map(
     members?.ok ? members.data.map((m) => [m.userId, m.email]) : [],
   );
-  // With the figures of today on screen, the band would repeat them.
-  const showToday = !(stats?.ok && period.key === 'jour');
+  // Who sees the dark card has the day in it; the band is for the others.
+  const showToday = !stats?.ok;
 
   return (
     <>
-      <PageHeader
-        title={organization.name}
-        description={
-          stats ? capitalize(range(period.from, period.to)) : undefined
-        }
-      />
+      {/* The shop's name is in the top bar: no title to repeat it. */}
+      <h1 className="sr-only">{organization.name}</h1>
 
       {stats && statsBefore && (
         <>
-          <PeriodPicker
-            path="/espace"
-            current={period.key}
-            from={period.from}
-            to={period.to}
-            dates={false}
-          />
           {!stats.ok ? (
             <Alert tone="error">Chiffres indisponibles : {stats.message}</Alert>
           ) : (
@@ -869,6 +990,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
               before={statsBefore}
               beforeRange={range(before.from, before.to)}
               currency={currency}
+              period={<PeriodMenu path="/espace" current={period.key} />}
             >
               {today}
             </Essentials>
@@ -914,8 +1036,6 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
           timezone={organization.timezone}
         />
       )}
-
-      {canSell && <SellFab />}
     </>
   );
 }

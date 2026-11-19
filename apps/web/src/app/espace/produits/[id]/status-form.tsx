@@ -5,7 +5,7 @@ import { useActionState } from 'react';
 import { useConfirmedSubmit } from '@/components/ui/confirm-dialog';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { setProductStatus } from '../actions';
 
 /** Archive (with confirmation) or put back on sale. */

@@ -4,17 +4,24 @@ import { INVITABLE_ROLES } from '@nagaw/shared';
 import { CircleCheck, Copy } from 'lucide-react';
 import { useActionState, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
-import { CONTROL, SelectField } from '@/components/form-field';
+import { CONTROL } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { PhoneField } from '@/components/phone-field';
 import { SubmitButton } from '@/components/submit-button';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { formatDateTime } from '@/lib/format';
-import { ROLE_LABELS } from '@/lib/labels';
+import { ROLE_HINTS, ROLE_LABELS } from '@/lib/labels';
 import { whatsappLink } from '@/lib/sales/ticket';
 import { inviteMember, type InviteState } from './actions';
 
 const initialState: InviteState = { status: 'idle' };
+
+// Seller first: the role most shops give (V3 mockup « Équipe »).
+const ROLE_ORDER = [...INVITABLE_ROLES].sort(
+  (a, b) =>
+    ['member', 'admin', 'viewer'].indexOf(a) -
+    ['member', 'admin', 'viewer'].indexOf(b),
+);
 
 function InvitationLink({
   link,
@@ -62,7 +69,7 @@ function InvitationLink({
           )}
           target="_blank"
           rel="noopener noreferrer"
-          className={buttonClasses('sell')}
+          className={buttonClasses('sell', 'min-h-14 text-lg')}
         >
           Envoyer sur WhatsApp
         </a>
@@ -115,21 +122,37 @@ export function InviteForm({
       >
         <input type="hidden" name="organizationId" value={organizationId} />
         {!state.link && <FormMessage state={state} />}
-        <div className="grid grid-cols-1 gap-4">
-          <PhoneField errors={state.fieldErrors} idPrefix="invite-" />
-          <SelectField
-            label="Rôle"
-            name="role"
-            defaultValue="member"
-            options={INVITABLE_ROLES.map((role) => ({
-              value: role,
-              label: ROLE_LABELS[role],
-            }))}
-          />
-        </div>
-        <div>
-          <SubmitButton pendingLabel="Création…">Inviter</SubmitButton>
-        </div>
+        <PhoneField
+          errors={state.fieldErrors}
+          idPrefix="invite-"
+          label="Son numéro"
+        />
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1.5 text-base font-semibold">Son rôle</legend>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {ROLE_ORDER.map((role) => (
+              <label
+                key={role}
+                className="flex min-h-16 cursor-pointer flex-col justify-center rounded-2xl border-2 border-transparent bg-surface px-4 py-3 has-checked:border-ink has-checked:bg-canvas has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus"
+              >
+                <input
+                  type="radio"
+                  name="role"
+                  value={role}
+                  defaultChecked={role === 'member'}
+                  className="sr-only"
+                />
+                <span className="text-lg font-extrabold">
+                  {ROLE_LABELS[role]}
+                </span>
+                <span className="text-ink-muted">{ROLE_HINTS[role]}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <SubmitButton pendingLabel="Création…">
+          Inviter par WhatsApp
+        </SubmitButton>
       </ActionForm>
       {state.link && state.contact && state.expiresAt && (
         <InvitationLink

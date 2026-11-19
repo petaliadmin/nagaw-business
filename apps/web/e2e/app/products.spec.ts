@@ -78,11 +78,12 @@ test('an owner adds a product with its photo and its stock', async ({
 
   await page.getByLabel('Nom du produit').fill('Lait caillé 1 L');
   await page.getByLabel('Prix de vente (F CFA)').fill('1 250');
-  await page.getByLabel('Vendu à la').selectOption({ label: 'bouteille' });
+  await page.getByLabel('Unité').selectOption({ label: 'bouteille' });
+  await page.getByText('Code-barres, catégorie, seuil d’alerte').click();
   await page
     .getByLabel('Catégorie', { exact: true })
     .selectOption({ label: 'Boissons' });
-  await page.getByLabel('Quantité en stock aujourd’hui').fill('12');
+  await page.getByLabel('En stock', { exact: true }).fill('12');
   await page.getByLabel('Me prévenir quand il en reste').fill('4');
   await page.locator('input[type=file][name=photo]').setInputFiles({
     name: 'lait.png',
@@ -120,7 +121,7 @@ test('an owner adds a service: no stock, its own units, its own filter', async (
   await page.goto('/espace/produits/nouveau');
   await page.waitForLoadState('networkidle');
   await page.locator('label', { hasText: 'Un service' }).click();
-  await expect(page.getByLabel('Quantité en stock aujourd’hui')).toHaveCount(0);
+  await expect(page.getByLabel('En stock', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Facturé à')).toHaveValue('prestation');
   await page.getByLabel('Nom du service').fill('Pose de carrelage');
   await page.getByLabel(/^Prix de vente/).fill('15000');
@@ -286,7 +287,7 @@ test('categories, suppliers and taxes are managed from their lists', async ({
     supplier.getByRole('link', { name: 'Écrire sur WhatsApp' }),
   ).toHaveAttribute('href', /^https:\/\/wa\.me\/221770000000/);
 
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=taxes');
   const tax = page.getByRole('region', { name: 'Ajouter une taxe' });
   await tax.getByLabel('Nom de la taxe').fill('TVA réduite');
   await tax.getByLabel('Taux en %').fill('10');

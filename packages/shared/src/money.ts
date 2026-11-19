@@ -43,6 +43,22 @@ export function formatAmount(minor: number, currency: string): string {
   }).format(minor / 10 ** digits);
 }
 
+/**
+ * A big amount shortened as people say it (ADR-065): `12,5 k F CFA`,
+ * `1,23 M F CFA`, `9,99 Md F CFA`, three significant digits. Only where
+ * the full amount does not fit its place; the full one stays readable
+ * (title, screen readers).
+ */
+export function formatCompactAmount(minor: number, currency: string): string {
+  const digits = currencyDigits(currency);
+  return new Intl.NumberFormat('fr', {
+    style: 'currency',
+    currency,
+    notation: 'compact',
+    maximumSignificantDigits: 3,
+  }).format(minor / 10 ** digits);
+}
+
 /** Value to put back in an input field (no grouping): `12500`, `15,50`. */
 export function amountInputValue(minor: number, currency: string): string {
   const digits = currencyDigits(currency);

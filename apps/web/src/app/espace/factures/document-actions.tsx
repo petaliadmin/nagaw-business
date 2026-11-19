@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  amountInputValue,
-  INVOICE_PAYMENT_METHODS,
-  MOBILE_MONEY_PROVIDERS,
-} from '@nagaw/shared';
+import { amountInputValue, INVOICE_PAYMENT_METHODS } from '@nagaw/shared';
 import { Share2 } from 'lucide-react';
 import { useActionState, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
@@ -13,9 +9,9 @@ import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
-import { initialFormState, type FormState } from '@/lib/auth/schemas';
+import { initialFormState, type FormState } from '@/lib/auth/form-state';
 import { INVOICE_PAYMENT_LABELS } from '@/lib/documents/labels';
-import { PROVIDER_LABELS } from '@/lib/sales/labels';
+import { MethodPills, ProviderPills } from '@/components/sales/payment-choice';
 import {
   addInvoicePayment,
   cancelInvoice,
@@ -108,37 +104,15 @@ export function PaymentForm({
           required
           error={errors.paidOn}
         />
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="pay-method" className="text-base font-semibold">
-            Payé en
-          </label>
-          <select
-            id="pay-method"
-            name="method"
-            value={method}
-            onChange={(event) => setMethod(event.currentTarget.value)}
-            className="min-h-12 w-full rounded-xl border-2 border-line-strong bg-surface px-4 py-2 text-base text-ink"
-          >
-            {INVOICE_PAYMENT_METHODS.map((m) => (
-              <option key={m} value={m}>
-                {INVOICE_PAYMENT_LABELS[m]}
-              </option>
-            ))}
-          </select>
-        </div>
-        {method === 'mobile_money' && (
-          <SelectField
-            label="Opérateur"
-            name="provider"
-            id="pay-provider"
-            defaultValue="wave"
-            options={MOBILE_MONEY_PROVIDERS.map((p) => ({
-              value: p,
-              label: PROVIDER_LABELS[p],
-            }))}
-            error={errors.provider}
-          />
-        )}
+        <MethodPills
+          methods={INVOICE_PAYMENT_METHODS.map((m) => ({
+            value: m,
+            label: INVOICE_PAYMENT_LABELS[m],
+          }))}
+          value={method}
+          onChange={setMethod}
+        />
+        {method === 'mobile_money' && <ProviderPills error={errors.provider} />}
         <FormField
           label="Référence : n° de transaction, de chèque… (facultatif)"
           name="reference"

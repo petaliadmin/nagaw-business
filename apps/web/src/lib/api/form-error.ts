@@ -1,4 +1,4 @@
-import type { FormState } from '@/lib/auth/schemas';
+import type { FormState } from '@/lib/auth/form-state';
 import type { ApiResult } from './call-api';
 
 /** API error as form state, with field details mapped to their inputs. */

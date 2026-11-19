@@ -3,6 +3,7 @@ import {
   amountInputValue,
   currencyDigits,
   formatAmount,
+  formatCompactAmount,
   parseAmount,
 } from './money.js';
 
@@ -36,5 +37,18 @@ describe('money', () => {
     expect(nbsp(formatAmount(150050, 'EUR'))).toBe('1 500,50 €');
     expect(amountInputValue(12500, 'XOF')).toBe('12500');
     expect(amountInputValue(150050, 'EUR')).toBe('1500,50');
+  });
+});
+
+describe('formatCompactAmount', () => {
+  it('shortens as people say it: k, M, Md', () => {
+    const plain = (v: string) => v.replace(/[\u00a0\u202f]/g, ' ');
+    expect(plain(formatCompactAmount(999, 'XOF'))).toBe('999 F CFA');
+    expect(plain(formatCompactAmount(12_500, 'XOF'))).toBe('12,5 k F CFA');
+    expect(plain(formatCompactAmount(2_421_105, 'XOF'))).toBe('2,42 M F CFA');
+    expect(plain(formatCompactAmount(9_987_654_321, 'XOF'))).toBe(
+      '9,99 Md F CFA',
+    );
+    expect(plain(formatCompactAmount(123_456_750, 'EUR'))).toBe('1,23 M €');
   });
 });

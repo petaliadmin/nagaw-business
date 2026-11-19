@@ -443,6 +443,20 @@ describe('Quotes, invoices and credit notes', () => {
         kind: 'credit_note',
         paymentState: null,
       });
+
+      // « À encaisser »: only issued invoices with money still to collect.
+      const owing = (
+        await get(alice, acmeId, '/invoices?owing=true').expect(200)
+      ).body as { id: string; kind: string; balance: number }[];
+      expect(owing.length).toBeGreaterThan(0);
+      for (const doc of owing) {
+        expect(doc.kind).toBe('invoice');
+        expect(doc.balance).toBeGreaterThan(0);
+      }
+      expect(owing.map((d) => d.id)).toContain(paid.id);
+      expect(owing.map((d) => d.id)).not.toContain(creditNote.id);
+      expect(owing.map((d) => d.id)).not.toContain(invoice.id);
+      await get(alice, acmeId, '/invoices?owing=yes').expect(400);
     });
 
     it('invoices a sale paid at the counter, already settled, once', async () => {
@@ -648,6 +662,9 @@ describe('Quotes, invoices and credit notes', () => {
       expect((await get(bob, globexId, '/invoices').expect(200)).body).toEqual(
         [],
       );
+      expect(
+        (await get(bob, globexId, '/invoices?owing=true').expect(200)).body,
+      ).toEqual([]);
       expect((await get(bob, globexId, '/quotes').expect(200)).body).toEqual(
         [],
       );

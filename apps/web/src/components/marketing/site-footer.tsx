@@ -21,7 +21,7 @@ export function SiteFooter({
   belowFloatingButton?: boolean;
 }) {
   return (
-    <footer className="border-t border-line bg-surface">
+    <footer className="border-t border-line bg-canvas">
       <div
         className={`mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8 md:flex-row md:items-center md:justify-between ${belowFloatingButton ? 'pb-24' : ''}`}
       >

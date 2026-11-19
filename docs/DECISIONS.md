@@ -754,9 +754,73 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **caisse** : en-têtes sobres, sans bandes violettes (revient sur le choix du 2026-11-08) ; le violet clair reste la couleur de ce qui est choisi, le vert celle de l'argent ;
   - **site public** : page d'accueil raccourcie (promesse, « Trois gestes, et c'est fait », trois étapes, tarifs, questions, guides), un seul libellé d'inscription, captures refaites.
 - **Limites** :
-  - aucun changement d'API ni de base : seule l'application web est touchée ;
+  - un seul changement d'API, sans migration : `GET /invoices?owing=true` ne garde que les factures émises qui restent à encaisser (vue « À encaisser ») ;
   - les écrans Produits, Ventes, Factures, Statistiques, Paramètres et la connexion ne changent que par les jetons ;
   - « À faire aujourd'hui » propose toujours de compter la caisse à qui en a le droit : l'API ne dit pas encore si la journée est déjà clôturée ;
   - les sections retirées de la page d'accueil (soucis du commerçant, six modules, galerie de captures, hors ligne, sécurité) portaient des mots-clés : effet sur le référencement à suivre ;
   - l'icône de l'application et l'image de partage gardent l'ancien violet `#6D28D9` ;
   - pas encore de test avec des commerçants : à faire pendant le pilote (Phase 18).
+
+## ADR-063 — V3 « Teranga » : les gestes des applications que les commerçants utilisent déjà
+
+- **Statut** : **Proposée** (demande du propriétaire du 2026-11-18 : « refonte V3 inspirée des applications qui ont fait leur preuve au Sénégal et en Afrique de l'Ouest — Wave, Djamo, WhatsApp — simple, facile, utile, efficace, claire, jolie », puis « épurer, moderne max »). Maquettes validées par le propriétaire sur le canevas V3 le même jour. À accepter avec la PR de la branche `refonte-v3`. Prolonge ADR-062 sans l'annuler.
+- **Décision** :
+  - **look** : page blanche, cartes gris très clair (`surface` `#F5F5F7`) sans bordure ni ombre, boutons principaux noirs (encre `#12101C`, texte blanc 18,8:1) en pilules, vert gardé pour l'argent (montants, « Vente enregistrée »), ambre pour ce qu'on vous doit. Nunito, 16 px au moins, cibles de 48 px, AA ;
+  - **navigation** : barre du bas Accueil, Ventes, **Caisse** (carré noir au centre), Stock, Argent ; « Menu » en grille de tuiles rondes ; sur ordinateur, barre latérale blanche avec « Caisse » en haut, et plus de bouton flottant « Vendre ». Les clients et le crédit passent dans le Menu et sur l'Accueil ;
+  - **Accueil** : carte sombre « Ventes · période » avec ce qui est gagné et dépensé, raccourcis ronds (Encaisser un crédit, Dépense, Produit, Facture / devis) selon le rôle, « Ils vous doivent » en visages ronds, dernières ventes ;
+  - **« Masquer »** : floute les montants marqués sur l'Accueil et l'écran Argent, comme le solde d'une application de paiement ; le choix est gardé sur le téléphone (stockage local du navigateur), rien n'est envoyé ;
+  - **crédit en discussion** : la fiche client montre achats à crédit (à gauche) et remboursements (à droite) en bulles, le rappel déjà écrit et modifiable, un toucher pour l'ouvrir dans WhatsApp, puis « Il a payé » ;
+  - **deux coches** sur les ventes enregistrées (liste des ventes, Accueil) ;
+  - **Argent** : total en grand, actions rondes (Clôturer la journée, Dépenses, Déplacer), une carte par compte, la première sombre ; « Clôturer la caisse » devient « Clôturer la journée » ;
+  - **Stock** : vue rapide Tout, À racheter, Épuisés ;
+  - **site public** : accroche « Votre boutique dans votre téléphone. Simple comme envoyer un message. », bande des moyens de paiement, gestes mis à jour.
+- **Limites** :
+  - un seul changement d'API, sans migration : `GET /invoices?owing=true` ne garde que les factures émises qui restent à encaisser (vue « À encaisser ») ;
+  - les rappels envoyés ne sont pas enregistrés : le fil du client n'en montre donc pas ;
+  - les ventes encore sur le téléphone (hors ligne) ne figurent pas dans la liste des Ventes : leur horloge reste dans l'onglet « Ventes » de la caisse ;
+  - le filtre « Dorment » de la maquette n'existe pas encore dans l'API ;
+  - pas encore de test avec des commerçants.
+- **Mise en conformité avec les maquettes (2026-11-19)** — « la maquette fait loi » :
+  - **Dépense** : écran à part (`/espace/tresorerie/depenses/nouvelle`), montant en grand, pavé numérique, « Pour quoi » et « Payé avec » en pastilles, détail et date repliés ;
+  - **Clôturer la journée** : tous les comptes sur un écran, un seul bouton ; un compte laissé vide n'est pas clôturé ; chaque clôture reste idempotente et revérifiée par le serveur ;
+  - **Paramètres** : menu en lignes (offre en haut, Boutique, Caisse, Compte), chaque ligne ouvre sa page (`?partie=`) ; plus d'onglets Boutique / Équipe / Historique / Abonnement ; une page que le rôle ne peut pas utiliser renvoie au menu ;
+  - **Équipe** : liste avec visages et rôle en mots du quotidien ; invitation « Son numéro » + rôle en cartes (Vendeur, Gérant, Lecteur) + « Inviter par WhatsApp » ; les réglages d'une personne sont repliés sous « Modifier » ;
+  - **Factures et devis** : s'ouvre sur « À encaisser », puis « Toutes » et « Devis » ; le résumé chiffré est retiré ;
+  - **Produit** : photo, nom, prix de vente et d'achat, stock et unité ; code-barres, catégorie, seuil d'alerte et taxe repliés ;
+  - **Création de la boutique** : « Étape 2 sur 2 », nom de la boutique et « Vous vendez surtout » ; le nom et le téléphone déjà connus ne sont plus redemandés ;
+  - **Caisse** : en-tête « × Caisse » + bouton code-barres (il place le curseur dans la recherche, qui accepte les lecteurs) ; tuiles alignées à gauche, prix en vert, pastille « + » ou quantité ; barre noire « N articles · total · Encaisser » ; **Paiement** : « À payer » en grand en premier, moyens en ronds, « Le client vous donne », « Le compte », « Monnaie à rendre » ;
+  - **Menu** : « Ils vous doivent » en premier, tuiles Historique et Équipe, profil avec visage, « Donner mon avis » et « Se déconnecter » côte à côte ;
+  - **Ventes** : résumé compact (nombre de ventes, total, pastilles par moyen), lignes avec le moyen en premier.
+- **Ajustements du propriétaire (2026-11-19)** :
+  - **Nouvelle dépense en trois étapes** : Combien ? (pavé) → Pour quoi ? → Payé avec quoi ? (récapitulatif, détail et date repliés) ; « Continuer » vérifie l'étape, « Retour » garde ce qui est saisi ; un seul formulaire dessous, revérifié par le serveur ; sans catégorie, deux étapes ;
+  - **ticket** : « Imprimer le ticket », « Envoyer en photo », « Envoyer en PDF » (et « Envoyer sur WhatsApp » sur la fiche d'une vente) en actions rondes côte à côte (`components/ui/ticket-action.tsx`) ;
+  - **Accueil** : plus de titre avec le nom de la boutique (il est dans la barre du haut, et reste le titre caché de la page) ni de ligne de dates ; la période devient une pastille « Ce mois ▾ » dans la carte sombre, qui ouvre les autres périodes ; « Masquer » n'y montre que l'œil sur téléphone.
+- **Images pour qui lit difficilement (2026-11-19)** : un seul pavé numérique (`components/ui/keypad.tsx`) pour le code secret de connexion et la dépense ; chaque compte montre son image (billets pour la caisse, logo de l'opérateur pour Wave, Orange Money, Mixx, banque) dans « Payé avec », « Déplacer de l'argent » (pastilles au lieu de listes), la clôture et les cartes de l'écran Argent ; chaque catégorie de dépense a une image choisie d'après son compte SYSCOHADA (`lib/treasury/category-icons.ts`) ; « Payé en » et « Opérateur » des paiements de facture et des remboursements deviennent des pastilles avec images ; images aussi sur la vue rapide du stock et la liste des dépenses. L'image répète toujours le nom, elle ne le remplace pas.
+- **Envoi du ticket en photo et en PDF (vérifié le 2026-11-19)** : les deux fichiers sont préparés dès que le ticket s'affiche, pour que le toucher ouvre tout de suite le menu de partage du téléphone (Safari sur iPhone refuse un partage qui arrive trop longtemps après le toucher) ; image dessinée deux fois plus fine, pour rester nette dans WhatsApp ; nom de fichier lisible (« Ticket 000001 A-000001.png ») ; « Envoyer en photo » et « Envoyer en PDF » aussi sur la fiche d'une vente, à côté de « Envoyer sur WhatsApp ». Un test de bout en bout vérifie ce que reçoit le menu de partage (PNG et PDF valides, toucher encore actif) ; l'envoi dans WhatsApp lui-même ne peut se vérifier que sur un vrai téléphone.
+- **Diagrammes (2026-11-19)** : selon la maquette « Rapports » : colonnes vertes arrondies (vert des ventes), petit trait gris pour les jours sans vente, total en grand à côté du titre, plus de lignes de grille ; infobulle sombre ; barres de classement fines et violettes sur fond blanc (rouge ou ambre seulement pour une alerte) ; « Par moyen de paiement » des statistiques devient des barres, avec l'image de chaque moyen, comme sur l'Accueil. Les chiffres restent dans le tableau sous chaque graphique.
+- **Écarts assumés** : champs de saisie bordés (contraste AA des composants), cibles de 48 px là où la maquette en dessine 36 à 40, pas de montant sur la tuile « Ils vous doivent » du Menu (il faudrait une requête sur chaque page), bouton flottant « + » au lieu de « Nouvelle » en haut des factures, rôle « Lecteur » gardé à l'invitation, « Étape 2 sur 2 » au lieu de « 3 sur 3 » (l'inscription a deux écrans).
+
+## ADR-064 — Numéro de téléphone : drapeaux et plans de numérotation avec `react-phone-number-input` et `libphonenumber-js`
+
+- **Statut** : **Proposée** (demande du propriétaire du 2026-11-19 : « trouve une dépendance qui gère le code pays avec drapeau et valide les numéros » ; supprimer « J'ai un ancien compte avec une adresse e-mail » ; améliorer les pages de connexion et d'inscription).
+- **Contexte** : jusqu'ici (ADR-058), le pays était une liste sans drapeau et le numéro n'était vérifié que par sa longueur : `12 345 67 89` passait pour un numéro du Sénégal.
+- **Décision** :
+  - **`libphonenumber-js`** (portage de la bibliothèque de Google, tenu à jour, sans dépendance) vérifie les numéros sur le serveur avec les plans de numérotation complets (`libphonenumber-js/max`) : `accountPhone` dans `@nagaw/shared/phone-check`, un point d'entrée à part pour que ces plans (environ 150 ko) n'aillent jamais dans une page ;
+  - **un nouveau numéro** (inscription, invitation, passage au numéro) doit suivre le plan du pays ; **la connexion** ne vérifie que la longueur, pour qu'aucun compte ne soit bloqué si un plan ne connaît pas encore un nouveau préfixe ;
+  - **`react-phone-number-input`** (même auteur, React 19) affiche le champ : drapeau du pays et indicatif (`+221`), numéro mis en forme pendant la frappe, pays retrouvé quand on tape `+225…`, « ✓ Numéro valide » dès que le numéro est juste ; la liste reste la liste native du téléphone (`Sénégal (+221)`), posée invisible sur le drapeau ; seuls les 17 drapeaux des pays servis sont embarqués (`country-flag-icons`), aucune image n'est chargée ailleurs ; la feuille de style de la bibliothèque n'est pas utilisée ;
+  - le poids (environ 50 ko compressés) ne se charge que sur les pages qui ont le champ : connexion, inscription, équipe, passage au numéro ;
+  - **comptes e-mail d'avant ADR-058** : le lien n'est plus sur la page de connexion ; `/connexion/email` reste ouvert pour les comptes que l'équipe y envoie ;
+  - **pages de connexion et d'inscription** : page blanche sans boîte grise, grande image violette, titre centré et une phrase, étapes de l'inscription en barres, gros bouton noir, « Créer un compte » / « Se connecter » en bouton gris sous un trait ; mêmes grosses touches de 64 px pour le code secret que la maquette « Connexion ».
+- **Conséquences** : 3 dépendances de plus (`libphonenumber-js` dans `packages/shared`, `react-phone-number-input` et `country-flag-icons` dans `apps/web`), à mettre à jour avec les autres ; les plans de numérotation changent avec les versions de `libphonenumber-js`.
+
+## ADR-065 — Gros montants : k, M, Md seulement quand le montant ne tient pas
+
+- **Statut** : **Proposée** (demande du propriétaire du 2026-11-19 : « gérer les gros montants en k mille, M million… utilisé uniquement quand le montant dépasse le cadre »).
+- **Décision** :
+  - **forme courte** comme on le dit : `12,5 k F CFA`, `2,42 M F CFA`, `9,99 Md F CFA`, trois chiffres significatifs (`formatCompactAmount`, `Intl` en notation compacte) ; jamais sous 10 000 ;
+  - **seulement si nécessaire**, mesuré dans la page et revu à chaque changement de largeur (rotation, fenêtre) :
+    - **grands chiffres** (`Figure` : Accueil, Ventes, Argent, clients, tuiles) : ils rapetissent d'abord comme avant ; la forme courte ne vient que si le montant entier deviendrait plus petit que 60 % de sa taille prévue (16 px au moins) ;
+    - **montants dans une ligne** (`InlineAmount` : dernières ventes, liste des ventes) : forme courte si le montant entier laisserait au nom d'à côté moins de place que son mot le plus long, pour que « Ticket n° 000902 » ne se coupe jamais lettre par lettre ;
+    - **petite case** (les clients qui doivent, sur l'Accueil) : forme courte si le montant entier est plus large que la case ;
+  - **le montant entier reste** : dans l'infobulle (`title`) et pour les lecteurs d'écran ; les tickets, factures, exports et tableaux gardent toujours le montant exact ;
+  - le premier affichage (serveur) montre le montant entier ; le navigateur le raccourcit avant de peindre s'il ne tient pas.

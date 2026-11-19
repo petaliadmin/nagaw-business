@@ -3,14 +3,15 @@ import {
   roleHasPermission,
   type ExpenseCategoryDto,
   type ExpenseDto,
-  type TreasuryDto,
 } from '@nagaw/shared';
 import { Plus, Tags } from 'lucide-react';
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
+import { createElement, Suspense } from 'react';
+import { categoryIcon } from '@/lib/treasury/category-icons';
 import { PeriodPicker } from '@/components/treasury/period-picker';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { ButtonLink } from '@/components/ui/button-link';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FoldCard } from '@/components/ui/fold-card';
 import { PageFallback } from '@/components/ui/page-fallback';
@@ -19,7 +20,6 @@ import { Pagination } from '@/components/ui/pagination';
 import { apiAsUser } from '@/lib/api/server';
 import { formatCalendarDate, todayIn } from '@/lib/format';
 import { pageNumber, pageParams, pageRows } from '@/lib/pagination';
-import { accountOptions } from '@/lib/treasury/labels';
 import { resolvePeriod } from '@/lib/treasury/period';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import {
@@ -27,7 +27,6 @@ import {
   ReceiptForm,
   CategoryForm,
   CategoryStatusButton,
-  ExpenseForm,
 } from '../forms';
 
 export const metadata: Metadata = { title: 'Dépenses — Nagaw Business' };
@@ -52,14 +51,13 @@ async function Expenses({
     apiAsUser<T>(accessToken, { path, organizationId: organization.id });
   const range = { from: period.from, to: period.to };
   const page = pageNumber(pageParam);
-  const [expenses, wholePeriod, categories, treasury] = await Promise.all([
+  const [expenses, wholePeriod, categories] = await Promise.all([
     call<ExpenseDto[]>(
       `/expenses?${new URLSearchParams({ ...range, ...pageParams(page) })}`,
     ),
     // The total counts the whole period, not only this page.
     call<ExpenseDto[]>(`/expenses?${new URLSearchParams(range)}`),
     call<ExpenseCategoryDto[]>('/expense-categories'),
-    call<TreasuryDto>('/treasury'),
   ]);
   const money = (value: number) =>
     formatAmount(value, organization.defaultCurrency);
@@ -81,17 +79,17 @@ async function Expenses({
         description="Ce que la boutique paie en dehors de la marchandise vendue."
       />
 
-      {canManage && categories.ok && treasury.ok && (
-        <FoldCard title="Ajouter une dépense" icon={Plus}>
-          <ExpenseForm
-            organizationId={organization.id}
-            categories={categories.data
-              .filter((c) => c.status === 'active')
-              .map((c) => ({ value: c.id, label: c.name }))}
-            accounts={accountOptions(treasury.data.accounts)}
-            today={treasury.data.today.day}
-          />
-        </FoldCard>
+      {raw.enregistree === '1' && (
+        <Alert tone="success">Dépense enregistrée.</Alert>
+      )}
+      {canManage && (
+        <ButtonLink
+          href="/espace/tresorerie/depenses/nouvelle"
+          className="self-start"
+        >
+          <Plus aria-hidden className="size-5" />
+          Nouvelle dépense
+        </ButtonLink>
       )}
 
       <PeriodPicker
@@ -117,10 +115,18 @@ async function Expenses({
             {list.rows.map((expense) => (
               <li
                 key={expense.id}
-                className="flex flex-col gap-2 rounded-2xl border border-line bg-surface px-4 py-3"
+                className="flex flex-col gap-2 rounded-3xl bg-surface px-4 py-3"
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <span className="flex flex-col">
+                <div className="flex items-start gap-3">
+                  <span
+                    aria-hidden
+                    className="flex size-11 shrink-0 items-center justify-center rounded-full bg-canvas"
+                  >
+                    {createElement(categoryIcon(expense.category.accountCode), {
+                      className: 'size-5',
+                    })}
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
                     <span className="font-bold">{expense.label}</span>
                     <span className="text-ink-muted">
                       {expense.number} ·{' '}

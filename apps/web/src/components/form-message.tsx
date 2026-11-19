@@ -1,5 +1,5 @@
 import { Alert } from '@/components/ui/alert';
-import type { FormState } from '@/lib/auth/schemas';
+import type { FormState } from '@/lib/auth/form-state';
 
 export function FormMessage({ state }: { state: FormState }) {
   if (state.status === 'idle' || !state.message) return null;

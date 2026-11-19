@@ -27,7 +27,7 @@ function Choice({
     <li>
       <Link
         href={href}
-        className="flex min-h-24 items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-sm hover:border-invoices"
+        className="flex min-h-24 items-center gap-4 rounded-3xl bg-surface p-4 shadow-sm hover:border-invoices"
       >
         <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-invoices-soft text-invoices-ink">
           <Icon aria-hidden className="size-6" />

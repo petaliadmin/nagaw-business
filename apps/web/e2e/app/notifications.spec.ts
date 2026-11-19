@@ -145,7 +145,7 @@ test('the owner sets the thresholds; sellers do not see them', async ({
   baseURL,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=alertes');
   const hour = page.getByLabel('Heure du résumé du soir');
   await expect(hour).toHaveValue('20');
   await hour.fill('30');
@@ -156,7 +156,7 @@ test('the owner sets the thresholds; sellers do not see them', async ({
   await expect(page.getByText('Réglages enregistrés.')).toBeVisible();
 
   await signInAs(context, 'moussa', baseURL!);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=alertes');
   await expect(
     page.getByRole('heading', { name: 'Alertes et stock' }),
   ).toHaveCount(0);

@@ -11,11 +11,13 @@ export function SubmitButton({
   children,
   pendingLabel,
   variant = 'primary',
+  className = '',
   'aria-label': ariaLabel,
 }: {
   children: string;
   pendingLabel: string;
   variant?: ButtonVariant;
+  className?: string;
   'aria-label'?: string;
 }) {
   // Native form actions report through useFormStatus, ActionForm through
@@ -29,7 +31,7 @@ export function SubmitButton({
       disabled={pending}
       aria-disabled={pending}
       aria-label={ariaLabel}
-      className={buttonClasses(variant)}
+      className={buttonClasses(variant, className)}
     >
       {pending ? pendingLabel : children}
     </button>

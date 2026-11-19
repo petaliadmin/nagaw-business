@@ -7,7 +7,7 @@ import { ActionForm } from '@/components/action-form';
 import { FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState, type FormState } from '@/lib/auth/schemas';
+import { initialFormState, type FormState } from '@/lib/auth/form-state';
 import { recordMovement } from '../actions';
 import { currencySymbol } from '../product-form';
 
@@ -73,7 +73,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <details className="group rounded-2xl border border-line bg-surface">
+    <details className="group rounded-3xl bg-surface">
       <summary className="flex min-h-16 cursor-pointer items-center gap-3 px-4 text-lg font-bold">
         <span
           className={`flex size-10 items-center justify-center rounded-xl ${tone}`}
