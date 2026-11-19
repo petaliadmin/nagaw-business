@@ -59,3 +59,28 @@ for (const path of ['/espace/ventes', '/espace']) {
     ).toBe(true);
   });
 }
+
+test('a huge amount in a row is shortened as people say it, never cutting the name', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.goto('/espace');
+  const sales = page.getByRole('list').filter({ hasText: 'Ticket' }).first();
+  const amount = sales.locator('[title]').first();
+  // ADR-065: `9,99 Md F CFA`, the full amount in its title and for readers.
+  await expect(amount).toHaveAttribute('title', /9\D987\D654\D321/);
+  await expect(amount.locator('[aria-hidden]')).toHaveText(/9,99\sMd/);
+  await expect(amount.locator('.sr-only')).toHaveText(/9\D987\D654\D321/);
+  // The ticket number stays whole on its line.
+  const name = sales.getByText(/^Ticket/).first();
+  expect(
+    await name.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+  ).toBe(true);
+
+  // With room, the same amount is shown in full.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(sales.locator('[title]')).toHaveCount(0);
+});

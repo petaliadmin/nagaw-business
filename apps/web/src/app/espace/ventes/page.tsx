@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Figure } from '@/components/ui/figure';
+import { InlineAmount } from '@/components/ui/inline-amount';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { Pagination } from '@/components/ui/pagination';
@@ -270,11 +271,11 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
                     </span>
                   )}
                 </span>
-                <span
-                  className={`shrink-0 text-lg font-extrabold whitespace-nowrap tabular-nums ${sale.status === 'cancelled' ? 'text-ink-muted line-through' : 'text-ink'}`}
-                >
-                  {money(sale.total)}
-                </span>
+                <InlineAmount
+                  minor={sale.total}
+                  currency={currency}
+                  className={`text-lg font-extrabold ${sale.status === 'cancelled' ? 'text-ink-muted line-through' : 'text-ink'}`}
+                />
                 {/* Listed here, the sale is on the server: two ticks, as a
                     message delivered (ADR-063). */}
                 {sale.status !== 'cancelled' && (

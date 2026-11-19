@@ -50,6 +50,7 @@ import {
 } from '@/components/dashboard/kpi';
 import { PeriodMenu } from '@/components/treasury/period-menu';
 import { MethodName } from '@/components/sales/method-name';
+import { InlineAmount } from '@/components/ui/inline-amount';
 import { SalesChart } from '@/components/treasury/sales-chart';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -591,9 +592,12 @@ function Debtors({
               <span className="w-full truncate text-base font-bold">
                 {c.name.split(' ')[0]}
               </span>
-              <span className="montant-prive text-base font-extrabold text-warning-ink tabular-nums">
-                {formatAmount(c.balance, currency)}
-              </span>
+              <InlineAmount
+                minor={c.balance}
+                currency={currency}
+                fit="box"
+                className="montant-prive text-base font-extrabold text-warning-ink"
+              />
             </Link>
           </li>
         ))}
@@ -654,15 +658,15 @@ function RecentSales({
                       {formatDateTime(sale.occurredAt, timezone)}
                     </span>
                   </span>
-                  <span
-                    className={`montant-prive font-extrabold tabular-nums ${
+                  <InlineAmount
+                    minor={sale.total}
+                    currency={currency}
+                    className={`montant-prive font-extrabold ${
                       cancelled
                         ? 'text-ink-muted line-through'
                         : 'text-sales-ink'
                     }`}
-                  >
-                    {formatAmount(sale.total, currency)}
-                  </span>
+                  />
                   {/* On the server: sent (two ticks, ADR-063). */}
                   {cancelled ? (
                     <span className="text-base font-bold text-danger-ink">

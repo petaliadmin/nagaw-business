@@ -812,3 +812,15 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **comptes e-mail d'avant ADR-058** : le lien n'est plus sur la page de connexion ; `/connexion/email` reste ouvert pour les comptes que l'équipe y envoie ;
   - **pages de connexion et d'inscription** : page blanche sans boîte grise, grande image violette, titre centré et une phrase, étapes de l'inscription en barres, gros bouton noir, « Créer un compte » / « Se connecter » en bouton gris sous un trait ; mêmes grosses touches de 64 px pour le code secret que la maquette « Connexion ».
 - **Conséquences** : 3 dépendances de plus (`libphonenumber-js` dans `packages/shared`, `react-phone-number-input` et `country-flag-icons` dans `apps/web`), à mettre à jour avec les autres ; les plans de numérotation changent avec les versions de `libphonenumber-js`.
+
+## ADR-065 — Gros montants : k, M, Md seulement quand le montant ne tient pas
+
+- **Statut** : **Proposée** (demande du propriétaire du 2026-11-19 : « gérer les gros montants en k mille, M million… utilisé uniquement quand le montant dépasse le cadre »).
+- **Décision** :
+  - **forme courte** comme on le dit : `12,5 k F CFA`, `2,42 M F CFA`, `9,99 Md F CFA`, trois chiffres significatifs (`formatCompactAmount`, `Intl` en notation compacte) ; jamais sous 10 000 ;
+  - **seulement si nécessaire**, mesuré dans la page et revu à chaque changement de largeur (rotation, fenêtre) :
+    - **grands chiffres** (`Figure` : Accueil, Ventes, Argent, clients, tuiles) : ils rapetissent d'abord comme avant ; la forme courte ne vient que si le montant entier deviendrait plus petit que 60 % de sa taille prévue (16 px au moins) ;
+    - **montants dans une ligne** (`InlineAmount` : dernières ventes, liste des ventes) : forme courte si le montant entier laisserait au nom d'à côté moins de place que son mot le plus long, pour que « Ticket n° 000902 » ne se coupe jamais lettre par lettre ;
+    - **petite case** (les clients qui doivent, sur l'Accueil) : forme courte si le montant entier est plus large que la case ;
+  - **le montant entier reste** : dans l'infobulle (`title`) et pour les lecteurs d'écran ; les tickets, factures, exports et tableaux gardent toujours le montant exact ;
+  - le premier affichage (serveur) montre le montant entier ; le navigateur le raccourcit avant de peindre s'il ne tient pas.
