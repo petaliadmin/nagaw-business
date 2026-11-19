@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { jpegToPdf } from './receipt-file';
+import { jpegToPdf, receiptFileName } from './receipt-file';
 
 const text = (bytes: Uint8Array) => new TextDecoder('latin1').decode(bytes);
 
@@ -32,5 +32,14 @@ describe('jpegToPdf', () => {
     offsets.forEach((offset, index) =>
       expect(body.slice(offset, offset + 8)).toBe(`${index + 1} 0 obj\n`),
     );
+  });
+});
+
+describe('receiptFileName', () => {
+  it('reads well in WhatsApp, without signs phones refuse', () => {
+    expect(receiptFileName('n° 000001 (A-000001)')).toBe(
+      'Ticket 000001 A-000001',
+    );
+    expect(receiptFileName('n° 000042')).toBe('Ticket 000042');
   });
 });

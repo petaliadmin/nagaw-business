@@ -1,7 +1,7 @@
 'use client';
 
 import { FileText, Image as ImageIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { TicketActionButton } from '@/components/ui/ticket-action';
 import { receiptPdf, receiptPng } from '@/lib/sales/receipt-file';
@@ -22,14 +22,46 @@ export function ShareReceipt({
 }) {
   const [busy, setBusy] = useState<'png' | 'pdf' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // Made as soon as the ticket shows: the touch then opens the share sheet
+  // at once. Safari on iPhone refuses a share that comes too long after it.
+  const [ready, setReady] = useState<Partial<Record<'png' | 'pdf', File>>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [png, pdf] = await Promise.all([
+          receiptPng(text),
+          receiptPdf(text),
+        ]);
+        if (cancelled) return;
+        setReady({
+          png: new File([png], `${fileName}.png`, { type: png.type }),
+          pdf: new File([pdf], `${fileName}.pdf`, { type: pdf.type }),
+        });
+      } catch (error) {
+        // Made again at the touch, which reports any failure.
+        console.warn('Ticket non préparé à l’avance', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [text, fileName]);
+
+  async function fileOf(kind: 'png' | 'pdf'): Promise<File> {
+    const made = ready[kind];
+    if (made) return made;
+    const blob =
+      kind === 'png' ? await receiptPng(text) : await receiptPdf(text);
+    return new File([blob], `${fileName}.${kind}`, { type: blob.type });
+  }
 
   async function send(kind: 'png' | 'pdf') {
     setMessage(null);
     setBusy(kind);
     try {
-      const blob =
-        kind === 'png' ? await receiptPng(text) : await receiptPdf(text);
-      const file = new File([blob], `${fileName}.${kind}`, { type: blob.type });
+      const file = await fileOf(kind);
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: fileName });
         return;

@@ -4,6 +4,9 @@ import type { ReactNode } from 'react';
 /** Round actions under a ticket, side by side as in a payment app. */
 export const TICKET_ACTIONS =
   'mx-auto grid w-full max-w-sm grid-cols-3 gap-2 print:hidden';
+/** The same with four actions (the sale page adds WhatsApp). */
+export const TICKET_ACTIONS_4 =
+  'mx-auto grid w-full max-w-md grid-cols-4 gap-1 print:hidden';
 
 const ACTION =
   'group flex min-h-24 flex-col items-center gap-2 rounded-3xl px-1 py-2 text-center text-base leading-tight font-bold text-ink disabled:cursor-wait disabled:opacity-60';

@@ -13,6 +13,7 @@ import {
   TICKET_ACTIONS,
   TicketActionButton,
 } from '@/components/ui/ticket-action';
+import { receiptFileName } from '@/lib/sales/receipt-file';
 import { ShareReceipt } from './share-receipt';
 
 function Row({
@@ -186,10 +187,7 @@ export function LocalTicketView({
           onClick={() => window.print()}
         />
         {/* A photo or a PDF of the ticket, made on the phone. */}
-        <ShareReceipt
-          text={share}
-          fileName={`Ticket ${label.replace(/[^\w -]/g, '')}`}
-        />
+        <ShareReceipt text={share} fileName={receiptFileName(label)} />
       </div>
     </>
   );

@@ -17,7 +17,7 @@ import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { ShopLogo } from '@/components/ui/shop-logo';
 import {
-  TICKET_ACTIONS,
+  TICKET_ACTIONS_4,
   TicketActionLink,
 } from '@/components/ui/ticket-action';
 import { apiAsUser } from '@/lib/api/server';
@@ -26,6 +26,8 @@ import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 import { ticketLabel, ticketText, whatsappLink } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { InvoiceFromSaleForm } from '../../factures/document-actions';
+import { receiptFileName } from '@/lib/sales/receipt-file';
+import { ShareReceipt } from '../../../caisse/share-receipt';
 import { CancelSaleForm, PrintButton } from './ticket-actions';
 
 export const metadata: Metadata = { title: 'Vente — Nagaw Business' };
@@ -216,8 +218,10 @@ async function Sale({
         <p className="text-center">Merci de votre visite !</p>
       </article>
 
-      <div role="group" aria-label="Le ticket" className={TICKET_ACTIONS}>
+      <div role="group" aria-label="Le ticket" className={TICKET_ACTIONS_4}>
         <PrintButton />
+        {/* A photo or a PDF of the ticket, for WhatsApp (ADR-063). */}
+        <ShareReceipt text={share} fileName={receiptFileName(ticketLabel(s))} />
         <TicketActionLink
           icon={MessageCircle}
           verb="Envoyer"
