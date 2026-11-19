@@ -13,10 +13,13 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { ButtonLink } from '@/components/ui/button-link';
-import { buttonClasses } from '@/components/ui/button-styles';
 import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { ShopLogo } from '@/components/ui/shop-logo';
+import {
+  TICKET_ACTIONS,
+  TicketActionLink,
+} from '@/components/ui/ticket-action';
 import { apiAsUser } from '@/lib/api/server';
 import { formatContact, formatDateTime } from '@/lib/format';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
@@ -213,21 +216,18 @@ async function Sale({
         <p className="text-center">Merci de votre visite !</p>
       </article>
 
-      <div className="flex flex-wrap justify-center gap-3 print:hidden">
+      <div role="group" aria-label="Le ticket" className={TICKET_ACTIONS}>
         <PrintButton />
-        <a
+        <TicketActionLink
+          icon={MessageCircle}
+          verb="Envoyer"
+          rest="sur WhatsApp"
           href={whatsappLink(
             share,
             s.customer?.phone,
             organization.phoneCountryCode,
           )}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={buttonClasses('secondary')}
-        >
-          <MessageCircle aria-hidden className="size-5" />
-          Envoyer sur WhatsApp
-        </a>
+        />
       </div>
       <p className="text-center text-ink-muted print:hidden">
         Vendu par {formatContact(s.seller.email)}. L’impression passe par

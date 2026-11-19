@@ -39,8 +39,11 @@ function apply(hidden: boolean) {
  */
 export function HideAmountsButton({
   tone = 'dark',
+  compact = false,
 }: {
   tone?: 'dark' | 'light';
+  /** Only the eye on a phone, to leave room beside it. */
+  compact?: boolean;
 }) {
   const [hidden, setHidden] = useState(false);
 
@@ -64,7 +67,9 @@ export function HideAmountsButton({
       type="button"
       aria-pressed={hidden}
       onClick={toggle}
-      className={`inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-full px-4 text-base font-bold ${
+      className={`inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-1.5 rounded-full text-base font-bold ${
+        compact ? 'px-3 sm:px-4' : 'px-4'
+      } ${
         tone === 'dark'
           ? 'bg-white/15 text-white focus-visible:outline-white'
           : 'bg-surface text-ink'
@@ -75,7 +80,9 @@ export function HideAmountsButton({
       ) : (
         <EyeOff aria-hidden className="size-5" />
       )}
-      {hidden ? 'Afficher' : 'Masquer'}
+      <span className={compact ? 'sr-only sm:not-sr-only' : undefined}>
+        {hidden ? 'Afficher' : 'Masquer'}
+      </span>
       <span className="sr-only"> les montants</span>
     </button>
   );

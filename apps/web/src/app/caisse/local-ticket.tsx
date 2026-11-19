@@ -9,6 +9,10 @@ import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 import { ticketLabel, ticketText } from '@/lib/sales/ticket';
 import type { LocalTicket, ShopSnapshot } from '@/lib/offline/store';
 import { SaleSteps } from './sale-steps';
+import {
+  TICKET_ACTIONS,
+  TicketActionButton,
+} from '@/components/ui/ticket-action';
 import { ShareReceipt } from './share-receipt';
 
 function Row({
@@ -174,15 +178,13 @@ export function LocalTicketView({
         <p className="text-center">Merci de votre visite !</p>
       </article>
 
-      <div className="flex flex-wrap justify-center gap-3 print:hidden">
-        <button
-          type="button"
+      <div role="group" aria-label="Le ticket" className={TICKET_ACTIONS}>
+        <TicketActionButton
+          icon={Printer}
+          verb="Imprimer"
+          rest="le ticket"
           onClick={() => window.print()}
-          className={buttonClasses('secondary')}
-        >
-          <Printer aria-hidden className="size-5" />
-          Imprimer le ticket
-        </button>
+        />
         {/* A photo or a PDF of the ticket, made on the phone. */}
         <ShareReceipt
           text={share}

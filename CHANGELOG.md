@@ -6,6 +6,7 @@ Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est
 
 - **V3 « Teranga » (ADR-063)** : design épuré (page blanche, cartes grises sans ombre, boutons noirs), barre du bas Accueil · Ventes · Caisse · Stock · Argent, Menu en grille, Accueil avec carte sombre des ventes, raccourcis ronds et « Ils vous doivent », bouton « Masquer » les montants, crédit du client en discussion avec rappel WhatsApp modifiable, deux coches sur les ventes enregistrées, écran Argent avec une carte par compte, vue rapide du stock, site public réécrit.
 - **Écrans alignés sur les maquettes V3** : dépense au pavé numérique, clôture de tous les comptes en une fois, Paramètres en menu, Équipe avec invitation WhatsApp et rôle en cartes, Factures qui s'ouvrent sur « À encaisser », fiche produit courte, création de boutique en une étape, caisse et paiement redessinés, Menu enrichi, Ventes compactes.
+- **Nouvelle dépense en trois étapes**, boutons du ticket en actions rondes, Accueil allégé avec la période en pastille dans la carte des ventes.
 
 ## 2026-11-17 — fusionné (PR #53)
 

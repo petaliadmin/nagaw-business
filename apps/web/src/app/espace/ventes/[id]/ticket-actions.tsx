@@ -6,7 +6,7 @@ import { ActionForm } from '@/components/action-form';
 import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { buttonClasses } from '@/components/ui/button-styles';
+import { TicketActionButton } from '@/components/ui/ticket-action';
 import { initialFormState } from '@/lib/auth/schemas';
 import { cancelSale } from '../../vendre/actions';
 
@@ -17,14 +17,12 @@ import { cancelSale } from '../../vendre/actions';
  */
 export function PrintButton() {
   return (
-    <button
-      type="button"
+    <TicketActionButton
+      icon={Printer}
+      verb="Imprimer"
+      rest="le ticket"
       onClick={() => window.print()}
-      className={buttonClasses('secondary')}
-    >
-      <Printer aria-hidden className="size-5" />
-      Imprimer le ticket
-    </button>
+    />
   );
 }
 

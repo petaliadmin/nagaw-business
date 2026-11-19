@@ -3,7 +3,7 @@
 import { FileText, Image as ImageIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Alert } from '@/components/ui/alert';
-import { buttonClasses } from '@/components/ui/button-styles';
+import { TicketActionButton } from '@/components/ui/ticket-action';
 import { receiptPdf, receiptPng } from '@/lib/sales/receipt-file';
 
 /**
@@ -58,25 +58,23 @@ export function ShareReceipt({
 
   return (
     <>
-      <button
-        type="button"
+      <TicketActionButton
+        icon={ImageIcon}
+        verb="Envoyer"
+        rest="en photo"
+        busy={busy === 'png' ? 'Préparation…' : null}
         onClick={() => void send('png')}
         disabled={busy !== null}
-        className={buttonClasses('secondary')}
-      >
-        <ImageIcon aria-hidden className="size-5" />
-        {busy === 'png' ? 'Préparation…' : 'Envoyer en photo'}
-      </button>
-      <button
-        type="button"
+      />
+      <TicketActionButton
+        icon={FileText}
+        verb="Envoyer"
+        rest="en PDF"
+        busy={busy === 'pdf' ? 'Préparation…' : null}
         onClick={() => void send('pdf')}
         disabled={busy !== null}
-        className={buttonClasses('secondary')}
-      >
-        <FileText aria-hidden className="size-5" />
-        {busy === 'pdf' ? 'Préparation…' : 'Envoyer en PDF'}
-      </button>
-      <div role="status" className="w-full empty:hidden">
+      />
+      <div role="status" className="col-span-full empty:hidden">
         {message && <Alert tone="info">{message}</Alert>}
       </div>
     </>

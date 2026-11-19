@@ -56,6 +56,7 @@ async function NewExpense() {
               .map((c) => ({ value: c.id, label: c.name }))}
             accounts={accountOptions(treasury.data.accounts)}
             today={treasury.data.today.day}
+            currency={organization.defaultCurrency}
             onSaved="/espace/tresorerie/depenses?enregistree=1"
           />
         </div>

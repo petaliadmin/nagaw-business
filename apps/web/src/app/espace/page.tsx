@@ -48,7 +48,7 @@ import {
   SeeAll,
   SoftStat,
 } from '@/components/dashboard/kpi';
-import { PeriodPicker } from '@/components/treasury/period-picker';
+import { PeriodMenu } from '@/components/treasury/period-menu';
 import { SalesChart } from '@/components/treasury/sales-chart';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -56,7 +56,6 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Figure } from '@/components/ui/figure';
 import { PageFallback } from '@/components/ui/page-fallback';
-import { PageHeader } from '@/components/ui/page-header';
 import type { ApiResult } from '@/lib/api/call-api';
 import { apiAsUser } from '@/lib/api/server';
 import {
@@ -69,7 +68,7 @@ import { auditActionLabel } from '@/lib/labels';
 import { PAYMENT_LABELS, ticketNumber } from '@/lib/sales/labels';
 import { ContactAvatar } from '@/components/contacts/contact-actions';
 import { HideAmountsButton } from '@/components/ui/hide-amounts';
-import { PERIODS, previousPeriod, resolvePeriod } from '@/lib/treasury/period';
+import { previousPeriod, resolvePeriod } from '@/lib/treasury/period';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 
 export const metadata: Metadata = {
@@ -84,9 +83,6 @@ function range(from: string, to: string): string {
     ? `le ${formatCalendarDate(from)}`
     : `du ${formatCalendarDate(from)} au ${formatCalendarDate(to)}`;
 }
-
-const capitalize = (text: string) =>
-  text.charAt(0).toUpperCase() + text.slice(1);
 
 /** Today's sales, whatever the period of the figures: one green band. */
 function TodayCard({
@@ -162,15 +158,15 @@ function Essentials({
   before,
   beforeRange,
   currency,
-  label,
+  period,
   children,
 }: {
   stats: StatsSummaryDto;
   before: ApiResult<StatsSummaryDto>;
   beforeRange: string;
   currency: string;
-  /** The period, in words: « ce mois », « aujourd’hui »… */
-  label: string;
+  /** The period, as a pill that opens the others. */
+  period: ReactNode;
   /** Shown right under the profit: the money and what to do today. */
   children?: ReactNode;
 }) {
@@ -199,12 +195,14 @@ function Essentials({
         L’essentiel
       </h2>
       <div className="flex flex-col gap-4 rounded-[2rem] bg-ink p-5 text-canvas md:p-7">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-base font-bold text-[#c9c5ff]">
-            Ventes · {label} · {stats.salesCount} vente
-            {stats.salesCount > 1 ? 's' : ''}
-          </p>
-          <HideAmountsButton />
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            {period}
+            <p className="text-base font-bold text-[#c9c5ff]">
+              {stats.salesCount} vente{stats.salesCount > 1 ? 's' : ''}
+            </p>
+          </div>
+          <HideAmountsButton compact />
         </div>
         <dl className="grid grid-cols-2 gap-x-2 gap-y-3">
           <div className="@container col-span-2 flex min-w-0 flex-col">
@@ -974,22 +972,11 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
 
   return (
     <>
-      <PageHeader
-        title={organization.name}
-        description={
-          stats ? capitalize(range(period.from, period.to)) : undefined
-        }
-      />
+      {/* The shop's name is in the top bar: no title to repeat it. */}
+      <h1 className="sr-only">{organization.name}</h1>
 
       {stats && statsBefore && (
         <>
-          <PeriodPicker
-            path="/espace"
-            current={period.key}
-            from={period.from}
-            to={period.to}
-            dates={false}
-          />
           {!stats.ok ? (
             <Alert tone="error">Chiffres indisponibles : {stats.message}</Alert>
           ) : (
@@ -998,9 +985,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
               before={statsBefore}
               beforeRange={range(before.from, before.to)}
               currency={currency}
-              label={(
-                PERIODS.find((p) => p.key === period.key)?.label ?? 'période'
-              ).toLocaleLowerCase('fr')}
+              period={<PeriodMenu path="/espace" current={period.key} />}
             >
               {today}
             </Essentials>

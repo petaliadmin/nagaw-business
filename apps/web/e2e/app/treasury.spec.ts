@@ -74,8 +74,18 @@ test('the home page shows the essentials of the period', async ({
     Number(/Nombre de ventes(\d+)/.exec(text)?.[1]);
   await page.goto('/espace');
   expect(await essentials()).toContain('Chiffre d’affaires'); // this month
-  await page.getByRole('link', { name: 'Aujourd’hui' }).click();
+  // The period is one pill on the dark card; it opens the others.
+  const period = page.getByRole('button', { name: 'Période : Ce mois' });
+  await expect(period).toHaveAttribute('aria-expanded', 'false');
+  await period.click();
+  await page
+    .getByRole('list', { name: 'Période' })
+    .getByRole('link', { name: 'Aujourd’hui' })
+    .click();
   await expect(page).toHaveURL(/periode=jour/);
+  await expect(
+    page.getByRole('button', { name: 'Période : Aujourd’hui' }),
+  ).toBeVisible();
   const text = await essentials();
   expect(salesCount(text)).toBeGreaterThanOrEqual(1);
   expect(text).toMatch(/Panier moyen[\d ]+ F CFA/);
@@ -89,6 +99,27 @@ test('the home page shows the essentials of the period', async ({
   await expectAccessible(page, 'tableau de bord');
 });
 
+test('the expense steps ask for what is missing, and go back', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/tresorerie/depenses/nouvelle');
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Tapez le montant payé.')).toBeVisible();
+  await expect(page.getByText('Étape 1 sur 3')).toBeVisible();
+  await page.getByRole('button', { name: '5', exact: true }).click();
+  await page.getByRole('button', { name: '0', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(
+    page.getByText('Choisissez pour quoi vous avez payé.'),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Retour' }).click();
+  await expect(page.getByLabel('Montant', { exact: true })).toHaveValue('50');
+});
+
 test('an expense lowers the drawer until it is cancelled', async ({
   page,
   context,
@@ -96,13 +127,19 @@ test('an expense lowers the drawer until it is cancelled', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/tresorerie/depenses/nouvelle');
-  await page.locator('summary', { hasText: 'Détail et date' }).click();
-  await page.getByLabel('Ce qui a été payé').fill('Ticket de bus');
+  // Three steps (ADR-063): how much, what for, paid with what.
+  await expect(page.getByText('Étape 1 sur 3')).toBeVisible();
   await page.getByLabel('Montant', { exact: true }).fill('200');
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Étape 2 sur 3')).toBeVisible();
   await page.locator('label', { hasText: /^Autres dépenses$/ }).click();
   await expect(
     page.getByRole('radio', { name: 'Autres dépenses' }),
   ).toBeChecked();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Étape 3 sur 3')).toBeVisible();
+  await page.locator('summary', { hasText: 'Détail et date' }).click();
+  await page.getByLabel('Ce qui a été payé').fill('Ticket de bus');
   await page.getByRole('button', { name: 'Enregistrer la dépense' }).click();
   await expect(page.getByText('Dépense enregistrée.')).toBeVisible();
   const list = page.getByRole('list', { name: 'Liste des dépenses' });

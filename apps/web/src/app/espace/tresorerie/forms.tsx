@@ -1,13 +1,15 @@
 'use client';
 
 import { amountInputValue, formatAmount, parseAmount } from '@nagaw/shared';
-import { Delete } from 'lucide-react';
-import { useActionState, useState } from 'react';
+import { ArrowLeft, ArrowRight, Delete } from 'lucide-react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
 import { PhotoField } from '@/components/catalog/photo-field';
 import { FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
+import { buttonClasses } from '@/components/ui/button-styles';
+import { FormSteps } from '@/components/ui/form-steps';
 import { initialFormState, type FormState } from '@/lib/auth/schemas';
 import {
   attachReceipt,
@@ -85,22 +87,34 @@ function ChoicePills({
   );
 }
 
+type ExpenseStep = 1 | 2 | 3;
+
+/** The step that holds a field, to show it again when it is refused. */
+function stepOf(errors: Record<string, string>, steps: number): ExpenseStep {
+  if (errors.amount) return 1;
+  if (errors.categoryId && steps === 3) return 2;
+  return steps as ExpenseStep;
+}
+
 /**
- * A new expense like a mobile money transfer (ADR-063): the amount in
- * large typed on a keypad, what it was for and where the money came from
- * as pills, then one button. The date and a detail are folded away.
+ * A new expense in three steps, like a mobile money transfer (ADR-063):
+ * how much on a keypad, what for, paid with what — then one button. One
+ * form underneath: the hidden steps keep their values and are sent with
+ * it, and the server checks everything again.
  */
 export function ExpenseForm({
   organizationId,
   categories,
   accounts,
   today,
+  currency,
   onSaved,
 }: {
   organizationId: string;
   categories: Option[];
   accounts: Option[];
   today: string;
+  currency: string;
   /** Where to go once it is saved. */
   onSaved?: string;
 }) {
@@ -109,23 +123,70 @@ export function ExpenseForm({
     initialFormState,
   );
   const operationId = useOperation(state);
+  // Without categories to choose from, the second step is left out.
+  const steps = categories.length > 0 ? 3 : 2;
+  const [step, setStep] = useState<ExpenseStep>(1);
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState<Option | null>(null);
+  const [problem, setProblem] = useState('');
   const [seen, setSeen] = useState<FormState>(state);
+  const title = useRef<HTMLHeadingElement>(null);
+  const errors = state.fieldErrors ?? {};
   if (state !== seen) {
     setSeen(state);
     if (state.status === 'success') {
       setAmount('');
+      setCategory(null);
+      setStep(1);
       if (onSaved) window.location.assign(onSaved);
+    } else if (state.fieldErrors) {
+      setStep(stepOf(state.fieldErrors, steps));
     }
   }
-  const errors = state.fieldErrors ?? {};
-  const press = (key: string) =>
-    setAmount((value) =>
-      key === 'del' ? value.slice(0, -1) : (value + key).replace(/^0+/, ''),
+  // Focus follows the step, so that a screen reader says where it is.
+  const focused = useRef(step);
+  useEffect(() => {
+    if (focused.current === step) return;
+    focused.current = step;
+    title.current?.focus();
+  }, [step]);
+
+  const shown = steps === 3 ? step : step === 1 ? 1 : 2;
+  const last: ExpenseStep = steps === 3 ? 3 : 2;
+  const labels: Record<ExpenseStep, string> =
+    steps === 3
+      ? { 1: 'Combien ?', 2: 'Pour quoi ?', 3: 'Payé avec quoi ?' }
+      : { 1: 'Combien ?', 2: 'Payé avec quoi ?', 3: 'Payé avec quoi ?' };
+  const value = parseAmount(amount, currency) ?? 0;
+
+  function next() {
+    if (step === 1 && value <= 0) {
+      setProblem('Tapez le montant payé.');
+      return;
+    }
+    if (step === 2 && steps === 3 && !category) {
+      setProblem('Choisissez pour quoi vous avez payé.');
+      return;
+    }
+    setProblem('');
+    setStep((current) => (current + 1) as ExpenseStep);
+  }
+  function back() {
+    setProblem('');
+    setStep((current) => (current - 1) as ExpenseStep);
+  }
+  const press = (key: string) => {
+    setProblem('');
+    setAmount((current) =>
+      key === 'del' ? current.slice(0, -1) : (current + key).replace(/^0+/, ''),
     );
+  };
+  const isCategories = steps === 3 && step === 2;
+  const isAccounts = step === last;
+
   return (
     <div className="flex flex-col gap-4">
+      <FormSteps step={shown} total={steps} label={labels[step]} />
       <FormMessage state={state} />
       <ActionForm
         key={operationId}
@@ -133,100 +194,180 @@ export function ExpenseForm({
         pending={pending}
         noValidate
         className="flex flex-col gap-5"
+        onKeyDown={(event) => {
+          // « Entrée » goes to the next step, it does not send too early.
+          if (
+            event.key === 'Enter' &&
+            !isAccounts &&
+            event.target instanceof HTMLInputElement
+          ) {
+            event.preventDefault();
+            next();
+          }
+        }}
       >
         <input type="hidden" name="organizationId" value={organizationId} />
         <input type="hidden" name="clientOperationId" value={operationId} />
-        <input type="hidden" name="labelFallback" value={category} />
-        <div className="flex flex-col items-center gap-1">
-          <label htmlFor="expense-amount" className="font-bold text-ink-muted">
-            Montant
-          </label>
-          <input
-            id="expense-amount"
-            name="amount"
-            inputMode="numeric"
-            required
-            value={amount}
-            onChange={(event) =>
-              setAmount(event.target.value.replace(/[^\d]/g, ''))
-            }
-            placeholder="0"
-            aria-invalid={errors.amount ? true : undefined}
-            className="w-full bg-transparent text-center text-5xl font-extrabold tracking-tight tabular-nums outline-none placeholder:text-ink-muted"
-          />
-          {errors.amount && (
-            <p className="font-semibold text-danger-ink">{errors.amount}</p>
-          )}
-        </div>
-        {categories.length > 0 && (
-          <ChoicePills
-            legend="Pour quoi"
-            name="categoryId"
-            options={categories}
-            error={errors.categoryId}
-            onPick={(option) => setCategory(option.label)}
-          />
-        )}
-        <ChoicePills
-          legend="Payé avec"
-          name="cashAccountId"
-          options={accounts}
-          defaultValue={accounts[0]?.value}
-          error={errors.cashAccountId}
+        <input
+          type="hidden"
+          name="labelFallback"
+          value={category?.label ?? ''}
         />
-        <div
-          role="group"
-          aria-label="Pavé numérique"
-          className="grid grid-cols-3 gap-2"
-        >
-          {KEYS.map((key, index) =>
-            key === '' ? (
-              <span key={index} />
-            ) : (
-              <button
-                key={key}
-                type="button"
-                onClick={() => press(key)}
-                aria-label={key === 'del' ? 'Effacer un chiffre' : undefined}
-                className="flex min-h-14 items-center justify-center rounded-2xl bg-surface text-2xl font-extrabold"
-              >
-                {key === 'del' ? (
-                  <Delete aria-hidden className="size-7" />
-                ) : (
-                  key
-                )}
-              </button>
-            ),
-          )}
-        </div>
-        <details className="rounded-3xl bg-surface px-4 py-1">
-          <summary className="flex min-h-12 cursor-pointer items-center font-bold">
-            Détail et date
-          </summary>
-          <div className="flex flex-col gap-4 pb-4">
-            <FormField
-              label="Ce qui a été payé (facultatif)"
-              name="label"
-              id="expense-label"
-              maxLength={120}
-              placeholder="Loyer d’octobre, facture Senelec…"
-              error={errors.label}
-            />
-            <FormField
-              label="Date"
-              name="occurredOn"
-              id="expense-date"
-              type="date"
-              defaultValue={today}
-              max={today}
+        <h2 ref={title} tabIndex={-1} className="sr-only">
+          {labels[step]}
+        </h2>
+
+        {/* Step 1: how much. */}
+        <div hidden={step !== 1} className="flex flex-col gap-5">
+          <div className="flex flex-col items-center gap-1">
+            <label
+              htmlFor="expense-amount"
+              className="font-bold text-ink-muted"
+            >
+              Montant
+            </label>
+            <input
+              id="expense-amount"
+              name="amount"
+              inputMode="numeric"
               required
-              error={errors.occurredOn}
+              // Grouped by thousands as people write it; the server reads
+              // the digits.
+              value={amount.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}
+              onChange={(event) => {
+                setProblem('');
+                setAmount(event.target.value.replace(/[^\d]/g, ''));
+              }}
+              placeholder="0"
+              aria-invalid={errors.amount ? true : undefined}
+              className="w-full bg-transparent text-center text-5xl font-extrabold tracking-tight tabular-nums outline-none placeholder:text-ink-muted"
+            />
+            {errors.amount && (
+              <p className="font-semibold text-danger-ink">{errors.amount}</p>
+            )}
+          </div>
+          <div
+            role="group"
+            aria-label="Pavé numérique"
+            className="grid grid-cols-3 gap-2"
+          >
+            {KEYS.map((key, index) =>
+              key === '' ? (
+                <span key={index} />
+              ) : (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => press(key)}
+                  aria-label={key === 'del' ? 'Effacer un chiffre' : undefined}
+                  className="flex min-h-14 items-center justify-center rounded-2xl bg-surface text-2xl font-extrabold"
+                >
+                  {key === 'del' ? (
+                    <Delete aria-hidden className="size-7" />
+                  ) : (
+                    key
+                  )}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+
+        {/* Step 2: what for. */}
+        {steps === 3 && (
+          <div hidden={!isCategories}>
+            <ChoicePills
+              legend="Pour quoi"
+              name="categoryId"
+              options={categories}
+              error={errors.categoryId}
+              onPick={(option) => {
+                setProblem('');
+                setCategory(option);
+              }}
             />
           </div>
-        </details>
-        <SubmitButton pendingLabel="Enregistrement…">
-          Enregistrer la dépense
-        </SubmitButton>
+        )}
+
+        {/* Last step: paid with what, then save. */}
+        <div hidden={!isAccounts} className="flex flex-col gap-5">
+          <p className="flex flex-wrap items-baseline justify-between gap-2 rounded-3xl bg-surface px-4 py-3">
+            <span className="font-bold text-ink-muted">
+              {category ? category.label : 'Dépense'}
+            </span>
+            <span className="text-2xl font-extrabold tabular-nums">
+              {formatAmount(value, currency)}
+            </span>
+          </p>
+          <ChoicePills
+            legend="Payé avec"
+            name="cashAccountId"
+            options={accounts}
+            defaultValue={accounts[0]?.value}
+            error={errors.cashAccountId}
+          />
+          <details
+            className="rounded-3xl bg-surface px-4 py-1"
+            open={Boolean(errors.label || errors.occurredOn)}
+          >
+            <summary className="flex min-h-12 cursor-pointer items-center font-bold">
+              Détail et date
+            </summary>
+            <div className="flex flex-col gap-4 pb-4">
+              <FormField
+                label="Ce qui a été payé (facultatif)"
+                name="label"
+                id="expense-label"
+                maxLength={120}
+                placeholder="Loyer d’octobre, facture Senelec…"
+                error={errors.label}
+              />
+              <FormField
+                label="Date"
+                name="occurredOn"
+                id="expense-date"
+                type="date"
+                defaultValue={today}
+                max={today}
+                required
+                error={errors.occurredOn}
+              />
+            </div>
+          </details>
+        </div>
+
+        <p role="status" className="min-h-6 font-semibold text-danger-ink">
+          {problem}
+        </p>
+        <div className="flex gap-2">
+          {step > 1 && (
+            <button
+              type="button"
+              onClick={back}
+              aria-label="Retour"
+              className="flex size-14 shrink-0 items-center justify-center rounded-full bg-surface"
+            >
+              <ArrowLeft aria-hidden className="size-6" />
+            </button>
+          )}
+          {isAccounts ? (
+            <SubmitButton
+              pendingLabel="Enregistrement…"
+              className="min-h-14 flex-1 text-lg"
+            >
+              Enregistrer la dépense
+            </SubmitButton>
+          ) : (
+            <button
+              type="button"
+              onClick={next}
+              className={buttonClasses('primary', 'min-h-14 flex-1 text-lg')}
+            >
+              Continuer
+              <ArrowRight aria-hidden className="size-5" />
+            </button>
+          )}
+        </div>
       </ActionForm>
     </div>
   );
