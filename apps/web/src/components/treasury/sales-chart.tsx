@@ -73,20 +73,25 @@ export function SalesChart({
   const byMonth = points.length > 0 && points[0]!.key.length === 7;
   const tickLabel = (p: Point) => (byMonth ? p.label : shortDay(p.key));
 
+  const total = points.reduce((sum, p) => sum + p.revenue, 0);
+
   return (
     <figure className="flex flex-col gap-3">
-      <figcaption className="text-lg font-bold">
-        Chiffre d’affaires par {byMonth ? 'mois' : 'jour'}
+      {/* V3 (ADR-063): the total beside the title, green columns, a small
+          grey mark for the days without sales so that every day shows. */}
+      <figcaption className="flex flex-wrap items-baseline justify-between gap-x-3">
+        <span className="font-bold text-ink-muted">
+          Chiffre d’affaires par {byMonth ? 'mois' : 'jour'}
+        </span>
+        <span className="text-2xl font-extrabold tabular-nums">
+          {money(total)}
+        </span>
       </figcaption>
       {max === 0 ? (
         <p className="text-ink-muted">Aucune vente sur cette période.</p>
       ) : (
-        <div aria-hidden className="flex flex-col gap-1">
-          <span className="text-base text-ink-muted tabular-nums">
-            {money(max)}
-          </span>
-          <div className="relative flex h-40 items-end gap-0.5 border-b border-line-strong">
-            <span className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-line" />
+        <div aria-hidden className="flex flex-col gap-2">
+          <div className="flex h-32 items-end gap-1">
             {points.map((p) => (
               <div
                 key={p.key}
@@ -94,25 +99,27 @@ export function SalesChart({
               >
                 {/* Hit area: the whole column, bigger than the bar. */}
                 <div
-                  className="w-full max-w-6 rounded-t-[4px] bg-stats-chart"
+                  className={`w-full max-w-7 rounded-md transition-opacity group-hover:opacity-80 ${
+                    p.revenue > 0 ? 'bg-sales-strong' : 'bg-line'
+                  }`}
                   style={{
                     height:
                       p.revenue > 0
-                        ? `max(2px, ${(p.revenue / max) * 100}%)`
-                        : 0,
+                        ? `max(6px, ${(p.revenue / max) * 100}%)`
+                        : '4px',
                   }}
                 />
-                <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-max max-w-48 -translate-x-1/2 rounded-lg border border-line bg-surface px-3 py-2 text-base text-ink shadow-md group-hover:block">
-                  <p className="font-semibold">{p.label}</p>
+                <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-max max-w-48 -translate-x-1/2 rounded-2xl bg-ink px-3 py-2 text-base text-canvas group-hover:block">
+                  <p className="font-bold">{p.label}</p>
                   <p className="tabular-nums">{money(p.revenue)}</p>
-                  <p className="text-ink-muted">
+                  <p className="text-[#c9c5ff]">
                     {p.count} vente{p.count > 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
             ))}
           </div>
-          <div className="flex justify-between text-base text-ink-muted">
+          <div className="flex justify-between text-base font-bold text-ink-muted">
             <span>{tickLabel(points[0]!)}</span>
             {points.length > 1 && <span>{tickLabel(points.at(-1)!)}</span>}
           </div>

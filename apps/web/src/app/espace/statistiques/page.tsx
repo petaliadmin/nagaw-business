@@ -2,14 +2,17 @@ import {
   formatAmount,
   roleHasPermission,
   sellsGoods,
+  shareBasisPoints,
   type ShopSummaryDto,
   type StatsSummaryDto,
 } from '@nagaw/shared';
-import { ChartColumn, PackageX, Store, Trophy } from 'lucide-react';
+import { ChartColumn, CreditCard, PackageX, Store, Trophy } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { PeriodPicker } from '@/components/treasury/period-picker';
+import { BarList } from '@/components/dashboard/kpi';
+import { MethodName } from '@/components/sales/method-name';
 import { SalesChart } from '@/components/treasury/sales-chart';
 import { Alert } from '@/components/ui/alert';
 import { Card, Stat } from '@/components/ui/card';
@@ -19,7 +22,6 @@ import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { formatQuantity } from '@/lib/catalog/labels';
 import { formatCalendarDate, todayIn } from '@/lib/format';
-import { PAYMENT_LABELS } from '@/lib/sales/labels';
 import { resolvePeriod } from '@/lib/treasury/period';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { ScrollRegion } from '@/components/ui/scroll-region';
@@ -61,6 +63,9 @@ async function Statistics({ searchParams }: PageProps<'/espace/statistiques'>) {
   ]);
   const currency = organization.defaultCurrency;
   const money = (value: number) => formatAmount(value, currency);
+  const paid = stats.ok
+    ? Object.values(stats.data.byMethod).reduce((t, v) => t + v, 0)
+    : 0;
   const range =
     period.from === period.to
       ? formatCalendarDate(period.from)
@@ -126,22 +131,27 @@ async function Statistics({ searchParams }: PageProps<'/espace/statistiques'>) {
             <SalesChart days={stats.data.days} currency={currency} />
           </Card>
 
-          <section aria-labelledby="by-method" className="flex flex-col gap-3">
-            <h2 id="by-method" className="text-xl font-bold">
-              Par moyen de paiement
-            </h2>
-            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {(['cash', 'mobile_money', 'card', 'credit'] as const).map(
-                (m) => (
-                  <Stat
-                    key={m}
-                    label={PAYMENT_LABELS[m]}
-                    value={money(stats.data.byMethod[m])}
-                  />
-                ),
+          <Card
+            title="Par moyen de paiement"
+            titleId="by-method"
+            icon={CreditCard}
+          >
+            {/* V3 (ADR-063): thin violet bars, the picture beside the name. */}
+            <BarList
+              label="Paiements par moyen"
+              tone="brand"
+              rows={(['cash', 'mobile_money', 'card', 'credit'] as const).map(
+                (m) => ({
+                  key: m,
+                  name: <MethodName method={m} />,
+                  value: stats.data.byMethod[m],
+                  text: `${money(stats.data.byMethod[m])} · ${percent(
+                    shareBasisPoints(stats.data.byMethod[m], paid),
+                  )}`,
+                }),
               )}
-            </dl>
-          </section>
+            />
+          </Card>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Card title="Les plus vendus" titleId="top-products" icon={Trophy}>

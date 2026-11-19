@@ -49,6 +49,7 @@ import {
   SoftStat,
 } from '@/components/dashboard/kpi';
 import { PeriodMenu } from '@/components/treasury/period-menu';
+import { MethodName } from '@/components/sales/method-name';
 import { SalesChart } from '@/components/treasury/sales-chart';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -439,7 +440,7 @@ function PaymentsCard({
           rows={(['cash', 'mobile_money', 'card', 'credit'] as const).map(
             (m) => ({
               key: m,
-              name: PAYMENT_LABELS[m],
+              name: <MethodName method={m} />,
               value: stats.byMethod[m],
               text: `${formatAmount(stats.byMethod[m], currency)} · ${percent(shareBasisPoints(stats.byMethod[m], paid))}`,
             }),

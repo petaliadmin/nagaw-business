@@ -189,13 +189,19 @@ export function BarList({
             </span>
             <span className="font-bold tabular-nums">{row.text}</span>
           </div>
-          <div aria-hidden className="h-3 rounded-full bg-surface-muted">
+          {/* V3 (ADR-063): a thin violet bar on a white track; red or
+              amber only when the row is a warning. */}
+          <div aria-hidden className="h-2 rounded-full bg-canvas">
             <div
-              className={`h-3 rounded-full ${MODULE_TONES[tone].bar}`}
+              className={`h-2 rounded-full ${
+                tone === 'danger' || tone === 'warning'
+                  ? MODULE_TONES[tone].bar
+                  : 'bg-brand-strong'
+              }`}
               style={{
                 width:
                   max > 0 && row.value > 0
-                    ? `max(0.75rem, ${(row.value / max) * 100}%)`
+                    ? `max(0.5rem, ${(row.value / max) * 100}%)`
                     : 0,
               }}
             />

@@ -4,28 +4,11 @@ import {
   MOBILE_MONEY_PROVIDERS,
   type MobileMoneyProvider,
 } from '@nagaw/shared';
-import {
-  Banknote,
-  CreditCard,
-  FileSignature,
-  HandCoins,
-  Landmark,
-  Smartphone,
-  type LucideIcon,
-} from 'lucide-react';
+import { Banknote } from 'lucide-react';
 import { createElement, type ReactNode } from 'react';
 import { OperatorLogo } from '@/components/sales/operator-logo';
 import { PROVIDER_LABELS } from '@/lib/sales/labels';
-
-/** A picture per way of paying, beside its name (ADR-063). */
-export const METHOD_PICTURES: Record<string, LucideIcon> = {
-  cash: Banknote,
-  mobile_money: Smartphone,
-  card: CreditCard,
-  credit: HandCoins,
-  bank_transfer: Landmark,
-  cheque: FileSignature,
-};
+import { METHOD_PICTURES } from '@/lib/sales/method-pictures';
 
 const PILL =
   'inline-flex min-h-12 items-center gap-2 rounded-full border-2 border-transparent bg-surface py-1 pr-4 pl-1.5 font-bold peer-checked:border-ink peer-checked:bg-canvas peer-focus-visible:outline-3 peer-focus-visible:outline-focus';
