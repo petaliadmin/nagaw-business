@@ -78,8 +78,8 @@ test('a cash sale shows the change, the ticket and lowers the stock', async ({
     .getByRole('button', { name: 'Un de plus : Eau minérale 1,5 L' })
     .click();
 
-  await page.getByLabel('Somme reçue du client (facultatif)').fill('2000');
-  await expect(page.getByText(/À rendre : 500/)).toBeVisible();
+  await page.getByLabel('Le client vous donne (facultatif)').fill('2000');
+  await expect(page.getByText(/Monnaie à rendre : 500/)).toBeVisible();
   await page.getByRole('button', { name: /^Valider la vente/ }).click();
 
   // The ticket shows in the checkout: the seller stays there.
@@ -255,7 +255,7 @@ test('sales of the day are listed with their totals, and on the home page', asyn
   const list = page.getByRole('list', { name: 'Liste des ventes' });
   await expect(list.getByRole('listitem').first()).toBeVisible();
   const summary = page.getByRole('region', { name: 'Aujourd’hui' });
-  await expect(summary.getByText('Ventes', { exact: true })).toBeVisible();
+  await expect(summary.getByRole('heading')).toContainText(/\d+ ventes?/);
   await expect(sellLink(page, isMobile)).toBeVisible();
   await page.getByRole('link', { name: 'Hier' }).click();
   await expect(page.getByText('Aucune vente ce jour-là')).toBeVisible();

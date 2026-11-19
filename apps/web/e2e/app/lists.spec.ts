@@ -84,7 +84,7 @@ test('a shop of services only sees what serves it, and can change', async ({
   isMobile,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=boutique');
   await page.waitForLoadState('networkidle');
   const shop = page.getByRole('region', { name: 'Boutique' });
   await shop.locator('label', { hasText: 'Des services' }).click();
@@ -124,7 +124,7 @@ test('an owner gives the shop a logo, then removes it', async ({
   baseURL,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=factures');
   // The field reads the file once the page is interactive.
   await page.waitForLoadState('networkidle');
   await page.getByLabel('Choisir un logo').setInputFiles({
@@ -150,7 +150,7 @@ test('an owner gives the shop a logo, then removes it', async ({
   await expect(mark).toHaveCount(1);
   await page.goto('/espace/produits');
   await expect(mark).toHaveCount(1);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=factures');
   await page.waitForLoadState('networkidle');
 
   await page.getByLabel('Retirer le logo').check();
@@ -165,7 +165,7 @@ test('an owner adds a stamp and a signature for the invoices', async ({
   baseURL,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=factures');
   await page.waitForLoadState('networkidle');
   await page.getByLabel('Choisir un cachet').setInputFiles({
     name: 'cachet.png',
@@ -195,7 +195,7 @@ test('an owner chooses the colour of the documents', async ({
   baseURL,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=factures');
   const invoices = page.getByRole('region', { name: 'Factures et devis' });
   await invoices.getByRole('button', { name: 'Bleu' }).click();
   await expect(invoices.getByRole('button', { name: 'Bleu' })).toHaveAttribute(

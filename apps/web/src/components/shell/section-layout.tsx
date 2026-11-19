@@ -6,7 +6,6 @@ import { SectionTabs } from './section-tabs';
 const LABELS: Record<Section, string> = {
   factures: 'Factures et devis',
   rapports: 'Rapports',
-  parametres: 'Paramètres',
 };
 
 async function Tabs({ section }: { section: Section }) {

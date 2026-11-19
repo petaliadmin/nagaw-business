@@ -70,7 +70,7 @@ Réservez un moment fixe chaque semaine pour votre administration : envoyer les 
 
 ## Dans Nagaw Business
 
-Choisissez « Des services » à la création de votre boutique ou dans Paramètres : l’application cache ce qui concerne le stock et les fournisseurs. Vos prestations se mettent au catalogue, à la prestation, au forfait, à l’heure ou au jour. Vous faites un devis, vous le transformez en facture sans ressaisie, vous enregistrez les paiements en plusieurs fois, et le Résumé montre ce qui est facturé, encaissé et en retard. Vos factures portent votre logo, votre couleur, votre cachet et votre signature. Les heures passées ne sont pas chronométrées : notez-les sur le devis ou la facture.
+Choisissez « Des services » à la création de votre boutique ou dans Paramètres : l’application cache ce qui concerne le stock et les fournisseurs. Vos prestations se mettent au catalogue, à la prestation, au forfait, à l’heure ou au jour. Vous faites un devis, vous le transformez en facture sans ressaisie, vous enregistrez les paiements en plusieurs fois, et l’onglet « À encaisser » montre ce qui reste à payer et ce qui est en retard. Vos factures portent votre logo, votre couleur, votre cachet et votre signature. Les heures passées ne sont pas chronométrées : notez-les sur le devis ou la facture.
 `,
   faq: [
     {

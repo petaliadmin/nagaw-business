@@ -9,24 +9,24 @@ import { OFFER_OPTIONS } from '@/lib/catalog/offer';
 export function OfferField({
   value,
   error,
+  legend = 'Que vendez-vous ?',
 }: {
   value: ShopOffer;
   error?: string;
+  legend?: string;
 }) {
   const [offer, setOffer] = useState(value);
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1.5 text-base font-semibold">
-        Que vendez-vous ?
-      </legend>
+      <legend className="mb-1.5 text-base font-semibold">{legend}</legend>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {OFFER_OPTIONS.map((option) => (
           <label
             key={option.value}
-            className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border-2 px-3 py-2 text-base font-bold focus-within:outline-3 focus-within:outline-focus ${
+            className={`flex min-h-14 cursor-pointer items-center gap-2 rounded-2xl border-2 px-4 py-2 text-base font-bold focus-within:outline-3 focus-within:outline-focus ${
               offer === option.value
-                ? 'border-stock-strong bg-stock-soft text-stock-ink'
-                : 'border-line-strong bg-surface'
+                ? 'border-ink bg-canvas text-ink'
+                : 'border-transparent bg-surface'
             }`}
           >
             <input

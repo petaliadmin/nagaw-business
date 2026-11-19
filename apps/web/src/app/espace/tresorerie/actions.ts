@@ -54,7 +54,8 @@ export async function createExpense(
   const parsed = parseValues(createExpenseSchema, {
     categoryId: text(formData, 'categoryId'),
     cashAccountId: text(formData, 'cashAccountId'),
-    label: text(formData, 'label'),
+    // Without a detail, the expense is named after what it was for.
+    label: text(formData, 'label') || text(formData, 'labelFallback'),
     amount: amountField(formData, 'amount', shop.currency),
     occurredOn: text(formData, 'occurredOn'),
     clientOperationId: text(formData, 'clientOperationId'),
@@ -118,35 +119,73 @@ export async function createTransfer(
   return { status: 'success', message: 'Argent déplacé.' };
 }
 
-export async function createClosing(
+/**
+ * Closes the day of several accounts at once (ADR-063): one closing per
+ * account counted, each idempotent and checked by the server as before.
+ * An account left empty is not closed.
+ */
+export async function createClosings(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const shop = await shopOf(text(formData, 'organizationId'));
   if (!shop) return { status: 'error', message: SHOP_CHANGED };
-  const parsed = parseValues(createClosingSchema, {
-    cashAccountId: text(formData, 'cashAccountId'),
-    day: text(formData, 'day'),
-    countedAmount: amountField(formData, 'countedAmount', shop.currency),
-    note: text(formData, 'note'),
-    clientOperationId: text(formData, 'clientOperationId'),
-  });
-  if (!parsed.ok) return parsed.state;
-  const result = await apiAsUser<ClosingDto>(shop.token, {
-    method: 'POST',
-    path: '/treasury/closings',
-    organizationId: shop.organizationId,
-    body: parsed.data,
-  });
-  if (!result.ok) return apiErrorState(result);
-  refresh();
-  const { difference } = result.data;
+  const day = text(formData, 'day');
+  const note = text(formData, 'note');
+  const ids = formData.getAll('accountId').map(String);
+  const fieldErrors: Record<string, string> = {};
+  let closed = 0;
+  let gaps = 0;
+  for (const id of ids) {
+    if (!text(formData, `counted-${id}`)) continue;
+    const parsed = parseValues(createClosingSchema, {
+      cashAccountId: id,
+      day,
+      countedAmount: amountField(formData, `counted-${id}`, shop.currency),
+      note,
+      clientOperationId: text(formData, `operation-${id}`),
+    });
+    if (!parsed.ok) {
+      fieldErrors[`counted-${id}`] =
+        parsed.state.fieldErrors?.countedAmount ??
+        parsed.state.message ??
+        'Montant invalide.';
+      continue;
+    }
+    const result = await apiAsUser<ClosingDto>(shop.token, {
+      method: 'POST',
+      path: '/treasury/closings',
+      organizationId: shop.organizationId,
+      body: parsed.data,
+    });
+    if (!result.ok) {
+      fieldErrors[`counted-${id}`] = result.message;
+      continue;
+    }
+    closed += 1;
+    if (result.data.difference !== 0) gaps += 1;
+  }
+  if (closed > 0) refresh();
+  if (Object.keys(fieldErrors).length > 0)
+    return {
+      status: 'error',
+      message:
+        closed > 0
+          ? `${closed} compte${closed > 1 ? 's' : ''} clôturé${closed > 1 ? 's' : ''} ; corrigez les autres.`
+          : 'Rien n’est clôturé : corrigez les montants signalés.',
+      fieldErrors,
+    };
+  if (closed === 0)
+    return {
+      status: 'error',
+      message: 'Tapez ce que vous avez compté pour au moins un compte.',
+    };
   return {
     status: 'success',
     message:
-      difference === 0
-        ? 'Caisse clôturée : le compte est juste.'
-        : 'Caisse clôturée : l’écart est enregistré.',
+      gaps === 0
+        ? 'Journée clôturée : les comptes sont justes.'
+        : 'Journée clôturée : les écarts sont enregistrés.',
   };
 }
 

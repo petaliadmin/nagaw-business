@@ -754,7 +754,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **caisse** : en-têtes sobres, sans bandes violettes (revient sur le choix du 2026-11-08) ; le violet clair reste la couleur de ce qui est choisi, le vert celle de l'argent ;
   - **site public** : page d'accueil raccourcie (promesse, « Trois gestes, et c'est fait », trois étapes, tarifs, questions, guides), un seul libellé d'inscription, captures refaites.
 - **Limites** :
-  - aucun changement d'API ni de base : seule l'application web est touchée ;
+  - un seul changement d'API, sans migration : `GET /invoices?owing=true` ne garde que les factures émises qui restent à encaisser (vue « À encaisser ») ;
   - les écrans Produits, Ventes, Factures, Statistiques, Paramètres et la connexion ne changent que par les jetons ;
   - « À faire aujourd'hui » propose toujours de compter la caisse à qui en a le droit : l'API ne dit pas encore si la journée est déjà clôturée ;
   - les sections retirées de la page d'accueil (soucis du commerçant, six modules, galerie de captures, hors ligne, sécurité) portaient des mots-clés : effet sur le référencement à suivre ;
@@ -775,9 +775,20 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **Stock** : vue rapide Tout, À racheter, Épuisés ;
   - **site public** : accroche « Votre boutique dans votre téléphone. Simple comme envoyer un message. », bande des moyens de paiement, gestes mis à jour.
 - **Limites** :
-  - aucun changement d'API ni de base : seule l'application web est touchée ;
+  - un seul changement d'API, sans migration : `GET /invoices?owing=true` ne garde que les factures émises qui restent à encaisser (vue « À encaisser ») ;
   - les rappels envoyés ne sont pas enregistrés : le fil du client n'en montre donc pas ;
   - les ventes encore sur le téléphone (hors ligne) ne figurent pas dans la liste des Ventes : leur horloge reste dans l'onglet « Ventes » de la caisse ;
   - le filtre « Dorment » de la maquette n'existe pas encore dans l'API ;
-  - les écrans de détail (produit, facture, paramètres…) ne changent que par les jetons ;
   - pas encore de test avec des commerçants.
+- **Mise en conformité avec les maquettes (2026-11-19)** — « la maquette fait loi » :
+  - **Dépense** : écran à part (`/espace/tresorerie/depenses/nouvelle`), montant en grand, pavé numérique, « Pour quoi » et « Payé avec » en pastilles, détail et date repliés ;
+  - **Clôturer la journée** : tous les comptes sur un écran, un seul bouton ; un compte laissé vide n'est pas clôturé ; chaque clôture reste idempotente et revérifiée par le serveur ;
+  - **Paramètres** : menu en lignes (offre en haut, Boutique, Caisse, Compte), chaque ligne ouvre sa page (`?partie=`) ; plus d'onglets Boutique / Équipe / Historique / Abonnement ; une page que le rôle ne peut pas utiliser renvoie au menu ;
+  - **Équipe** : liste avec visages et rôle en mots du quotidien ; invitation « Son numéro » + rôle en cartes (Vendeur, Gérant, Lecteur) + « Inviter par WhatsApp » ; les réglages d'une personne sont repliés sous « Modifier » ;
+  - **Factures et devis** : s'ouvre sur « À encaisser », puis « Toutes » et « Devis » ; le résumé chiffré est retiré ;
+  - **Produit** : photo, nom, prix de vente et d'achat, stock et unité ; code-barres, catégorie, seuil d'alerte et taxe repliés ;
+  - **Création de la boutique** : « Étape 2 sur 2 », nom de la boutique et « Vous vendez surtout » ; le nom et le téléphone déjà connus ne sont plus redemandés ;
+  - **Caisse** : en-tête « × Caisse » + bouton code-barres (il place le curseur dans la recherche, qui accepte les lecteurs) ; tuiles alignées à gauche, prix en vert, pastille « + » ou quantité ; barre noire « N articles · total · Encaisser » ; **Paiement** : « À payer » en grand en premier, moyens en ronds, « Le client vous donne », « Le compte », « Monnaie à rendre » ;
+  - **Menu** : « Ils vous doivent » en premier, tuiles Historique et Équipe, profil avec visage, « Donner mon avis » et « Se déconnecter » côte à côte ;
+  - **Ventes** : résumé compact (nombre de ventes, total, pastilles par moyen), lignes avec le moyen en premier.
+- **Écarts assumés** : champs de saisie bordés (contraste AA des composants), cibles de 48 px là où la maquette en dessine 36 à 40, pas de montant sur la tuile « Ils vous doivent » du Menu (il faudrait une requête sur chaque page), bouton flottant « + » au lieu de « Nouvelle » en haut des factures, rôle « Lecteur » gardé à l'invitation, « Étape 2 sur 2 » au lieu de « 3 sur 3 » (l'inscription a deux écrans).

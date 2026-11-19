@@ -185,6 +185,8 @@ export function bottomBarFor(
 export function parentPath(pathname: string): string | null {
   if (/^\/admin\/boutiques\/[^/]+$/.test(pathname)) return '/admin/boutiques';
   if (pathname === '/espace' || !pathname.startsWith('/espace/')) return null;
+  // Opened from the « Paramètres » menu, without tabs since V3 (ADR-063).
+  if (SETTINGS_PAGES.includes(pathname)) return '/espace/parametres';
   const tabs = Object.values(SECTION_TABS).flat() as readonly SectionTab[];
   const topLevel = [
     ...NAV_ITEMS.map((item) => item.href),
@@ -196,6 +198,13 @@ export function parentPath(pathname: string): string | null {
     return '/espace/factures/liste';
   return pathname.slice(0, pathname.lastIndexOf('/'));
 }
+
+/** Pages listed in the « Paramètres » menu that live at their own address. */
+const SETTINGS_PAGES: readonly string[] = [
+  '/espace/equipe',
+  '/espace/journal',
+  '/espace/abonnement',
+];
 
 /** Pages that send a form: going back to one would show it again. */
 const FORM_PAGE = /\/(nouveau|nouvelle|modifier)$/;
@@ -230,8 +239,12 @@ export interface SectionTab {
 /** Tabs at the top of the sections that group several pages. */
 export const SECTION_TABS = {
   factures: [
-    { href: '/espace/factures', label: 'Résumé', permission: 'stats.read' },
-    { href: '/espace/factures/liste', label: 'Factures' },
+    {
+      href: '/espace/factures',
+      label: 'À encaisser',
+      permission: 'stats.read',
+    },
+    { href: '/espace/factures/liste', label: 'Toutes' },
     { href: '/espace/factures/devis', label: 'Devis' },
   ],
   rapports: [
@@ -244,16 +257,6 @@ export const SECTION_TABS = {
       href: '/espace/comptabilite',
       label: 'Comptabilité',
       permission: 'accounting.read',
-    },
-  ],
-  parametres: [
-    { href: '/espace/parametres', label: 'Boutique' },
-    { href: '/espace/equipe', label: 'Équipe' },
-    { href: '/espace/journal', label: 'Historique' },
-    {
-      href: '/espace/abonnement',
-      label: 'Abonnement',
-      permission: 'subscription.read',
     },
   ],
 } as const satisfies Record<string, readonly SectionTab[]>;

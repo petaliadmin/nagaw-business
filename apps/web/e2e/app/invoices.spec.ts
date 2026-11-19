@@ -201,7 +201,7 @@ test('the shop identity printed on documents is set in the settings', async ({
   baseURL,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/parametres');
+  await page.goto('/espace/parametres?partie=factures');
   const card = page.getByRole('region', { name: 'Factures et devis' });
   await card.getByLabel('NINEA (facultatif)').fill('0012345 2G3');
   await card.getByLabel('Délai de paiement des factures (jours)').fill('15');
@@ -266,19 +266,19 @@ test('the preview of a document of another shop is not found', async ({
   ).toBeVisible();
 });
 
-test('the summary counts the documents, and leads to the rest', async ({
+test('the invoices open on what is left to collect, and lead to the rest', async ({
   page,
   context,
   baseURL,
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/factures');
-  const invoices = page.getByRole('region', { name: 'Factures' });
-  await expect(invoices.getByText('Reste à encaisser')).toBeVisible();
-  await expect(invoices).toContainText(/\d+ factures?/);
   await expect(
-    page.getByRole('region', { name: 'Devis' }).getByText('Acceptés'),
+    page.getByRole('heading', { level: 1, name: 'Factures et devis' }),
   ).toBeVisible();
+  await expect(page.getByText('Reste à encaisser')).toBeVisible();
+  const owed = page.getByRole('list', { name: 'Factures à encaisser' });
+  await expect(owed.getByRole('listitem').first()).toBeVisible();
 
   const tabs = page.getByRole('navigation', { name: 'Factures et devis' });
   await tabs.getByRole('link', { name: 'Devis' }).click();
@@ -291,7 +291,7 @@ test('the summary counts the documents, and leads to the rest', async ({
   await page.getByRole('link', { name: 'Nouveau devis' }).click();
   await expect(page).toHaveURL(/\/espace\/factures\/devis\/nouveau$/);
 
-  // On the summary, « + » opens « Facture » and « Devis ».
+  // On « À encaisser », « + » opens « Facture » and « Devis ».
   await page.goto('/espace/factures');
   const create = page.getByRole('button', {
     name: 'Créer une facture ou un devis',
@@ -323,7 +323,7 @@ test('a seller reads the lists, prepares quotes, and sees no total', async ({
   await expect(page).toHaveURL(/factures.liste$/);
   await expect(page.getByText('Reste à encaisser')).toHaveCount(0);
   const tabs = page.getByRole('navigation', { name: 'Factures et devis' });
-  await expect(tabs.getByRole('link', { name: 'Résumé' })).toHaveCount(0);
+  await expect(tabs.getByRole('link', { name: 'À encaisser' })).toHaveCount(0);
 
   // Invoices stay with the managers (ADR-036): no button on their list.
   await expect(

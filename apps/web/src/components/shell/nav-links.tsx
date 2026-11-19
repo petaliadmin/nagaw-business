@@ -3,8 +3,8 @@
 import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
-import type { Role, ShopOffer } from '@nagaw/shared';
-import { ShoppingCart } from 'lucide-react';
+import { roleHasPermission, type Role, type ShopOffer } from '@nagaw/shared';
+import { HandCoins, History, ShoppingCart, Users } from 'lucide-react';
 import {
   activeHref,
   bottomBarFor,
@@ -31,12 +31,55 @@ export function NavLinks({
   const all = navItemsFor(role, offer);
   const current = activeHref(all, pathname);
   const items = all.filter((item) => only === 'all' || !item.bottomBar);
-  // The « Menu » sheet on a phone: round tiles, three per row (ADR-063).
-  if (tone === 'sheet')
+  // The « Menu » sheet on a phone: round tiles, three per row (ADR-063),
+  // with « Ils vous doivent » first and the pages of « Paramètres » that
+  // people look for (« Historique », « Équipe ») as tiles of their own.
+  if (tone === 'sheet') {
+    const tiles: NavItem[] = items.flatMap((item) =>
+      item.href === '/espace/parametres'
+        ? [
+            ...(roleHasPermission(role, 'audit.read')
+              ? [
+                  {
+                    ...item,
+                    href: '/espace/journal',
+                    label: 'Historique',
+                    icon: History,
+                  },
+                ]
+              : []),
+            ...(roleHasPermission(role, 'members.read')
+              ? [
+                  {
+                    ...item,
+                    href: '/espace/equipe',
+                    label: 'Équipe',
+                    icon: Users,
+                  },
+                ]
+              : []),
+            item,
+          ]
+        : [item],
+    );
+    const tileCurrent = activeHref(tiles, pathname);
     return (
       <ul className="grid grid-cols-3 gap-2">
-        {items.map(({ href, label, icon: Icon }) => {
-          const active = href === current;
+        {roleHasPermission(role, 'customers.read') && (
+          <li className="col-span-3">
+            <Link
+              href="/espace/clients?doivent=1"
+              className="flex min-h-16 items-center gap-3 rounded-3xl bg-warning-soft px-4 py-3 text-lg font-extrabold text-warning-ink"
+            >
+              <span className="flex size-12 items-center justify-center rounded-full bg-canvas">
+                <HandCoins aria-hidden className="size-6 shrink-0" />
+              </span>
+              Ils vous doivent
+            </Link>
+          </li>
+        )}
+        {tiles.map(({ href, label, icon: Icon }) => {
+          const active = href === tileCurrent;
           return (
             <li key={href}>
               <Link
@@ -58,6 +101,7 @@ export function NavLinks({
         })}
       </ul>
     );
+  }
   const styles = {
     link: '',
     active: 'bg-brand-soft text-brand-ink',

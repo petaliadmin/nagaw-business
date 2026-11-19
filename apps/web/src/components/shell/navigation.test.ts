@@ -124,8 +124,6 @@ describe('navigation', () => {
     expect(tabs('factures', 'member')).toContain('/espace/factures/liste');
     expect(tabs('rapports', 'viewer')).toContain('/espace/comptabilite');
     expect(tabs('rapports', 'member')).toEqual([]);
-    expect(tabs('parametres', 'owner')).toContain('/espace/abonnement');
-    expect(tabs('parametres', 'viewer')).not.toContain('/espace/abonnement');
   });
 
   it('offers « Retour » everywhere but on the pages of the menu', () => {
@@ -137,10 +135,13 @@ describe('navigation', () => {
       '/espace/factures',
       '/espace/factures/liste',
       '/espace/factures/devis',
-      '/espace/journal',
+      '/espace/parametres',
       '/caisse',
     ])
       expect(parentPath(path), path).toBeNull();
+    // Opened from the « Paramètres » menu (ADR-063).
+    expect(parentPath('/espace/journal')).toBe('/espace/parametres');
+    expect(parentPath('/espace/equipe')).toBe('/espace/parametres');
     expect(parentPath('/espace/produits/12')).toBe('/espace/produits');
     expect(parentPath('/espace/produits/12/modifier')).toBe(
       '/espace/produits/12',

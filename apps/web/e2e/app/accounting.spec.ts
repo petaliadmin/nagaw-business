@@ -33,13 +33,14 @@ test('the journal books the day’s sale and expense, and exports them', async (
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await sellWater(page, isMobile);
-  await page.goto('/espace/tresorerie/depenses');
-  await page.locator('summary', { hasText: 'Ajouter une dépense' }).click();
+  await page.goto('/espace/tresorerie/depenses/nouvelle');
+  await page.locator('summary', { hasText: 'Détail et date' }).click();
   await page.getByLabel('Ce qui a été payé').fill('Sacs plastiques');
   await page.getByLabel('Montant', { exact: true }).fill('150');
-  await page
-    .getByLabel('Catégorie', { exact: true })
-    .selectOption({ label: 'Autres dépenses' });
+  await page.locator('label', { hasText: /^Autres dépenses$/ }).click();
+  await expect(
+    page.getByRole('radio', { name: 'Autres dépenses' }),
+  ).toBeChecked();
   await page.getByRole('button', { name: 'Enregistrer la dépense' }).click();
   await expect(page.getByText('Dépense enregistrée.')).toBeVisible();
   const year = new Date().getFullYear();

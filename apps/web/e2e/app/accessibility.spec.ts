@@ -31,6 +31,7 @@ const PAGES = [
   '/espace/statistiques',
   '/espace/tresorerie',
   '/espace/tresorerie/depenses',
+  '/espace/tresorerie/depenses/nouvelle',
   '/espace/tresorerie/cloture',
   '/espace/comptabilite',
   '/espace/comptabilite?vue=etat',

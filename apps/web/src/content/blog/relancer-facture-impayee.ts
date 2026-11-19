@@ -76,7 +76,7 @@ Après plusieurs relances sans réponse, envoyez une mise en demeure écrite et 
 
 ## Dans Nagaw Business
 
-Le Résumé de Factures / Devis montre le reste à encaisser, et signale les factures en retard avec leur montant. Une facture peut être partagée en PDF depuis le téléphone pour être renvoyée au client, et chaque paiement partiel est enregistré avec le reste à payer. Les relances ne sont pas envoyées automatiquement : c’est vous qui choisissez le moment et le ton.
+L’onglet « À encaisser » de Factures et devis montre le reste à encaisser, et signale les factures en retard avec leur montant. Une facture peut être partagée en PDF depuis le téléphone pour être renvoyée au client, et chaque paiement partiel est enregistré avec le reste à payer. Les relances ne sont pas envoyées automatiquement : c’est vous qui choisissez le moment et le ton.
 `,
   faq: [
     {

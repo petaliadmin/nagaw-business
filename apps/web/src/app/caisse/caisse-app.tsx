@@ -13,16 +13,16 @@ import {
 import {
   CheckCircle2,
   CloudUpload,
-  LogOut,
   ReceiptText,
   RotateCcw,
+  ScanLine,
   ShoppingCart,
   TriangleAlert,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ShopMark } from '@/components/ui/shop-mark';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
@@ -849,26 +849,33 @@ export function CaisseApp() {
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 border-b border-line bg-canvas px-4 pt-[env(safe-area-inset-top)] print:hidden">
         {/* No link out: the checkout is left on purpose only. */}
-        <ShopMark version={snapshot.shop.logoVersion} />
+        <button
+          type="button"
+          onClick={() => void quit()}
+          aria-label="Quitter la caisse"
+          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-surface"
+        >
+          <X aria-hidden className="size-6" />
+        </button>
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-lg font-extrabold">
+          <span className="text-2xl font-extrabold">Caisse</span>
+          <span className="truncate text-base text-ink-muted">
             {snapshot.shop.name}
-          </span>
-          <span className="flex items-center gap-1 text-base font-semibold text-brand-ink">
-            <ShoppingCart aria-hidden className="size-4" />
-            Caisse
           </span>
         </span>
         <button
           type="button"
-          onClick={() => void quit()}
-          className={buttonClasses('secondary', 'shrink-0')}
+          onClick={() => {
+            const search = document.querySelector('[data-checkout-search]');
+            if (search instanceof HTMLInputElement) {
+              search.focus();
+              search.select();
+            }
+          }}
+          aria-label="Scanner un code-barres : passez-le au lecteur ou tapez-le"
+          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-ink text-canvas"
         >
-          <LogOut aria-hidden className="size-5" />
-          <span>
-            Quitter
-            <span className="sr-only sm:not-sr-only"> la caisse</span>
-          </span>
+          <ScanLine aria-hidden className="size-6" />
         </button>
         {confirmDialog}
       </header>

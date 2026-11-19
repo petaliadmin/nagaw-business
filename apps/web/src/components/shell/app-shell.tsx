@@ -10,10 +10,11 @@ import type { ReactNode } from 'react';
 import { closeShopAccess } from '@/app/admin/actions';
 import { CreateOrganizationForm } from '@/app/espace/create-organization-form';
 import { InstallButton, InstallDialog } from '@/components/pwa/install-app';
+import { formatContact } from '@/lib/format';
+import { ContactAvatar } from '@/components/contacts/contact-actions';
 import { SignOutButton } from '@/components/pwa/sign-out-button';
 import { SubmitButton } from '@/components/submit-button';
 import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Logo } from '@/components/ui/logo';
 import { buttonClasses } from '@/components/ui/button-styles';
@@ -37,24 +38,31 @@ function Account({
   organization: OrganizationWithRoleDto;
   tone: Tone;
 }) {
+  const who =
+    me.displayName ||
+    (me.email
+      ? formatContact(me.email)
+      : me.phone
+        ? `+${me.phone}`
+        : 'Mon compte');
   return (
     <div
       className={`flex flex-col gap-3 border-t pt-4 ${
         tone === 'sidebar' ? 'border-white/30' : 'border-line'
       }`}
     >
-      <div className="flex min-w-0 flex-col gap-1">
-        <span className="truncate text-base font-semibold" title={me.email}>
-          {me.email}
-        </span>
-        <span>
-          <Badge tone={tone === 'sidebar' ? 'neutral' : 'brand'}>
+      <div className="flex min-w-0 items-center gap-3">
+        <ContactAvatar person={{ id: me.id, name: who }} />
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate text-lg font-extrabold" title={who}>
+            {who}
+          </span>
+          <span className="text-ink-muted">
             {ROLE_LABELS[organization.role]}
-          </Badge>
-        </span>
+          </span>
+        </div>
       </div>
       <InstallButton tone={tone} />
-      <FeedbackLink tone={tone} />
       {me.platformAdmin && (
         <Link
           href="/admin"
@@ -67,7 +75,10 @@ function Account({
           Administration de la plateforme
         </Link>
       )}
-      <SignOutButton tone={tone} />
+      <div className="flex gap-2">
+        <FeedbackLink tone={tone} pill={tone === 'surface'} />
+        <SignOutButton tone={tone} />
+      </div>
     </div>
   );
 }
@@ -148,14 +159,15 @@ export async function AppShell({ children }: { children: ReactNode }) {
     return (
       <CenteredState>
         <Logo href="/espace" />
-        <h1 className="text-3xl font-extrabold">Créez votre boutique</h1>
-        <p className="text-ink-muted">
-          Connecté en tant que <strong>{workspace.me.email}</strong>. Votre
-          boutique regroupe votre équipe et, bientôt, vos produits et vos
-          ventes.
+        <p className="font-bold text-ink-muted">
+          Étape 2 sur 2 · c’est presque fini
         </p>
+        <h1 className="text-3xl font-extrabold">Créez votre boutique</h1>
         <Card>
-          <CreateOrganizationForm ownerName={workspace.me.displayName} />
+          <CreateOrganizationForm
+            ownerName={workspace.me.displayName}
+            phone={workspace.me.phone}
+          />
         </Card>
         <div>
           <SignOutButton />

@@ -19,13 +19,10 @@ import {
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { SoftStat } from '@/components/dashboard/kpi';
-import type { ModuleTone } from '@/components/dashboard/tones';
 import { CONTROL } from '@/components/form-field';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { buttonClasses } from '@/components/ui/button-styles';
-import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Figure } from '@/components/ui/figure';
 import { PageFallback } from '@/components/ui/page-fallback';
@@ -52,13 +49,6 @@ const PAYMENT_ICONS: Record<PaymentMethod, LucideIcon> = {
   card: CreditCard,
   credit: HandCoins,
 };
-const PAYMENT_TONES: Record<PaymentMethod, ModuleTone> = {
-  cash: 'sales',
-  mobile_money: 'stats',
-  card: 'stock',
-  credit: 'invoices',
-};
-
 /** The day before a calendar date (YYYY-MM-DD). */
 function previousDay(day: string): string {
   const date = new Date(`${day}T12:00:00Z`);
@@ -176,47 +166,42 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
       {everyDay ? null : !summary.ok ? (
         <Alert tone="error">Résumé indisponible : {summary.message}</Alert>
       ) : (
-        <Card
-          title={dayLabel}
-          titleId="day-summary"
-          icon={CalendarDays}
-          tone="sales"
+        <section
+          aria-labelledby="day-summary"
+          className="flex flex-col gap-2 rounded-3xl bg-surface p-4"
         >
-          <dl className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-            {/* The total first, on its own line on a phone: the largest
-                figure of the screen (DESIGN.md). */}
-            <div className="@container col-span-2 flex min-w-0 flex-col gap-1 rounded-2xl bg-sales-soft p-4">
-              <dt className="flex items-center gap-2 font-bold text-sales-ink">
-                <Banknote aria-hidden className="size-5 shrink-0" />
-                Total
-              </dt>
-              <dd className="flex flex-col gap-0.5">
+          <h2 id="day-summary" className="text-base font-bold text-ink-muted">
+            <span className="sr-only">{dayLabel} : </span>
+            {summary.data.count} vente{summary.data.count > 1 ? 's' : ''}{' '}
+            <span aria-hidden>{dayLabel.toLowerCase()}</span>
+          </h2>
+          <dl className="flex flex-col gap-3">
+            <div className="@container flex flex-col">
+              <dt className="sr-only">Total, encaissé et à crédit</dt>
+              <dd>
                 <Figure
                   value={money(summary.data.total)}
-                  className="font-extrabold text-ink tabular-nums [--figure-max:2.25rem]"
+                  className="font-extrabold text-ink tabular-nums [--figure-max:2.5rem]"
                 />
-                <p className="text-ink-muted">Encaissé et à crédit</p>
               </dd>
             </div>
-            <SoftStat
-              label="Ventes"
-              value={summary.data.count}
-              tone="sales"
-              icon={Receipt}
-            />
-            {PAYMENT_METHODS.filter((m) => summary.data.byMethod[m] > 0).map(
-              (m) => (
-                <SoftStat
-                  key={m}
-                  label={PAYMENT_LABELS[m]}
-                  value={money(summary.data.byMethod[m])}
-                  tone={PAYMENT_TONES[m]}
-                  icon={PAYMENT_ICONS[m]}
-                />
-              ),
-            )}
+            <div className="flex flex-wrap gap-2">
+              {PAYMENT_METHODS.filter((m) => summary.data.byMethod[m] > 0).map(
+                (m) => (
+                  <div
+                    key={m}
+                    className="flex min-h-10 items-center gap-1.5 rounded-full bg-canvas px-3.5 font-bold"
+                  >
+                    <dt>{PAYMENT_LABELS[m]}</dt>
+                    <dd className="tabular-nums">
+                      {money(summary.data.byMethod[m])}
+                    </dd>
+                  </div>
+                ),
+              )}
+            </div>
           </dl>
-        </Card>
+        </section>
       )}
 
       {!sales.ok ? (
@@ -245,7 +230,13 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
                       : 'text-sales-ink'
                   }`}
                 >
-                  <Receipt aria-hidden className="size-5" />
+                  {(() => {
+                    const MethodIcon =
+                      sale.methods.length === 1
+                        ? PAYMENT_ICONS[sale.methods[0]!]
+                        : Receipt;
+                    return <MethodIcon aria-hidden className="size-5" />;
+                  })()}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="font-bold break-words">
@@ -253,14 +244,14 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
                     {sale.customerName ? ` — ${sale.customerName}` : ''}
                   </span>
                   <span className="break-words text-ink-muted">
+                    {sale.methods.map((m) => PAYMENT_LABELS[m]).join(', ')} ·{' '}
                     {everyDay
                       ? formatDateTime(sale.occurredAt, organization.timezone)
                       : new Intl.DateTimeFormat('fr', {
                           timeStyle: 'short',
                           timeZone: organization.timezone,
                         }).format(new Date(sale.occurredAt))}{' '}
-                    · {sale.itemCount} article{sale.itemCount > 1 ? 's' : ''} ·{' '}
-                    {sale.methods.map((m) => PAYMENT_LABELS[m]).join(', ')}
+                    · {sale.itemCount} article{sale.itemCount > 1 ? 's' : ''}
                     {allSales ? ` · ${formatContact(sale.sellerEmail)}` : ''}
                   </span>
                   {(sale.priceReview ||
@@ -280,7 +271,7 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
                   )}
                 </span>
                 <span
-                  className={`shrink-0 text-lg font-extrabold tabular-nums ${sale.status === 'cancelled' ? 'text-ink-muted line-through' : 'text-ink'}`}
+                  className={`shrink-0 text-lg font-extrabold whitespace-nowrap tabular-nums ${sale.status === 'cancelled' ? 'text-ink-muted line-through' : 'text-ink'}`}
                 >
                   {money(sale.total)}
                 </span>
@@ -297,6 +288,11 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
             </li>
           ))}
         </ul>
+      )}
+      {list && list.rows.length > 0 && (
+        <p className="text-center text-ink-muted">
+          Touchez un ticket pour le renvoyer sur WhatsApp ou l’annuler.
+        </p>
       )}
       <Pagination
         path="/espace/ventes"

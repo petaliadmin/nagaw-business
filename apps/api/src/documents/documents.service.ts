@@ -764,6 +764,7 @@ export class DocumentsService {
   async listInvoices(
     organizationId: string,
     page: PageQuery,
+    filter: { owing: boolean } = { owing: false },
   ): Promise<DocumentListItemDto[]> {
     const { timezone } = await this.shop(this.database.db, organizationId);
     const day = today(timezone);
@@ -791,6 +792,14 @@ export class DocumentsService {
         ),
       )
       .where('i.organization_id', '=', organizationId)
+      .$if(filter.owing, (q) =>
+        q
+          .where('i.kind', '=', 'invoice')
+          .where('i.status', '=', 'issued')
+          .where(
+            sql<boolean>`i.total > coalesce((select sum(p.amount) from app.invoice_payments p where p.organization_id = i.organization_id and p.invoice_id = i.id), 0)`,
+          ),
+      )
       .orderBy('i.created_at', 'desc')
       .orderBy('i.id', 'desc');
     const rows = await pageOf(list, page, 200).execute();

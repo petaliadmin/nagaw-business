@@ -16,12 +16,12 @@ test('owner invites a collaborator and gets a one-time link', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/equipe');
-  const invite = page.getByRole('region', { name: 'Inviter un collaborateur' });
+  const invite = page.getByRole('region', { name: 'Inviter quelqu’un' });
   // Binta's number (fake backend), typed as people write it.
   await expect(invite.getByLabel('Pays')).toHaveValue('SN');
-  await invite.getByLabel('Numéro de téléphone').fill('77 000 00 03');
-  await invite.getByLabel('Rôle').selectOption({ label: 'Gérant' });
-  await invite.getByRole('button', { name: 'Inviter' }).click();
+  await invite.getByLabel('Son numéro').fill('77 000 00 03');
+  await invite.getByText('Gérant', { exact: true }).click();
+  await invite.getByRole('button', { name: 'Inviter par WhatsApp' }).click();
 
   const link = invite.getByLabel('Lien d’invitation');
   await expect(link).toHaveValue(/\/invitation\?jeton=[A-Za-z0-9_-]{43}$/);
@@ -101,14 +101,12 @@ test('members see the team without management controls', async ({
   await page.goto('/espace/equipe');
   // Moussa's active organization is Acme (alphabetical first).
   await expect(
-    page.getByRole('table', { name: 'Équipe de Acme Dakar' }),
+    page.getByRole('list', { name: 'Équipe de Acme Dakar' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('region', { name: 'Inviter un collaborateur' }),
+    page.getByRole('region', { name: 'Inviter quelqu’un' }),
   ).toHaveCount(0);
-  await expect(page.getByRole('columnheader', { name: 'Actions' })).toHaveCount(
-    0,
-  );
+  await expect(page.locator('summary', { hasText: 'Modifier' })).toHaveCount(0);
 });
 
 test('owner changes a role and disables then reactivates a member', async ({
@@ -118,8 +116,11 @@ test('owner changes a role and disables then reactivates a member', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/equipe');
-  const members = page.getByRole('table', { name: 'Équipe de Acme Dakar' });
-  const moussa = members.getByRole('row', { name: /moussa@acme\.test/ });
+  const members = page.getByRole('list', { name: 'Équipe de Acme Dakar' });
+  const moussa = members
+    .getByRole('listitem')
+    .filter({ hasText: 'moussa@acme.test' });
+  await moussa.locator('summary', { hasText: 'Modifier' }).click();
 
   await moussa
     .getByLabel('Rôle de moussa@acme.test', { exact: true })
@@ -140,7 +141,9 @@ test('owner changes a role and disables then reactivates a member', async ({
   await expect(moussa).toContainText('Actif');
 
   // No controls on one's own row.
-  const self = members.getByRole('row', { name: /awa@acme\.test/ });
+  const self = members
+    .getByRole('listitem')
+    .filter({ hasText: 'awa@acme.test' });
   await expect(self.getByRole('button')).toHaveCount(0);
 
   await page.goto('/espace/journal');
@@ -159,9 +162,9 @@ test('owner revokes a pending invitation', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/equipe');
-  const invite = page.getByRole('region', { name: 'Inviter un collaborateur' });
-  await invite.getByLabel('Numéro de téléphone').fill('76 123 45 67');
-  await invite.getByRole('button', { name: 'Inviter' }).click();
+  const invite = page.getByRole('region', { name: 'Inviter quelqu’un' });
+  await invite.getByLabel('Son numéro').fill('76 123 45 67');
+  await invite.getByRole('button', { name: 'Inviter par WhatsApp' }).click();
   await expect(invite.getByLabel('Lien d’invitation')).toBeVisible();
   // clientWidth, not innerWidth: on mobile the layout viewport grows with
   // overflowing content, which would hide the problem.
@@ -187,9 +190,9 @@ test('invalid input is rejected before reaching the API', async ({
 }) => {
   await signInAs(context, 'awa', baseURL!);
   await page.goto('/espace/equipe');
-  const invite = page.getByRole('region', { name: 'Inviter un collaborateur' });
-  await invite.getByLabel('Numéro de téléphone').fill('77 12');
-  await invite.getByRole('button', { name: 'Inviter' }).click();
+  const invite = page.getByRole('region', { name: 'Inviter quelqu’un' });
+  await invite.getByLabel('Son numéro').fill('77 12');
+  await invite.getByRole('button', { name: 'Inviter par WhatsApp' }).click();
   await expect(
     invite.getByText('Numéro de téléphone invalide pour ce pays'),
   ).toBeVisible();

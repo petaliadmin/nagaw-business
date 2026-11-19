@@ -19,6 +19,7 @@ import {
   fromSaleSchema,
   fromSourceSchema,
   invoicePaymentSchema,
+  invoiceListQuerySchema,
   pageQuerySchema,
   updateInvoiceSchema,
   updateQuoteSchema,
@@ -27,6 +28,7 @@ import {
   type CreateQuoteInput,
   type DocumentListItemDto,
   type DocumentStatsDto,
+  type InvoiceListQuery,
   type PageQuery,
   type FromSaleInput,
   type InvoiceDto,
@@ -212,9 +214,13 @@ export class DocumentsController {
   @RequirePermission('documents.read')
   listInvoices(
     @CurrentTenant() tenant: TenantContext,
-    @Query(new ZodValidationPipe(pageQuerySchema)) page: PageQuery,
+    @Query(new ZodValidationPipe(invoiceListQuerySchema))
+    query: InvoiceListQuery,
   ): Promise<DocumentListItemDto[]> {
-    return this.documents.listInvoices(tenant.organizationId, page);
+    const { owing, ...page } = query;
+    return this.documents.listInvoices(tenant.organizationId, page, {
+      owing: owing === 'true',
+    });
   }
 
   @Post('invoices')

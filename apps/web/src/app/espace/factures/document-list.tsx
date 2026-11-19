@@ -25,8 +25,11 @@ export async function DocumentList({
   page: rawPage,
   fab,
   empty,
+  owing = false,
 }: {
   kind: 'invoices' | 'quotes';
+  /** Only the issued invoices with money still to collect (ADR-063). */
+  owing?: boolean;
   title: string;
   description: string;
   page: string | string[] | undefined;
@@ -41,7 +44,7 @@ export async function DocumentList({
   const quotes = kind === 'quotes';
   const [documents, stats] = await Promise.all([
     apiAsUser<DocumentListItemDto[]>(accessToken, {
-      path: `/${kind}?${new URLSearchParams(pageParams(page))}`,
+      path: `/${kind}?${new URLSearchParams({ ...pageParams(page), ...(owing ? { owing: 'true' } : {}) })}`,
       organizationId: organization.id,
     }),
     // What is left to collect counts every invoice, not only this page.
@@ -73,7 +76,9 @@ export async function DocumentList({
           title={
             quotes
               ? 'Aucun devis pour le moment'
-              : 'Aucune facture pour le moment'
+              : owing
+                ? 'Rien à encaisser'
+                : 'Aucune facture pour le moment'
           }
         >
           {empty(canQuote, canManage)}
@@ -86,8 +91,21 @@ export async function DocumentList({
               <span className="text-warning-ink">{money(owed)}</span>
             </p>
           )}
+          {owing && stats?.ok && stats.data.invoices.overdueCount > 0 && (
+            <Alert tone="warning">
+              {stats.data.invoices.overdueCount} facture
+              {stats.data.invoices.overdueCount > 1 ? 's' : ''} en retard :{' '}
+              {money(stats.data.invoices.overdueAmount)} à relancer.
+            </Alert>
+          )}
           <ul
-            aria-label={quotes ? 'Liste des devis' : 'Liste des factures'}
+            aria-label={
+              quotes
+                ? 'Liste des devis'
+                : owing
+                  ? 'Factures à encaisser'
+                  : 'Liste des factures'
+            }
             className="flex flex-col gap-2"
           >
             {list.rows.map((doc) => {
@@ -122,7 +140,13 @@ export async function DocumentList({
         </>
       )}
       <Pagination
-        path={quotes ? '/espace/factures/devis' : '/espace/factures/liste'}
+        path={
+          quotes
+            ? '/espace/factures/devis'
+            : owing
+              ? '/espace/factures'
+              : '/espace/factures/liste'
+        }
         params={new URLSearchParams()}
         page={page}
         hasNext={list?.hasNext ?? false}

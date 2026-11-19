@@ -926,7 +926,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
     ...(roleHasPermission(role, 'treasury.manage')
       ? [
           {
-            href: '/espace/tresorerie/depenses',
+            href: '/espace/tresorerie/depenses/nouvelle',
             label: 'Dépense',
             icon: ArrowDownToLine,
             tone: 'bg-stats-soft text-stats-ink',

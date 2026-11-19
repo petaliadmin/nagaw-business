@@ -95,13 +95,14 @@ test('an expense lowers the drawer until it is cancelled', async ({
   baseURL,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/tresorerie/depenses');
-  await page.locator('summary', { hasText: 'Ajouter une dépense' }).click();
+  await page.goto('/espace/tresorerie/depenses/nouvelle');
+  await page.locator('summary', { hasText: 'Détail et date' }).click();
   await page.getByLabel('Ce qui a été payé').fill('Ticket de bus');
   await page.getByLabel('Montant', { exact: true }).fill('200');
-  await page
-    .getByLabel('Catégorie', { exact: true })
-    .selectOption({ label: 'Autres dépenses' });
+  await page.locator('label', { hasText: /^Autres dépenses$/ }).click();
+  await expect(
+    page.getByRole('radio', { name: 'Autres dépenses' }),
+  ).toBeChecked();
   await page.getByRole('button', { name: 'Enregistrer la dépense' }).click();
   await expect(page.getByText('Dépense enregistrée.')).toBeVisible();
   const list = page.getByRole('list', { name: 'Liste des dépenses' });
@@ -166,16 +167,16 @@ test('counting the drawer tells what is missing and closes the day', async ({
     page.getByRole('heading', { level: 1, name: 'Clôturer la journée' }),
   ).toBeVisible();
   await expectAccessible(page, 'clôture');
-  await page.getByLabel('Ce que vous avez compté').fill('350');
+  await page.getByLabel('Caisse : ce que vous avez compté').fill('350');
   await expect(page.getByText(/Il manque 50/)).toBeVisible();
   await page.getByRole('button', { name: 'Clôturer la journée' }).click();
-  // The page then shows the day as counted, instead of the form.
+  // The drawer then shows the day as counted, instead of its field.
   await expect(
     page.getByText(/Journée clôturée par .*il manquait 50/),
   ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Clôturer la journée' }),
-  ).toHaveCount(0);
+  await expect(page.getByLabel('Caisse : ce que vous avez compté')).toHaveCount(
+    0,
+  );
   await page.reload();
   await expect(
     page.getByText(/Journée clôturée par .*il manquait 50/),

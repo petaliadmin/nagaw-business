@@ -12,8 +12,10 @@ const INLINE_CONTROL = CONTROL.replace('w-full', '');
 export function PhoneField({
   errors,
   idPrefix = '',
+  label = 'Numéro de téléphone',
 }: {
   errors?: Record<string, string>;
+  label?: string;
   /** Set it when the same form repeats on a page. */
   idPrefix?: string;
 }) {
@@ -24,7 +26,7 @@ export function PhoneField({
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={numberId} className="text-base font-semibold">
-        Numéro de téléphone
+        {label}
       </label>
       <div className="flex gap-2">
         <CountrySelect

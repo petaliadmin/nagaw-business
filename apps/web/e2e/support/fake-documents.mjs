@@ -397,9 +397,19 @@ export async function handleDocuments(ctx) {
   if (path === '/api/v1/invoices' && req.method === 'GET')
     return reply(
       200,
-      paged(state.invoices.filter(mine).reverse(), url).map((i) =>
-        listItem(invoiceDto(i), i.kind),
-      ),
+      paged(
+        state.invoices
+          .filter(mine)
+          .filter(
+            (i) =>
+              url.searchParams.get('owing') !== 'true' ||
+              (i.kind === 'invoice' &&
+                i.status === 'issued' &&
+                invoiceDto(i).balance > 0),
+          )
+          .reverse(),
+        url,
+      ).map((i) => listItem(invoiceDto(i), i.kind)),
     );
   if (path === '/api/v1/invoices' && req.method === 'POST') {
     const parsed = createInvoiceSchema.safeParse(body);
