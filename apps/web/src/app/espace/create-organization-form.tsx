@@ -6,7 +6,7 @@ import { OfferField } from '@/components/catalog/offer-field';
 import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { createOrganization } from './actions';
 
 export function CreateOrganizationForm({

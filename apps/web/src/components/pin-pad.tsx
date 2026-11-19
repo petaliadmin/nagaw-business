@@ -97,7 +97,6 @@ export function PinPad({
       )}
       <Keypad
         label="Touches du code"
-        onSurface
         onPress={(key) => press(key === 'del' ? 'erase' : key)}
         disabled={pending}
         eraseDisabled={pin.length === 0}

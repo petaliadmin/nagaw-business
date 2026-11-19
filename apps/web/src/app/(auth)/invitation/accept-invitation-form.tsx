@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { acceptInvitation } from '@/app/espace/actions';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 
 export function AcceptInvitationForm({ token }: { token: string }) {
   const [state, action] = useActionState(acceptInvitation, initialFormState);

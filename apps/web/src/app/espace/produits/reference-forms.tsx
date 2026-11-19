@@ -6,7 +6,7 @@ import { ActionForm } from '@/components/action-form';
 import { FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState, type FormState } from '@/lib/auth/schemas';
+import { initialFormState, type FormState } from '@/lib/auth/form-state';
 import { CATEGORY_COLOR_LABELS } from '@/lib/catalog/labels';
 import { createReference, updateReference } from './actions';
 

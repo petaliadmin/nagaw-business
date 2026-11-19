@@ -117,12 +117,10 @@ test('sign-in uses the phone number; a forgotten code goes through the team', as
 test('an older account still signs in with its e-mail and can reset its password', async ({
   page,
 }) => {
+  // No more link on the sign-in page (ADR-064): the team gives the address.
   await page.goto('/connexion');
-  await page
-    .getByRole('link', {
-      name: 'J’ai un ancien compte avec une adresse e-mail',
-    })
-    .click();
+  await expect(page.getByText(/ancien compte/i)).toHaveCount(0);
+  await page.goto('/connexion/email');
   await expect(
     page.getByRole('heading', { name: 'Ancien compte' }),
   ).toBeVisible();

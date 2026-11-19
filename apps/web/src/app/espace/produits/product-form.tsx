@@ -17,7 +17,7 @@ import { FormMessage } from '@/components/form-message';
 import { PhotoField } from '@/components/catalog/photo-field';
 import { productPhotoUrl } from '@/components/catalog/product-tile';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { GOODS_UNIT_OPTIONS, SERVICE_UNIT_OPTIONS } from '@/lib/catalog/labels';
 import { createProduct, updateProduct } from './actions';
 

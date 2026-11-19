@@ -9,7 +9,7 @@ import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
-import { initialFormState, type FormState } from '@/lib/auth/schemas';
+import { initialFormState, type FormState } from '@/lib/auth/form-state';
 import { INVOICE_PAYMENT_LABELS } from '@/lib/documents/labels';
 import { MethodPills, ProviderPills } from '@/components/sales/payment-choice';
 import {

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  accountPhone,
   formatAccountPhone,
   isGuessablePin,
   newPinSchema,
   phoneSignInSchema,
 } from './account.js';
+import { accountPhone } from './phone-check.js';
 
 describe('accountPhone', () => {
   it('adds the code of the chosen country', () => {
@@ -22,6 +22,15 @@ describe('accountPhone', () => {
   it('keeps the code of a number typed as international', () => {
     expect(accountPhone('SN', '+225 07 00 11 22 33')).toBe('2250700112233');
     expect(accountPhone('SN', '00221 77 123 45 67')).toBe('221771234567');
+  });
+
+  it('follows the telephone plan of the country (ADR-064)', () => {
+    // Right length, but no Senegalese number starts with 12.
+    expect(accountPhone('SN', '12 345 67 89')).toBeNull();
+    expect(accountPhone('SN', '33 820 00 00')).toBe('221338200000');
+    // Signing in only checks the length, never locking an account out.
+    expect(accountPhone('SN', '12 345 67 89', 'possible')).toBe('221123456789');
+    expect(accountPhone('SN', '77 123 45', 'possible')).toBeNull();
   });
 
   it('refuses a number of the wrong length or an unknown country', () => {

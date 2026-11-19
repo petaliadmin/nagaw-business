@@ -5,7 +5,7 @@ import { ActionForm } from '@/components/action-form';
 import { PhotoField } from '@/components/catalog/photo-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { updateLogo } from '../actions';
 
 /** The shop's logo, printed on its quotes and invoices (ADR-044). */

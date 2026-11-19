@@ -22,7 +22,7 @@ import {
   type AccountLook,
 } from '@/components/treasury/account-icon';
 import { categoryIcon } from '@/lib/treasury/category-icons';
-import { initialFormState, type FormState } from '@/lib/auth/schemas';
+import { initialFormState, type FormState } from '@/lib/auth/form-state';
 import {
   attachReceipt,
   cancelExpense,

@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { UserPlus } from 'lucide-react';
+import { buttonClasses } from '@/components/ui/button-styles';
+import { AuthHeader } from '../auth-header';
 import { SignUpForm } from './sign-up-form';
 
 export const metadata: Metadata = { title: 'Créer un compte — Nagaw Business' };
@@ -7,18 +10,22 @@ export const metadata: Metadata = { title: 'Créer un compte — Nagaw Business'
 export default function SignUpPage() {
   return (
     <>
-      <p className="font-bold text-ink-muted">Étape 1 sur 2</p>
-      <h1 className="text-3xl font-extrabold">Créer un compte</h1>
+      <AuthHeader
+        icon={UserPlus}
+        title="Créer un compte"
+        step={{ step: 1, total: 2, label: 'Votre numéro' }}
+      >
+        Gratuit, sans carte bancaire. Votre numéro et un code secret suffisent.
+      </AuthHeader>
       <SignUpForm />
-      <p className="text-base">
-        Déjà inscrit ?{' '}
-        <Link
-          href="/connexion"
-          className="font-bold text-brand-ink underline underline-offset-4"
-        >
+      <div className="flex flex-col gap-3 border-t border-line pt-6">
+        <p className="text-center font-semibold text-ink-muted">
+          Déjà inscrit ?
+        </p>
+        <Link href="/connexion" className={buttonClasses('secondary')}>
           Se connecter
         </Link>
-      </p>
+      </div>
     </>
   );
 }

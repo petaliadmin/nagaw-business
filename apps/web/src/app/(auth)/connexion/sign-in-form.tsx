@@ -9,7 +9,7 @@ import { PhoneField, PinField } from '@/components/phone-field';
 import { PinPad } from '@/components/pin-pad';
 import { SubmitButton } from '@/components/submit-button';
 import { buttonClasses } from '@/components/ui/button-styles';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { changePhone, signIn } from '../actions';
 
 export function SignInForm() {
@@ -30,7 +30,9 @@ export function SignInForm() {
         autoComplete="current-password"
         error={state.fieldErrors?.pin}
       />
-      <SubmitButton pendingLabel="Connexion…">Se connecter</SubmitButton>
+      <SubmitButton pendingLabel="Connexion…" className="min-h-14 text-lg">
+        Se connecter
+      </SubmitButton>
     </ActionForm>
   );
 }
@@ -43,11 +45,8 @@ export function KnownPhoneSignInForm({ phone }: { phone: string }) {
   const [state, action, pending] = useActionState(signIn, initialFormState);
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-center text-lg">
-        Numéro{' '}
-        <strong className="whitespace-nowrap tabular-nums">
-          {formatAccountPhone(phone)}
-        </strong>
+      <p className="text-center text-lg font-bold text-ink-muted tabular-nums">
+        {formatAccountPhone(phone)}
       </p>
       <ActionForm
         action={action}
@@ -68,10 +67,7 @@ export function KnownPhoneSignInForm({ phone }: { phone: string }) {
         <Suspense fallback={null}>
           <NextField />
         </Suspense>
-        <button
-          type="submit"
-          className={buttonClasses('secondaryOnSurface', 'w-full')}
-        >
+        <button type="submit" className={buttonClasses('secondary', 'w-full')}>
           Ce n’est pas mon numéro
         </button>
       </form>

@@ -7,7 +7,7 @@ import { ActionForm } from '@/components/action-form';
 import { FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState, type FormState } from '@/lib/auth/schemas';
+import { initialFormState, type FormState } from '@/lib/auth/form-state';
 import { recordMovement } from '../actions';
 import { currencySymbol } from '../product-form';
 

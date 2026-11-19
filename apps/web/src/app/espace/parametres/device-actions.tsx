@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { useConfirmedSubmit } from '@/components/ui/confirm-dialog';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { restoreDevice, revokeDevice } from '../vendre/actions';
 
 /** Brings a withdrawn device back: it opens the checkout and sends again. */

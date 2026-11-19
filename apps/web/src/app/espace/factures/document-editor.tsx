@@ -16,7 +16,7 @@ import { CONTROL } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { buttonClasses } from '@/components/ui/button-styles';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { UNIT_OPTIONS } from '@/lib/catalog/labels';
 import { saveInvoice, saveQuote } from './actions';
 

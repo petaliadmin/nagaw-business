@@ -7,7 +7,7 @@ import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { PinField } from '@/components/phone-field';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import {
   answerFeedback,
   openShopAccess,

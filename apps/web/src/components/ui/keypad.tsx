@@ -11,10 +11,7 @@ export function Keypad({
   disabled = false,
   eraseDisabled = false,
   label = 'Pavé numérique',
-  onSurface = false,
 }: {
-  /** Inside a grey card: white keys, so that they still stand out. */
-  onSurface?: boolean;
   /** A digit, or `del` to erase the last one. */
   onPress: (key: string) => void;
   disabled?: boolean;
@@ -25,7 +22,7 @@ export function Keypad({
     <div
       role="group"
       aria-label={label}
-      className="grid w-full grid-cols-3 gap-2"
+      className="grid w-full grid-cols-3 gap-3"
     >
       {KEYS.map((key, index) =>
         key === '' ? (
@@ -37,7 +34,7 @@ export function Keypad({
             onClick={() => onPress(key)}
             disabled={disabled || (key === 'del' && eraseDisabled)}
             aria-label={key === 'del' ? 'Effacer un chiffre' : undefined}
-            className={`flex min-h-14 items-center justify-center rounded-2xl ${onSurface ? 'bg-canvas' : 'bg-surface'} text-2xl font-extrabold tabular-nums transition-colors active:bg-line disabled:opacity-50`}
+            className="flex min-h-16 items-center justify-center rounded-[22px] bg-surface text-[1.625rem] font-extrabold tabular-nums transition-colors active:bg-line disabled:opacity-50"
           >
             {key === 'del' ? <Delete aria-hidden className="size-7" /> : key}
           </button>

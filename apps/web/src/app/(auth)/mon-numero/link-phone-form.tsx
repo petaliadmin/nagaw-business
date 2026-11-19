@@ -6,7 +6,7 @@ import { FormMessage } from '@/components/form-message';
 import { NextField } from '@/components/next-field';
 import { PhoneField, PinField } from '@/components/phone-field';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { linkPhone } from '../actions';
 
 export function LinkPhoneForm() {

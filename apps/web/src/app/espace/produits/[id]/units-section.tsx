@@ -17,7 +17,7 @@ import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { Card } from '@/components/ui/card';
-import { initialFormState, type FormState } from '@/lib/auth/schemas';
+import { initialFormState, type FormState } from '@/lib/auth/form-state';
 import { addProductUnit, updateProductUnit } from '../actions';
 
 const quantity = (value: number) =>

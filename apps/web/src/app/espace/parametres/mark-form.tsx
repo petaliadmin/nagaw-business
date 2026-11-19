@@ -6,7 +6,7 @@ import { ActionForm } from '@/components/action-form';
 import { PhotoField } from '@/components/catalog/photo-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { updateMark } from '../actions';
 
 const WORDS = {

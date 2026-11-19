@@ -7,7 +7,7 @@ import { OfferField } from '@/components/catalog/offer-field';
 import { FormField, SelectField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
-import { initialFormState } from '@/lib/auth/schemas';
+import { initialFormState } from '@/lib/auth/form-state';
 import { updateOrganization } from '../actions';
 
 const asOptions = (values: string[]) =>
