@@ -53,7 +53,11 @@ async function NewExpense() {
             organizationId={organization.id}
             categories={categories.data
               .filter((c) => c.status === 'active')
-              .map((c) => ({ value: c.id, label: c.name }))}
+              .map((c) => ({
+                value: c.id,
+                label: c.name,
+                accountCode: c.accountCode,
+              }))}
             accounts={accountOptions(treasury.data.accounts)}
             today={treasury.data.today.day}
             currency={organization.defaultCurrency}

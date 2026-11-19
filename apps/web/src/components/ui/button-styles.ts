@@ -6,6 +6,8 @@
 const VARIANTS = {
   primary: 'bg-ink text-canvas hover:opacity-90',
   secondary: 'bg-surface text-ink hover:bg-line',
+  // The same, inside a grey card: white so that it still stands out.
+  secondaryOnSurface: 'bg-canvas text-ink hover:bg-line',
   danger: 'bg-danger-strong text-white hover:bg-danger',
   // Selling and paying: the main action of the checkout, in ink too. Green
   // stays for the money itself (amounts, « Vente enregistrée »).

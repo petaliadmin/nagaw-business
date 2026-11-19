@@ -6,7 +6,8 @@ import {
 } from '@nagaw/shared';
 import { Plus, Tags } from 'lucide-react';
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
+import { createElement, Suspense } from 'react';
+import { categoryIcon } from '@/lib/treasury/category-icons';
 import { PeriodPicker } from '@/components/treasury/period-picker';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -116,8 +117,16 @@ async function Expenses({
                 key={expense.id}
                 className="flex flex-col gap-2 rounded-3xl bg-surface px-4 py-3"
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <span className="flex flex-col">
+                <div className="flex items-start gap-3">
+                  <span
+                    aria-hidden
+                    className="flex size-11 shrink-0 items-center justify-center rounded-full bg-canvas"
+                  >
+                    {createElement(categoryIcon(expense.category.accountCode), {
+                      className: 'size-5',
+                    })}
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
                     <span className="font-bold">{expense.label}</span>
                     <span className="text-ink-muted">
                       {expense.number} ·{' '}

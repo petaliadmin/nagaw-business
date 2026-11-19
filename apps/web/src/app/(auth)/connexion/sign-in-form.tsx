@@ -68,7 +68,10 @@ export function KnownPhoneSignInForm({ phone }: { phone: string }) {
         <Suspense fallback={null}>
           <NextField />
         </Suspense>
-        <button type="submit" className={buttonClasses('secondary', 'w-full')}>
+        <button
+          type="submit"
+          className={buttonClasses('secondaryOnSurface', 'w-full')}
+        >
           Ce n’est pas mon numéro
         </button>
       </form>

@@ -172,8 +172,20 @@ test('money moved to the bank stays in the shop', async ({
   const card = page.getByRole('region', { name: 'Déplacer de l’argent' });
   // Folded until asked for: the balances come first.
   await card.locator('summary').click();
-  await card.getByLabel('Sortir de').selectOption({ label: 'Caisse' });
-  await card.getByLabel('Mettre dans').selectOption({ label: 'Banque' });
+  // Accounts as pictures with their names (ADR-063).
+  await card
+    .getByRole('group', { name: 'Sortir de' })
+    .locator('label', { hasText: /^Caisse$/ })
+    .click();
+  await card
+    .getByRole('group', { name: 'Mettre dans' })
+    .locator('label', { hasText: /^Banque$/ })
+    .click();
+  await expect(
+    card.getByRole('group', { name: 'Mettre dans' }).getByRole('radio', {
+      name: 'Banque',
+    }),
+  ).toBeChecked();
   await card.getByLabel('Montant').fill('100');
   await card.getByRole('button', { name: 'Déplacer l’argent' }).click();
   await expect(card.getByText('Argent déplacé.')).toBeVisible();

@@ -1,15 +1,27 @@
 'use client';
 
 import { amountInputValue, formatAmount, parseAmount } from '@nagaw/shared';
-import { ArrowLeft, ArrowRight, Delete } from 'lucide-react';
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import {
+  createElement,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { ActionForm } from '@/components/action-form';
 import { PhotoField } from '@/components/catalog/photo-field';
-import { FormField, SelectField } from '@/components/form-field';
+import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { FormSteps } from '@/components/ui/form-steps';
+import { Keypad } from '@/components/ui/keypad';
+import {
+  AccountIcon,
+  type AccountLook,
+} from '@/components/treasury/account-icon';
+import { categoryIcon } from '@/lib/treasury/category-icons';
 import { initialFormState, type FormState } from '@/lib/auth/schemas';
 import {
   attachReceipt,
@@ -22,7 +34,33 @@ import {
   updateAccount,
 } from './actions';
 
-type Option = { value: string; label: string };
+type Option = {
+  value: string;
+  label: string;
+  /** An account: its picture is shown beside its name. */
+  account?: AccountLook;
+  /** An expense category: its SYSCOHADA account picks its picture. */
+  accountCode?: string;
+};
+
+/** The picture of a choice, for people who do not read easily. */
+function OptionIcon({ option }: { option: Option }) {
+  if (option.account)
+    return <AccountIcon account={option.account} size="size-8" />;
+  if (option.accountCode !== undefined) {
+    return (
+      <span
+        aria-hidden
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-canvas"
+      >
+        {createElement(categoryIcon(option.accountCode), {
+          className: 'size-5',
+        })}
+      </span>
+    );
+  }
+  return null;
+}
 
 /** A new operation id after each success, so that the form starts over. */
 function useOperation(state: FormState) {
@@ -34,8 +72,6 @@ function useOperation(state: FormState) {
   }
   return operationId;
 }
-
-const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
 
 /** Radio pills: one choice among a few, touched rather than picked. */
 function ChoicePills({
@@ -76,7 +112,14 @@ function ChoicePills({
               defaultChecked={option.value === defaultValue}
               className="peer sr-only"
             />
-            <span className="inline-flex min-h-12 items-center rounded-full border-2 border-transparent bg-surface px-4 font-bold peer-checked:border-ink peer-checked:bg-canvas peer-focus-visible:outline-3 peer-focus-visible:outline-focus">
+            <span
+              className={`inline-flex min-h-12 items-center gap-2 rounded-full border-2 border-transparent bg-surface pr-4 font-bold peer-checked:border-ink peer-checked:bg-canvas peer-focus-visible:outline-3 peer-focus-visible:outline-focus ${
+                option.account || option.accountCode !== undefined
+                  ? 'pl-1.5'
+                  : 'pl-4'
+              }`}
+            >
+              <OptionIcon option={option} />
               {option.label}
             </span>
           </label>
@@ -246,31 +289,7 @@ export function ExpenseForm({
               <p className="font-semibold text-danger-ink">{errors.amount}</p>
             )}
           </div>
-          <div
-            role="group"
-            aria-label="Pavé numérique"
-            className="grid grid-cols-3 gap-2"
-          >
-            {KEYS.map((key, index) =>
-              key === '' ? (
-                <span key={index} />
-              ) : (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => press(key)}
-                  aria-label={key === 'del' ? 'Effacer un chiffre' : undefined}
-                  className="flex min-h-14 items-center justify-center rounded-2xl bg-surface text-2xl font-extrabold"
-                >
-                  {key === 'del' ? (
-                    <Delete aria-hidden className="size-7" />
-                  ) : (
-                    key
-                  )}
-                </button>
-              ),
-            )}
-          </div>
+          <Keypad onPress={press} />
         </div>
 
         {/* Step 2: what for. */}
@@ -441,22 +460,26 @@ export function TransferForm({
         <input type="hidden" name="organizationId" value={organizationId} />
         <input type="hidden" name="clientOperationId" value={operationId} />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <SelectField
-            label="Sortir de"
-            name="fromAccountId"
-            id="transfer-from"
-            defaultValue={accounts[0]?.value ?? ''}
-            options={accounts}
-            error={errors.fromAccountId}
-          />
-          <SelectField
-            label="Mettre dans"
-            name="toAccountId"
-            id="transfer-to"
-            defaultValue={accounts.at(-1)?.value ?? ''}
-            options={accounts}
-            error={errors.toAccountId}
-          />
+          {/* Pictures with the names: Wave, Orange Money… are recognised
+              at a glance (ADR-063). */}
+          <div className="md:col-span-2">
+            <ChoicePills
+              legend="Sortir de"
+              name="fromAccountId"
+              options={accounts}
+              defaultValue={accounts[0]?.value}
+              error={errors.fromAccountId}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <ChoicePills
+              legend="Mettre dans"
+              name="toAccountId"
+              options={accounts}
+              defaultValue={accounts.at(-1)?.value}
+              error={errors.toAccountId}
+            />
+          </div>
           <FormField
             label="Montant"
             name="amount"
@@ -497,6 +520,7 @@ export function TransferForm({
 export interface ClosingRow {
   id: string;
   name: string;
+  look: AccountLook;
   expected: number;
   /** Already closed this day: what was counted and the difference. */
   closed: { counted: number; difference: number; by: string } | null;
@@ -555,7 +579,10 @@ export function ClosingsForm({
               className="flex flex-col gap-3 rounded-3xl bg-surface p-4"
             >
               <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <span className="text-lg font-extrabold">{row.name}</span>
+                <span className="flex items-center gap-2 text-lg font-extrabold">
+                  <AccountIcon account={row.look} />
+                  {row.name}
+                </span>
                 <span className="text-ink-muted">
                   Attendu {money(row.expected)}
                 </span>

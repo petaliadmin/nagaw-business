@@ -1,16 +1,11 @@
 'use client';
 
-import { Delete } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useActionFormPending } from '@/components/action-form';
+import { Keypad } from '@/components/ui/keypad';
 
 const LENGTH = 4;
-const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
-const KEY_BASE =
-  'flex h-16 items-center justify-center rounded-2xl font-bold transition-colors disabled:opacity-60';
-const KEY = `${KEY_BASE} bg-surface-muted text-3xl text-ink tabular-nums active:bg-brand-soft`;
-const ERASE = `${KEY_BASE} gap-1 text-base text-ink-muted active:bg-surface-muted`;
 
 /**
  * The secret code typed on big digit keys, as in mobile money apps
@@ -100,37 +95,13 @@ export function PinPad({
           {error}
         </p>
       )}
-      <div className="grid w-full max-w-xs grid-cols-3 gap-3">
-        {KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            disabled={pending}
-            onClick={() => press(key)}
-            className={KEY}
-          >
-            {key}
-          </button>
-        ))}
-        <span aria-hidden />
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => press('0')}
-          className={KEY}
-        >
-          0
-        </button>
-        <button
-          type="button"
-          disabled={pending || pin.length === 0}
-          onClick={() => press('erase')}
-          className={ERASE}
-        >
-          <Delete aria-hidden className="size-6" />
-          Effacer
-        </button>
-      </div>
+      <Keypad
+        label="Touches du code"
+        onSurface
+        onPress={(key) => press(key === 'del' ? 'erase' : key)}
+        disabled={pending}
+        eraseDisabled={pin.length === 0}
+      />
     </div>
   );
 }

@@ -3,15 +3,7 @@ import {
   roleHasPermission,
   type TreasuryDto,
 } from '@nagaw/shared';
-import {
-  ArrowLeftRight,
-  Banknote,
-  Calculator,
-  Landmark,
-  Receipt,
-  Smartphone,
-  Wallet,
-} from 'lucide-react';
+import { ArrowLeftRight, Calculator, Receipt, Wallet } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { HideAmountsButton } from '@/components/ui/hide-amounts';
@@ -26,15 +18,10 @@ import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { accountOptions } from '@/lib/treasury/labels';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { AccountIcon } from '@/components/treasury/account-icon';
 import { TransferForm } from './forms';
 
 export const metadata: Metadata = { title: 'Trésorerie — Nagaw Business' };
-
-const ICONS = {
-  cash: Banknote,
-  mobile_money: Smartphone,
-  bank: Landmark,
-} as const;
 
 async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
   const workspace = await requireReadyWorkspace();
@@ -152,7 +139,6 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
           className="grid grid-cols-2 gap-3 lg:grid-cols-3"
         >
           {shown.map((account, index) => {
-            const Icon = ICONS[account.kind];
             const first = index === 0;
             return (
               <li key={account.id}>
@@ -163,7 +149,7 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
                   }`}
                 >
                   <span className="flex items-center gap-2 font-bold">
-                    <Icon aria-hidden className="size-5 shrink-0" />
+                    <AccountIcon account={account} />
                     <span className="min-w-0 break-words">{account.name}</span>
                   </span>
                   <span

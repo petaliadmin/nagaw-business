@@ -72,6 +72,7 @@ async function Closing({
       {
         id: account.id,
         name: account.name,
+        look: { kind: account.kind, provider: account.provider },
         expected: result.data.expectedAmount,
         closed: closing
           ? {
