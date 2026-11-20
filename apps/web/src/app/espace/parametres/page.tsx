@@ -202,7 +202,7 @@ function SettingsMenu({
         >
           <h2
             id={`settings-${group.title}`}
-            className="text-base font-extrabold text-ink-muted"
+            className="text-sm font-extrabold text-ink-muted"
           >
             {group.title}
           </h2>

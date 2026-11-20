@@ -157,7 +157,7 @@ function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
       <Link
         href={bottomHref ?? href}
         aria-current={active ? 'page' : undefined}
-        className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl text-base ${
+        className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl text-sm ${
           active ? 'font-extrabold text-brand-ink' : 'font-bold text-ink-muted'
         }`}
       >

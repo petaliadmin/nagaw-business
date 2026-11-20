@@ -121,7 +121,7 @@ async function Finances() {
           empty="Aucune boutique payante sur ces 12 mois."
           detailHeader="Boutiques payantes"
         />
-        <p className="mt-3 text-base text-ink-muted">
+        <p className="mt-3 text-sm text-ink-muted">
           Reconstitué d’après l’historique des changements d’offre et des
           suspensions, aux prix d’aujourd’hui ; le mois en cours compte les
           offres de ce jour.

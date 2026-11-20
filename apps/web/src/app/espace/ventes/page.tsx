@@ -171,7 +171,7 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
           aria-labelledby="day-summary"
           className="flex flex-col gap-2 rounded-3xl bg-surface p-4"
         >
-          <h2 id="day-summary" className="text-base font-bold text-ink-muted">
+          <h2 id="day-summary" className="text-sm font-bold text-ink-muted">
             <span className="sr-only">{dayLabel} : </span>
             {summary.data.count} vente{summary.data.count > 1 ? 's' : ''}{' '}
             <span aria-hidden>{dayLabel.toLowerCase()}</span>
@@ -182,7 +182,7 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
               <dd>
                 <Figure
                   value={money(summary.data.total)}
-                  className="font-extrabold text-ink tabular-nums [--figure-max:2.5rem]"
+                  className="font-extrabold text-ink tabular-nums [--figure-max:2.125rem]"
                 />
               </dd>
             </div>

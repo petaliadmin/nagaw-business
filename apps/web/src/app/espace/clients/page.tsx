@@ -84,7 +84,7 @@ async function Customers({ searchParams }: PageProps<'/espace/clients'>) {
           </h2>
           <Figure
             value={money(owed)}
-            className="font-extrabold tabular-nums [--figure-max:2.25rem]"
+            className="font-extrabold tabular-nums [--figure-max:2rem]"
           />
           <p className="text-base">
             {owingCount} client{owingCount > 1 ? 's' : ''} à relancer

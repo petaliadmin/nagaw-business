@@ -346,7 +346,7 @@ test('phone navigation: bottom bar and a keyboard-friendly « Menu » sheet', as
   await expect(button).toBeFocused();
 });
 
-test('touch targets are at least 48 px high', async ({
+test('touch targets are at least 44 px high', async ({
   page,
   context,
   baseURL,
@@ -373,7 +373,7 @@ test('touch targets are at least 48 px high', async ({
             box.height > 0 &&
             !el.closest('p') &&
             !el.classList.contains('sr-only') &&
-            box.height < 48
+            box.height < 44
           );
         })
         .map((el) => el.outerHTML.slice(0, 120)),

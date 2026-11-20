@@ -9,7 +9,7 @@ const STEPS = 3;
 export function SaleSteps({ step, label }: { step: 1 | 2 | 3; label: string }) {
   return (
     <div className="flex flex-col gap-2 lg:hidden print:hidden">
-      <p className="text-base font-bold text-ink-muted">
+      <p className="text-sm font-bold text-ink-muted">
         <span className="text-ink tabular-nums">
           Étape {step} sur {STEPS}
         </span>{' '}

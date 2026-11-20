@@ -11,7 +11,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-start gap-2 rounded-2xl border-2 border-dashed border-line-strong p-6">
       <p className="text-lg font-bold">{title}</p>
-      {children && <div className="text-base text-ink-muted">{children}</div>}
+      {children && <div className="text-sm text-ink-muted">{children}</div>}
     </div>
   );
 }

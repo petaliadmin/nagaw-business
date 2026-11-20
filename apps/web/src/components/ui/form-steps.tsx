@@ -13,7 +13,7 @@ export function FormSteps({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-base font-bold text-ink-muted">
+      <p className="text-sm font-bold text-ink-muted">
         <span className="text-ink tabular-nums">
           Étape {step} sur {total}
         </span>{' '}

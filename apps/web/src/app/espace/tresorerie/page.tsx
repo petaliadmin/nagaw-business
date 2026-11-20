@@ -70,18 +70,15 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
           every day in round buttons (ADR-063). */}
       <section aria-labelledby="treasury-total" className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-3">
-          <h2
-            id="treasury-total"
-            className="text-base font-bold text-ink-muted"
-          >
+          <h2 id="treasury-total" className="text-sm font-bold text-ink-muted">
             Total de la trésorerie
           </h2>
           <HideAmountsButton tone="light" />
         </div>
-        <div className="montant-prive @container font-extrabold tracking-tight tabular-nums [--figure-max:2.75rem]">
+        <div className="montant-prive @container font-extrabold tracking-tight tabular-nums [--figure-max:2.25rem]">
           <Figure value={money(t.total)} />
         </div>
-        <p className="text-base text-ink-muted">
+        <p className="text-sm text-ink-muted">
           Aujourd’hui : {money(t.today.moneyIn)} entrés,{' '}
           {money(t.today.moneyOut)} sortis.
         </p>

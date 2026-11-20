@@ -84,7 +84,7 @@ export function PinPad({
           />
         ))}
       </div>
-      <p role="status" className="min-h-6 text-base text-ink-muted">
+      <p role="status" className="min-h-6 text-sm text-ink-muted">
         {pending ? 'Vérification du code…' : null}
         <span className="sr-only">
           {pending ? '' : `${pin.length} chiffre(s) sur ${LENGTH}`}

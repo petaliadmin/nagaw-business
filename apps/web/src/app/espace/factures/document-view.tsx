@@ -29,7 +29,7 @@ function Row({
 export function CustomerBlock({ customer }: { customer: DocumentCustomerDto }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <p className="text-base text-ink-muted">Client</p>
+      <p className="text-sm text-ink-muted">Client</p>
       <p className="text-lg font-bold">{customer.name}</p>
       {customer.address && (
         <p className="whitespace-pre-line">{customer.address}</p>

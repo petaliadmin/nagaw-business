@@ -212,7 +212,7 @@ function Essentials({
             <dd className="montant-prive font-extrabold tracking-tight tabular-nums">
               <Figure
                 value={money(stats.revenue)}
-                className="[--figure-max:2.75rem]"
+                className="[--figure-max:2.25rem]"
               />
             </dd>
           </div>
@@ -652,7 +652,7 @@ function RecentSales({
                     <span className="font-bold">
                       Ticket {ticketNumber(sale.saleNumber)}
                     </span>
-                    <span className="truncate text-base text-ink-muted">
+                    <span className="truncate text-sm text-ink-muted">
                       {sale.methods.map((m) => PAYMENT_LABELS[m]).join(', ')}
                       {' · '}
                       {formatDateTime(sale.occurredAt, timezone)}

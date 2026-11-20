@@ -102,11 +102,11 @@ async function Customer({ params }: PageProps<'/espace/clients/[id]'>) {
         aria-labelledby="balance-title"
         className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-3xl bg-surface px-5 py-4"
       >
-        <h2 id="balance-title" className="text-base font-bold text-ink-muted">
+        <h2 id="balance-title" className="text-sm font-bold text-ink-muted">
           {c.balance > 0 ? 'Reste à payer' : 'Ce que le client doit'}
         </h2>
         <div
-          className={`@container min-w-40 flex-1 text-right font-extrabold tabular-nums [--figure-max:2rem] ${c.balance > 0 ? 'text-warning-ink' : 'text-sales-ink'}`}
+          className={`@container min-w-40 flex-1 text-right font-extrabold tabular-nums [--figure-max:1.75rem] ${c.balance > 0 ? 'text-warning-ink' : 'text-sales-ink'}`}
         >
           <Figure value={money(c.balance)} />
         </div>
@@ -160,7 +160,7 @@ async function Customer({ params }: PageProps<'/espace/clients/[id]'>) {
                       {sale ? '+' : '−'}
                       {money(entry.amount)}
                     </span>
-                    <span className="text-base text-ink-muted">
+                    <span className="text-sm text-ink-muted">
                       {formatDateTime(entry.at, organization.timezone)}
                     </span>
                   </span>

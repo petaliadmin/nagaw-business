@@ -379,7 +379,7 @@ async function Products({ searchParams }: PageProps<'/espace/produits'>) {
                       {catalogBadge(product).label}
                     </Badge>
                     {product.trackStock && (
-                      <span className="text-base text-ink-muted tabular-nums">
+                      <span className="text-sm text-ink-muted tabular-nums">
                         {formatQuantity(product.stockQuantity, product.unit)}
                       </span>
                     )}

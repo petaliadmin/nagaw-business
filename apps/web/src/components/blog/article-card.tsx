@@ -28,8 +28,8 @@ export function ArticleCard({
           {article.title}
         </Link>
       </Heading>
-      <p className="flex-1 text-base text-ink-muted">{article.description}</p>
-      <p className="flex items-center gap-2 text-base font-semibold text-ink-muted">
+      <p className="flex-1 text-sm text-ink-muted">{article.description}</p>
+      <p className="flex items-center gap-2 text-sm font-semibold text-ink-muted">
         <Clock aria-hidden className="size-5" />
         {readingMinutes(article)} min de lecture
       </p>

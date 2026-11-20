@@ -333,7 +333,7 @@ async function Pricing() {
                   {plan.name}
                 </h3>
                 {PLAN_PITCH[plan.key] && (
-                  <p className="text-base text-ink-muted">
+                  <p className="text-sm text-ink-muted">
                     {PLAN_PITCH[plan.key]}
                   </p>
                 )}
@@ -571,7 +571,7 @@ export default function Home() {
                 </span>
                 <div className="flex flex-col gap-1">
                   <h3 className="text-xl font-extrabold">{title}</h3>
-                  <p className="text-base text-ink-muted">{text}</p>
+                  <p className="text-sm text-ink-muted">{text}</p>
                 </div>
               </li>
             ))}
@@ -616,7 +616,7 @@ export default function Home() {
                 ))}
               </ul>
             </div>
-            <p className="text-base text-ink-muted">
+            <p className="text-sm text-ink-muted">
               Chaque boutique commence avec l’offre gratuite, sans carte
               bancaire. Vous changez d’offre depuis Paramètres, Abonnement : le
               paiement en ligne n’est pas encore ouvert, l’équipe Nagaw vous
@@ -643,7 +643,7 @@ export default function Home() {
                       className="size-6 shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none"
                     />
                   </summary>
-                  <p className="px-4 pb-4 text-base text-ink-muted">{answer}</p>
+                  <p className="px-4 pb-4 text-sm text-ink-muted">{answer}</p>
                 </details>
               </li>
             ))}

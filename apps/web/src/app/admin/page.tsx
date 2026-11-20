@@ -207,7 +207,7 @@ async function Overview() {
               detailHeader="Ventes"
             />
             {a.otherCurrencyShops > 0 && (
-              <p className="mt-3 text-base text-ink-muted">
+              <p className="mt-3 text-sm text-ink-muted">
                 Montants en {a.currency} :{' '}
                 {count(a.otherCurrencyShops, 'boutique', 'boutiques')} dans une
                 autre devise n’y {a.otherCurrencyShops > 1 ? 'sont' : 'est'} pas
