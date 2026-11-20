@@ -859,7 +859,7 @@ export function CaisseApp() {
         </button>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="text-2xl font-extrabold">Caisse</span>
-          <span className="truncate text-base text-ink-muted">
+          <span className="truncate text-sm text-ink-muted">
             {snapshot.shop.name}
           </span>
         </span>
@@ -976,7 +976,7 @@ export function CaisseApp() {
                 setTicket(null);
                 setView(tab.key);
               }}
-              className={`flex min-h-12 items-center justify-center gap-2 rounded-xl text-base font-bold ${
+              className={`flex min-h-12 items-center justify-center gap-2 rounded-xl text-sm font-bold ${
                 !ticket && view === tab.key
                   ? 'bg-surface text-brand-ink shadow-sm'
                   : 'text-ink-muted'

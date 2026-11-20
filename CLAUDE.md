@@ -32,7 +32,7 @@ pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:integ
 
 - Application SaaS de **gestion de boutique** (ADR-019) : produits et stock, ventes, statistiques et trésorerie, comptabilité SYSCOHADA, factures et devis. Une organisation est une boutique.
 - **Mobile first** (360 px d'abord), responsive ordinateur, **hors ligne** pour vendre (ADR-020) : toute écriture de vente ou de stock est une opération idempotente (`client_operation_id`), revérifiée par le serveur.
-- Public peu à l'aise avec le numérique : suivre `docs/DESIGN.md` (couleurs vives par module, jetons sémantiques, WCAG 2.2 AA, cibles de 48 px, texte ≥ 16 px, une action principale par écran, mots du quotidien).
+- Public peu à l'aise avec le numérique : suivre `docs/DESIGN.md` (couleurs vives par module, jetons sémantiques, WCAG 2.2 AA, densité native (ADR-066) : cibles de 44 px, texte principal 16 px et secondaire 14 px au moins, une action principale par écran, mots du quotidien).
 - Montants en `bigint` (`XOF` sans décimales), calculs de totaux partagés dans `packages/shared`. Factures numérotées uniquement par le serveur.
 
 ## Conventions

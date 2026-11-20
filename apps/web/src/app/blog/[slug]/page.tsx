@@ -124,7 +124,7 @@ export default async function ArticlePage({
             {article.title}
           </h1>
           <p className="text-xl text-ink-muted">{article.description}</p>
-          <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-ink-muted">
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-muted">
             <span>
               Par <strong className="text-ink">l’équipe Nagaw Business</strong>
             </span>

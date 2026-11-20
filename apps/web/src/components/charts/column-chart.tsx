@@ -62,7 +62,7 @@ export function ColumnChart({
         <p className="text-ink-muted">{empty}</p>
       ) : (
         <div aria-hidden className="flex flex-col gap-2">
-          <span className="text-base font-bold text-ink-muted tabular-nums">
+          <span className="text-sm font-bold text-ink-muted tabular-nums">
             {format(max)}
           </span>
           <div className="relative flex h-44 items-end gap-1">
@@ -111,7 +111,7 @@ export function ColumnChart({
               );
             })}
           </div>
-          <div className="flex justify-between gap-2 text-base font-bold text-ink-muted">
+          <div className="flex justify-between gap-2 text-sm font-bold text-ink-muted">
             <span>{points[0]!.tick}</span>
             {points.length > 2 && <span>{middle!.tick}</span>}
             {points.length > 1 && <span>{points.at(-1)!.tick}</span>}

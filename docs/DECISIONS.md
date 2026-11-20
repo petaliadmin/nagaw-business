@@ -824,3 +824,14 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
     - **petite case** (les clients qui doivent, sur l'Accueil) : forme courte si le montant entier est plus large que la case ;
   - **le montant entier reste** : dans l'infobulle (`title`) et pour les lecteurs d'écran ; les tickets, factures, exports et tableaux gardent toujours le montant exact ;
   - le premier affichage (serveur) montre le montant entier ; le navigateur le raccourcit avant de peindre s'il ne tient pas.
+
+## ADR-066 — Densité native : tailles d'une application de téléphone
+
+- **Statut** : **Acceptée** par le propriétaire le 2026-11-20 (« standard natif » : texte principal 16 px, secondaire 14 px, cibles de 44 px), à sa demande : « l'affichage d'une application native avec une gestion efficace des espaces, sans effet de zoom ».
+- **Contexte** : le corps du texte était à 18 px sur téléphone, les cibles à 48 px, les titres et grands chiffres très grands : sur 360 px, quelques éléments remplissaient l'écran.
+- **Décision** (dans `globals.css`, sans réécrire chaque écran) :
+  - **un pas d'espacement** vaut 44/48 de celui de Tailwind (`--spacing: 0.22917rem`) : `min-h-12` fait 44 px, la cible de l'iPhone (WCAG 2.2 AA en demande 24) ; marges, espacements, icônes et images réduisent dans la même proportion ;
+  - **texte** : corps à 16 px sur tous les écrans ; textes secondaires (dates, détails, descriptions en gris) à 14 px ; échelle des titres resserrée (`text-3xl` 26 px, `text-5xl` 36 px) ; jamais de texte sous 14 px ;
+  - **grands chiffres** : plafonds réduits (36 px au plus pour le chiffre principal) ;
+  - règles de `CLAUDE.md` et `docs/DESIGN.md` mises à jour ; les tests des cibles tactiles vérifient 44 px.
+- **Conséquences** : densité d'une application installée ; les personnes qui voient mal gardent le zoom du téléphone, que l'application ne bloque pas.

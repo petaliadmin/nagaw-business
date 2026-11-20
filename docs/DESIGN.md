@@ -46,7 +46,7 @@ Ces valeurs deviennent des jetons CSS (`@theme` de Tailwind 4) dans `apps/web/sr
 ## Typographie
 
 - Police : **Nunito** (choix du propriétaire, 2026-10-24) : formes arrondies et chaleureuses, très lisible, accents français complets, chiffres tabulaires disponibles. Chargée via `next/font/google`, avec repli système.
-- Taille minimale **16 px** pour tout texte lisible, 18 px pour le corps sur mobile, montants principaux en 32 à 40 px gras.
+- **Densité native (ADR-066)** : corps du texte en **16 px**, textes secondaires (dates, détails, descriptions) en **14 px**, titres de page en 26 px, montants principaux en 28 à 36 px gras ; jamais de texte sous 14 px.
 - Chiffres tabulaires (`font-variant-numeric: tabular-nums`) dans les listes et les totaux.
 - Texte posé sur une teinte vive : jeton `on-vivid` (`#111827`), foncé dans les deux thèmes.
 - Montants formatés avec `Intl.NumberFormat('fr', { style: 'currency', currency: 'XOF' })` : `12 500 FCFA`.
@@ -68,7 +68,7 @@ Ces valeurs deviennent des jetons CSS (`@theme` de Tailwind 4) dans `apps/web/sr
 
 ## Accessibilité (WCAG 2.2 AA minimum)
 
-- Cibles tactiles d'au moins **48 × 48 px**, espacées de 8 px.
+- Cibles tactiles d'au moins **44 × 44 px** (standard iPhone ; WCAG 2.2 AA en demande 24), espacées de 8 px ; un pas d'espacement vaut 44/48 de celui de Tailwind (ADR-066).
 - Contraste ≥ 4,5 pour le texte, ≥ 3 pour les icônes et bordures de champs.
 - Navigation complète au clavier sur ordinateur, focus visible et coloré.
 - Sur un fond de couleur forte (bande de module, tuile foncée, barre latérale), anneau de focus **blanc** (`focus-visible:outline-white`) : le violet y tombe sous 3:1. Le texte sombre `on-vivid` ne va que sur les teintes vives qui le portent à 4,5:1 (vert, orange, ambre), jamais sur le violet, le bleu, le rose ou le rouge vifs.

@@ -103,7 +103,7 @@ async function AuditLog({ searchParams }: PageProps<'/espace/journal'>) {
               {
                 header: 'Référence',
                 cell: (entry) => (
-                  <span className="font-mono text-base text-ink-muted">
+                  <span className="font-mono text-sm text-ink-muted">
                     {entry.requestId ?? '—'}
                   </span>
                 ),

@@ -121,6 +121,33 @@
 
 @theme inline {
   --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+
+  /*
+   * Native density (ADR-066): the sizes of a phone app, not of a web page
+   * seen through a magnifier. One spacing step is 44/48 of Tailwind's, so
+   * that `min-h-12` is the 44 px touch target of iOS, and every gap,
+   * padding and icon shrinks in proportion. The type scale is the one of
+   * native apps: 16 px body, 14 px secondary text, smaller titles.
+   */
+  --spacing: 0.22917rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.4;
+  --text-base: 1rem;
+  --text-base--line-height: 1.45;
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.4;
+  --text-xl: 1.1875rem;
+  --text-xl--line-height: 1.35;
+  --text-2xl: 1.375rem;
+  --text-2xl--line-height: 1.25;
+  --text-3xl: 1.625rem;
+  --text-3xl--line-height: 1.2;
+  --text-4xl: 1.875rem;
+  --text-4xl--line-height: 1.15;
+  --text-5xl: 2.25rem;
+  --text-5xl--line-height: 1.1;
+  --text-6xl: 2.75rem;
+  --text-6xl--line-height: 1.05;
   /* V3: flat. Small shadows are gone; a floating button keeps its own. */
   --shadow-xs: 0 0 #0000;
   --shadow-sm: 0 0 #0000;
@@ -190,8 +217,8 @@ body {
   background: var(--canvas);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 1.125rem;
-  line-height: 1.55;
+  font-size: 1rem;
+  line-height: 1.45;
   /* A long name, e-mail or reference wraps instead of leaving its frame. */
   overflow-wrap: anywhere;
 }
@@ -199,12 +226,6 @@ body {
 /* In a table, columns keep their width: the table scrolls in its region. */
 table {
   overflow-wrap: normal;
-}
-
-@media (min-width: 48rem) {
-  body {
-    font-size: 1rem;
-  }
 }
 
 :focus-visible {

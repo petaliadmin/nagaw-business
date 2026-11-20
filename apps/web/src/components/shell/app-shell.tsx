@@ -75,7 +75,7 @@ function Account({
           Administration de la plateforme
         </Link>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <FeedbackLink tone={tone} pill={tone === 'surface'} />
         <SignOutButton tone={tone} />
       </div>

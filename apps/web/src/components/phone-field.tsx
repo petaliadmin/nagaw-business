@@ -119,7 +119,7 @@ function CountryPicker({
         }
         aria-invalid={invalid}
         aria-describedby={describedBy}
-        className="absolute -inset-0.5 cursor-pointer opacity-0 focus-visible:outline-none"
+        className="absolute -inset-[2px] cursor-pointer opacity-0 focus-visible:outline-none"
       >
         {options
           .filter((o) => !o.divider && o.value)

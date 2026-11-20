@@ -119,7 +119,7 @@ export function SalesChart({
               </div>
             ))}
           </div>
-          <div className="flex justify-between text-base font-bold text-ink-muted">
+          <div className="flex justify-between text-sm font-bold text-ink-muted">
             <span>{tickLabel(points[0]!)}</span>
             {points.length > 1 && <span>{tickLabel(points.at(-1)!)}</span>}
           </div>

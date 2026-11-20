@@ -68,7 +68,7 @@ export function Stat({
     <div
       className={`@container flex min-w-0 flex-col gap-1 rounded-2xl bg-surface-muted p-3 ${className}`}
     >
-      <dt className="text-base text-ink-muted">{label}</dt>
+      <dt className="text-sm text-ink-muted">{label}</dt>
       <dd className="font-extrabold tabular-nums">
         <Figure value={value} />
       </dd>

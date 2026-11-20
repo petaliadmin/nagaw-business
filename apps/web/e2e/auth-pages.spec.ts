@@ -31,7 +31,7 @@ test('home page keeps a WhatsApp button to the team in view', async ({
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await expect(whatsapp).toBeInViewport();
   const box = await whatsapp.boundingBox();
-  expect(box!.height).toBeGreaterThanOrEqual(48);
+  expect(box!.height).toBeGreaterThanOrEqual(44);
   const covered = await page
     .getByRole('contentinfo')
     .getByRole('link')

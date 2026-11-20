@@ -26,13 +26,13 @@ export function OrganizationSwitcher({
     <form action={selectOrganization} className="flex flex-col gap-1">
       <label
         htmlFor={selectId}
-        className={`text-base font-semibold ${tone === 'sidebar' ? 'text-white' : 'text-ink-muted'}`}
+        className={`text-sm font-semibold ${tone === 'sidebar' ? 'text-white' : 'text-ink-muted'}`}
       >
         Boutique
       </label>
       <p
         id={hintId}
-        className={`text-base ${tone === 'sidebar' ? 'text-white/90' : 'text-ink-muted'}`}
+        className={`text-sm ${tone === 'sidebar' ? 'text-white/90' : 'text-ink-muted'}`}
       >
         La boutique choisie s’ouvre aussitôt.
       </p>

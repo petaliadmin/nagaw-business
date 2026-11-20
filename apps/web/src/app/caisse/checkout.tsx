@@ -946,7 +946,7 @@ export function Checkout({
                     }
                     aria-invalid={invalid ? true : undefined}
                     aria-describedby={invalid ? `${inputId}-error` : undefined}
-                    className={`${CONTROL.replace('w-full', 'w-24')} shrink-0 text-center text-lg font-bold`}
+                    className={`${CONTROL.replace('w-full', 'w-16').replace('px-4', 'px-1')} shrink-0 text-center text-lg font-bold`}
                   />
                   <button
                     type="button"
@@ -956,7 +956,9 @@ export function Checkout({
                   >
                     <Plus aria-hidden className="size-5" />
                   </button>
-                  <span className="text-ink-muted">{unitName}</span>
+                  <span className="min-w-0 truncate text-sm text-ink-muted">
+                    {unitName}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -1075,7 +1077,7 @@ export function Checkout({
       {/* V3 « Encaisser »: what is to be paid first, big (ADR-063). */}
       <h2 id={`${ids}-pay`} className="flex flex-col gap-1">
         <span className="sr-only">Paiement — </span>
-        <span className="text-base font-bold text-ink-muted">
+        <span className="text-sm font-bold text-ink-muted">
           À payer · {cart.length} article{cart.length > 1 ? 's' : ''}
         </span>
         <span className="text-5xl font-extrabold tracking-tight tabular-nums">
@@ -1439,7 +1441,7 @@ export function Checkout({
                   // A category of the other kind would show nothing.
                   setCategory(null);
                 }}
-                className={`flex min-h-12 items-center justify-center gap-2 rounded-xl text-base font-bold ${
+                className={`flex min-h-12 items-center justify-center gap-2 rounded-xl text-sm font-bold ${
                   kind === option.key
                     ? 'bg-surface text-brand-ink shadow-sm'
                     : 'text-ink-muted'

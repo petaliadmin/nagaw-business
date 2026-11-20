@@ -27,7 +27,7 @@ export function SiteFooter({
       >
         <div className="flex flex-col gap-1">
           <Logo href="/" />
-          <p className="text-base text-ink-muted">
+          <p className="text-sm text-ink-muted">
             La gestion de boutique, simple et en français.
           </p>
         </div>
