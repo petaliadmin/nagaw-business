@@ -34,6 +34,7 @@ import {
   Split,
   Tag,
   Trash2,
+  Wallet,
   Wrench,
   X,
   type LucideIcon,
@@ -1074,18 +1075,28 @@ export function Checkout({
       aria-labelledby={`${ids}-pay`}
       className="flex flex-col gap-4 overflow-hidden rounded-3xl bg-surface p-4 shadow-sm"
     >
-      {/* V3 « Encaisser »: what is to be paid first, big (ADR-063). */}
-      <h2 id={`${ids}-pay`} className="flex flex-col gap-1">
-        <span className="sr-only">Paiement — </span>
-        <span className="text-sm font-bold text-ink-muted">
-          À payer · {cart.length} article{cart.length > 1 ? 's' : ''}
-        </span>
-        <span className="text-5xl font-extrabold tracking-tight tabular-nums">
-          {money(totals.total)}
-        </span>
-      </h2>
+      {/* Under the cart and its total, read first (owner, 2026-11-22): the
+          cart, then how the customer pays, then « Valider la vente ». */}
+      <div className={SECTION_HEAD}>
+        <h2
+          id={`${ids}-pay`}
+          className="flex items-center gap-3 text-xl font-bold"
+        >
+          <span className={HEAD_BADGE}>
+            <Wallet aria-hidden className="size-6" />
+          </span>
+          Paiement
+        </h2>
+      </div>
+      <p id={`${ids}-how`} className="-mt-2 font-bold text-ink-muted">
+        Comment le client paie ?
+      </p>
       {/* Four round choices in a row, as in mobile money apps. */}
-      <div className="grid grid-cols-4 gap-2">
+      <div
+        role="group"
+        aria-labelledby={`${ids}-how`}
+        className="grid grid-cols-4 gap-2"
+      >
         {PAYMENT_METHODS.map((m) => (
           <MethodButton
             key={m}
@@ -1363,8 +1374,9 @@ export function Checkout({
         </Alert>
       )}
       {error && <Alert tone="error">{error}</Alert>}
-      {/* On a phone the button stays at the bottom of the screen. */}
-      <div className="sticky bottom-0 -mx-4 -mb-4 rounded-b-2xl border-t border-line bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:static lg:m-0 lg:border-0 lg:p-0">
+      {/* On a phone the button stays at the bottom of the screen, under
+          the thumb, whether the cart or the payment is in view. */}
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-canvas px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:static lg:border-0 lg:bg-transparent lg:p-0">
         <button
           type="button"
           onClick={submit}
@@ -1544,7 +1556,8 @@ export function Checkout({
       </div>
 
       <div
-        className={`flex flex-col gap-4 ${step === 'cart' ? 'hidden lg:flex' : ''}`}
+        // Room under the payment for the button fixed at the bottom.
+        className={`flex flex-col gap-4 ${step === 'cart' ? 'hidden lg:flex' : 'pb-28 lg:pb-0'}`}
       >
         {step === 'pay' && (
           <SaleSteps step={2} label="Comment le client paie ?" />
@@ -1559,19 +1572,10 @@ export function Checkout({
             Ajouter d’autres {noun}s
           </button>
         )}
-        {/* On a phone, the second step opens on what is to be paid. */}
-        <div
-          className={`flex flex-col gap-4 ${step === 'pay' ? 'order-2 lg:order-none' : ''}`}
-        >
-          {cartPanel}
-        </div>
-        {cart.length > 0 && (
-          <div
-            className={`flex flex-col gap-4 ${step === 'pay' ? 'order-1 lg:order-none' : ''}`}
-          >
-            {paymentPanel}
-          </div>
-        )}
+        {/* The same order everywhere: the cart and what is to be paid,
+            then how it is paid, then the button that validates. */}
+        {cartPanel}
+        {cart.length > 0 && paymentPanel}
       </div>
 
       {step === 'cart' && cart.length > 0 && (

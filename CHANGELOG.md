@@ -5,6 +5,8 @@ Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est
 ## Non publié — branche `profils-affichage`
 
 - **Une application à la taille de chaque boutique (ADR-067)** : à la création, « Comment travaillez-vous ? » (crédit, stock, factures, équipe) ; le Menu et l'Accueil n'affichent que ce qui sert ; Paramètres › Mon application pour cacher ou rallumer chaque partie, choisir si les nouveaux produits comptent leur stock, ou tout afficher ; « Produits » à la place de « Stock » dans la barre du bas quand rien n'est compté. Rien n'est supprimé, et les boutiques existantes ne voient aucun changement.
+- **Création de boutique en trois étapes**, comme la maquette : votre boutique, ce que vous vendez, vos habitudes, puis un aperçu « Voici votre application ».
+- **Caisse plus logique** : à l'étape « Encaisser », le panier d'abord, puis le moyen de paiement, puis « Valider la vente », toujours visible en bas de l'écran du téléphone.
 
 ## Non publié — branche `refonte-v3`
 
