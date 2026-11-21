@@ -10,10 +10,13 @@ export function OfferField({
   value,
   error,
   legend = 'Que vendez-vous ?',
+  onChange,
 }: {
   value: ShopOffer;
   error?: string;
   legend?: string;
+  /** Told of each choice, for a form that follows it. */
+  onChange?: (offer: ShopOffer) => void;
 }) {
   const [offer, setOffer] = useState(value);
   return (
@@ -34,7 +37,10 @@ export function OfferField({
               name="offer"
               value={option.value}
               checked={offer === option.value}
-              onChange={() => setOffer(option.value)}
+              onChange={() => {
+                setOffer(option.value);
+                onChange?.(option.value);
+              }}
               className="sr-only"
             />
             {/* The choice is not told by its colour alone (DESIGN.md). */}

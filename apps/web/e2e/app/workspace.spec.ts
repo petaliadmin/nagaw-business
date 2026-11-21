@@ -267,15 +267,32 @@ test('a user without a shop is guided to create one', async ({
   await signInAs(context, 'binta', baseURL!);
   await page.goto('/espace/equipe');
   await expect(
-    page.getByRole('heading', { name: 'Créez votre boutique' }),
+    page.getByRole('heading', { level: 1, name: 'Votre boutique' }),
   ).toBeVisible();
   await page.getByLabel('Nom de la boutique').fill('Binta Conseil');
   await page.getByLabel('Votre nom complet').fill('Binta Sow');
   // Her number is known from sign-up: it is not asked again.
   await expect(page.getByLabel('Votre téléphone')).toHaveCount(0);
-  await expect(page.getByText('Étape 2 sur 2')).toBeVisible();
+  // Three steps, then the application they give (maquette « Profils »).
+  await expect(page.getByText('Étape 1 sur 3')).toBeVisible();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Étape 2 sur 3')).toBeVisible();
   await page.locator('label', { hasText: 'Des services' }).click();
-  await page.getByRole('button', { name: 'Créer ma boutique' }).click();
+  await expect(page.getByRole('status')).toContainText('« Services »');
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Étape 3 sur 3')).toBeVisible();
+  // A shop of services is not asked about stock.
+  await expect(
+    page.getByRole('group', { name: 'Comptez-vous ce qu’il vous reste ?' }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: 'Voir mon application' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Voici votre application' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'En bas de l’écran' }),
+  ).toContainText('Services');
+  await page.getByRole('button', { name: 'C’est parti' }).click();
   await expect(
     page
       .getByRole('main')
@@ -292,8 +309,18 @@ test('a simple shop sees only what it uses, and can show everything again (ADR-0
 }) => {
   await signInAs(context, 'binta', baseURL!);
   await page.goto('/espace');
+  // The name is asked first: no going on without it.
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(
+    page
+      .getByRole('alert')
+      .filter({ hasText: 'Donnez le nom de votre boutique.' }),
+  ).toBeVisible();
   await page.getByLabel('Nom de la boutique').fill('Fatou légumes');
   await page.getByLabel('Votre nom complet').fill('Fatou Diop');
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Étape 2 sur 3')).toBeVisible();
+  await page.getByRole('button', { name: 'Continuer' }).click();
   const answer = (question: string, value: 'Oui' | 'Non') =>
     page
       .getByRole('group', { name: question })
@@ -303,7 +330,29 @@ test('a simple shop sees only what it uses, and can show everything again (ADR-0
   await answer('Faites-vous des factures ou des devis ?', 'Non');
   await answer('Quelqu’un vend avec vous ?', 'Non');
   await expectAccessible(page, 'création, comment travaillez-vous');
-  await page.getByRole('button', { name: 'Créer ma boutique' }).click();
+  await page.getByRole('button', { name: 'Voir mon application' }).click();
+  const hidden = page.getByRole('region', { name: 'Caché pour l’instant' });
+  for (const part of [
+    'Clients',
+    'Factures et devis',
+    'Fournisseurs',
+    'Rapports',
+    'Équipe',
+  ])
+    await expect(hidden).toContainText(part);
+  await expect(
+    page.getByRole('region', { name: 'En bas de l’écran' }),
+  ).toContainText('Produits');
+  await expectAccessible(page, 'création, voici votre application');
+  // « Changer mes réponses » goes back, the answers kept.
+  await page.getByRole('button', { name: 'Changer mes réponses' }).click();
+  await expect(page.getByText('Étape 3 sur 3')).toBeVisible();
+  // « Revenir », beside the title, goes back one step.
+  await page.getByRole('button', { name: 'Revenir' }).click();
+  await expect(page.getByText('Étape 2 sur 3')).toBeVisible();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await page.getByRole('button', { name: 'Voir mon application' }).click();
+  await page.getByRole('button', { name: 'C’est parti' }).click();
   await expect(
     page
       .getByRole('main')

@@ -1,3 +1,6 @@
+'use client';
+
+import { sellsGoods, type ShopHabits, type ShopOffer } from '@nagaw/shared';
 import {
   FileText,
   HandCoins,
@@ -8,7 +11,7 @@ import {
 
 /** The four questions of « Comment travaillez-vous ? » (ADR-067). */
 const QUESTIONS: {
-  name: 'credit' | 'stock' | 'documents' | 'team';
+  name: keyof ShopHabits;
   label: string;
   hint: string;
   icon: LucideIcon;
@@ -40,25 +43,33 @@ const QUESTIONS: {
 ];
 
 /**
- * « Comment travaillez-vous ? »: four yes or no, all « Oui » at first so
- * that nothing disappears unless the owner says so. The answers choose
- * what the application shows; everything is changed later in Paramètres.
+ * « Comment travaillez-vous ? »: four yes or no (maquette « Profils »). A
+ * shop of services is not asked about stock: it has none (ADR-045).
  */
 export function HabitsField({
+  offer,
+  value,
+  onChange,
   errors,
 }: {
+  offer: ShopOffer;
+  value: ShopHabits;
+  onChange: (habits: ShopHabits) => void;
   errors?: Partial<Record<string, string>>;
 }) {
+  const questions = QUESTIONS.filter(
+    (question) => question.name !== 'stock' || sellsGoods(offer),
+  );
   return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1.5 text-base font-semibold">
+    <fieldset className="flex flex-col gap-2.5">
+      <legend className="mb-1 text-2xl font-extrabold">
         Comment travaillez-vous ?
       </legend>
-      {QUESTIONS.map(({ name, label, hint, icon: Icon }) => (
+      {!sellsGoods(offer) && <input type="hidden" name="stock" value="oui" />}
+      {questions.map(({ name, label, hint, icon: Icon }) => (
         <fieldset
           key={name}
           className="flex items-center gap-3 rounded-3xl bg-surface p-3"
-          aria-describedby={errors?.[name] ? `${name}-error` : undefined}
         >
           <legend className="sr-only">{label}</legend>
           <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-canvas">
@@ -68,34 +79,33 @@ export function HabitsField({
             <span className="font-bold">{label}</span>
             <span className="text-sm text-ink-muted">{hint}</span>
           </span>
-          <span className="flex shrink-0 gap-1.5">
-            {(['oui', 'non'] as const).map((answer) => (
+          <span className="flex w-20 shrink-0 flex-col gap-1.5">
+            {([true, false] as const).map((answer) => (
               <label
-                key={answer}
-                className="flex min-h-11 min-w-14 cursor-pointer items-center justify-center rounded-full bg-canvas px-3 font-extrabold focus-within:outline-3 focus-within:outline-focus has-checked:bg-ink has-checked:text-canvas"
+                key={String(answer)}
+                className={`flex min-h-11 cursor-pointer items-center justify-center rounded-full px-3 font-extrabold focus-within:outline-3 focus-within:outline-focus ${
+                  value[name] === answer ? 'bg-ink text-canvas' : 'bg-canvas'
+                }`}
               >
                 <input
                   type="radio"
                   name={name}
-                  value={answer}
-                  defaultChecked={answer === 'oui'}
+                  value={answer ? 'oui' : 'non'}
+                  checked={value[name] === answer}
+                  onChange={() => onChange({ ...value, [name]: answer })}
                   className="sr-only"
                 />
-                {answer === 'oui' ? 'Oui' : 'Non'}
+                {answer ? 'Oui' : 'Non'}
               </label>
             ))}
           </span>
           {errors?.[name] && (
-            <p id={`${name}-error`} role="alert" className="sr-only">
+            <p role="alert" className="sr-only">
               {errors[name]}
             </p>
           )}
         </fieldset>
       ))}
-      <p className="text-ink-muted">
-        L’application n’affiche que ce qui vous sert. Rien n’est supprimé : tout
-        se rajoute dans Paramètres › Mon application.
-      </p>
     </fieldset>
   );
 }
