@@ -835,3 +835,20 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **grands chiffres** : plafonds réduits (36 px au plus pour le chiffre principal) ;
   - règles de `CLAUDE.md` et `docs/DESIGN.md` mises à jour ; les tests des cibles tactiles vérifient 44 px.
 - **Conséquences** : densité d'une application installée ; les personnes qui voient mal gardent le zoom du téléphone, que l'application ne bloque pas.
+
+## ADR-067 — Une application à la taille de chaque boutique : réglages d'affichage
+
+- **Statut** : **Proposée**, phase 1 livrée sur la branche `profils-affichage` (demande du propriétaire du 2026-11-21 : « ne pas surcharger l'application pour certains clients qui ont une activité plus simple », maquettes « Profils » du canevas V3, alignées sur l'existant).
+- **Contexte** : la boutique dit déjà ce qu'elle vend (ADR-047) et chaque article est un produit ou un service (ADR-045). Mais une étale de légumes voit encore Clients, Factures, Fournisseurs, Rapports et Équipe, et chaque nouveau produit lui demande son stock.
+- **Décision** :
+  - `organizations.hidden_sections` (parmi `credit`, `customers`, `documents`, `suppliers`, `expenses`, `reports`, `team`) et `organizations.counts_stock_by_default` (migration `20261121090000_shop_display`). Les boutiques existantes ne cachent rien et comptent leur stock : rien ne change pour elles ;
+  - comme l'offre (ADR-047), c'est un **réglage d'affichage, pas une règle** : l'API ne refuse aucune opération selon ce réglage, rien n'est supprimé, une partie rallumée retrouve ses données. Caisse, Ventes, Produits et services et Argent ne se cachent jamais ;
+  - à la création, « Comment travaillez-vous ? » : crédit, stock compté, factures ou devis, quelqu'un qui vend avec vous. Quatre oui au départ, pour que rien ne disparaisse sans le choix du propriétaire. `displayFromHabits` (`@nagaw/shared`) traduit les réponses : pas de crédit → « Ils vous doivent » caché ; pas de facture → Factures et Clients cachés ; personne d'autre → Équipe cachée ; produits non comptés → Fournisseurs cachés et stock éteint au départ ; ni stock compté ni facture → Rapports cachés ;
+  - Paramètres › **Mon application** (propriétaire et gérants, permission `organization.update`) : ce que la boutique vend (déplacé de « Boutique »), un interrupteur par partie, « Compter le stock des nouveaux produits », et « Tout afficher » ;
+  - le Menu, la barre latérale et les raccourcis de l'Accueil omettent les parties cachées ; la carte du stock ne s'affiche que si un produit est compté ;
+  - la barre du bas garde ses quatre entrées autour de Caisse (ADR-063) ; le catalogue y est « Stock » pour une boutique qui compte, « Produits » sinon, « Services » pour une boutique de services ;
+  - un nouveau produit compte son stock selon le réglage ; chaque produit garde ensuite son propre choix (ADR-045) ;
+  - le rôle passe avant (ADR-036) : un vendeur ne voit pas plus, quel que soit le réglage.
+- **Reporté (phases suivantes, à valider)** : vendre en tapant un montant, prix à taper à chaque vente, garder un article après une vente libre, suggestion de compter le stock d'un produit souvent vendu, rendez-vous du jour, chiffres soins / produits sur l'Accueil d'une boutique qui vend les deux. Elles touchent la vente, la synchronisation hors ligne et la comptabilité (ADR-046) : chacune aura sa décision.
+- **Point ouvert** : pour une boutique qui vend les deux et compte ses produits, la barre affiche « Stock » (règle d'ADR-047) alors que ses services n'en ont pas.
+- **Conséquences** : appliquer `20261121090000_shop_display` avant de déployer l'API.

@@ -215,7 +215,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
           tone="surface"
         />
         <nav aria-label="Navigation principale">
-          <NavLinks role={organization.role} offer={organization.offer} />
+          <NavLinks role={organization.role} shop={organization} />
         </nav>
         <div className="mt-auto">
           <Account me={me} organization={organization} tone="surface" />
@@ -238,7 +238,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
             <nav aria-label="Autres pages">
               <NavLinks
                 role={organization.role}
-                offer={organization.offer}
+                shop={organization}
                 only="secondary"
                 tone="sheet"
               />
@@ -266,7 +266,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas pb-[env(safe-area-inset-bottom)] md:hidden print:hidden"
       >
         <ul className="mx-auto flex max-w-xl px-1 py-1">
-          <BottomNavLinks role={organization.role} offer={organization.offer} />
+          <BottomNavLinks role={organization.role} shop={organization} />
         </ul>
       </nav>
     </div>

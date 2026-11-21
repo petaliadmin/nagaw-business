@@ -15,6 +15,7 @@ import {
   ChevronRight,
   FileText,
   History,
+  LayoutGrid,
   Percent,
   Plus,
   Printer,
@@ -45,6 +46,7 @@ import { LogoForm } from './logo-form';
 import { MarkForm } from './mark-form';
 import { NotificationSettingsForm } from './notification-settings-form';
 import { currencyOptions, timeZoneOptions } from './options';
+import { DisplaySettingsForm } from './display-settings-form';
 import { OrganizationSettingsForm } from './organization-settings-form';
 import { formatContact } from '@/lib/format';
 
@@ -56,6 +58,7 @@ const markUrl = (kind: string, version: string | null) =>
 
 /** The sub-pages of the settings (ADR-063), by their address. */
 const TITLES = {
+  application: 'Mon application',
   boutique: 'Boutique',
   factures: 'Factures et devis',
   alertes: 'Alertes et stock',
@@ -71,6 +74,8 @@ const isPart = (value: unknown): value is Part =>
 
 /** A page the role cannot use falls back on the menu: no empty page. */
 function partFor(role: Role, part: Part | null): Part | null {
+  if (part === 'application' && !roleHasPermission(role, 'organization.update'))
+    return null;
   if (part === 'alertes' && !roleHasPermission(role, 'organization.update'))
     return null;
   if (part === 'appareils' && !roleHasPermission(role, 'devices.manage'))
@@ -103,6 +108,15 @@ function SettingsMenu({
     {
       title: 'Boutique',
       rows: [
+        ...(can('organization.update')
+          ? [
+              {
+                href: '/espace/parametres?partie=application',
+                label: 'Mon application : ce qui s’affiche',
+                icon: LayoutGrid,
+              },
+            ]
+          : []),
         {
           href: '/espace/parametres?partie=boutique',
           label: 'Nom, devise et fuseau horaire',
@@ -288,6 +302,25 @@ async function Settings({ partie: asked }: { partie?: string }) {
         </Link>
       )}
       {!partie && <SettingsMenu role={active.role} plan={plan} />}
+      {partie === 'application' && (
+        <Card
+          title="Mon application"
+          titleId="display-settings"
+          icon={LayoutGrid}
+        >
+          <p className="mb-4 text-ink-muted">
+            Choisissez ce que vous voyez. Un vendeur ne voit de toute façon que
+            la caisse, ses ventes et le stock.
+          </p>
+          {organization.ok ? (
+            <DisplaySettingsForm organization={organization.data} />
+          ) : (
+            <Alert tone="error">
+              Paramètres indisponibles : {organization.message}
+            </Alert>
+          )}
+        </Card>
+      )}
       {partie === 'boutique' && (
         <>
           <Card title="Boutique" titleId="org-settings" icon={Store}>

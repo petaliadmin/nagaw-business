@@ -40,6 +40,7 @@ const quantityText = (value: number | null) =>
 
 export function ProductForm({
   offer,
+  countsStockByDefault = true,
   organizationId,
   currency,
   categories,
@@ -47,6 +48,8 @@ export function ProductForm({
   product,
 }: {
   offer: ShopOffer;
+  /** Whether a new product counts its stock at first (ADR-067). */
+  countsStockByDefault?: boolean;
   organizationId: string;
   currency: string;
   /** Active categories and tax rates of the shop. */
@@ -61,7 +64,9 @@ export function ProductForm({
   );
   // One id per creation attempt: a double tap never creates two products.
   const [operationId] = useState(() => crypto.randomUUID());
-  const [trackStock, setTrackStock] = useState(product?.trackStock ?? true);
+  const [trackStock, setTrackStock] = useState(
+    product?.trackStock ?? countsStockByDefault,
+  );
   const [kind, setKind] = useState<ProductKind>(
     product?.kind ?? (offer === 'services' ? 'service' : 'product'),
   );

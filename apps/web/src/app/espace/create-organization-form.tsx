@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { ActionForm } from '@/components/action-form';
+import { HabitsField } from '@/components/catalog/habits-field';
 import { OfferField } from '@/components/catalog/offer-field';
 import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
@@ -74,6 +75,7 @@ export function CreateOrganizationForm({
         legend="Vous vendez surtout"
         error={state.fieldErrors?.offer}
       />
+      <HabitsField errors={state.fieldErrors} />
       <p className="text-ink-muted">
         Gratuit pour commencer, sans carte bancaire.
       </p>

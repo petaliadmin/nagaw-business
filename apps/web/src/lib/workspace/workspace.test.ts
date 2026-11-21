@@ -25,6 +25,8 @@ function org(id: string): OrganizationWithRoleDto {
     quoteValidityDays: 30,
     documentColor: '#6d28d9',
     offer: 'both',
+    hiddenSections: [],
+    countsStockByDefault: true,
     logoVersion: null,
     signatureVersion: null,
     stampVersion: null,

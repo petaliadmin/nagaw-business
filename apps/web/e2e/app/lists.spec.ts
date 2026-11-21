@@ -84,12 +84,13 @@ test('a shop of services only sees what serves it, and can change', async ({
   isMobile,
 }) => {
   await signInAs(context, 'awa', baseURL!);
-  await page.goto('/espace/parametres?partie=boutique');
+  // What the shop sells is chosen in « Mon application » (ADR-067).
+  await page.goto('/espace/parametres?partie=application');
   await page.waitForLoadState('networkidle');
-  const shop = page.getByRole('region', { name: 'Boutique' });
+  const shop = page.getByRole('region', { name: 'Mon application' });
   await shop.locator('label', { hasText: 'Des services' }).click();
   await shop.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(shop.getByText('Paramètres enregistrés.')).toBeVisible();
+  await expect(shop.getByText('Enregistré.')).toBeVisible();
 
   await page.goto('/espace/produits');
   const main = page.getByRole('main');

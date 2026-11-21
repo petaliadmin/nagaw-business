@@ -417,6 +417,112 @@ describe('Organizations, memberships and tenant isolation', () => {
     });
   });
 
+  describe('what a shop shows (ADR-067)', () => {
+    it('shows everything and counts stock for a shop that says nothing', async () => {
+      const shop = await ctx
+        .http()
+        .get('/api/v1/organizations/current')
+        .set(as(alice, acmeId))
+        .expect(200);
+      expect(shop.body.hiddenSections).toEqual([]);
+      expect(shop.body.countsStockByDefault).toBe(true);
+    });
+
+    it('keeps the answers given when the shop is created', async () => {
+      const fatou = await ctx.createUser();
+      const shop = await ctx
+        .http()
+        .post('/api/v1/organizations')
+        .set(as(fatou))
+        .send({
+          name: 'Fatou légumes',
+          hiddenSections: ['team', 'documents', 'customers', 'team'],
+          countsStockByDefault: false,
+        })
+        .expect(201);
+      expect(shop.body.hiddenSections).toEqual([
+        'customers',
+        'documents',
+        'team',
+      ]);
+      expect(shop.body.countsStockByDefault).toBe(false);
+      const me = await ctx.http().get('/api/v1/me').set(as(fatou)).expect(200);
+      expect(me.body.organizations[0].hiddenSections).toEqual([
+        'customers',
+        'documents',
+        'team',
+      ]);
+    });
+
+    it('is changed by who may update the shop, audited', async () => {
+      const changed = await ctx
+        .http()
+        .patch('/api/v1/organizations/current')
+        .set(as(alice, acmeId))
+        .send({ hiddenSections: ['reports'], countsStockByDefault: false })
+        .expect(200);
+      expect(changed.body.hiddenSections).toEqual(['reports']);
+      expect(changed.body.countsStockByDefault).toBe(false);
+
+      const logs = await ctx
+        .http()
+        .get('/api/v1/audit-logs?limit=1')
+        .set(as(alice, acmeId))
+        .expect(200);
+      expect(logs.body.data[0].metadata.changes).toEqual({
+        hiddenSections: { from: [], to: ['reports'] },
+        countsStockByDefault: { from: true, to: false },
+      });
+
+      // « Tout afficher »: back to the whole application.
+      const all = await ctx
+        .http()
+        .patch('/api/v1/organizations/current')
+        .set(as(alice, acmeId))
+        .send({ hiddenSections: [], countsStockByDefault: true })
+        .expect(200);
+      expect(all.body.hiddenSections).toEqual([]);
+    });
+
+    it('refuses a part that does not exist', async () => {
+      await ctx
+        .http()
+        .patch('/api/v1/organizations/current')
+        .set(as(alice, acmeId))
+        .send({ hiddenSections: ['caisse'] })
+        .expect(400);
+    });
+
+    it('never changes another shop, nor lets a plain member change it', async () => {
+      // A stranger to Acme, with Acme's id: not found, Acme unchanged.
+      await ctx
+        .http()
+        .patch('/api/v1/organizations/current')
+        .set(as(bob, acmeId))
+        .send({ hiddenSections: ['credit'] })
+        .expect(404);
+      await ctx
+        .http()
+        .patch('/api/v1/organizations/current')
+        .set(as(carol, acmeId))
+        .send({ hiddenSections: ['credit'] })
+        .expect(403);
+      // Bob's own change stays in Globex.
+      await ctx
+        .http()
+        .patch('/api/v1/organizations/current')
+        .set(as(bob, globexId))
+        .send({ hiddenSections: ['credit'] })
+        .expect(200);
+      const acme = await ctx
+        .http()
+        .get('/api/v1/organizations/current')
+        .set(as(alice, acmeId))
+        .expect(200);
+      expect(acme.body.hiddenSections).toEqual([]);
+    });
+  });
+
   describe('signature and stamp of a shop', () => {
     const PNG = Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',

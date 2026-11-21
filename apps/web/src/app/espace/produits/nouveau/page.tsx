@@ -68,6 +68,7 @@ async function NewProduct() {
       <Card>
         <ProductForm
           offer={organization.offer}
+          countsStockByDefault={organization.countsStockByDefault}
           organizationId={organization.id}
           currency={organization.defaultCurrency}
           categories={categories.data.filter((c) => c.status === 'active')}

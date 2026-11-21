@@ -2,6 +2,10 @@
 
 Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est close par une PR fusionnée dans `main`, puis l'étiquette `vX.Y.Z` posée par le propriétaire sur le commit de fusion.
 
+## Non publié — branche `profils-affichage`
+
+- **Une application à la taille de chaque boutique (ADR-067)** : à la création, « Comment travaillez-vous ? » (crédit, stock, factures, équipe) ; le Menu et l'Accueil n'affichent que ce qui sert ; Paramètres › Mon application pour cacher ou rallumer chaque partie, choisir si les nouveaux produits comptent leur stock, ou tout afficher ; « Produits » à la place de « Stock » dans la barre du bas quand rien n'est compté. Rien n'est supprimé, et les boutiques existantes ne voient aucun changement.
+
 ## Non publié — branche `refonte-v3`
 
 - **V3 « Teranga » (ADR-063)** : design épuré (page blanche, cartes grises sans ombre, boutons noirs), barre du bas Accueil · Ventes · Caisse · Stock · Argent, Menu en grille, Accueil avec carte sombre des ventes, raccourcis ronds et « Ils vous doivent », bouton « Masquer » les montants, crédit du client en discussion avec rappel WhatsApp modifiable, deux coches sur les ventes enregistrées, écran Argent avec une carte par compte, vue rapide du stock, site public réécrit.

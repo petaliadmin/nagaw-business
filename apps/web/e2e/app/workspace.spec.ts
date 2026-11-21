@@ -284,6 +284,97 @@ test('a user without a shop is guided to create one', async ({
   await resetBackend();
 });
 
+test('a simple shop sees only what it uses, and can show everything again (ADR-067)', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  await signInAs(context, 'binta', baseURL!);
+  await page.goto('/espace');
+  await page.getByLabel('Nom de la boutique').fill('Fatou légumes');
+  await page.getByLabel('Votre nom complet').fill('Fatou Diop');
+  const answer = (question: string, value: 'Oui' | 'Non') =>
+    page
+      .getByRole('group', { name: question })
+      .locator('label', { hasText: value })
+      .click();
+  await answer('Comptez-vous ce qu’il vous reste ?', 'Non');
+  await answer('Faites-vous des factures ou des devis ?', 'Non');
+  await answer('Quelqu’un vend avec vous ?', 'Non');
+  await expectAccessible(page, 'création, comment travaillez-vous');
+  await page.getByRole('button', { name: 'Créer ma boutique' }).click();
+  await expect(
+    page
+      .getByRole('main')
+      .getByRole('heading', { level: 1, name: 'Fatou légumes' }),
+  ).toBeVisible();
+
+  const nav = page.getByRole('navigation', { name: 'Navigation principale' });
+  if (isMobile) {
+    // Nothing is counted: the catalogue is « Produits », not « Stock ».
+    await expect(nav.getByRole('link')).toHaveText([
+      'Accueil',
+      'Ventes',
+      'Caisse',
+      'Produits',
+      'Argent',
+    ]);
+    await page.getByRole('button', { name: 'Menu' }).click();
+    const menu = page.getByRole('dialog', { name: 'Menu' });
+    await expect(
+      menu.getByRole('link', { name: 'Ils vous doivent' }),
+    ).toBeVisible();
+    for (const hidden of [
+      'Clients',
+      'Factures / Devis',
+      'Fournisseurs',
+      'Équipe',
+    ])
+      await expect(menu.getByRole('link', { name: hidden })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+  } else {
+    for (const hidden of [
+      'Clients',
+      'Factures / Devis',
+      'Fournisseurs',
+      'Rapports / Statistiques',
+    ])
+      await expect(nav.getByRole('link', { name: hidden })).toHaveCount(0);
+    await expect(nav.getByRole('link', { name: 'Dépenses' })).toBeVisible();
+  }
+  // No shortcut to a hidden part on the home page.
+  await expect(page.getByRole('link', { name: 'Facture / devis' })).toHaveCount(
+    0,
+  );
+
+  // A new product does not count its stock unless asked.
+  await page.goto('/espace/produits/nouveau');
+  await expect(
+    page.getByLabel('Suivre le stock de ce produit', { exact: true }),
+  ).not.toBeChecked();
+
+  // Paramètres › Mon application: the hidden parts, then everything again.
+  await page.goto('/espace/parametres?partie=application');
+  await page.waitForLoadState('networkidle');
+  await expect(page.getByLabel('Afficher Clients')).not.toBeChecked();
+  await expect(page.getByLabel('Afficher Ils vous doivent')).toBeChecked();
+  await expectAccessible(page, 'Mon application');
+  await page.getByRole('button', { name: 'Tout afficher' }).click();
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: 'Toute l’application est affichée.' }),
+  ).toBeVisible();
+  await page.goto('/espace');
+  if (isMobile) {
+    await expect(nav.getByRole('link', { name: 'Stock' })).toBeVisible();
+  } else {
+    await expect(nav.getByRole('link', { name: 'Clients' })).toBeVisible();
+  }
+  await resetBackend();
+});
+
 test('an API failure is reported, not hidden', async ({
   page,
   context,
@@ -388,6 +479,7 @@ for (const path of [
   '/espace/equipe',
   '/espace/journal',
   '/espace/parametres',
+  '/espace/parametres?partie=application',
   '/espace/nouvelle-boutique',
   '/espace/produits',
   '/espace/produits/nouveau',

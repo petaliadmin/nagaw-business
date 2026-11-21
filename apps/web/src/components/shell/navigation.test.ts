@@ -5,6 +5,7 @@ import {
   NAV_ITEMS,
   activeHref,
   bottomBarFor,
+  catalogShortLabel,
   canGoBack,
   isActive,
   navItemsFor,
@@ -171,6 +172,52 @@ describe('navigation', () => {
       navItemsFor('owner', offer).map((item) => item.href);
     expect(hrefs('services')).not.toContain('/espace/produits/fournisseurs');
     expect(hrefs('products')).toContain('/espace/produits/fournisseurs');
+  });
+
+  it('hides the parts the shop hides, never the daily pages (ADR-067)', () => {
+    const simple = {
+      offer: 'products' as const,
+      hiddenSections: [
+        'customers',
+        'documents',
+        'suppliers',
+        'reports',
+        'team',
+      ] as const,
+      countsStockByDefault: false,
+    };
+    const hrefs = navItemsFor('owner', {
+      ...simple,
+      hiddenSections: [...simple.hiddenSections],
+    }).map((item) => item.href);
+    expect(hrefs).toEqual([
+      '/espace',
+      '/espace/ventes',
+      '/espace/produits',
+      '/espace/tresorerie/depenses',
+      '/espace/tresorerie',
+      '/espace/parametres',
+    ]);
+    const bar = bottomBarFor('owner', {
+      ...simple,
+      hiddenSections: [...simple.hiddenSections],
+    });
+    expect(
+      [...bar.before, ...bar.after].map((i) => i.shortLabel ?? i.label),
+    ).toEqual(['Accueil', 'Ventes', 'Produits', 'Argent']);
+  });
+
+  it('names the catalogue after what the shop counts', () => {
+    const shop = (offer: ShopOffer, countsStockByDefault: boolean) => ({
+      offer,
+      hiddenSections: [],
+      countsStockByDefault,
+    });
+    expect(catalogShortLabel(shop('products', true))).toBe('Stock');
+    expect(catalogShortLabel(shop('products', false))).toBe('Produits');
+    expect(catalogShortLabel(shop('both', false))).toBe('Produits');
+    expect(catalogShortLabel(shop('services', false))).toBe('Services');
+    expect(catalogShortLabel(shop('services', true))).toBe('Services');
   });
 
   it('follows the pages seen, forward and back', () => {

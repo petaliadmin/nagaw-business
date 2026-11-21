@@ -1034,3 +1034,14 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Tests modifiés le 2026-11-19** : chemins `?partie=` des paramètres, dépense (écran à part, pastilles), clôture (« Caisse : ce que vous avez compté »), équipe (liste, « Son numéro », « Inviter par WhatsApp », « Modifier »), factures (« À encaisser »), produit (« Unité », « En stock », section repliée), création de boutique, paiement (« Le client vous donne », « Monnaie à rendre »), résumé des ventes, navigation (menu des paramètres, tuile Historique).
 - **Tests exécutés** (2026-11-18) : format, lint et types verts ; tests unitaires 419/419 (shared 100, API 65, web 254) ; intégration 236/236 sur une base PostgreSQL locale ; build vert ; bout en bout : site public et ordinateur 222 réussis, téléphone 178 réussis. Seul échec : `supplier-contacts.spec.ts`, qui échoue aussi sur `main`.
 - **Tests modifiés** : barre du bas (Ventes, Caisse), lien « Caisse » à la place de « Vendre » (barre latérale sur ordinateur), fiche client (« Reste à payer », bouton d'envoi du rappel), dernières ventes sur l'Accueil, « Clôturer la journée », accroche du site.
+
+## Réglages d'affichage selon la boutique (ADR-067)
+
+- **Statut** : **phase 1 livrée sur la branche `profils-affichage`** le 2026-11-21, à valider par le propriétaire. Rien n'est fusionné dans `main`.
+- **Fait** :
+  - base : `hidden_sections` et `counts_stock_by_default` sur `app.organizations` (`20261121090000_shop_display`), contrainte sur les parties connues ;
+  - contrats (`@nagaw/shared`) : `SHOP_SECTIONS`, `ShopDisplay`, `showsSection`, `shopHabitsSchema`, `displayFromHabits` ; champs `hiddenSections` et `countsStockByDefault` à la création et en modification, triés et sans doublon ;
+  - API : création et `PATCH /organizations/current` (permission `organization.update`), changements audités ;
+  - web : « Comment travaillez-vous ? » à la création (`components/catalog/habits-field.tsx`) ; Paramètres › Mon application (`parametres/display-settings-form.tsx`, action `updateDisplay`) ; Menu, barre latérale et raccourcis de l'Accueil sans les parties cachées ; « Produits » ou « Stock » dans la barre du bas ; carte du stock seulement si un produit est compté ; stock éteint au départ dans le formulaire d'un nouveau produit selon le réglage.
+- **Non fait (reporté, voir ADR-067)** : vendre en tapant un montant, prix à taper, garder un article, suggestion de compter le stock, rendez-vous, chiffres soins / produits.
+- **Tests ajoutés** : `organizations.spec.ts` (règles des réponses, tri, parties inconnues), `navigation.test.ts` (parties cachées, nom du catalogue), `organizations.integration-spec.ts` (valeurs par défaut, création, modification auditée, partie inconnue refusée, isolation entre boutiques et membre simple refusé), `workspace.spec.ts` de bout en bout (création d'une boutique simple, Menu, barre, raccourcis, stock éteint, Mon application, « Tout afficher »).

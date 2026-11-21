@@ -1,9 +1,12 @@
 import {
   roleHasPermission,
   sellsGoods,
+  showsSection,
   type Permission,
   type Role,
+  type ShopDisplay,
   type ShopOffer,
+  type ShopSection,
 } from '@nagaw/shared';
 import {
   Banknote,
@@ -34,6 +37,8 @@ export interface NavItem {
   matches?: readonly string[];
   /** Hidden from the roles without it (the API refuses them anyway). */
   permission?: Permission;
+  /** Hidden when the shop hides this part of the application (ADR-067). */
+  section?: ShopSection;
 }
 
 /**
@@ -68,6 +73,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/espace/factures',
+    section: 'documents',
     label: 'Factures / Devis',
     icon: FileText,
     bottomBar: false,
@@ -75,18 +81,21 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/espace/clients',
+    section: 'customers',
     label: 'Clients',
     icon: Contact,
     bottomBar: false,
   },
   {
     href: '/espace/produits/fournisseurs',
+    section: 'suppliers',
     label: 'Fournisseurs',
     icon: Truck,
     bottomBar: false,
   },
   {
     href: '/espace/tresorerie/depenses',
+    section: 'expenses',
     label: 'Dépenses',
     icon: Banknote,
     bottomBar: false,
@@ -102,6 +111,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     href: '/espace/statistiques',
+    section: 'reports',
     label: 'Rapports / Statistiques',
     icon: ChartColumn,
     bottomBar: false,
@@ -117,19 +127,49 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
 ];
 
-/** Entries the role may open, named after what the shop sells (ADR-047). */
-export function navItemsFor(role: Role, offer: ShopOffer = 'both'): NavItem[] {
+/** A shop that hides nothing and counts its stock: the whole application. */
+export const FULL_DISPLAY: ShopDisplay = {
+  offer: 'both',
+  hiddenSections: [],
+  countsStockByDefault: true,
+};
+
+/** What a shop shows, from its offer alone or from its whole display. */
+export function displayOf(shop: ShopOffer | ShopDisplay): ShopDisplay {
+  return typeof shop === 'string' ? { ...FULL_DISPLAY, offer: shop } : shop;
+}
+
+/**
+ * The bottom bar's name of the catalogue (ADR-047, ADR-067): « Services »
+ * for a shop of services, « Stock » for a shop that counts it, « Produits »
+ * for one that does not.
+ */
+export function catalogShortLabel(display: ShopDisplay): string {
+  if (display.offer === 'services') return CATALOG_TITLES.services;
+  return display.countsStockByDefault ? 'Stock' : CATALOG_TITLES.products;
+}
+
+/**
+ * Entries the role may open, named after what the shop sells (ADR-047),
+ * without the parts the shop hides (ADR-067).
+ */
+export function navItemsFor(
+  role: Role,
+  shop: ShopOffer | ShopDisplay = 'both',
+): NavItem[] {
+  const display = displayOf(shop);
+  const { offer } = display;
   return NAV_ITEMS.filter(
     (item) =>
       (!item.permission || roleHasPermission(role, item.permission)) &&
-      (sellsGoods(offer) || item.href !== '/espace/produits/fournisseurs'),
+      (sellsGoods(offer) || item.href !== '/espace/produits/fournisseurs') &&
+      (!item.section || showsSection(display, item.section)),
   ).map((item) =>
-    item.href === '/espace/produits' && offer !== 'both'
+    item.href === '/espace/produits'
       ? {
           ...item,
           label: CATALOG_TITLES[offer],
-          // A shop of services has no stock to count.
-          shortLabel: offer === 'services' ? CATALOG_TITLES[offer] : 'Stock',
+          shortLabel: catalogShortLabel(display),
         }
       : item,
   );
@@ -167,9 +207,9 @@ export const BOTTOM_BAR_MAX = 4;
  */
 export function bottomBarFor(
   role: Role,
-  offer: ShopOffer = 'both',
+  shop: ShopOffer | ShopDisplay = 'both',
 ): { before: NavItem[]; after: NavItem[]; sell: boolean } {
-  const items = navItemsFor(role, offer).filter((item) => item.bottomBar);
+  const items = navItemsFor(role, shop).filter((item) => item.bottomBar);
   const half = Math.ceil(items.length / 2);
   return {
     before: items.slice(0, half),
