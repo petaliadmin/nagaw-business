@@ -289,9 +289,12 @@ test('a user without a shop is guided to create one', async ({
   await expect(
     page.getByRole('heading', { name: 'Voici votre application' }),
   ).toBeVisible();
+  // A workshop that invoices: « Factures » and « Services » in its bar.
   await expect(
-    page.getByRole('region', { name: 'En bas de l’écran' }),
-  ).toContainText('Services');
+    page
+      .getByRole('region', { name: 'En bas de l’écran' })
+      .getByRole('listitem'),
+  ).toHaveText(['Accueil', 'Factures', 'Caisse', 'Services', 'Argent']);
   await page.getByRole('button', { name: 'C’est parti' }).click();
   await expect(
     page
@@ -341,8 +344,10 @@ test('a simple shop sees only what it uses, and can show everything again (ADR-0
   ])
     await expect(hidden).toContainText(part);
   await expect(
-    page.getByRole('region', { name: 'En bas de l’écran' }),
-  ).toContainText('Produits');
+    page
+      .getByRole('region', { name: 'En bas de l’écran' })
+      .getByRole('listitem'),
+  ).toHaveText(['Accueil', 'Ventes', 'Caisse', 'Crédit', 'Argent']);
   await expectAccessible(page, 'création, voici votre application');
   // « Changer mes réponses » goes back, the answers kept.
   await page.getByRole('button', { name: 'Changer mes réponses' }).click();
@@ -361,19 +366,21 @@ test('a simple shop sees only what it uses, and can show everything again (ADR-0
 
   const nav = page.getByRole('navigation', { name: 'Navigation principale' });
   if (isMobile) {
-    // Nothing is counted: the catalogue is « Produits », not « Stock ».
+    // Nothing counted, sold on credit: « Crédit » in the bar (ADR-067).
     await expect(nav.getByRole('link')).toHaveText([
       'Accueil',
       'Ventes',
       'Caisse',
-      'Produits',
+      'Crédit',
       'Argent',
     ]);
     await page.getByRole('button', { name: 'Menu' }).click();
     const menu = page.getByRole('dialog', { name: 'Menu' });
+    // The catalogue left the bar: it is in the Menu, credit is not twice.
+    await expect(menu.getByRole('link', { name: 'Produits' })).toBeVisible();
     await expect(
       menu.getByRole('link', { name: 'Ils vous doivent' }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     for (const hidden of [
       'Clients',
       'Factures / Devis',

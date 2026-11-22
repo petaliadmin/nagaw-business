@@ -13,6 +13,7 @@ import {
   ChartColumn,
   Contact,
   FileText,
+  HandCoins,
   House,
   Package,
   Receipt,
@@ -200,6 +201,49 @@ export function activeHref(
 /** How many entries the phone bottom bar holds beside « Caisse ». */
 export const BOTTOM_BAR_MAX = 4;
 
+/** « Ils vous doivent » as an entry of the bottom bar (ADR-067). */
+export const CREDIT_ITEM: NavItem = {
+  href: '/espace/clients?doivent=1',
+  label: 'Ils vous doivent',
+  shortLabel: 'Crédit',
+  icon: HandCoins,
+  bottomBar: true,
+  permission: 'customers.read',
+  section: 'credit',
+  matches: ['/espace/clients'],
+};
+
+/**
+ * The four places of the phone bottom bar, around « Caisse » (ADR-063),
+ * chosen by what the shop does (ADR-067). « Accueil » and « Argent » never
+ * move; the two others are what the shop opens every day:
+ * - second: « Factures » for a shop of services that makes invoices, where
+ *   the work is quoted and invoiced; « Ventes » otherwise;
+ * - fourth: « Crédit » for a shop of goods that counts no stock but sells
+ *   on credit, where the catalogue is only touched in the caisse; the
+ *   catalogue otherwise, named « Stock », « Produits » or « Services ».
+ * What leaves the bar stays in « Menu ».
+ */
+export function barHrefs(
+  role: Role,
+  shop: ShopOffer | ShopDisplay = 'both',
+): string[] {
+  const display = displayOf(shop);
+  const shows = (section: ShopSection, permission: Permission) =>
+    showsSection(display, section) && roleHasPermission(role, permission);
+  const second =
+    display.offer === 'services' && shows('documents', 'documents.read')
+      ? '/espace/factures'
+      : '/espace/ventes';
+  const fourth =
+    sellsGoods(display.offer) &&
+    !display.countsStockByDefault &&
+    shows('credit', 'customers.read')
+      ? CREDIT_ITEM.href
+      : '/espace/produits';
+  return ['/espace', second, fourth, '/espace/tresorerie'];
+}
+
 /**
  * The phone bottom bar for a role: its entries in two halves, « Caisse »
  * between them for who may sell. The entry to mark is the closest one of
@@ -209,7 +253,21 @@ export function bottomBarFor(
   role: Role,
   shop: ShopOffer | ShopDisplay = 'both',
 ): { before: NavItem[]; after: NavItem[]; sell: boolean } {
-  const items = navItemsFor(role, shop).filter((item) => item.bottomBar);
+  const all = [...navItemsFor(role, shop), CREDIT_ITEM];
+  const items = barHrefs(role, shop).flatMap((href) => {
+    const item = all.find((candidate) => candidate.href === href);
+    // An entry the role may not open leaves an empty place, never another.
+    return item &&
+      (!item.permission || roleHasPermission(role, item.permission))
+      ? [
+          {
+            ...item,
+            shortLabel:
+              item.href === '/espace/factures' ? 'Factures' : item.shortLabel,
+          },
+        ]
+      : [];
+  });
   const half = Math.ceil(items.length / 2);
   return {
     before: items.slice(0, half),

@@ -12,7 +12,9 @@ import {
 import { HandCoins, History, ShoppingCart, Users } from 'lucide-react';
 import {
   activeHref,
+  barHrefs,
   bottomBarFor,
+  CREDIT_ITEM,
   navItemsFor,
   type NavItem,
 } from './navigation';
@@ -36,7 +38,12 @@ export function NavLinks({
   const pathname = usePathname();
   const all = navItemsFor(role, shop);
   const current = activeHref(all, pathname);
-  const items = all.filter((item) => only === 'all' || !item.bottomBar);
+  // The Menu holds what the bar does not, so « Ventes » or « Produits »
+  // left out of a shop's bar is still one touch away (ADR-067).
+  const bar = barHrefs(role, shop);
+  const items = all.filter(
+    (item) => only === 'all' || !bar.includes(item.href),
+  );
   // The « Menu » sheet on a phone: round tiles, three per row (ADR-063),
   // with « Ils vous doivent » first and the pages of « Paramètres » that
   // people look for (« Historique », « Équipe ») as tiles of their own.
@@ -73,7 +80,8 @@ export function NavLinks({
     return (
       <ul className="grid grid-cols-3 gap-2">
         {roleHasPermission(role, 'customers.read') &&
-          showsSection(shop, 'credit') && (
+          showsSection(shop, 'credit') &&
+          !bar.includes(CREDIT_ITEM.href) && (
             <li className="col-span-3">
               <Link
                 href="/espace/clients?doivent=1"

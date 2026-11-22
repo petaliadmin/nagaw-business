@@ -1,10 +1,12 @@
-import type { ShopOffer } from '@nagaw/shared';
+import type { ShopOffer, ShopSection } from '@nagaw/shared';
 import { describe, expect, it } from 'vitest';
 import {
   BOTTOM_BAR_MAX,
   NAV_ITEMS,
   activeHref,
+  barHrefs,
   bottomBarFor,
+  CREDIT_ITEM,
   catalogShortLabel,
   canGoBack,
   isActive,
@@ -198,13 +200,86 @@ describe('navigation', () => {
       '/espace/tresorerie',
       '/espace/parametres',
     ]);
+    // Nothing counted, sold on credit: « Crédit » takes the catalogue's place.
     const bar = bottomBarFor('owner', {
       ...simple,
       hiddenSections: [...simple.hiddenSections],
     });
     expect(
       [...bar.before, ...bar.after].map((i) => i.shortLabel ?? i.label),
-    ).toEqual(['Accueil', 'Ventes', 'Produits', 'Argent']);
+    ).toEqual(['Accueil', 'Ventes', 'Crédit', 'Argent']);
+  });
+
+  it('fills the bottom bar with what the shop opens every day (ADR-067)', () => {
+    const bar = (
+      offer: ShopOffer,
+      hiddenSections: ShopSection[],
+      countsStockByDefault: boolean,
+      role: TestRole = 'owner',
+    ) => {
+      const { before, after } = bottomBarFor(role, {
+        offer,
+        hiddenSections,
+        countsStockByDefault,
+      });
+      return [...before, ...after].map((i) => i.shortLabel ?? i.label);
+    };
+    // The shop of the other maquettes: unchanged.
+    expect(bar('products', [], true)).toEqual([
+      'Accueil',
+      'Ventes',
+      'Stock',
+      'Argent',
+    ]);
+    // Nothing counted, no credit: the catalogue keeps its place.
+    expect(bar('products', ['credit'], false)).toEqual([
+      'Accueil',
+      'Ventes',
+      'Produits',
+      'Argent',
+    ]);
+    // A workshop that quotes and invoices.
+    expect(bar('services', [], true)).toEqual([
+      'Accueil',
+      'Factures',
+      'Services',
+      'Argent',
+    ]);
+    expect(bar('services', ['documents', 'customers'], true)).toEqual([
+      'Accueil',
+      'Ventes',
+      'Services',
+      'Argent',
+    ]);
+    // Products and services, stock counted.
+    expect(bar('both', ['team'], true)).toEqual([
+      'Accueil',
+      'Ventes',
+      'Stock',
+      'Argent',
+    ]);
+    // A seller never gains the money (ADR-036).
+    expect(bar('products', [], false, 'member')).not.toContain('Argent');
+  });
+
+  it('keeps in the Menu what leaves the bar', () => {
+    const display = {
+      offer: 'services' as const,
+      hiddenSections: [],
+      countsStockByDefault: true,
+    };
+    expect(barHrefs('owner', display)).not.toContain('/espace/ventes');
+    expect(navItemsFor('owner', display).map((i) => i.href)).toContain(
+      '/espace/ventes',
+    );
+    const lit = bottomBarFor('owner', {
+      offer: 'products',
+      hiddenSections: [],
+      countsStockByDefault: false,
+    });
+    expect(activeHref([...lit.before, ...lit.after], '/espace/clients/7')).toBe(
+      CREDIT_ITEM.href,
+    );
   });
 
   it('names the catalogue after what the shop counts', () => {

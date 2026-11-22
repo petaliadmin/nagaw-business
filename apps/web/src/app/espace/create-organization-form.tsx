@@ -10,20 +10,15 @@ import {
 import {
   ArrowLeft,
   ChevronRight,
-  House,
-  Package,
-  Receipt,
-  Scissors,
   Settings,
   ShoppingCart,
-  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import { useActionState, useEffect, useRef, useState, type Ref } from 'react';
 import { ActionForm } from '@/components/action-form';
 import { HabitsField } from '@/components/catalog/habits-field';
 import { OfferCards } from '@/components/catalog/offer-cards';
-import { catalogShortLabel } from '@/components/shell/navigation';
+import { bottomBarFor, type NavItem } from '@/components/shell/navigation';
 import { FormField } from '@/components/form-field';
 import { FormMessage } from '@/components/form-message';
 import { SubmitButton } from '@/components/submit-button';
@@ -66,15 +61,16 @@ function Summary({
   titleRef: Ref<HTMLHeadingElement>;
 }) {
   const display = { offer, ...displayFromHabits(offer, habits) };
+  // The very bar the shop will have (ADR-067), « Caisse » in the middle.
+  const { before, after } = bottomBarFor('owner', display);
+  const tab = (item: NavItem) => ({
+    label: item.shortLabel ?? item.label,
+    icon: item.icon,
+  });
   const bar: { label: string; icon: LucideIcon; main?: boolean }[] = [
-    { label: 'Accueil', icon: House },
-    { label: 'Ventes', icon: Receipt },
+    ...before.map(tab),
     { label: 'Caisse', icon: ShoppingCart, main: true },
-    {
-      label: catalogShortLabel(display),
-      icon: offer === 'services' ? Scissors : Package,
-    },
-    { label: 'Argent', icon: Wallet },
+    ...after.map(tab),
   ];
   // A shop of services never has suppliers (ADR-047).
   const options = SECTION_OPTIONS.filter(
