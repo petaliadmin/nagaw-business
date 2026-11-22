@@ -13,6 +13,7 @@ import type {
   ShopLogoType,
   ShopMarkKind,
   ShopOffer,
+  ShopSection,
   StockMovementKind,
   Unit,
 } from '@nagaw/shared';
@@ -80,6 +81,8 @@ export interface OrganizationsTable {
   stamp_sha256: Generated<string | null>;
   document_color: Generated<string>;
   offer: Generated<ShopOffer>;
+  hidden_sections: Generated<ShopSection[]>;
+  counts_stock_by_default: Generated<boolean>;
   trade_register: Generated<string>;
   invoice_footer: Generated<string>;
   invoice_due_days: Generated<number>;

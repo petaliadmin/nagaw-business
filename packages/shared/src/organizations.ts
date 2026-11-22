@@ -37,6 +37,95 @@ const offerSchema = z.enum(SHOP_OFFERS, { error: 'Choix inconnu' });
 export const sellsGoods = (offer: ShopOffer) => offer !== 'services';
 export const sellsServices = (offer: ShopOffer) => offer !== 'products';
 
+/**
+ * Parts of the application a shop may hide (ADR-067). A display setting,
+ * like the offer (ADR-047): the API refuses nothing, hidden data stays.
+ * Caisse, Ventes, Produits et services and Argent are always shown.
+ */
+export const SHOP_SECTIONS = [
+  'credit',
+  'customers',
+  'documents',
+  'suppliers',
+  'expenses',
+  'reports',
+  'team',
+] as const;
+export type ShopSection = (typeof SHOP_SECTIONS)[number];
+
+const hiddenSectionsSchema = z
+  .array(z.enum(SHOP_SECTIONS, { error: 'Partie inconnue' }))
+  .max(SHOP_SECTIONS.length)
+  // One order and no duplicate: the stored value never depends on the form.
+  .transform((sections) =>
+    SHOP_SECTIONS.filter((section) => sections.includes(section)),
+  );
+
+/** What a shop shows, read by its menus, home page and product form. */
+export interface ShopDisplay {
+  offer: ShopOffer;
+  hiddenSections: readonly ShopSection[];
+  /** Whether a new product counts its stock, before the owner chooses. */
+  countsStockByDefault: boolean;
+}
+
+export const showsSection = (
+  display: Pick<ShopDisplay, 'hiddenSections'>,
+  section: ShopSection,
+) => !display.hiddenSections.includes(section);
+
+/** « Comment travaillez-vous ? », asked when the shop is created. */
+export interface ShopHabits {
+  /** Sells on credit: « Ils vous doivent ». */
+  credit: boolean;
+  /** Counts what is left of its products. */
+  stock: boolean;
+  /** Makes invoices or quotes. */
+  documents: boolean;
+  /** Someone else sells with the owner. */
+  team: boolean;
+}
+
+const yesNo = z
+  .enum(['oui', 'non'], { error: 'Répondez oui ou non' })
+  .transform((answer) => answer === 'oui');
+
+/** The four answers, as the creation form sends them. */
+export const shopHabitsSchema = z
+  .object({
+    credit: yesNo,
+    stock: yesNo,
+    documents: yesNo,
+    team: yesNo,
+  })
+  .strict();
+
+/**
+ * The display that follows the answers (ADR-067). A shop that says yes to
+ * everything sees the whole application, as before.
+ */
+export function displayFromHabits(
+  offer: ShopOffer,
+  habits: ShopHabits,
+): Omit<ShopDisplay, 'offer'> {
+  const countsStock = sellsGoods(offer) && habits.stock;
+  const hidden = new Set<ShopSection>();
+  if (!habits.credit) hidden.add('credit');
+  if (!habits.documents) {
+    hidden.add('documents');
+    hidden.add('customers');
+  }
+  if (!habits.team) hidden.add('team');
+  if (sellsGoods(offer) && !habits.stock) hidden.add('suppliers');
+  // Nothing counted and no invoice: the shop sells and looks at its day.
+  if (!countsStock && !habits.documents) hidden.add('reports');
+  return {
+    hiddenSections: SHOP_SECTIONS.filter((section) => hidden.has(section)),
+    // A shop of services has no stock: the default only matters for goods.
+    countsStockByDefault: sellsGoods(offer) ? habits.stock : true,
+  };
+}
+
 const ownerNameSchema = z
   .string()
   .trim()
@@ -61,6 +150,8 @@ export const createOrganizationSchema = z
     /** Phone of the shop, printed on its documents. */
     phone: phoneSchema.optional(),
     offer: offerSchema.optional(),
+    hiddenSections: hiddenSectionsSchema.optional(),
+    countsStockByDefault: z.boolean().optional(),
   })
   .strict();
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
@@ -123,6 +214,8 @@ export const updateOrganizationSchema = z
     invoiceFooter: text(500).optional(),
     documentColor: documentColorSchema.optional(),
     offer: offerSchema.optional(),
+    hiddenSections: hiddenSectionsSchema.optional(),
+    countsStockByDefault: z.boolean().optional(),
     invoiceDueDays: days(0, 365).optional(),
     quoteValidityDays: days(1, 365).optional(),
   })
@@ -154,6 +247,10 @@ export interface OrganizationDto {
   invoiceDueDays: number;
   quoteValidityDays: number;
   offer: ShopOffer;
+  /** Parts of the application the shop hides (ADR-067). */
+  hiddenSections: ShopSection[];
+  /** Whether a new product counts its stock at first (ADR-067). */
+  countsStockByDefault: boolean;
   /** Colour of the shop's documents, `#rrggbb` (ADR-044). */
   documentColor: string;
   /** Changes with the logo (cache key); null without logo. */

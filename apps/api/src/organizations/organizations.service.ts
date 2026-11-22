@@ -57,6 +57,8 @@ export class OrganizationsService {
               default_currency: input.defaultCurrency,
               phone: input.phone,
               offer: input.offer,
+              hidden_sections: input.hiddenSections,
+              counts_stock_by_default: input.countsStockByDefault,
               created_by: user.userId,
             })
             .returningAll()
@@ -135,7 +137,7 @@ export class OrganizationsService {
         .forUpdate()
         .executeTakeFirstOrThrow();
 
-      const set: Record<string, string | number> = {};
+      const set: Record<string, string | number | boolean | string[]> = {};
       for (const [field, column] of Object.entries(UPDATABLE)) {
         const value = input[field as keyof UpdateOrganizationInput];
         if (value !== undefined) set[column] = value;
@@ -151,7 +153,9 @@ export class OrganizationsService {
       for (const [field, column] of Object.entries(UPDATABLE)) {
         const from = before[column];
         const to = updated[column];
-        if (from !== to) changes[field] = { from, to };
+        // Hidden sections are an array: compared by value.
+        if (JSON.stringify(from) !== JSON.stringify(to))
+          changes[field] = { from, to };
       }
 
       await this.audit.record(trx, {
@@ -518,6 +522,8 @@ const UPDATABLE = {
   invoiceFooter: 'invoice_footer',
   documentColor: 'document_color',
   offer: 'offer',
+  hiddenSections: 'hidden_sections',
+  countsStockByDefault: 'counts_stock_by_default',
   invoiceDueDays: 'invoice_due_days',
   quoteValidityDays: 'quote_validity_days',
 } as const satisfies Partial<
@@ -547,6 +553,8 @@ function toOrganizationDto(
     quoteValidityDays: row.quote_validity_days,
     documentColor: row.document_color,
     offer: row.offer,
+    hiddenSections: row.hidden_sections,
+    countsStockByDefault: row.counts_stock_by_default,
     logoVersion: row.logo_sha256?.slice(0, 16) ?? null,
     signatureVersion: row.signature_sha256?.slice(0, 16) ?? null,
     stampVersion: row.stamp_sha256?.slice(0, 16) ?? null,

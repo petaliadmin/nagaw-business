@@ -2,9 +2,12 @@
 
 import {
   createShopFormSchema,
+  displayFromHabits,
+  shopHabitsSchema,
   invitationTokenSchema,
   PRODUCT_PHOTO_MAX_BYTES,
   SHOP_MARKS,
+  SHOP_SECTIONS,
   updateOrganizationSchema,
   type MeDto,
   type OrganizationDto,
@@ -14,7 +17,12 @@ import {
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { apiAsUser, getSession } from '@/lib/api/server';
-import { parseForm, type FormState } from '@/lib/auth/schemas';
+import {
+  formFields,
+  parseForm,
+  parseValues,
+  type FormState,
+} from '@/lib/auth/schemas';
 import { rememberOrganization } from '@/lib/workspace/remember';
 
 async function requireSession() {
@@ -28,13 +36,25 @@ export async function createOrganization(
   formData: FormData,
 ): Promise<FormState> {
   const session = await requireSession();
-  const parsed = parseForm(createShopFormSchema, formData);
+  // « Comment travaillez-vous ? » chooses what the shop shows (ADR-067).
+  const { credit, stock, documents, team, ...shop } = formFields(formData);
+  const parsed = parseValues(createShopFormSchema, shop);
+  const habits = parseValues(shopHabitsSchema, {
+    credit,
+    stock,
+    documents,
+    team,
+  });
   if (!parsed.ok) return parsed.state;
+  if (!habits.ok) return habits.state;
 
   const result = await apiAsUser<OrganizationWithRoleDto>(session.accessToken, {
     method: 'POST',
     path: '/organizations',
-    body: parsed.data,
+    body: {
+      ...parsed.data,
+      ...displayFromHabits(parsed.data.offer, habits.data),
+    },
   });
   if (!result.ok) return { status: 'error', message: result.message };
   await rememberOrganization(result.data.id);
@@ -79,6 +99,56 @@ export async function updateOrganization(
   // Re-render the shell too (organization name in the sidebar).
   refresh();
   return { status: 'success', message: 'Paramètres enregistrés.' };
+}
+
+/**
+ * « Mon application » (ADR-067): the offer, the parts shown and whether a
+ * new product counts its stock. « Tout afficher » shows everything again.
+ */
+export async function updateDisplay(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await requireSession();
+  const organizationId = formData.get('organizationId')?.toString();
+  if (!organizationId)
+    return { status: 'error', message: 'Boutique inconnue.' };
+  const all = formData.get('intent') === 'all';
+  const shown = formData.getAll('show').map(String);
+  const parsed = parseValues(
+    updateOrganizationSchema,
+    all
+      ? { hiddenSections: [], countsStockByDefault: true }
+      : {
+          offer: formData.get('offer')?.toString(),
+          hiddenSections: SHOP_SECTIONS.filter(
+            (section) => !shown.includes(section),
+          ),
+          // Not asked of a shop of services, which has no stock to count.
+          ...(formData.has('stockAsked')
+            ? {
+                countsStockByDefault:
+                  formData.get('countsStockByDefault') === 'on',
+              }
+            : {}),
+        },
+  );
+  if (!parsed.ok) return parsed.state;
+
+  // The API checks membership and the organization.update permission.
+  const result = await apiAsUser<OrganizationDto>(session.accessToken, {
+    method: 'PATCH',
+    path: '/organizations/current',
+    organizationId,
+    body: parsed.data,
+  });
+  if (!result.ok) return { status: 'error', message: result.message };
+  // The menus, the bottom bar and the home page follow at once.
+  refresh();
+  return {
+    status: 'success',
+    message: all ? 'Toute l’application est affichée.' : 'Enregistré.',
+  };
 }
 
 /** Saves or removes the shop's logo, already resized on the device. */

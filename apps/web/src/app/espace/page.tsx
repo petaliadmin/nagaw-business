@@ -3,6 +3,7 @@ import {
   roleHasPermission,
   sellsGoods,
   shareBasisPoints,
+  showsSection,
   type AuditLogDto,
   type MemberDto,
   type Paginated,
@@ -330,10 +331,13 @@ function Products({
   stats,
   currency,
   countsStock,
+  showsReports,
 }: {
   stats: StatsSummaryDto;
   currency: string;
   countsStock: boolean;
+  /** Reports hidden by the shop (ADR-067): no link to them. */
+  showsReports: boolean;
 }) {
   const money = (value: number) => formatAmount(value, currency);
   return (
@@ -343,7 +347,11 @@ function Products({
         titleId="top-products"
         icon={Trophy}
         tone="stats"
-        action={<SeeAll href="/espace/statistiques" what="statistiques" />}
+        action={
+          showsReports && (
+            <SeeAll href="/espace/statistiques" what="statistiques" />
+          )
+        }
       >
         {stats.topProducts.length === 0 ? (
           <EmptyState title="Aucune vente sur cette période" />
@@ -846,7 +854,9 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
   // the bottom bar on a phone and floats over the page on a computer.
   const canReadStats = roleHasPermission(role, 'stats.read');
   const canSell = roleHasPermission(role, 'sales.create');
-  const countsStock = sellsGoods(organization.offer);
+  // What the shop shows (ADR-067): a hidden part has no shortcut nor card.
+  const shows = (section: Parameters<typeof showsSection>[1]) =>
+    showsSection(organization, section);
 
   const period = resolvePeriod(
     await searchParams,
@@ -903,7 +913,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
           organizationId: organization.id,
         })
       : null,
-    canReadCustomers
+    canReadCustomers && shows('credit')
       ? apiAsUser<CustomerDto[]>(accessToken, {
           path: '/customers?owing=true',
           organizationId: organization.id,
@@ -915,8 +925,14 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
     }),
   ]);
 
+  // Stock is shown where something is counted: by default, or one product.
+  const countsStock =
+    sellsGoods(organization.offer) &&
+    (organization.countsStockByDefault ||
+      (stock.ok && stock.data.trackedProducts > 0));
+
   const shortcuts: Shortcut[] = [
-    ...(roleHasPermission(role, 'customers.manage')
+    ...(roleHasPermission(role, 'customers.manage') && shows('credit')
       ? [
           {
             href: '/espace/clients?doivent=1',
@@ -926,7 +942,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
           },
         ]
       : []),
-    ...(roleHasPermission(role, 'treasury.manage')
+    ...(roleHasPermission(role, 'treasury.manage') && shows('expenses')
       ? [
           {
             href: '/espace/tresorerie/depenses/nouvelle',
@@ -946,7 +962,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
           },
         ]
       : []),
-    ...(roleHasPermission(role, 'documents.read')
+    ...(roleHasPermission(role, 'documents.read') && shows('documents')
       ? [
           {
             href: '/espace/factures',
@@ -1024,6 +1040,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
             stats={stats.data}
             currency={currency}
             countsStock={countsStock}
+            showsReports={shows('reports')}
           />
           <PaymentsCard stats={stats.data} currency={currency} />
         </div>

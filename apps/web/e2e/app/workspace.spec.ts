@@ -267,20 +267,167 @@ test('a user without a shop is guided to create one', async ({
   await signInAs(context, 'binta', baseURL!);
   await page.goto('/espace/equipe');
   await expect(
-    page.getByRole('heading', { name: 'Créez votre boutique' }),
+    page.getByRole('heading', { level: 1, name: 'Votre boutique' }),
   ).toBeVisible();
   await page.getByLabel('Nom de la boutique').fill('Binta Conseil');
   await page.getByLabel('Votre nom complet').fill('Binta Sow');
   // Her number is known from sign-up: it is not asked again.
   await expect(page.getByLabel('Votre téléphone')).toHaveCount(0);
-  await expect(page.getByText('Étape 2 sur 2')).toBeVisible();
+  // Three steps, then the application they give (maquette « Profils »).
+  await expect(page.getByText('Étape 1 sur 3')).toBeVisible();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Étape 2 sur 3')).toBeVisible();
   await page.locator('label', { hasText: 'Des services' }).click();
-  await page.getByRole('button', { name: 'Créer ma boutique' }).click();
+  await expect(page.getByRole('status')).toContainText('« Services »');
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Étape 3 sur 3')).toBeVisible();
+  // A shop of services is not asked about stock.
+  await expect(
+    page.getByRole('group', { name: 'Comptez-vous ce qu’il vous reste ?' }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: 'Voir mon application' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Voici votre application' }),
+  ).toBeVisible();
+  // A workshop that invoices: « Factures » and « Services » in its bar.
+  await expect(
+    page
+      .getByRole('region', { name: 'En bas de l’écran' })
+      .getByRole('listitem'),
+  ).toHaveText(['Accueil', 'Factures', 'Caisse', 'Services', 'Argent']);
+  await page.getByRole('button', { name: 'C’est parti' }).click();
   await expect(
     page
       .getByRole('main')
       .getByRole('heading', { level: 1, name: 'Binta Conseil' }),
   ).toBeVisible();
+  await resetBackend();
+});
+
+test('a simple shop sees only what it uses, and can show everything again (ADR-067)', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  await signInAs(context, 'binta', baseURL!);
+  await page.goto('/espace');
+  // The name is asked first: no going on without it.
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(
+    page
+      .getByRole('alert')
+      .filter({ hasText: 'Donnez le nom de votre boutique.' }),
+  ).toBeVisible();
+  await page.getByLabel('Nom de la boutique').fill('Fatou légumes');
+  await page.getByLabel('Votre nom complet').fill('Fatou Diop');
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(page.getByText('Étape 2 sur 3')).toBeVisible();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  const answer = (question: string, value: 'Oui' | 'Non') =>
+    page
+      .getByRole('group', { name: question })
+      .locator('label', { hasText: value })
+      .click();
+  await answer('Comptez-vous ce qu’il vous reste ?', 'Non');
+  await answer('Faites-vous des factures ou des devis ?', 'Non');
+  await answer('Quelqu’un vend avec vous ?', 'Non');
+  await expectAccessible(page, 'création, comment travaillez-vous');
+  await page.getByRole('button', { name: 'Voir mon application' }).click();
+  const hidden = page.getByRole('region', { name: 'Caché pour l’instant' });
+  for (const part of [
+    'Clients',
+    'Factures et devis',
+    'Fournisseurs',
+    'Rapports',
+    'Équipe',
+  ])
+    await expect(hidden).toContainText(part);
+  await expect(
+    page
+      .getByRole('region', { name: 'En bas de l’écran' })
+      .getByRole('listitem'),
+  ).toHaveText(['Accueil', 'Ventes', 'Caisse', 'Crédit', 'Argent']);
+  await expectAccessible(page, 'création, voici votre application');
+  // « Changer mes réponses » goes back, the answers kept.
+  await page.getByRole('button', { name: 'Changer mes réponses' }).click();
+  await expect(page.getByText('Étape 3 sur 3')).toBeVisible();
+  // « Revenir », beside the title, goes back one step.
+  await page.getByRole('button', { name: 'Revenir' }).click();
+  await expect(page.getByText('Étape 2 sur 3')).toBeVisible();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await page.getByRole('button', { name: 'Voir mon application' }).click();
+  await page.getByRole('button', { name: 'C’est parti' }).click();
+  await expect(
+    page
+      .getByRole('main')
+      .getByRole('heading', { level: 1, name: 'Fatou légumes' }),
+  ).toBeVisible();
+
+  const nav = page.getByRole('navigation', { name: 'Navigation principale' });
+  if (isMobile) {
+    // Nothing counted, sold on credit: « Crédit » in the bar (ADR-067).
+    await expect(nav.getByRole('link')).toHaveText([
+      'Accueil',
+      'Ventes',
+      'Caisse',
+      'Crédit',
+      'Argent',
+    ]);
+    await page.getByRole('button', { name: 'Menu' }).click();
+    const menu = page.getByRole('dialog', { name: 'Menu' });
+    // The catalogue left the bar: it is in the Menu, credit is not twice.
+    await expect(menu.getByRole('link', { name: 'Produits' })).toBeVisible();
+    await expect(
+      menu.getByRole('link', { name: 'Ils vous doivent' }),
+    ).toHaveCount(0);
+    for (const hidden of [
+      'Clients',
+      'Factures / Devis',
+      'Fournisseurs',
+      'Équipe',
+    ])
+      await expect(menu.getByRole('link', { name: hidden })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+  } else {
+    for (const hidden of [
+      'Clients',
+      'Factures / Devis',
+      'Fournisseurs',
+      'Rapports / Statistiques',
+    ])
+      await expect(nav.getByRole('link', { name: hidden })).toHaveCount(0);
+    await expect(nav.getByRole('link', { name: 'Dépenses' })).toBeVisible();
+  }
+  // No shortcut to a hidden part on the home page.
+  await expect(page.getByRole('link', { name: 'Facture / devis' })).toHaveCount(
+    0,
+  );
+
+  // A new product does not count its stock unless asked.
+  await page.goto('/espace/produits/nouveau');
+  await expect(
+    page.getByLabel('Suivre le stock de ce produit', { exact: true }),
+  ).not.toBeChecked();
+
+  // Paramètres › Mon application: the hidden parts, then everything again.
+  await page.goto('/espace/parametres?partie=application');
+  await page.waitForLoadState('networkidle');
+  await expect(page.getByLabel('Afficher Clients')).not.toBeChecked();
+  await expect(page.getByLabel('Afficher Ils vous doivent')).toBeChecked();
+  await expectAccessible(page, 'Mon application');
+  await page.getByRole('button', { name: 'Tout afficher' }).click();
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: 'Toute l’application est affichée.' }),
+  ).toBeVisible();
+  await page.goto('/espace');
+  if (isMobile) {
+    await expect(nav.getByRole('link', { name: 'Stock' })).toBeVisible();
+  } else {
+    await expect(nav.getByRole('link', { name: 'Clients' })).toBeVisible();
+  }
   await resetBackend();
 });
 
@@ -388,6 +535,7 @@ for (const path of [
   '/espace/equipe',
   '/espace/journal',
   '/espace/parametres',
+  '/espace/parametres?partie=application',
   '/espace/nouvelle-boutique',
   '/espace/produits',
   '/espace/produits/nouveau',

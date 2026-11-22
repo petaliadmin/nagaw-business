@@ -15,7 +15,6 @@ import { ContactAvatar } from '@/components/contacts/contact-actions';
 import { SignOutButton } from '@/components/pwa/sign-out-button';
 import { SubmitButton } from '@/components/submit-button';
 import { Alert } from '@/components/ui/alert';
-import { Card } from '@/components/ui/card';
 import { Logo } from '@/components/ui/logo';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { ROLE_LABELS } from '@/lib/labels';
@@ -159,16 +158,11 @@ export async function AppShell({ children }: { children: ReactNode }) {
     return (
       <CenteredState>
         <Logo href="/espace" />
-        <p className="font-bold text-ink-muted">
-          Étape 2 sur 2 · c’est presque fini
-        </p>
-        <h1 className="text-3xl font-extrabold">Créez votre boutique</h1>
-        <Card>
-          <CreateOrganizationForm
-            ownerName={workspace.me.displayName}
-            phone={workspace.me.phone}
-          />
-        </Card>
+        {/* Screens of the maquette « Profils »: the form owns its title. */}
+        <CreateOrganizationForm
+          ownerName={workspace.me.displayName}
+          phone={workspace.me.phone}
+        />
         <div>
           <SignOutButton />
         </div>
@@ -215,7 +209,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
           tone="surface"
         />
         <nav aria-label="Navigation principale">
-          <NavLinks role={organization.role} offer={organization.offer} />
+          <NavLinks role={organization.role} shop={organization} />
         </nav>
         <div className="mt-auto">
           <Account me={me} organization={organization} tone="surface" />
@@ -238,7 +232,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
             <nav aria-label="Autres pages">
               <NavLinks
                 role={organization.role}
-                offer={organization.offer}
+                shop={organization}
                 only="secondary"
                 tone="sheet"
               />
@@ -266,7 +260,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas pb-[env(safe-area-inset-bottom)] md:hidden print:hidden"
       >
         <ul className="mx-auto flex max-w-xl px-1 py-1">
-          <BottomNavLinks role={organization.role} offer={organization.offer} />
+          <BottomNavLinks role={organization.role} shop={organization} />
         </ul>
       </nav>
     </div>

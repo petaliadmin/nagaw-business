@@ -3,11 +3,18 @@
 import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { roleHasPermission, type Role, type ShopOffer } from '@nagaw/shared';
+import {
+  roleHasPermission,
+  showsSection,
+  type Role,
+  type ShopDisplay,
+} from '@nagaw/shared';
 import { HandCoins, History, ShoppingCart, Users } from 'lucide-react';
 import {
   activeHref,
+  barHrefs,
   bottomBarFor,
+  CREDIT_ITEM,
   navItemsFor,
   type NavItem,
 } from './navigation';
@@ -18,19 +25,25 @@ import {
  */
 export function NavLinks({
   role,
-  offer,
+  shop,
   only = 'all',
   tone = 'sidebar',
 }: {
   role: Role;
-  offer: ShopOffer;
+  /** What the shop sells and hides (ADR-047, ADR-067). */
+  shop: ShopDisplay;
   only?: 'all' | 'secondary';
   tone?: 'sidebar' | 'sheet';
 }) {
   const pathname = usePathname();
-  const all = navItemsFor(role, offer);
+  const all = navItemsFor(role, shop);
   const current = activeHref(all, pathname);
-  const items = all.filter((item) => only === 'all' || !item.bottomBar);
+  // The Menu holds what the bar does not, so « Ventes » or « Produits »
+  // left out of a shop's bar is still one touch away (ADR-067).
+  const bar = barHrefs(role, shop);
+  const items = all.filter(
+    (item) => only === 'all' || !bar.includes(item.href),
+  );
   // The « Menu » sheet on a phone: round tiles, three per row (ADR-063),
   // with « Ils vous doivent » first and the pages of « Paramètres » that
   // people look for (« Historique », « Équipe ») as tiles of their own.
@@ -48,7 +61,8 @@ export function NavLinks({
                   },
                 ]
               : []),
-            ...(roleHasPermission(role, 'members.read')
+            ...(roleHasPermission(role, 'members.read') &&
+            showsSection(shop, 'team')
               ? [
                   {
                     ...item,
@@ -65,19 +79,21 @@ export function NavLinks({
     const tileCurrent = activeHref(tiles, pathname);
     return (
       <ul className="grid grid-cols-3 gap-2">
-        {roleHasPermission(role, 'customers.read') && (
-          <li className="col-span-3">
-            <Link
-              href="/espace/clients?doivent=1"
-              className="flex min-h-16 items-center gap-3 rounded-3xl bg-warning-soft px-4 py-3 text-lg font-extrabold text-warning-ink"
-            >
-              <span className="flex size-12 items-center justify-center rounded-full bg-canvas">
-                <HandCoins aria-hidden className="size-6 shrink-0" />
-              </span>
-              Ils vous doivent
-            </Link>
-          </li>
-        )}
+        {roleHasPermission(role, 'customers.read') &&
+          showsSection(shop, 'credit') &&
+          !bar.includes(CREDIT_ITEM.href) && (
+            <li className="col-span-3">
+              <Link
+                href="/espace/clients?doivent=1"
+                className="flex min-h-16 items-center gap-3 rounded-3xl bg-warning-soft px-4 py-3 text-lg font-extrabold text-warning-ink"
+              >
+                <span className="flex size-12 items-center justify-center rounded-full bg-canvas">
+                  <HandCoins aria-hidden className="size-6 shrink-0" />
+                </span>
+                Ils vous doivent
+              </Link>
+            </li>
+          )}
         {tiles.map(({ href, label, icon: Icon }) => {
           const active = href === tileCurrent;
           return (
@@ -176,13 +192,13 @@ function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
  */
 export function BottomNavLinks({
   role,
-  offer,
+  shop,
 }: {
   role: Role;
-  offer: ShopOffer;
+  shop: ShopDisplay;
 }) {
   const pathname = usePathname();
-  const { before, after, sell } = bottomBarFor(role, offer);
+  const { before, after, sell } = bottomBarFor(role, shop);
   const current = activeHref([...before, ...after], pathname);
   return (
     <>
