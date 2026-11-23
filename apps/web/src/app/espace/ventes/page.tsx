@@ -12,6 +12,7 @@ import {
   CheckCheck,
   CreditCard,
   HandCoins,
+  Plus,
   Receipt,
   Smartphone,
   type LucideIcon,
@@ -22,6 +23,7 @@ import { Suspense } from 'react';
 import { CONTROL } from '@/components/form-field';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { ButtonLink } from '@/components/ui/button-link';
 import { buttonClasses } from '@/components/ui/button-styles';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Figure } from '@/components/ui/figure';
@@ -109,6 +111,15 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
       <PageHeader
         title="Ventes"
         description={allSales ? undefined : 'Vos ventes.'}
+        actions={
+          // Straight to the caisse, for whoever may sell (ADR-025).
+          roleHasPermission(organization.role, 'sales.create') ? (
+            <ButtonLink href="/caisse">
+              <Plus aria-hidden className="size-5" />
+              Nouvelle vente
+            </ButtonLink>
+          ) : undefined
+        }
       />
 
       <div className="flex flex-wrap items-start gap-2">

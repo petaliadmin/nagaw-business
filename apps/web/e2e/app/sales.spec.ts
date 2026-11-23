@@ -257,6 +257,10 @@ test('sales of the day are listed with their totals, and on the home page', asyn
   const summary = page.getByRole('region', { name: 'Aujourd’hui' });
   await expect(summary.getByRole('heading')).toContainText(/\d+ ventes?/);
   await expect(sellLink(page, isMobile)).toBeVisible();
+  // « Nouvelle vente » opens the caisse from the list of sales.
+  await expect(
+    page.getByRole('main').getByRole('link', { name: 'Nouvelle vente' }),
+  ).toHaveAttribute('href', '/caisse');
   await page.getByRole('link', { name: 'Hier' }).click();
   await expect(page.getByText('Aucune vente ce jour-là')).toBeVisible();
 
