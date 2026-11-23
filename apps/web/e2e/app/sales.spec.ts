@@ -175,6 +175,41 @@ test('« Taper un montant » sells what is not in the catalogue, then it can bec
   ).toContain('TOTAL700 F CFA');
 });
 
+test('a product sold often, not counted, is suggested on the home page (ADR-070)', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/produits/nouveau');
+  await page.getByLabel('Nom du produit').fill('Beignet');
+  await page.getByLabel(/^Prix de vente/).fill('100');
+  await page.getByText('Code-barres, catégorie, seuil d’alerte').click();
+  await page.getByLabel('Suivre le stock de ce produit').uncheck();
+  await page.getByRole('button', { name: 'Enregistrer le produit' }).click();
+  await expect(page.getByRole('heading', { name: 'Beignet' })).toBeVisible();
+
+  for (let i = 0; i < 2; i++) {
+    await page.goto('/espace/vendre');
+    await addToCart(page, 'Beignet');
+    await openPayment(page, isMobile);
+    await page.getByRole('button', { name: /^Valider la vente/ }).click();
+    await expect(page.getByText('Vente enregistrée.')).toBeVisible();
+  }
+
+  await page.goto('/espace');
+  const card = page.getByRole('region', { name: 'Compter le stock ?' });
+  await expect(card).toContainText('Vous vendez souvent Beignet');
+  await card.getByRole('link', { name: 'Compter son stock' }).click();
+  await expect(page).toHaveURL(/\/modifier\?compter=1$/);
+  await expect(page.getByLabel('Suivre le stock de ce produit')).toBeChecked();
+
+  await page.goto('/espace');
+  await card.getByRole('button', { name: 'Plus tard' }).click();
+  await expect(card).toBeHidden();
+});
+
 test('a code read by a reader puts its product straight in the cart (ADR-068)', async ({
   page,
   context,

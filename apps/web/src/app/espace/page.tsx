@@ -11,6 +11,7 @@ import {
   type SalesDaySummaryDto,
   type StatsSummaryDto,
   type StockSummaryDto,
+  type StockSuggestionDto,
   type CustomerDto,
   type SaleListItemDto,
 } from '@nagaw/shared';
@@ -73,6 +74,7 @@ import { ContactAvatar } from '@/components/contacts/contact-actions';
 import { HideAmountsButton } from '@/components/ui/hide-amounts';
 import { previousPeriod, resolvePeriod } from '@/lib/treasury/period';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { StockSuggestions } from '@/components/catalog/stock-suggestions';
 
 export const metadata: Metadata = {
   title: 'Tableau de bord — Nagaw Business',
@@ -883,6 +885,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
     mine,
     debtors,
     recent,
+    suggestions,
   ] = await Promise.all([
     // Only to name the authors of the recent activity.
     canReadAudit
@@ -923,6 +926,13 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
       path: `/sales?${new URLSearchParams({ all: 'true', limit: '4', offset: '0' })}`,
       organizationId: organization.id,
     }),
+    // Products sold often, not counted (ADR-070): for who can count them.
+    sellsGoods(organization.offer) && roleHasPermission(role, 'catalog.manage')
+      ? apiAsUser<StockSuggestionDto[]>(accessToken, {
+          path: '/stock/suggestions',
+          organizationId: organization.id,
+        })
+      : null,
   ]);
 
   // Stock is shown where something is counted: by default, or one product.
@@ -1019,6 +1029,18 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
       {showToday && <TodayCard summary={sales} currency={currency} />}
 
       {mine && <MyFiguresCard figures={mine} currency={currency} />}
+
+      {suggestions && !suggestions.ok && (
+        <Alert tone="error">
+          Suggestions de stock indisponibles : {suggestions.message}
+        </Alert>
+      )}
+      {suggestions?.ok && suggestions.data.length > 0 && (
+        <StockSuggestions
+          organizationId={organization.id}
+          suggestions={suggestions.data}
+        />
+      )}
 
       {countsStock && (
         <StockCard

@@ -53,6 +53,8 @@ function seed() {
     ],
     repayments: [],
     devices: [],
+    /** `${orgId}|${productId}` → 'later' | 'never' (ADR-070). */
+    dismissed: {},
   };
 }
 
@@ -225,6 +227,53 @@ export async function handleSales(ctx) {
         stockReview: s.stockReview ?? false,
       })),
     );
+  }
+  // « Compter le stock ? » (ADR-070): two sales are enough here.
+  if (path === '/api/v1/stock/suggestions' && req.method === 'GET') {
+    if (!manager) return deny();
+    const counts = new Map();
+    for (const sale of state.sales.filter(
+      (s) => mine(s) && s.status === 'completed',
+    ))
+      for (const id of new Set(sale.lines.map((l) => l.productId)))
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+    const list = catalogState()
+      .products.filter(
+        (p) =>
+          mine(p) &&
+          p.status === 'active' &&
+          (p.kind ?? 'product') === 'product' &&
+          !p.trackStock &&
+          !p.systemRole &&
+          (counts.get(p.id) ?? 0) >= 2 &&
+          !state.dismissed[`${orgId}|${p.id}`],
+      )
+      .map((p) => ({
+        productId: p.id,
+        name: p.name,
+        unit: p.unit,
+        sales: counts.get(p.id),
+        windowDays: 14,
+      }))
+      .slice(0, 3);
+    return reply(200, list);
+  }
+  const dismissMatch = /^\/api\/v1\/stock\/suggestions\/([^/]+)\/dismiss$/.exec(
+    path,
+  );
+  if (dismissMatch && req.method === 'POST') {
+    if (!manager) return deny();
+    const body = await ctx.readJson(req);
+    if (!['later', 'never'].includes(body?.choice))
+      return invalid([{ path: ['choice'], message: 'Choix inconnu' }]);
+    if (
+      !catalogState().products.some((p) => mine(p) && p.id === dismissMatch[1])
+    )
+      return fail(404, 'PRODUCT_NOT_FOUND', 'Produit introuvable.');
+    state.dismissed[`${orgId}|${dismissMatch[1]}`] = body.choice;
+    res.writeHead(204);
+    res.end();
+    return true;
   }
   if (path === '/api/v1/sales/summary' && req.method === 'GET') {
     const day = url.searchParams.get('day') ?? today(timeZone);

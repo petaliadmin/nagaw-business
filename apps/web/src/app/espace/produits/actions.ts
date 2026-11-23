@@ -1,6 +1,7 @@
 'use server';
 
 import {
+  dismissStockSuggestionSchema,
   createCategorySchema,
   createProductSchema,
   createProductUnitSchema,
@@ -177,6 +178,34 @@ export async function updateProduct(
 }
 
 /** Archive or restore, from the product page. */
+/** « Plus tard » or « Ne plus proposer » on a stock suggestion (ADR-070). */
+export async function dismissStockSuggestion(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const shop = await shopOf(formData);
+  if (!shop.ok) return shop.error;
+  const parsed = parseValues(dismissStockSuggestionSchema, {
+    choice: text(formData, 'choice'),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<null>(shop.token, {
+    method: 'POST',
+    path: `/stock/suggestions/${encodeURIComponent(text(formData, 'productId'))}/dismiss`,
+    organizationId: shop.organizationId,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message:
+      parsed.data.choice === 'never'
+        ? 'Ce produit ne sera plus proposé.'
+        : 'Nous vous le reproposerons dans quelques jours.',
+  };
+}
+
 export async function setProductStatus(
   _prev: FormState,
   formData: FormData,

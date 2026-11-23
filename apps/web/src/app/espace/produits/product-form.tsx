@@ -47,6 +47,7 @@ export function ProductForm({
   taxRates,
   product,
   prefill,
+  countStock = false,
 }: {
   offer: ShopOffer;
   /** Whether a new product counts its stock at first (ADR-067). */
@@ -60,6 +61,8 @@ export function ProductForm({
   product?: ProductDto;
   /** What the caisse typed for « Taper un montant » (ADR-069). */
   prefill?: { name: string; salePrice: number | null };
+  /** « Compter son stock » from the home page (ADR-070). */
+  countStock?: boolean;
 }) {
   const [state, action, pending] = useActionState(
     product ? updateProduct : createProduct,
@@ -68,7 +71,7 @@ export function ProductForm({
   // One id per creation attempt: a double tap never creates two products.
   const [operationId] = useState(() => crypto.randomUUID());
   const [trackStock, setTrackStock] = useState(
-    product?.trackStock ?? countsStockByDefault,
+    countStock || (product?.trackStock ?? countsStockByDefault),
   );
   const [kind, setKind] = useState<ProductKind>(
     product?.kind ?? (offer === 'services' ? 'service' : 'product'),
@@ -284,6 +287,7 @@ export function ProductForm({
       <details
         className="rounded-3xl bg-surface p-4"
         open={Boolean(
+          (countStock && !product?.trackStock) ||
           errors.categoryId ||
           errors.taxRateId ||
           errors.barcode ||

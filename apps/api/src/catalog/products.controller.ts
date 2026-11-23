@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Headers,
+  HttpCode,
   HttpStatus,
   Param,
   Patch,
@@ -17,16 +18,19 @@ import {
   createProductSchema,
   createProductUnitSchema,
   createStockMovementSchema,
+  dismissStockSuggestionSchema,
   productListQuerySchema,
   updateProductSchema,
   updateProductUnitSchema,
   type CreateProductInput,
   type CreateProductUnitInput,
   type CreateStockMovementInput,
+  type DismissStockSuggestionInput,
   type ProductDto,
   type ProductListQuery,
   type RecordedStockMovementDto,
   type StockMovementDto,
+  type StockSuggestionDto,
   type StockSummaryDto,
   type UpdateProductInput,
   type UpdateProductUnitInput,
@@ -43,6 +47,7 @@ import { AlertsService } from '../notifications/alerts.service.js';
 import { RequirePermission } from '../tenancy/require-permission.decorator.js';
 import { ProductsService } from './products.service.js';
 import { StockService } from './stock.service.js';
+import { StockSuggestionsService } from './stock-suggestions.service.js';
 
 /**
  * Products and their stock. A replayed creation (same clientOperationId)
@@ -54,6 +59,7 @@ export class ProductsController {
     private readonly products: ProductsService,
     private readonly stock: StockService,
     private readonly alerts: AlertsService,
+    private readonly suggestions: StockSuggestionsService,
   ) {}
 
   @Get('products')
@@ -225,5 +231,28 @@ export class ProductsController {
   @RequirePermission('catalog.read')
   summary(@CurrentTenant() tenant: TenantContext): Promise<StockSummaryDto> {
     return this.stock.summary(tenant.organizationId);
+  }
+
+  /** Products to count, for those who can turn the count on (ADR-070). */
+  @Get('stock/suggestions')
+  @RequirePermission('catalog.manage')
+  suggestionsList(
+    @CurrentTenant() tenant: TenantContext,
+  ): Promise<StockSuggestionDto[]> {
+    return this.suggestions.list(tenant.organizationId);
+  }
+
+  @Post('stock/suggestions/:productId/dismiss')
+  @RequirePermission('catalog.manage')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  dismissSuggestion(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Param('productId') productId: string,
+    @Body(new ZodValidationPipe(dismissStockSuggestionSchema))
+    body: DismissStockSuggestionInput,
+    @RequestId() requestId: string | null,
+  ): Promise<void> {
+    return this.suggestions.dismiss(tenant, user, productId, body, requestId);
   }
 }

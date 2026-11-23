@@ -731,6 +731,29 @@ export interface StockAlertDto {
   stockLevel: 'low' | 'out';
 }
 
+/**
+ * A product sold often whose stock is not counted (ADR-070), suggested to
+ * the owner and the managers on the home page.
+ */
+export interface StockSuggestionDto {
+  productId: string;
+  name: string;
+  unit: Unit;
+  /** Sales that had it, over the last `windowDays` days. */
+  sales: number;
+  windowDays: number;
+}
+
+export const dismissStockSuggestionSchema = z
+  .object({
+    /** `later`: suggested again after a few days; `never`: not again. */
+    choice: z.enum(['later', 'never']),
+  })
+  .strict();
+export type DismissStockSuggestionInput = z.infer<
+  typeof dismissStockSuggestionSchema
+>;
+
 export interface StockSummaryDto {
   trackedProducts: number;
   lowStock: number;

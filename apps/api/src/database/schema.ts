@@ -93,6 +93,9 @@ export interface OrganizationsTable {
     number | string
   >;
   stock_forecast_days: Generated<number>;
+  stock_suggestion_min_sales: Generated<number>;
+  stock_suggestion_window_days: Generated<number>;
+  stock_suggestion_snooze_days: Generated<number>;
   stock_forecast_window_days: Generated<number>;
   credit_overdue_days: Generated<number>;
   credit_near_limit_percent: Generated<number>;
@@ -350,6 +353,15 @@ export interface DevicesTable {
   revoked_at: NullableTimestamp;
   revoked_by: string | null;
   created_at: ColumnType<Date, never, never>;
+}
+
+export interface StockSuggestionDismissalsTable {
+  organization_id: string;
+  product_id: string;
+  /** Null: never suggested again. */
+  until: Date | null;
+  dismissed_by: string;
+  dismissed_at: Generated<Date>;
 }
 
 export interface SaleLinesTable {
@@ -731,6 +743,7 @@ export interface Database {
   'app.organization_logos': OrganizationLogosTable;
   'app.organization_marks': OrganizationMarksTable;
   'app.stock_movements': StockMovementsTable;
+  'app.stock_suggestion_dismissals': StockSuggestionDismissalsTable;
   'app.customers': CustomersTable;
   'app.sales': SalesTable;
   'app.sale_lines': SaleLinesTable;

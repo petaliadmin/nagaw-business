@@ -50,6 +50,7 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   'product.created': 'Produit ajouté',
   'product.updated': 'Produit modifié',
   'product.archived': 'Produit archivé',
+  'stock_suggestion.dismissed': 'Suggestion de stock écartée',
   'organization.signature_changed': 'Signature de la boutique changée',
   'organization.signature_removed': 'Signature de la boutique retirée',
   'organization.stamp_changed': 'Cachet de la boutique changé',

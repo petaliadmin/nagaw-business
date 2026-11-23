@@ -882,3 +882,15 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - caisse : « Taper un montant » au-dessus des produits (montant, puis « Pour quoi ? » facultatif) ; chaque montant est une ligne à part ; un produit à prix tapé affiche « Prix à taper » et ouvre le pavé à chaque toucher, une ligne par prix ; « Valider la vente » rappelle un prix oublié ;
   - **garder l'article** : après une vente, le propriétaire et les gérants (`catalog.manage`) voient « Ajouter « Pain » à vos produits », qui ouvre le formulaire d'un nouveau produit avec le nom et le prix ; le formulaire propose « Toujours le même » ou « Tapé à chaque vente ».
 - **Conséquences** : appliquer `20261123090000_open_price` avant de déployer l'API ; les téléphones qui n'ont pas encore la nouvelle caisse continuent de vendre comme avant.
+
+## ADR-070 — Proposer de compter le stock d'un produit souvent vendu
+
+- **Statut** : **Proposée**, livrée sur la branche `profils-affichage` (demande du propriétaire du 2026-11-23, reportée par ADR-067).
+- **Contexte** : une boutique qui ne compte pas son stock (ADR-067) peut finir par vendre chaque jour un même article ; savoir quand le racheter devient alors utile, sans que la boutique ait à y penser.
+- **Décision** :
+  - un produit (pas un service), actif, dont le stock n'est pas compté et qui n'est pas « Vente au montant » (ADR-069), présent dans au moins `stock_suggestion_min_sales` ventes (5) sur les `stock_suggestion_window_days` derniers jours (14), est proposé sur l'Accueil : « Vous vendez souvent … Compter son stock ? » ; trois au plus, les plus vendus d'abord ;
+  - **seuils en base**, par boutique (migration `20261123100000_stock_suggestions`), comme les autres seuils des alertes ;
+  - « Compter son stock » ouvre la modification du produit avec « Suivre le stock » coché ; rien ne change sans « Enregistrer » ;
+  - « Plus tard » : proposé de nouveau après `stock_suggestion_snooze_days` jours (7) ; « Ne plus proposer » : jamais plus pour ce produit. Le choix est gardé dans `app.stock_suggestion_dismissals` et inscrit au journal ;
+  - réservé au propriétaire et aux gérants (`catalog.manage`), qui seuls peuvent compter un stock ; `GET /stock/suggestions` et `POST /stock/suggestions/:productId/dismiss`.
+- **Conséquences** : appliquer `20261123100000_stock_suggestions` avant de déployer l'API.
