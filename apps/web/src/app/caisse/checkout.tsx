@@ -101,6 +101,8 @@ const optionName = (product: ProductDto, option: SellingOption) =>
  */
 const CHOSEN = 'border-ink bg-canvas text-ink';
 const NOT_CHOSEN = 'border-transparent bg-surface text-ink hover:border-line';
+/** The chosen way to pay: green, as the money it brings in (owner, 2026-11-23). */
+const PAY_CHOSEN = 'border-sales-strong bg-sales-soft text-sales-ink';
 /** Header of a section: products, cart, payment. */
 const SECTION_HEAD = 'flex min-h-12 items-center justify-between gap-3';
 const HEAD_BADGE =
@@ -322,17 +324,17 @@ function MethodButton({
       <span
         aria-hidden
         className={`relative flex size-14 items-center justify-center rounded-full border-2 ${
-          selected
-            ? 'border-ink bg-canvas text-ink'
-            : 'border-transparent bg-canvas text-ink-muted'
+          selected ? PAY_CHOSEN : 'border-transparent bg-canvas text-ink-muted'
         }`}
       >
         <Icon className="size-6" />
         {selected && (
-          <CircleCheck className="absolute -right-1 -bottom-1 size-5 rounded-full bg-canvas text-ink" />
+          <CircleCheck className="absolute -right-1 -bottom-1 size-5 rounded-full bg-canvas text-sales-strong" />
         )}
       </span>
-      {PAYMENT_LABELS[method]}
+      <span className={selected ? 'text-sales-ink' : undefined}>
+        {PAYMENT_LABELS[method]}
+      </span>
     </button>
   );
 }
@@ -361,13 +363,13 @@ function ProviderPicker({
               aria-pressed={selected}
               onClick={() => onChange(provider)}
               className={`relative flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 px-2 py-3 text-center text-base leading-tight font-bold ${
-                selected ? CHOSEN : NOT_CHOSEN
+                selected ? PAY_CHOSEN : NOT_CHOSEN
               }`}
             >
               {selected && (
                 <CircleCheck
                   aria-hidden
-                  className="absolute top-2 right-2 size-5 text-brand-ink"
+                  className="absolute top-2 right-2 size-5 text-sales-strong"
                 />
               )}
               <OperatorLogo provider={provider} className="size-10" />

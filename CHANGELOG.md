@@ -8,6 +8,7 @@ Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est
 - **La barre du bas suit la boutique** : un atelier qui facture a « Factures », une boutique qui vend à crédit sans compter son stock a « Crédit » ; ce qui quitte la barre reste dans le Menu.
 - **Création de boutique en trois étapes**, comme la maquette : votre boutique, ce que vous vendez, vos habitudes, puis un aperçu « Voici votre application ».
 - **Ventes** : un bouton « Nouvelle vente » en haut de la page ouvre la caisse (pour qui peut vendre).
+- **Caisse** : le moyen de paiement et l'opérateur choisis sont en vert, la couleur de l'argent qui entre.
 - **Caisse plus logique** : à l'étape « Encaisser », le panier d'abord, puis le moyen de paiement, puis « Valider la vente », toujours visible en bas de l'écran du téléphone.
 
 ## Non publié — branche `refonte-v3`
