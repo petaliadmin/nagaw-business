@@ -855,3 +855,16 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 - **Reporté (phases suivantes, à valider)** : vendre en tapant un montant, prix à taper à chaque vente, garder un article après une vente libre, suggestion de compter le stock d'un produit souvent vendu, rendez-vous du jour, chiffres soins / produits sur l'Accueil d'une boutique qui vend les deux. Elles touchent la vente, la synchronisation hors ligne et la comptabilité (ADR-046) : chacune aura sa décision.
 - **Point ouvert** : pour une boutique qui vend les deux et compte ses produits, la barre affiche « Stock » (règle d'ADR-047) alors que ses services n'en ont pas.
 - **Conséquences** : appliquer `20261121090000_shop_display` avant de déployer l'API.
+
+## ADR-068 — Scanner un produit avec la caméra, droit dans le panier
+
+- **Statut** : **Proposée**, livrée sur la branche `profils-affichage` (demande du propriétaire du 2026-11-23 : « scanner le code ou le QR code d'un produit pour l'ajouter directement au panier »).
+- **Contexte** : le bouton « Scanner » de la caisse (ADR-063) plaçait seulement le curseur dans la recherche, pour un lecteur branché ; la recherche filtrait la liste sans rien ajouter. La plupart des boutiques n'ont pas de lecteur, mais toutes ont un téléphone avec une caméra.
+- **Décision** :
+  - « Scanner » ouvre un panneau avec la **caméra arrière**, qui lit les codes-barres (EAN-13, EAN-8, UPC-A, UPC-E, Code 128, Code 39, ITF) et les **QR codes** dont le texte est le code du produit ; chaque produit lu va **directement dans le panier**, dans l'unité que nomme le code (le code d'une unité de vente vend cette unité, ADR-038) ; le panneau reste ouvert pour le suivant ;
+  - un code **compte une fois tant qu'il reste visible**, et de nouveau après 0,8 s hors de vue (la boîte suivante du même produit) ; le téléphone vibre à chaque ajout ; le message dit ce qui a été ajouté, ou « Code … inconnu », sans rien ajouter (`role="status"`) ;
+  - un **lecteur branché** suit le même chemin : un code exact suivi d'« Entrée » dans la recherche ajoute son produit et vide la recherche ; un code inconnu reste un filtre ;
+  - **lecture** : le lecteur du téléphone quand il en a un (`BarcodeDetector`, Chrome sur Android), sinon le même lecteur en WebAssembly (`barcode-detector`, `zxing-wasm`, licences MIT et Apache-2.0), chargé seulement à l'ouverture du panneau ; le fichier WebAssembly est **servi par l'application** (`/_next/static/media`, comme le lecteur de PDF), jamais par un site externe, et gardé par le service worker pour la vente hors ligne après une première ouverture avec réseau ;
+  - caméra déjà permise par `Permissions-Policy: camera=(self)` (photos) ; refusée ou absente : le panneau le dit et rappelle le lecteur ou la recherche ;
+  - la recherche du produit par code est une fonction pure testée (`lib/sales/barcode.ts`) ; le serveur revérifie la vente comme toute autre (ADR-024, ADR-025).
+- **Conséquences** : environ 0,9 Mo (0,4 Mo compressé) chargés une fois sur un téléphone sans lecteur intégré ; aucun changement d'API ni de base.

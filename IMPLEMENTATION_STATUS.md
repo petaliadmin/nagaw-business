@@ -1048,3 +1048,9 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Barre du bas selon le profil** (2026-11-22) : « Factures » ou « Ventes », « Crédit » ou le catalogue, selon l'offre et les réglages ; ce qui quitte la barre est dans le Menu ; même barre dans « Voici votre application ».
 - **Non fait (reporté, voir ADR-067)** : vendre en tapant un montant, prix à taper, garder un article, suggestion de compter le stock, rendez-vous, chiffres soins / produits.
 - **Tests ajoutés** : `organizations.spec.ts` (règles des réponses, tri, parties inconnues), `navigation.test.ts` (parties cachées, nom du catalogue), `organizations.integration-spec.ts` (valeurs par défaut, création, modification auditée, partie inconnue refusée, isolation entre boutiques et membre simple refusé), `workspace.spec.ts` de bout en bout (création d'une boutique simple, Menu, barre, raccourcis, stock éteint, Mon application, « Tout afficher »).
+
+## Scanner un produit avec la caméra (ADR-068)
+
+- **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire.
+- **Fait** : `components/sales/barcode-scanner.tsx` (caméra arrière, lecteur natif ou WebAssembly servi par l'application), `lib/sales/barcode.ts` (`findByCode`, `isNewRead`), bouton « Scanner » de la caisse, « Entrée » d'un lecteur branché dans la recherche ; dépendances `barcode-detector` 3.2.4 et `zxing-wasm` 3.1.7.
+- **Tests** : `barcode.test.ts` (code du produit, code d'une unité, QR code, inconnu, une fois tant que visible) ; `sales.spec.ts` de bout en bout : lecteur branché, caméra simulée qui filme un vrai EAN-13 (produit ajouté une seule fois), caméra absente.

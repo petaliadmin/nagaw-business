@@ -69,7 +69,12 @@ import {
   type NegotiationRules,
   type PricedLine,
 } from '@/lib/sales/cart';
+import {
+  BarcodeScanner,
+  type ScanOutcome,
+} from '@/components/sales/barcode-scanner';
 import { OperatorLogo } from '@/components/sales/operator-logo';
+import { findByCode } from '@/lib/sales/barcode';
 import { SaleSteps } from './sale-steps';
 import { cashSuggestions } from '@/lib/sales/cash';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
@@ -537,9 +542,12 @@ export function Checkout({
   onRecord,
   onCreateCustomer,
   onCorrectStock,
+  scanRequests = 0,
 }: {
   /** What the shop sells, in its sentences: « produit », « service ». */
   noun: string;
+  /** Goes up each time « Scanner » is touched in the header (ADR-068). */
+  scanRequests?: number;
   currency: string;
   products: ProductDto[];
   customers: CustomerDto[];
@@ -568,6 +576,13 @@ export function Checkout({
   const [cart, setCart] = useState<CartLine[]>([]);
   // The product whose unit is being chosen (ADR-038).
   const [choosing, setChoosing] = useState<ProductDto | null>(null);
+  // The camera scanner opens at each touch of « Scanner » (ADR-068).
+  const [scanning, setScanning] = useState(false);
+  const [scansSeen, setScansSeen] = useState(scanRequests);
+  if (scanRequests !== scansSeen) {
+    setScansSeen(scanRequests);
+    setScanning(true);
+  }
   const [step, setStep] = useState<'cart' | 'pay'>('cart');
   const [discountText, setDiscountText] = useState('');
   const [method, setMethod] = useState<PaymentMethod | 'split'>('cash');
@@ -709,6 +724,28 @@ export function Checkout({
       );
     });
   }
+  /**
+   * A code read by the camera or a reader: its product goes straight into
+   * the cart, in the unit the code names (ADR-068).
+   */
+  function addByCode(code: string): ScanOutcome {
+    const match = findByCode(products, code);
+    if (!match)
+      return {
+        ok: false,
+        message: `Code ${code} inconnu : aucun ${noun} n’a ce code.`,
+      };
+    add(match.product, match.option);
+    const unit =
+      match.option.key === 'stock'
+        ? ''
+        : ` (${optionName(match.product, match.option)})`;
+    return {
+      ok: true,
+      message: `${match.product.name}${unit} ajouté au panier.`,
+    };
+  }
+
   /** One tap: the only unit at once, otherwise the choice of the unit. */
   function tap(product: ProductDto) {
     const options = sellingOptionsOf(product);
@@ -1428,6 +1465,16 @@ export function Checkout({
               type="search"
               value={query}
               onChange={(event) => setQuery(event.currentTarget.value)}
+              // A reader types the code then « Entrée »: an exact code adds
+              // its product at once, like the camera (ADR-068).
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return;
+                if (!findByCode(products, query)) return;
+                event.preventDefault();
+                const outcome = addByCode(query);
+                setAnnouncement(outcome.message);
+                setQuery('');
+              }}
               placeholder={`Chercher un ${noun}`}
               className={`${CONTROL} pl-12`}
             />
@@ -1611,6 +1658,11 @@ export function Checkout({
           onClose={() => setChoosing(null)}
         />
       )}
+      <BarcodeScanner
+        open={scanning}
+        onClose={() => setScanning(false)}
+        onCode={addByCode}
+      />
       <p role="status" className="sr-only">
         {announcement}
       </p>

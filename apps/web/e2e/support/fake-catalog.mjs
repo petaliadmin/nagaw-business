@@ -67,6 +67,8 @@ function seed() {
     purchasePrice: 350,
     taxRateId: vat.id,
     lowStockThreshold: 6,
+    // Read by the caisse's scanner and by a reader (ADR-068).
+    barcode: '6111234500014',
   });
   const soap = product('dddddddd-0000-4000-8000-000000000002', {
     name: 'Savon de Marseille',

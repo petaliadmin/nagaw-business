@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { expectAccessible } from '../support/a11y';
 import { resetBackend, signInAs } from '../support/session';
 
 test.describe.configure({ mode: 'serial' });
@@ -107,6 +108,164 @@ test('a cash sale shows the change, the ticket and lowers the stock', async ({
   await expect(
     page.getByRole('region', { name: 'Ce qui reste' }),
   ).toContainText('21 bouteilles');
+});
+
+test('a code read by a reader puts its product straight in the cart (ADR-068)', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/caisse');
+  const search = page.getByRole('searchbox', { name: /Chercher un produit/ });
+  // An unknown code adds nothing: it only filters the list.
+  await search.fill('0000000000000');
+  await search.press('Enter');
+  await expect(search).toHaveValue('0000000000000');
+  // A reader types the code, then « Entrée »: twice, two bottles.
+  await search.fill('6111234500014');
+  await search.press('Enter');
+  await expect(search).toHaveValue('');
+  await expect(
+    page.getByText('Eau minérale 1,5 L ajouté au panier.'),
+  ).toBeAttached();
+  await search.fill('6111234500014');
+  await search.press('Enter');
+  await openPayment(page, isMobile);
+  const cart = page.getByRole('list', { name: 'Articles du panier' });
+  await expect(
+    cart.getByLabel('Eau minérale 1,5 L', { exact: true }),
+  ).toHaveValue('2');
+});
+
+/** The bars of EAN-13 6111234500014, the water's code in the fake shop. */
+function ean13Bars(code: string): string {
+  const L = [
+    '0001101',
+    '0011001',
+    '0010011',
+    '0111101',
+    '0100011',
+    '0110001',
+    '0101111',
+    '0111011',
+    '0110111',
+    '0001011',
+  ];
+  const G = [
+    '0100111',
+    '0110011',
+    '0011011',
+    '0100001',
+    '0011101',
+    '0111001',
+    '0000101',
+    '0010001',
+    '0001001',
+    '0010111',
+  ];
+  const R = [
+    '1110010',
+    '1100110',
+    '1101100',
+    '1000010',
+    '1011100',
+    '1001110',
+    '1010000',
+    '1000100',
+    '1001000',
+    '1110100',
+  ];
+  const PARITY = [
+    'LLLLLL',
+    'LLGLGG',
+    'LLGGLG',
+    'LLGGGL',
+    'LGLLGG',
+    'LGGLLG',
+    'LGGGLL',
+    'LGLGLG',
+    'LGLGGL',
+    'LGGLGL',
+  ];
+  const d = [...code].map(Number);
+  let bits = '101';
+  d.slice(1, 7).forEach((n, i) => {
+    bits += (PARITY.at(d[0]!)!.at(i) === 'L' ? L : G).at(n);
+  });
+  bits += '01010';
+  d.slice(7).forEach((n) => {
+    bits += R.at(n);
+  });
+  return bits + '101';
+}
+
+test('the camera reads a barcode and its product goes in the cart once (ADR-068)', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  // The camera films a drawn barcode, held in view the whole time.
+  await page.addInitScript((bits: string) => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 480;
+      const g = canvas.getContext('2d')!;
+      const draw = () => {
+        g.fillStyle = '#fff';
+        g.fillRect(0, 0, 640, 480);
+        g.fillStyle = '#000';
+        const x0 = (640 - bits.length * 4) / 2;
+        [...bits].forEach((bit, i) => {
+          if (bit === '1') g.fillRect(x0 + i * 4, 140, 4, 200);
+        });
+      };
+      draw();
+      setInterval(draw, 100);
+      return canvas.captureStream(10);
+    };
+  }, ean13Bars('6111234500014'));
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/caisse');
+  await page
+    .getByRole('button', { name: 'Scanner un produit avec la caméra' })
+    .click();
+  const sheet = page.getByRole('dialog', { name: 'Scanner un produit' });
+  await expect(sheet.getByRole('status')).toHaveText(
+    'Eau minérale 1,5 L ajouté au panier.',
+    { timeout: 15_000 },
+  );
+  // Still in view two seconds later: counted once, not again.
+  await page.waitForTimeout(2_000);
+  await sheet.getByRole('button', { name: 'Terminé' }).click();
+  await openPayment(page, isMobile);
+  await expect(
+    page
+      .getByRole('list', { name: 'Articles du panier' })
+      .getByLabel('Eau minérale 1,5 L', { exact: true }),
+  ).toHaveValue('1');
+});
+
+test('« Scanner » opens the camera, and says so when there is none', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/caisse');
+  await page
+    .getByRole('button', { name: 'Scanner un produit avec la caméra' })
+    .click();
+  const sheet = page.getByRole('dialog', { name: 'Scanner un produit' });
+  await expect(sheet).toBeVisible();
+  // No camera on the test browser: the sheet says what to do instead.
+  await expect(sheet.getByRole('alert')).toContainText(/caméra/);
+  await expectAccessible(page, 'scanner');
+  await sheet.getByRole('button', { name: 'Terminé' }).click();
+  await expect(sheet).toBeHidden();
 });
 
 test('the checkout asks what is missing before sending', async ({

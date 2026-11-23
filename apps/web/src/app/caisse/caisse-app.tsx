@@ -432,6 +432,8 @@ export function CaisseApp() {
   const [soldId, setSoldId] = useState<string | null>(null);
   // Selling, or the sales of this phone: both inside the checkout.
   const [view, setView] = useState<'sell' | 'sales'>('sell');
+  // Each touch of « Scanner » opens the camera in the checkout (ADR-068).
+  const [scanRequests, setScanRequests] = useState(0);
   const [confirm, confirmDialog] = useConfirm();
   /** The only way out of the checkout: explicit, after a question. */
   async function quit() {
@@ -866,13 +868,10 @@ export function CaisseApp() {
         <button
           type="button"
           onClick={() => {
-            const search = document.querySelector('[data-checkout-search]');
-            if (search instanceof HTMLInputElement) {
-              search.focus();
-              search.select();
-            }
+            setView('sell');
+            setScanRequests((count) => count + 1);
           }}
-          aria-label="Scanner un code-barres : passez-le au lecteur ou tapez-le"
+          aria-label="Scanner un produit avec la caméra"
           className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-ink text-canvas"
         >
           <ScanLine aria-hidden className="size-6" />
@@ -1026,6 +1025,7 @@ export function CaisseApp() {
             onRecord={onRecord}
             onCreateCustomer={onCreateCustomer}
             onCorrectStock={onCorrectStock}
+            scanRequests={scanRequests}
           />
         </div>
       </main>
