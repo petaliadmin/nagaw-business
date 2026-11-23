@@ -101,6 +101,11 @@ export interface LocalTicket {
       unitFactor?: number;
       priceBasis?: 'unit' | 'stock';
       listTotal?: number;
+      /**
+       * Typed for « Taper un montant » (ADR-069): the owner may make it a
+       * product of the catalogue.
+       */
+      typed?: boolean;
     }[];
     subtotal: number;
     discount: number;

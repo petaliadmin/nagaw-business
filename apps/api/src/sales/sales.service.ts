@@ -478,6 +478,8 @@ export class SalesService {
             'p.track_stock',
             'p.status',
             'p.low_stock_threshold',
+            'p.open_price',
+            'p.system_role',
             't.rate_basis_points',
           ])
           .where('p.organization_id', '=', tenant.organizationId)
@@ -570,11 +572,55 @@ export class SalesService {
               `lines.${index}.quantity`,
               `Quantité trop précise pour « ${product.name} » (${named}).`,
             );
+          // What the seller typed for « Vente au montant » names the line.
+          if (line.label !== null && product.system_role !== 'open_sale')
+            throw invalid(
+              `lines.${index}.label`,
+              `« ${product.name} » garde son nom sur le ticket.`,
+            );
           const pricing = pricingOf(
             option,
             toNumber(product.sale_price),
             line.quantity,
           );
+          // A price typed at each sale (ADR-069): the seller's price is the
+          // price, in the stock unit, never a negotiation nor a difference.
+          if (product.open_price) {
+            if (unit || conversion)
+              throw invalid(
+                `lines.${index}.productUnitId`,
+                `Le prix de « ${product.name} » se tape pour l’article entier.`,
+              );
+            // The amount typed for the line, else (an older phone) its
+            // price for one.
+            const typed =
+              line.agreedTotal !== null
+                ? line.agreedTotal / line.quantity
+                : device
+                  ? device.unitPrices[index]!
+                  : null;
+            if (typed === null || typed <= 0)
+              throw invalid(
+                `lines.${index}.agreedTotal`,
+                `Tapez le prix de « ${line.label ?? product.name} ».`,
+              );
+            return {
+              line,
+              product,
+              unit,
+              label: option.label,
+              factor: option.factor,
+              baseQuantity,
+              basis: 'unit' as const,
+              pricedQuantity: line.quantity,
+              unitPrice: typed,
+              catalogPrice: typed,
+              unitCost:
+                product.purchase_price === null
+                  ? null
+                  : toNumber(product.purchase_price),
+            };
+          }
           return {
             line,
             product,
@@ -764,13 +810,14 @@ export class SalesService {
                   sale_id: id,
                   position: index + 1,
                   product_id: product.id,
-                  label: product.name,
+                  label: line.label ?? product.name,
                   unit: product.unit,
                   product_unit_id: unit?.id ?? null,
                   unit_label: label,
                   unit_factor: factor,
                   price_basis: basis,
-                  unit_price: unitPrice,
+                  // A typed total over several pieces may leave a fraction.
+                  unit_price: Math.round(unitPrice),
                   quantity: line.quantity,
                   list_total: listTotal === lineTotal ? null : listTotal,
                   line_total: lineTotal,

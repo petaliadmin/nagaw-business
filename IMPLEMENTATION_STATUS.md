@@ -1046,7 +1046,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Création en trois étapes** (2026-11-21, maquettes « Profils ») : 1 Votre boutique, 2 Ce que vous vendez (cartes illustrées), 3 Vos habitudes, puis « Voici votre application » et « C'est parti » ; « Revenir » à côté du titre.
 - **Caisse, étape « Encaisser »** (2026-11-22, demande du propriétaire) : le panier en haut, puis le paiement, puis « Valider la vente », fixé en bas de l'écran sur téléphone ; même ordre sur ordinateur.
 - **Barre du bas selon le profil** (2026-11-22) : « Factures » ou « Ventes », « Crédit » ou le catalogue, selon l'offre et les réglages ; ce qui quitte la barre est dans le Menu ; même barre dans « Voici votre application ».
-- **Non fait (reporté, voir ADR-067)** : vendre en tapant un montant, prix à taper, garder un article, suggestion de compter le stock, rendez-vous, chiffres soins / produits.
+- **Non fait (reporté, voir ADR-067)** : suggestion de compter le stock, rendez-vous, chiffres soins / produits. Vendre en tapant un montant, prix à taper et garder un article : voir ADR-069 ci-dessous.
 - **Tests ajoutés** : `organizations.spec.ts` (règles des réponses, tri, parties inconnues), `navigation.test.ts` (parties cachées, nom du catalogue), `organizations.integration-spec.ts` (valeurs par défaut, création, modification auditée, partie inconnue refusée, isolation entre boutiques et membre simple refusé), `workspace.spec.ts` de bout en bout (création d'une boutique simple, Menu, barre, raccourcis, stock éteint, Mon application, « Tout afficher »).
 
 ## Scanner un produit avec la caméra (ADR-068)
@@ -1054,3 +1054,13 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire.
 - **Fait** : `components/sales/barcode-scanner.tsx` (caméra arrière, lecteur natif ou WebAssembly servi par l'application), `lib/sales/barcode.ts` (`findByCode`, `isNewRead`), bouton « Scanner » de la caisse, « Entrée » d'un lecteur branché dans la recherche ; dépendances `barcode-detector` 3.2.4 et `zxing-wasm` 3.1.7.
 - **Tests** : `barcode.test.ts` (code du produit, code d'une unité, QR code, inconnu, une fois tant que visible) ; `sales.spec.ts` de bout en bout : lecteur branché, caméra simulée qui filme un vrai EAN-13 (produit ajouté une seule fois), caméra absente.
+
+## Vendre en tapant un montant, prix tapés (ADR-069)
+
+- **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire. Migration `20261123090000_open_price` à appliquer avant l'API.
+- **Fait** :
+  - base : `products.open_price`, `products.system_role` (`open_sale`, un par boutique, index unique), contrainte « prix tapé, stock non compté » ; « Vente au montant » ajoutée aux boutiques existantes ;
+  - contrats : `openPrice` à la création et en modification, `openPrice` et `systemRole` dans `ProductDto`, `label` sur les lignes de vente (en ligne et hors ligne), `system=include` sur la liste des produits ;
+  - API : produit « Vente au montant » créé avec la boutique, protégé (`SYSTEM_PRODUCT`), hors liste et hors limite de l'offre ; prix tapé pris dans le montant de la ligne, sans remise ni prix à vérifier ; libellé refusé sur un produit ordinaire ;
+  - web : « Taper un montant » et pavé de prix dans la caisse (`AmountSheet`), ligne nommée par ce qui est tapé, « Prix à taper » sur les tuiles, le catalogue et la fiche ; choix du prix dans le formulaire ; « Ajouter « … » à vos produits » sur le ticket, formulaire prérempli (`?nom=&prix=`).
+- **Tests** : `open-price.integration-spec.ts` (création avec la boutique selon l'offre, protection, hors limite, vente au montant nommée, prix tapé sur plusieurs pièces, prix manquant, libellé refusé, vente hors ligne sans prix à vérifier, isolation entre boutiques) ; `cart.test.ts` (prix tapé sans remise, prix manquant, une ligne par montant) ; `catalog.test.ts` (prix habituel facultatif) ; `sales.spec.ts` de bout en bout (montant tapé, ticket, ajout au catalogue, vente au prix tapé).

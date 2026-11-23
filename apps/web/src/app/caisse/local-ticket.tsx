@@ -1,7 +1,14 @@
 'use client';
 
 import { describeSaleLine, type SaleDto } from '@nagaw/shared';
-import { Check, CloudOff, Printer, ShoppingCart } from 'lucide-react';
+import {
+  Check,
+  CloudOff,
+  PackagePlus,
+  Printer,
+  ShoppingCart,
+} from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
@@ -46,6 +53,7 @@ export function LocalTicketView({
   shop,
   money,
   justSold = false,
+  canAddProducts = false,
   onNext,
 }: {
   ticket: LocalTicket;
@@ -54,8 +62,26 @@ export function LocalTicketView({
   money: (value: number) => string;
   /** Shown right after the sale: the last of its three steps. */
   justSold?: boolean;
+  /** Catalogue managers: what was typed may become a product (ADR-069). */
+  canAddProducts?: boolean;
   onNext: () => void;
 }) {
+  // Each word typed once, with the price it was sold at.
+  const typed = canAddProducts
+    ? [
+        ...new Map(
+          ticket.sale.lines
+            .filter((line) => line.typed)
+            .map((line) => [
+              line.label.toLowerCase(),
+              {
+                name: line.label,
+                price: Math.round(line.lineTotal / line.quantity),
+              },
+            ]),
+        ).values(),
+      ]
+    : [];
   const label = ticketLabel(sale);
   const share = ticketText(sale, {
     name: shop.name,
@@ -114,6 +140,24 @@ export function LocalTicketView({
             Vente refusée par le serveur : {ticket.reason}. Elle reste gardée
             sur ce téléphone.
           </Alert>
+        )}
+        {justSold && typed.length > 0 && (
+          <ul className="flex flex-col gap-2">
+            {typed.map((item) => (
+              <li key={item.name}>
+                <Link
+                  href={`/espace/produits/nouveau?${new URLSearchParams({
+                    nom: item.name,
+                    prix: String(item.price),
+                  })}`}
+                  className="inline-flex min-h-12 items-center gap-2 font-semibold text-brand-ink underline underline-offset-4"
+                >
+                  <PackagePlus aria-hidden className="size-5 shrink-0" />
+                  Ajouter « {item.name} » à vos produits
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold md:text-3xl">

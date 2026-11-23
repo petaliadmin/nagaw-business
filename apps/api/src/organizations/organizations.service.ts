@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import {
@@ -77,6 +78,25 @@ export class OrganizationsService {
               organization_id: organization.id,
               user_id: user.userId,
               role: 'owner',
+            })
+            .execute();
+
+          // « Taper un montant » in the caisse sells this one (ADR-069).
+          const services = organization.offer === 'services';
+          await trx
+            .insertInto('app.products')
+            .values({
+              organization_id: organization.id,
+              name: 'Vente au montant',
+              unit: services ? 'prestation' : 'piece',
+              sale_price: 0,
+              track_stock: false,
+              kind: services ? 'service' : 'product',
+              open_price: true,
+              system_role: 'open_sale',
+              status: 'active',
+              client_operation_id: randomUUID(),
+              created_by: user.userId,
             })
             .execute();
 

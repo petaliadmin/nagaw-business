@@ -868,3 +868,17 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - caméra déjà permise par `Permissions-Policy: camera=(self)` (photos) ; refusée ou absente : le panneau le dit et rappelle le lecteur ou la recherche ;
   - la recherche du produit par code est une fonction pure testée (`lib/sales/barcode.ts`) ; le serveur revérifie la vente comme toute autre (ADR-024, ADR-025).
 - **Conséquences** : environ 0,9 Mo (0,4 Mo compressé) chargés une fois sur un téléphone sans lecteur intégré ; aucun changement d'API ni de base.
+
+## ADR-069 — Vendre en tapant un montant, et des prix tapés à chaque vente
+
+- **Statut** : **Proposée**, livrée sur la branche `profils-affichage` (demande du propriétaire du 2026-11-23 : « implémenter les fonctions discutées dans profils-affichage », reportées par ADR-067).
+- **Contexte** : une étale vend ce qu'elle n'a pas mis au catalogue (« du pain pour 1 500 F ») et des articles dont le prix change avec le client ou le tas (poisson, oignons). La caisse ne vendait qu'un produit du catalogue à son prix, que le vendeur pouvait seulement baisser (ADR-038), avec la limite de remise des vendeurs.
+- **Décision** :
+  - `products.open_price` : le prix d'un produit se **tape à chaque vente** ; `sale_price` n'est qu'un prix habituel, 0 quand il n'y en a pas. Ce qui est tapé est le prix de la ligne, jamais une négociation : ni prix barré, ni remise comptée, ni « prix à vérifier » d'une vente hors ligne ;
+  - `products.system_role = 'open_sale'` : **un produit « Vente au montant » par boutique** (migration `20261123090000_open_price`, qui l'ajoute aux boutiques existantes ; l'API le crée avec chaque nouvelle boutique), produit ou service selon l'offre, prix tapé, stock non compté. Une vente au montant est donc une ligne comme les autres : ticket, statistiques, biens ou services dans la comptabilité (ADR-046), synchronisation hors ligne (ADR-020) ;
+  - il n'est **pas un produit de la boutique** : absent du catalogue, des factures et du stock (la liste ne le donne qu'avec `system=include`, que seule la caisse demande), hors de la limite de produits de l'offre ; l'API refuse de l'archiver, de lui donner un prix fixe ou de compter son stock (`409 SYSTEM_PRODUCT`) ;
+  - le **libellé** d'une ligne (`label`, 120 caractères) se tape seulement pour « Vente au montant » (« Pour quoi ? ») ; un autre produit garde son nom sur le ticket (400) ;
+  - le serveur prend le prix tapé dans le montant de la ligne (`agreedTotal ÷ quantité`), à défaut dans le prix envoyé par le téléphone ; sans prix, la vente est refusée (« Tapez le prix de … ») ;
+  - caisse : « Taper un montant » au-dessus des produits (montant, puis « Pour quoi ? » facultatif) ; chaque montant est une ligne à part ; un produit à prix tapé affiche « Prix à taper » et ouvre le pavé à chaque toucher, une ligne par prix ; « Valider la vente » rappelle un prix oublié ;
+  - **garder l'article** : après une vente, le propriétaire et les gérants (`catalog.manage`) voient « Ajouter « Pain » à vos produits », qui ouvre le formulaire d'un nouveau produit avec le nom et le prix ; le formulaire propose « Toujours le même » ou « Tapé à chaque vente ».
+- **Conséquences** : appliquer `20261123090000_open_price` avant de déployer l'API ; les téléphones qui n'ont pas encore la nouvelle caisse continuent de vendre comme avant.

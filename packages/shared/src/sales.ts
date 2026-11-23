@@ -188,6 +188,17 @@ export const saleLineFields = {
   quantity: quantitySchema.positive('La quantité doit être positive'),
   /** Amount agreed with the customer for the line; null: catalogue price. */
   agreedTotal: amountSchema.nullable().default(null),
+  /**
+   * What was sold, typed by the seller, for a line of « Vente au montant »
+   * (« poisson »): it becomes the label of the line (ADR-069).
+   */
+  label: z
+    .string()
+    .trim()
+    .max(120, '120 caractères au plus')
+    .transform((value) => (value === '' ? null : value))
+    .nullable()
+    .default(null),
 };
 
 /** A line is sold in one unit: a selling unit or a conversion, not both. */

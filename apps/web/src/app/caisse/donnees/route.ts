@@ -19,7 +19,7 @@ export async function GET() {
   const call = <T>(path: string) =>
     apiAsUser<T>(accessToken, { path, organizationId: organization.id });
   const [products, customers, devices, settings] = await Promise.all([
-    call<ProductDto[]>('/products'),
+    call<ProductDto[]>('/products?system=include'),
     call<CustomerDto[]>('/customers'),
     call<DeviceDto[]>('/devices'),
     call<NotificationSettingsDto>('/notifications/settings'),

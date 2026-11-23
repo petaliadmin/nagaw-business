@@ -285,6 +285,8 @@ const productFields = {
   trackStock: z.boolean(),
   lowStockThreshold: threshold.nullable(),
   kind: z.enum(PRODUCT_KINDS, { error: 'Nature inconnue' }),
+  /** Price typed at each sale (ADR-069); `salePrice` is a suggestion. */
+  openPrice: z.boolean(),
 };
 
 const SERVICE_WITHOUT_STOCK = 'Un service n’a pas de stock';
@@ -293,6 +295,7 @@ export const createProductSchema = z
   .object({
     ...productFields,
     kind: productFields.kind.default('product'),
+    openPrice: productFields.openPrice.default(false),
     /** Stock on hand when the product is added; recorded as a movement. */
     initialStock: quantitySchema
       .positive('Le stock de départ doit être positif')
@@ -325,6 +328,7 @@ export const updateProductSchema = z
     trackStock: productFields.trackStock.optional(),
     lowStockThreshold: productFields.lowStockThreshold.optional(),
     kind: productFields.kind.optional(),
+    openPrice: productFields.openPrice.optional(),
     status: archivableStatus.optional(),
     /** Version read before editing: a stale version is a conflict (ADR-020). */
     version: z.number().int().min(1),
@@ -365,6 +369,13 @@ export interface ProductDto {
   taxRate: { id: string; name: string; rateBasisPoints: number } | null;
   barcode: string | null;
   kind: ProductKind;
+  /** Price typed at each sale (ADR-069). */
+  openPrice: boolean;
+  /**
+   * `open_sale`: the shop's « Vente au montant », behind « Taper un
+   * montant » in the caisse; never shown in the catalogue (ADR-069).
+   */
+  systemRole: 'open_sale' | null;
   trackStock: boolean;
   lowStockThreshold: number | null;
   /** Sum of the stock movements. */
@@ -606,6 +617,11 @@ export const productListQuerySchema = z
     stock: z.enum(STOCK_FILTERS).optional(),
     status: archivableStatus.default('active'),
     kind: z.enum(PRODUCT_KINDS).optional(),
+    /**
+     * `include`: with « Vente au montant », which only the caisse lists
+     * (ADR-069); the catalogue, invoices and stock never show it.
+     */
+    system: z.enum(['include']).optional(),
     ...pageFields,
   })
   .strict();

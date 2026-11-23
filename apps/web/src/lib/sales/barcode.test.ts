@@ -18,6 +18,8 @@ const rice: ProductDto = {
   stockLevel: 'ok',
   status: 'active',
   version: 1,
+  openPrice: false,
+  systemRole: null,
   photoVersion: null,
   units: [
     {

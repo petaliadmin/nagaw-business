@@ -158,6 +158,8 @@ export class ProductsService {
         't.rate_basis_points',
         'p.barcode',
         'p.kind',
+        'p.open_price',
+        'p.system_role',
         'p.track_stock',
         'p.low_stock_threshold',
         'p.status',
@@ -195,6 +197,8 @@ export class ProductsService {
       id: row.id,
       name: row.name,
       kind: row.kind,
+      openPrice: row.open_price,
+      systemRole: row.system_role,
       category:
         row.category_id && row.category_name && row.category_color
           ? {
@@ -236,6 +240,7 @@ export class ProductsService {
       .orderBy('p.id');
     if (query.categoryId) q = q.where('p.category_id', '=', query.categoryId);
     if (query.kind) q = q.where('p.kind', '=', query.kind);
+    if (query.system !== 'include') q = q.where('p.system_role', 'is', null);
     if (query.q) {
       const text = query.q;
       q = q.where((eb) =>
@@ -419,6 +424,8 @@ export class ProductsService {
           .select((eb) => eb.fn.countAll<string>().as('count'))
           .where('organization_id', '=', tenant.organizationId)
           .where('status', '=', 'active')
+          // « Vente au montant » belongs to the caisse, not to the plan.
+          .where('system_role', 'is', null)
           .executeTakeFirstOrThrow();
         if (org.max_products !== null && Number(count) >= org.max_products)
           throw limitReached('produits', org.max_products, true);
@@ -442,6 +449,7 @@ export class ProductsService {
             tax_rate_id: input.taxRateId,
             barcode: input.barcode,
             kind: input.kind,
+            open_price: input.openPrice,
             track_stock: input.trackStock,
             low_stock_threshold: input.lowStockThreshold,
             client_operation_id: input.clientOperationId,
@@ -504,6 +512,19 @@ export class ProductsService {
             'Ce produit a été modifié entre-temps. Rechargez la page pour voir la dernière version.',
           );
         }
+        // « Vente au montant » is the caisse's: its name and nature may
+        // change, never its price typed at each sale, its stock or its life.
+        if (
+          before.systemRole === 'open_sale' &&
+          (input.status === 'archived' ||
+            input.openPrice === false ||
+            input.trackStock === true)
+        )
+          throw new ApiException(
+            HttpStatus.CONFLICT,
+            'SYSTEM_PRODUCT',
+            '« Vente au montant » sert à la caisse : elle ne s’archive pas et son prix se tape à chaque vente.',
+          );
         const unit = input.unit ?? before.unit;
         const threshold =
           input.lowStockThreshold === undefined
@@ -556,6 +577,7 @@ export class ProductsService {
           taxRateId: before.taxRate?.id ?? null,
           barcode: before.barcode,
           kind: before.kind,
+          openPrice: before.openPrice,
           trackStock: before.trackStock,
           lowStockThreshold: before.lowStockThreshold,
           status: before.status,
@@ -577,6 +599,7 @@ export class ProductsService {
             tax_rate_id: input.taxRateId,
             barcode: input.barcode,
             kind: input.kind,
+            open_price: input.openPrice,
             // Becoming a service ends the count of its stock.
             track_stock: service ? false : input.trackStock,
             low_stock_threshold: service ? null : input.lowStockThreshold,

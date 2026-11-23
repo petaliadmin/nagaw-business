@@ -19,6 +19,7 @@ import {
 import {
   ArrowLeft,
   Banknote,
+  Calculator,
   ChevronRight,
   CircleCheck,
   CreditCard,
@@ -56,6 +57,8 @@ import { formatQuantity, STOCK_LEVEL_LABELS } from '@/lib/catalog/labels';
 import { correctionProblem } from '@/lib/offline/local-stock';
 import {
   lineKey,
+  lineLabel,
+  missingPrice,
   negotiationProblem,
   parseFrancs,
   parseQuantity,
@@ -189,6 +192,118 @@ function UnitPicker({
           ))}
         </ul>
       </div>
+    </dialog>
+  );
+}
+
+/**
+ * An amount to type (ADR-069): « Taper un montant » (with what was sold),
+ * or the price of a product whose price changes at each sale.
+ */
+function AmountSheet({
+  title,
+  amountLabel,
+  initialAmount = '',
+  askWhat = false,
+  onDone,
+  onClose,
+}: {
+  title: string;
+  amountLabel: string;
+  initialAmount?: string;
+  /** « Pour quoi ? »: the words of the ticket line. */
+  askWhat?: boolean;
+  onDone: (amount: number, what: string) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const ids = useId();
+  const [amountText, setAmountText] = useState(initialAmount);
+  const [what, setWhat] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+  function done() {
+    const amount = parseFrancs(amountText);
+    if (!Number.isFinite(amount) || amount <= 0)
+      return setProblem('Tapez un montant en chiffres, par exemple 1500.');
+    onDone(amount, what.trim());
+    ref.current?.close();
+  }
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby={`${ids}-title`}
+      onClose={onClose}
+      className="m-auto w-[min(28rem,calc(100%-2rem))] rounded-2xl bg-surface p-0 text-ink shadow-xl backdrop:bg-black/50"
+    >
+      <form
+        method="dialog"
+        onSubmit={(event) => {
+          event.preventDefault();
+          done();
+        }}
+        className="flex flex-col gap-3 p-4"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <h2 id={`${ids}-title`} className="text-xl font-bold">
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={() => ref.current?.close()}
+            aria-label="Fermer"
+            className="flex size-12 shrink-0 items-center justify-center rounded-xl hover:bg-surface-muted"
+          >
+            <X aria-hidden className="size-6" />
+          </button>
+        </div>
+        <label htmlFor={`${ids}-amount`} className="font-semibold">
+          {amountLabel}
+        </label>
+        <input
+          id={`${ids}-amount`}
+          inputMode="numeric"
+          autoComplete="off"
+          // The sheet opens for this one field: the keypad comes at once.
+          autoFocus
+          value={amountText}
+          onChange={(event) => setAmountText(event.currentTarget.value)}
+          aria-invalid={problem ? true : undefined}
+          aria-describedby={problem ? `${ids}-problem` : undefined}
+          className={`${CONTROL} text-2xl font-extrabold tabular-nums`}
+        />
+        {problem && (
+          <p id={`${ids}-problem`} className="font-medium text-danger-ink">
+            {problem}
+          </p>
+        )}
+        {askWhat && (
+          <>
+            <label htmlFor={`${ids}-what`} className="font-semibold">
+              Pour quoi ? <span className="font-normal">(facultatif)</span>
+            </label>
+            <input
+              id={`${ids}-what`}
+              value={what}
+              maxLength={120}
+              onChange={(event) => setWhat(event.currentTarget.value)}
+              aria-describedby={`${ids}-what-hint`}
+              className={CONTROL}
+            />
+            <p id={`${ids}-what-hint`} className="text-ink-muted">
+              Ce mot s’écrit sur le ticket, par exemple « pain ». Rien d’écrit :
+              « Vente au montant ».
+            </p>
+          </>
+        )}
+        <button type="submit" className={buttonClasses('primary')}>
+          <Plus aria-hidden className="size-5" />
+          {askWhat ? 'Ajouter au panier' : `Garder ce prix`}
+        </button>
+      </form>
     </dialog>
   );
 }
@@ -576,6 +691,13 @@ export function Checkout({
   const [cart, setCart] = useState<CartLine[]>([]);
   // The product whose unit is being chosen (ADR-038).
   const [choosing, setChoosing] = useState<ProductDto | null>(null);
+  // An amount being typed (ADR-069): « Taper un montant », or the price
+  // of a line whose price is typed at each sale.
+  const [typing, setTyping] = useState<
+    | { kind: 'amount' }
+    | { kind: 'price'; key: string; product: ProductDto; initial: string }
+    | null
+  >(null);
   // The camera scanner opens at each touch of « Scanner » (ADR-068).
   const [scanning, setScanning] = useState(false);
   const [scansSeen, setScansSeen] = useState(scanRequests);
@@ -622,14 +744,20 @@ export function Checkout({
     () => new Map(products.map((p) => [p.id, p])),
     [products],
   );
+  // « Vente au montant » is behind « Taper un montant », not a tile.
+  const amountProduct = products.find((p) => p.systemRole === 'open_sale');
+  const sellable = useMemo(
+    () => products.filter((p) => p.systemRole === null),
+    [products],
+  );
   // Products or services, when the shop sells both (ADR-045).
   const bothKinds =
-    products.some((p) => p.kind === 'product') &&
-    products.some((p) => p.kind === 'service');
+    sellable.some((p) => p.kind === 'product') &&
+    sellable.some((p) => p.kind === 'service');
   const [kind, setKind] = useState<'product' | 'service' | null>(null);
   const ofKind = useMemo(
-    () => (kind ? products.filter((p) => p.kind === kind) : products),
-    [products, kind],
+    () => (kind ? sellable.filter((p) => p.kind === kind) : sellable),
+    [sellable, kind],
   );
   // Categories of the products, to sell from a shelf in one tap.
   const [category, setCategory] = useState<string | null>(null);
@@ -649,13 +777,13 @@ export function Checkout({
       : ofKind;
     if (!text) return shelf;
     // A search looks everywhere: the seller may not know the shelf.
-    return products.filter(
+    return sellable.filter(
       (p) =>
         p.name.toLowerCase().includes(text) ||
         p.barcode === query.trim() ||
         p.units.some((u) => u.barcode === query.trim()),
     );
-  }, [products, ofKind, query, category]);
+  }, [sellable, ofKind, query, category]);
 
   const lines = priceCart(cart, byId);
   const linesValid = lines.every(
@@ -678,6 +806,7 @@ export function Checkout({
       !Number.isFinite(parseFrancs(line.agreedText)),
   );
   const refusal = negotiationProblem(lines, totals, negotiation, currency);
+  const unpriced = missingPrice(lines);
 
   function updateLine(key: string, change: Partial<CartLine>) {
     setCart((current) =>
@@ -685,8 +814,33 @@ export function Checkout({
     );
   }
 
+  /** A line of its own, for a price or an amount typed (ADR-069). */
+  function addTyped(
+    product: ProductDto,
+    option: SellingOption,
+    agreedText: string,
+    label?: string,
+  ): string {
+    const line: CartLine = {
+      productId: product.id,
+      optionKey: option.key,
+      quantityText: '1',
+      agreedText,
+      entry: crypto.randomUUID(),
+      ...(label ? { label } : {}),
+    };
+    setCart((current) => [...current, line]);
+    return lineKey(line);
+  }
+
   function add(product: ProductDto, option: SellingOption) {
     setError(null);
+    if (product.openPrice) {
+      const key = addTyped(product, option, '');
+      setAnnouncement(`${product.name} ajouté. Tapez son prix.`);
+      setTyping({ kind: 'price', key, product, initial: '' });
+      return;
+    }
     const key = lineKey({ productId: product.id, optionKey: option.key });
     const existing = cart.find((line) => lineKey(line) === key);
     const before = existing ? parseQuantity(existing.quantityText) : 0;
@@ -827,6 +981,10 @@ export function Checkout({
     setError(null);
     if (!linesValid) return setError('Vérifiez les quantités du panier.');
     if (agreedInvalid) return setError('Vérifiez les prix changés du panier.');
+    if (unpriced)
+      return setError(
+        `Tapez le prix de « ${lineLabel(unpriced.line, unpriced.product)} ».`,
+      );
     if (discount === null) return setError('Remise illisible.');
     if (refusal) return setError(refusal);
     const paid = payments();
@@ -950,7 +1108,7 @@ export function Checkout({
               <li key={key} className="flex flex-col gap-2 py-3 first:pt-0">
                 <div className="flex items-start justify-between gap-2">
                   <label htmlFor={inputId} className="font-semibold">
-                    {product.name}
+                    {lineLabel(line, product)}
                     {option.key !== 'stock' && (
                       <span className="block font-normal text-ink-muted">
                         en {unitName}
@@ -1021,7 +1179,33 @@ export function Checkout({
                     {invalid}
                   </p>
                 )}
-                {!invalid && (
+                {!invalid && product.openPrice && (
+                  <div className="flex flex-col gap-1">
+                    {priced.agreedTotal === null && (
+                      <p className="font-medium text-danger-ink">
+                        Prix à taper.
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTyping({
+                          kind: 'price',
+                          key,
+                          product,
+                          initial: line.agreedText,
+                        })
+                      }
+                      className="inline-flex min-h-12 items-center gap-2 self-start font-semibold text-brand-ink underline-offset-4 hover:underline"
+                    >
+                      <Tag aria-hidden className="size-5" />
+                      {priced.agreedTotal === null
+                        ? `Taper le prix : ${lineLabel(line, product)}`
+                        : `Changer le prix : ${lineLabel(line, product)}`}
+                    </button>
+                  </div>
+                )}
+                {!invalid && !product.openPrice && (
                   <PriceEditor
                     priced={priced}
                     listTotal={computed?.listTotal ?? 0}
@@ -1535,6 +1719,27 @@ export function Checkout({
             ))}
           </div>
         )}
+        {amountProduct && (
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setTyping({ kind: 'amount' });
+            }}
+            className="flex min-h-14 w-full items-center gap-3 rounded-3xl border-2 border-dashed border-line-strong bg-surface px-4 text-left text-lg font-bold hover:border-sales"
+          >
+            <Calculator
+              aria-hidden
+              className="size-6 shrink-0 text-sales-ink"
+            />
+            <span className="flex flex-col">
+              Taper un montant
+              <span className="text-sm font-normal text-ink-muted">
+                Pour ce qui n’est pas dans vos {noun}s
+              </span>
+            </span>
+          </button>
+        )}
         {visible.length === 0 ? (
           <p className="text-ink-muted">Aucun {noun} ne correspond.</p>
         ) : (
@@ -1565,7 +1770,9 @@ export function Checkout({
                         {product.name}
                       </span>
                       <span className="font-extrabold tabular-nums text-sales-ink">
-                        {money(product.salePrice)}
+                        {product.openPrice
+                          ? 'Prix à taper'
+                          : money(product.salePrice)}
                       </span>
                     </span>
                     {product.stockLevel === 'out' && (
@@ -1656,6 +1863,34 @@ export function Checkout({
           money={money}
           onPick={(option) => add(choosing, option)}
           onClose={() => setChoosing(null)}
+        />
+      )}
+      {typing?.kind === 'amount' && amountProduct && (
+        <AmountSheet
+          title="Taper un montant"
+          amountLabel="Montant que le client paie"
+          askWhat
+          onDone={(amount, what) => {
+            const option = sellingOptionsOf(amountProduct)[0]!;
+            addTyped(amountProduct, option, String(amount), what || undefined);
+            setAnnouncement(
+              `${what || amountProduct.name} : ${money(amount)} ajouté au panier.`,
+            );
+          }}
+          onClose={() => setTyping(null)}
+        />
+      )}
+      {typing?.kind === 'price' && (
+        <AmountSheet
+          key={typing.key}
+          title={`Prix de « ${typing.product.name} »`}
+          amountLabel="Prix que le client paie pour cette ligne"
+          initialAmount={typing.initial}
+          onDone={(amount) => {
+            updateLine(typing.key, { agreedText: String(amount) });
+            setAnnouncement(`${typing.product.name} : ${money(amount)}.`);
+          }}
+          onClose={() => setTyping(null)}
         />
       )}
       <BarcodeScanner

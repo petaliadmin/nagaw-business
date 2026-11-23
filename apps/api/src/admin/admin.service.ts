@@ -211,7 +211,7 @@ export class AdminService {
         'o.suspension_reason',
       ])
       .select(
-        sql<string>`(select count(*) from app.products x where x.organization_id = o.id and x.status = 'active')`.as(
+        sql<string>`(select count(*) from app.products x where x.organization_id = o.id and x.status = 'active' and x.system_role is null)`.as(
           'products',
         ),
       )
@@ -882,7 +882,7 @@ export class AdminService {
           max_devices: number;
         }>`
         select o.id, o.name, o.max_products, o.max_members, o.max_devices,
-               (select count(*) from app.products x where x.organization_id = o.id and x.status = 'active') as products,
+               (select count(*) from app.products x where x.organization_id = o.id and x.status = 'active' and x.system_role is null) as products,
                (select count(*) from app.organization_memberships x where x.organization_id = o.id and x.status = 'active') as members,
                (select count(*) from app.devices x where x.organization_id = o.id and x.revoked_at is null) as devices
           from app.organizations o where o.status = 'active'`.execute(db),

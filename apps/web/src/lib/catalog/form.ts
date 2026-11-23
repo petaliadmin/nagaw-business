@@ -55,12 +55,18 @@ export function optionalIdField(
 /** Product form → values for createProductSchema / updateProductSchema. */
 export function productValues(formData: FormData, currency: string) {
   const kind = text(formData, 'kind') || 'product';
+  // A price typed at each sale (ADR-069): the usual price may stay empty.
+  const openPrice = formData.get('openPrice') === 'true';
   return {
     kind,
     name: text(formData, 'name'),
     categoryId: optionalIdField(formData, 'categoryId'),
     unit: text(formData, 'unit'),
-    salePrice: amountField(formData, 'salePrice', currency),
+    openPrice,
+    salePrice:
+      openPrice && text(formData, 'salePrice').trim() === ''
+        ? 0
+        : amountField(formData, 'salePrice', currency),
     purchasePrice: optionalAmountField(formData, 'purchasePrice', currency),
     taxRateId: optionalIdField(formData, 'taxRateId'),
     barcode: text(formData, 'barcode'),

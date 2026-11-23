@@ -46,6 +46,7 @@ export function ProductForm({
   categories,
   taxRates,
   product,
+  prefill,
 }: {
   offer: ShopOffer;
   /** Whether a new product counts its stock at first (ADR-067). */
@@ -57,6 +58,8 @@ export function ProductForm({
   taxRates: TaxRateDto[];
   /** Absent on creation. */
   product?: ProductDto;
+  /** What the caisse typed for « Taper un montant » (ADR-069). */
+  prefill?: { name: string; salePrice: number | null };
 }) {
   const [state, action, pending] = useActionState(
     product ? updateProduct : createProduct,
@@ -70,6 +73,8 @@ export function ProductForm({
   const [kind, setKind] = useState<ProductKind>(
     product?.kind ?? (offer === 'services' ? 'service' : 'product'),
   );
+  // A price that changes with the customer or the heap (ADR-069).
+  const [openPrice, setOpenPrice] = useState(product?.openPrice ?? false);
   const service = kind === 'service';
   const noun = service ? 'service' : 'produit';
   const symbol = currencySymbol(currency);
@@ -168,21 +173,74 @@ export function ProductForm({
           <FormField
             label={`Nom du ${noun}`}
             name="name"
-            defaultValue={product?.name}
+            defaultValue={product?.name ?? prefill?.name}
             required
             maxLength={120}
             autoComplete="off"
             error={errors.name}
           />
         </div>
+        <fieldset className="flex flex-col gap-2 md:col-span-2">
+          <legend className="mb-1.5 text-base font-semibold">
+            Le prix de vente
+          </legend>
+          <input
+            type="hidden"
+            name="openPrice"
+            value={openPrice ? 'true' : 'false'}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { value: false, label: 'Toujours le même' },
+                { value: true, label: 'Tapé à chaque vente' },
+              ] as const
+            ).map((option) => (
+              <label
+                key={String(option.value)}
+                className={`flex min-h-12 cursor-pointer items-center rounded-xl border-2 px-3 py-2 text-base font-bold focus-within:outline-3 focus-within:outline-focus ${
+                  openPrice === option.value
+                    ? 'border-stock-strong bg-stock-soft text-stock-ink'
+                    : 'border-line-strong bg-surface'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="priceMode"
+                  checked={openPrice === option.value}
+                  onChange={() => setOpenPrice(option.value)}
+                  className="sr-only"
+                />
+                {option.label}
+              </label>
+            ))}
+          </div>
+          {openPrice && (
+            <p className="text-ink-muted">
+              À la caisse, le vendeur tape le prix à chaque vente : pour le
+              poisson, les tas d’oignons, ce qui change selon le client.
+            </p>
+          )}
+        </fieldset>
         <FormField
-          label={`Prix de vente (${symbol})`}
+          key={openPrice ? 'open' : 'fixed'}
+          label={
+            openPrice
+              ? `Prix habituel (${symbol}, facultatif)`
+              : `Prix de vente (${symbol})`
+          }
           name="salePrice"
           inputMode="decimal"
           defaultValue={
-            product ? amountInputValue(product.salePrice, currency) : undefined
+            product
+              ? product.openPrice && product.salePrice === 0
+                ? ''
+                : amountInputValue(product.salePrice, currency)
+              : prefill?.salePrice != null
+                ? amountInputValue(prefill.salePrice, currency)
+                : undefined
           }
-          required
+          required={!openPrice}
           error={errors.salePrice}
         />
         <FormField

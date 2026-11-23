@@ -7,6 +7,8 @@ Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est
 - **Une application à la taille de chaque boutique (ADR-067)** : à la création, « Comment travaillez-vous ? » (crédit, stock, factures, équipe) ; le Menu et l'Accueil n'affichent que ce qui sert ; Paramètres › Mon application pour cacher ou rallumer chaque partie, choisir si les nouveaux produits comptent leur stock, ou tout afficher ; « Produits » à la place de « Stock » dans la barre du bas quand rien n'est compté. Rien n'est supprimé, et les boutiques existantes ne voient aucun changement.
 - **La barre du bas suit la boutique** : un atelier qui facture a « Factures », une boutique qui vend à crédit sans compter son stock a « Crédit » ; ce qui quitte la barre reste dans le Menu.
 - **Création de boutique en trois étapes**, comme la maquette : votre boutique, ce que vous vendez, vos habitudes, puis un aperçu « Voici votre application ».
+- **Taper un montant** (ADR-069) : la caisse vend ce qui n'est pas au catalogue, avec le mot écrit sur le ticket (« Pain ») ; le propriétaire peut ensuite l'ajouter à ses produits en un toucher.
+- **Prix tapé à chaque vente** (ADR-069) : un produit dont le prix change (poisson, tas d'oignons) affiche « Prix à taper » ; le vendeur tape le prix, sans que cela compte comme une remise.
 - **Scanner un produit** (ADR-068) : « Scanner » ouvre la caméra ; chaque code-barres ou QR code lu ajoute son produit au panier, une seule fois tant qu'il reste visible. Un lecteur branché fait de même avec « Entrée ».
 - **Ventes** : un bouton « Nouvelle vente » en haut de la page ouvre la caisse (pour qui peut vendre).
 - **Caisse** : le moyen de paiement et l'opérateur choisis sont en vert, la couleur de l'argent qui entre.

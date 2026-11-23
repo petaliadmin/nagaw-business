@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import type { PlanDto, SubscriptionDto } from '@nagaw/shared';
 import type { Selectable } from 'kysely';
@@ -69,6 +70,9 @@ export class SubscriptionsService {
       .where('organization_id', '=', organizationId);
     if (table === 'app.devices') query = query.where('revoked_at', 'is', null);
     else query = query.where('status', '=', 'active');
+    // The « Vente au montant » product is not one the shop added (ADR-069).
+    if (table === 'app.products')
+      query = query.where(sql<boolean>`system_role is null`);
     return toNumber((await query.executeTakeFirstOrThrow()).count);
   }
 

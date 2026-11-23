@@ -197,6 +197,8 @@ export interface SuppliersTable {
 
 export interface ProductsTable {
   kind: Generated<ProductKind>;
+  open_price: Generated<boolean>;
+  system_role: 'open_sale' | null;
   id: Generated<string>;
   organization_id: string;
   name: string;

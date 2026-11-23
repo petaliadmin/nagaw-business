@@ -49,6 +49,7 @@ import {
   type ShopSnapshot,
 } from '@/lib/offline/store';
 import { classifyAnswer } from '@/lib/offline/delivery';
+import { lineLabel } from '@/lib/sales/cart';
 import { Checkout, type SaleDraft } from './checkout';
 import { LocalTicketView } from './local-ticket';
 
@@ -695,13 +696,19 @@ export function CaisseApp() {
             customerId: pendingCustomer ? null : (draft.customer?.id ?? null),
             customerOperationId: pendingCustomer?.pendingOperationId ?? null,
             lines: draft.lines.map(
-              ({ product, option, quantity, pricing, agreedTotal }) => ({
+              ({ product, option, quantity, pricing, agreedTotal, line }) => ({
                 productId: product.id,
                 productUnitId: option.productUnitId,
                 conversion: option.conversion,
                 quantity,
-                unitPrice: pricing.unitPrice,
+                // A typed price over several pieces may not be whole; the
+                // server prices it from agreedTotal (ADR-069).
+                unitPrice: Math.round(pricing.unitPrice),
                 agreedTotal,
+                label:
+                  product.systemRole === 'open_sale'
+                    ? line.label?.trim() || null
+                    : null,
               }),
             ),
             discount: draft.totals.discount,
@@ -725,8 +732,11 @@ export function CaisseApp() {
                   pricing,
                   lineTotal,
                   listTotal,
+                  line,
                 }) => ({
-                  label: product.name,
+                  label: lineLabel(line, product),
+                  typed:
+                    product.systemRole === 'open_sale' && !!line.label?.trim(),
                   unit: product.unit,
                   quantity,
                   unitPrice: pricing.unitPrice,
@@ -993,6 +1003,9 @@ export function CaisseApp() {
             shop={snapshot.shop}
             money={money}
             justSold={ticket.clientOperationId === soldId}
+            canAddProducts={
+              role !== undefined && roleHasPermission(role, 'catalog.manage')
+            }
             onNext={() => {
               backToSell.current = true;
               setView('sell');

@@ -110,6 +110,71 @@ test('a cash sale shows the change, the ticket and lowers the stock', async ({
   ).toContainText('21 bouteilles');
 });
 
+test('« Taper un montant » sells what is not in the catalogue, then it can become a product (ADR-069)', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/vendre');
+  // « Vente au montant » is behind its button, never a tile.
+  await expect(
+    page
+      .getByRole('list', { name: 'Produits à vendre' })
+      .getByRole('button', { name: /Vente au montant/ }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: /^Taper un montant/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Taper un montant' });
+  await sheet.getByRole('button', { name: 'Ajouter au panier' }).click();
+  await expect(sheet.getByText(/Tapez un montant en chiffres/)).toBeVisible();
+  await sheet.getByLabel('Montant que le client paie').fill('1500');
+  await sheet.getByLabel(/^Pour quoi \?/).fill('Pain');
+  await sheet.getByRole('button', { name: 'Ajouter au panier' }).click();
+  await expect(sheet).toBeHidden();
+  await addToCart(page, 'Eau minérale 1,5 L');
+  await openPayment(page, isMobile);
+  const cart = page.getByRole('list', { name: 'Articles du panier' });
+  await expect(cart.getByLabel('Pain', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /^Valider la vente/ }).click();
+  await expect(page.getByText('Vente enregistrée.')).toBeVisible();
+  const ticket = page.getByRole('article', { name: /^Ticket n°/ });
+  await expect(ticket).toContainText('Pain');
+  expect(plain(await ticket.textContent())).toContain('TOTAL2 000 F CFA');
+
+  // The owner keeps it in the catalogue, with its price typed each time.
+  await page
+    .getByRole('link', { name: 'Ajouter « Pain » à vos produits' })
+    .click();
+  await expect(page.getByLabel('Nom du produit')).toHaveValue('Pain');
+  await expect(page.getByLabel(/^Prix de vente/)).toHaveValue('1500');
+  await page.getByText('Tapé à chaque vente').click();
+  await expect(page.getByLabel(/^Prix habituel/)).toBeVisible();
+  await page.getByLabel(/^Prix habituel/).fill('');
+  await page.getByLabel('En stock').fill('10');
+  await page.getByRole('button', { name: /^Enregistrer/ }).click();
+  await expect(page.getByRole('heading', { name: 'Pain' })).toBeVisible();
+  await expect(page.getByText('Prix tapé à chaque vente.')).toBeVisible();
+
+  await page.goto('/espace/vendre');
+  const tile = page
+    .getByRole('list', { name: 'Produits à vendre' })
+    .getByRole('button', { name: /^Ajouter Pain/ });
+  await expect(tile).toContainText('Prix à taper');
+  await tile.click();
+  const price = page.getByRole('dialog', { name: 'Prix de « Pain »' });
+  await price.getByLabel(/^Prix que le client paie/).fill('700');
+  await price.getByRole('button', { name: 'Garder ce prix' }).click();
+  await openPayment(page, isMobile);
+  await page.getByRole('button', { name: /^Valider la vente/ }).click();
+  await expect(page.getByText('Vente enregistrée.')).toBeVisible();
+  expect(
+    plain(
+      await page.getByRole('article', { name: /^Ticket n°/ }).textContent(),
+    ),
+  ).toContain('TOTAL700 F CFA');
+});
+
 test('a code read by a reader puts its product straight in the cart (ADR-068)', async ({
   page,
   context,

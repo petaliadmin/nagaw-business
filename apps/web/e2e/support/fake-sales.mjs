@@ -274,10 +274,37 @@ export async function handleSales(ctx) {
           'Produit inconnu ou archivé.',
           `lines.${index}.productId`,
         );
+      if (line.label && product.systemRole !== 'open_sale')
+        return refusal(
+          400,
+          'VALIDATION_FAILED',
+          `« ${product.name} » garde son nom sur le ticket.`,
+          `lines.${index}.label`,
+        );
+      // A price typed at each sale (ADR-069).
+      const typed = product.openPrice
+        ? device
+          ? line.unitPrice
+          : line.agreedTotal === null
+            ? null
+            : line.agreedTotal / line.quantity
+        : null;
+      if (product.openPrice && !(typed > 0))
+        return refusal(
+          400,
+          'VALIDATION_FAILED',
+          `Tapez le prix de « ${line.label ?? product.name} ».`,
+          `lines.${index}.agreedTotal`,
+        );
       lines.push({
         product,
         quantity: line.quantity,
-        unitPrice: device ? line.unitPrice : product.salePrice,
+        label: line.label ?? product.name,
+        unitPrice: product.openPrice
+          ? typed
+          : device
+            ? line.unitPrice
+            : product.salePrice,
       });
     }
     const rate = (product) =>
@@ -321,10 +348,10 @@ export async function handleSales(ctx) {
       status: 'completed',
       customerId: input.customerId,
       sellerId: device?.soldBy ?? user.id,
-      lines: lines.map(({ product, quantity, unitPrice }, index) => ({
+      lines: lines.map(({ product, quantity, unitPrice, label }, index) => ({
         position: index + 1,
         productId: product.id,
-        label: product.name,
+        label,
         unit: product.unit,
         unitPrice,
         quantity,
@@ -348,7 +375,9 @@ export async function handleSales(ctx) {
       clientOperationId: input.clientOperationId,
       occurredAt: device?.occurredAt ?? new Date().toISOString(),
       deviceTicket: device?.deviceTicket ?? null,
-      priceReview: lines.some((l) => l.unitPrice !== l.product.salePrice),
+      priceReview: lines.some(
+        (l) => !l.product.openPrice && l.unitPrice !== l.product.salePrice,
+      ),
       // More than the known stock: accepted, flagged (ADR-036).
       stockReview: lines.some(
         (l) => l.product.trackStock && l.quantity > stockOf(l.product.id),
