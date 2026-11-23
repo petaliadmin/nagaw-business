@@ -74,6 +74,37 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
         title={s.name}
         description={`${s.ownerEmails.map(formatContact).join(', ') || 'Sans propriétaire actif'} · créée le ${when(s.createdAt)} · ${s.timezone} · ${s.currency}`}
       />
+      <div className="flex flex-wrap gap-2">
+        <Badge tone="brand">Offre {s.plan.name}</Badge>
+        {s.status === 'suspended' && <Badge tone="danger">Suspendue</Badge>}
+        {s.status === 'archived' && <Badge>Archivée</Badge>}
+        {s.subscription.lifetime && <Badge tone="success">À vie</Badge>}
+        {s.subscription.invoices.some((i) => i.status === 'pending') && (
+          <Badge tone="warning">Facture à payer</Badge>
+        )}
+        {s.requests.some((r) => r.status === 'pending') && (
+          <Badge tone="warning">Demande d’offre en attente</Badge>
+        )}
+      </div>
+      <nav aria-label="Sur cette fiche" className="flex flex-wrap gap-2">
+        {[
+          ...(s.status === 'active' ? [['#access', 'Entrer']] : []),
+          ['#plan', 'Offre'],
+          ['#term', 'Durée et factures'],
+          ['#team', 'Équipe'],
+          ['#devices', 'Téléphones'],
+          ...(s.status !== 'archived' ? [['#suspend', 'Suspendre']] : []),
+          ['#archive', 'Archiver'],
+        ].map(([href, label]) => (
+          <a
+            key={href}
+            href={href}
+            className="inline-flex min-h-12 items-center rounded-full bg-surface px-4 font-semibold hover:bg-surface-muted"
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
       {s.suspension && (
         <Alert tone="warning">
           Suspendue le {when(s.suspension.at)} : {s.suspension.reason}

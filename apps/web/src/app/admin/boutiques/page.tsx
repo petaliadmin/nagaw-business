@@ -12,7 +12,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Pagination } from '@/components/ui/pagination';
 import { requirePlatformAdmin } from '@/lib/admin/load';
 import { apiAsUser } from '@/lib/api/server';
-import { formatContact, formatDateTime } from '@/lib/format';
+import { formatContact, formatDate, formatDateTime } from '@/lib/format';
 import { pageNumber, pageParams, pageRows } from '@/lib/pagination';
 
 async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
@@ -112,6 +112,22 @@ async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
                 </span>
                 <span className="flex flex-col items-end gap-1">
                   <Badge tone="brand">{shop.plan.name}</Badge>
+                  {shop.lifetime ? (
+                    <Badge tone="success">À vie</Badge>
+                  ) : (
+                    shop.currentPeriodEnd && (
+                      <span className="text-sm text-ink-muted">
+                        jusqu’au {formatDate(shop.currentPeriodEnd, 'UTC')}
+                      </span>
+                    )
+                  )}
+                  {shop.pendingInvoices > 0 && (
+                    <Badge tone={shop.overdueInvoice ? 'danger' : 'warning'}>
+                      {shop.overdueInvoice
+                        ? 'Facture en retard'
+                        : 'Facture à payer'}
+                    </Badge>
+                  )}
                   {shop.status === 'suspended' && (
                     <Badge tone="danger">Suspendue</Badge>
                   )}

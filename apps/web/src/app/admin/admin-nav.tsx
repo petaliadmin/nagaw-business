@@ -15,11 +15,12 @@ import { usePathname } from 'next/navigation';
 
 const LINKS = [
   { href: '/admin', label: 'Tableau de bord', icon: LayoutDashboard },
-  { href: '/admin/finances', label: 'Finances', icon: Wallet },
+  // What is acted on every day first, then the follow-up.
   { href: '/admin/boutiques', label: 'Boutiques', icon: Store },
   { href: '/admin/comptes', label: 'Comptes', icon: Users },
-  { href: '/admin/demandes', label: 'Demandes d’offre', icon: Inbox },
   { href: '/admin/factures', label: 'Factures', icon: FileText },
+  { href: '/admin/demandes', label: 'Demandes d’offre', icon: Inbox },
+  { href: '/admin/finances', label: 'Finances', icon: Wallet },
   { href: '/admin/synchronisation', label: 'Synchronisation', icon: RefreshCw },
   { href: '/admin/avis', label: 'Avis', icon: MessageSquare },
 ] as const;

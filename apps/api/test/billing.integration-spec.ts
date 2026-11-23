@@ -174,6 +174,12 @@ describe('Subscription billing', () => {
       shop: { id: acmeId },
     });
 
+    // The list of shops says it, to act on it at a glance.
+    const suspendedShops = (await admin('/shops?status=suspended').expect(200))
+      .body as { id: string; pendingInvoices: number }[];
+    expect(suspendedShops.find((x) => x.id === acmeId)).toMatchObject({
+      pendingInvoices: 1,
+    });
     // Marked paid: the shop opens again.
     await adminSend('post', `/invoices/${invoice.id}/paid`, {
       note: 'Wave reçu',

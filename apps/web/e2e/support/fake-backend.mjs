@@ -566,6 +566,12 @@ const server = createServer(async (req, res) => {
       ).length,
       createdAt: org.createdAt,
       lastSaleAt: null,
+      currentPeriodEnd: state.subscriptions[org.id]?.currentPeriodEnd ?? null,
+      lifetime: state.subscriptions[org.id]?.lifetime ?? false,
+      pendingInvoices: (state.subscriptions[org.id]?.invoices ?? []).filter(
+        (i) => i.status === 'pending',
+      ).length,
+      overdueInvoice: false,
     });
     const requestDto = (org) => {
       const r = state.subscriptions[org.id].pending;

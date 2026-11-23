@@ -7,7 +7,10 @@ import {
   type AdminOverviewDto,
 } from '@nagaw/shared';
 import {
+  Ban,
   BellRing,
+  FileText,
+  Inbox,
   CircleCheck,
   Crown,
   RefreshCw,
@@ -44,6 +47,79 @@ const PLAN_FILLS = ['bg-chart-1', 'bg-chart-2', 'bg-chart-3'] as const;
 const integer = (n: number) => new Intl.NumberFormat('fr').format(n);
 const linkClass =
   'inline-flex min-h-12 items-center font-semibold text-brand-ink underline underline-offset-4';
+
+/**
+ * What waits for the administrator, first on the page: each with its
+ * number and one touch to act on it.
+ */
+function ToDo({ o, currency }: { o: AdminOverviewDto; currency: string }) {
+  const items = [
+    {
+      href: '/admin/factures',
+      label: 'Factures à encaisser',
+      count: o.invoices.pending,
+      detail:
+        o.invoices.pending > 0
+          ? formatAmount(o.invoices.pendingAmount, currency)
+          : 'Rien à encaisser',
+      urgent: o.invoices.overdue > 0,
+      urgentText: `${o.invoices.overdue} en retard`,
+      icon: FileText,
+    },
+    {
+      href: '/admin/demandes',
+      label: 'Demandes d’offre',
+      count: o.pendingRequests,
+      detail: o.pendingRequests > 0 ? 'À accepter ou refuser' : 'Aucune',
+      urgent: false,
+      urgentText: '',
+      icon: Inbox,
+    },
+    {
+      href: '/admin/boutiques?vue=suspendues',
+      label: 'Boutiques suspendues',
+      count: o.shops.suspended,
+      detail: o.shops.suspended > 0 ? 'À rouvrir ou garder' : 'Aucune',
+      urgent: false,
+      urgentText: '',
+      icon: Ban,
+    },
+  ];
+  return (
+    <nav aria-label="À faire">
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {items.map(
+          ({ href, label, count, detail, urgent, urgentText, icon: Icon }) => (
+            <li key={href}>
+              <Link
+                href={href}
+                className={`flex min-h-24 items-center gap-3 rounded-3xl p-4 shadow-sm ${
+                  count > 0
+                    ? urgent
+                      ? 'bg-danger-soft text-danger-ink'
+                      : 'bg-warning-soft text-warning-ink'
+                    : 'bg-surface text-ink'
+                }`}
+              >
+                <Icon aria-hidden className="size-7 shrink-0" />
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-sm font-bold">{label}</span>
+                  <span className="text-3xl font-extrabold tabular-nums">
+                    {integer(count)}
+                  </span>
+                  <span className="text-sm">
+                    {detail}
+                    {urgent ? ` · ${urgentText}` : ''}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ),
+        )}
+      </ul>
+    </nav>
+  );
+}
 
 function Alerts({ o }: { o: AdminOverviewDto }) {
   if (o.alerts.length === 0)
@@ -127,6 +203,7 @@ async function Overview() {
         title="Tableau de bord"
         description="La plateforme d’un coup d’œil : revenus prévus, activité des boutiques, alertes."
       />
+      <ToDo o={o} currency={f?.currency ?? 'XOF'} />
       <Alerts o={o} />
       {!finances.ok && (
         <Alert tone="error">Finances indisponibles : {finances.message}</Alert>

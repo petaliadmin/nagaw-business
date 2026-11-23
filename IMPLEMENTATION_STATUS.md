@@ -1099,3 +1099,9 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Statut** : livré sur la branche `admin-abonnements` le 2026-11-23, à valider par le propriétaire. Migration `20261123140000_archives` à appliquer avant l'API.
 - **Fait** : statut `archived` des boutiques et archivage des comptes (garde d'authentification, connexion par numéro) ; `/admin/shops/:id/archive|restore`, `/admin/users`, `/admin/users/:id/archive|restore` ; `AdminDataService` et `/admin/shops/:id/data/:kind` (liste, archiver, restaurer, annuler), réservés à l'administrateur entré dans la boutique ; pages « Comptes » et « Données », onglets « Suspendues » et « Archivées » des boutiques.
 - **Tests** : `archives.integration-spec.ts` (boutique fermée et rangée puis restaurée, compte refusé puis rouvert, compte de l'administration protégé, droits) ; `admin-data.integration-spec.ts` (accès avec motif exigé, produits et clients archivés et restaurés au nom de la plateforme, vente et facture annulées avec leurs règles, isolation) ; `admin.spec.ts` de bout en bout.
+
+## Administration plus simple
+
+- **Statut** : livré sur la branche `admin-abonnements` le 2026-11-23, à valider par le propriétaire. Aucune migration.
+- **Fait** : bloc « À faire » du tableau de bord (factures à encaisser avec montant et retards, demandes d'offre, boutiques suspendues) ; menu réordonné (Tableau de bord, Boutiques, Comptes, Factures, Demandes d'offre, Finances, Synchronisation, Avis) ; liste des boutiques avec pastilles « À vie », « jusqu'au … », « Facture à payer » ou « en retard » (`currentPeriodEnd`, `lifetime`, `pendingInvoices`, `overdueInvoice` ajoutés à la liste) ; fiche boutique avec ligne d'état et navigation « Sur cette fiche ».
+- **Tests** : `admin.integration-spec.ts` (nouveaux champs de la liste) ; `admin.spec.ts` de bout en bout (« À faire » mène aux factures, liens de la fiche).

@@ -127,7 +127,16 @@ test('an invoice to pay shows to the owner, and the platform marks it paid (ADR-
 
   await context.clearCookies();
   await signInAs(context, 'binta', baseURL!);
-  await page.goto('/admin/factures');
+  // What waits first, one touch away.
+  await page.goto('/admin');
+  const todo = page.getByRole('navigation', { name: 'À faire' });
+  await expect(
+    todo.getByRole('link', { name: /^Factures à encaisser\s*1/ }),
+  ).toBeVisible();
+  await todo.getByRole('link', { name: /^Factures à encaisser/ }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Factures d’abonnement' }),
+  ).toBeVisible();
   await expectAccessible(page, 'factures');
   await page
     .getByRole('button', { name: /^Marquer payée : AB-ABABAB, Acme Dakar/ })
@@ -144,6 +153,14 @@ test('the platform extends a term by hand and gives a lifetime subscription', as
   await signInAs(context, 'binta', baseURL!);
   await page.goto('/admin/boutiques');
   await page.getByRole('link', { name: /^Acme Dakar/ }).click();
+  // The shop in one line, and its sections one touch away.
+  await expect(
+    page.locator('span').filter({ hasText: /^Offre Essentiel$/ }),
+  ).toBeVisible();
+  await page
+    .getByRole('navigation', { name: 'Sur cette fiche' })
+    .getByRole('link', { name: 'Durée et factures' })
+    .click();
   const term = page.getByRole('region', { name: 'Durée et factures' });
   await term.getByLabel('Remarque (facultatif)').fill('Espèces');
   await term.getByRole('button', { name: 'Prolonger de 1 an' }).click();

@@ -45,6 +45,10 @@ interface ShopRow {
   owner_emails: string[] | null;
   members: string;
   last_sale_at: Date | null;
+  current_period_end: Date | null;
+  lifetime: boolean;
+  pending_invoices: string;
+  overdue_invoice: boolean;
 }
 
 /**
@@ -53,6 +57,14 @@ interface ShopRow {
  * sees only inside a shop entered with a reason (ADR-040). Every change is
  * audited in the shop's own history, as done by the platform.
  */
+/**
+ * The digits to look for among phone numbers, only when the search looks like
+ * one: the digits inside an e-mail or a shop name ("Acme 2") match nothing there.
+ */
+function phoneDigits(search: string): string {
+  return /^[\d\s+().-]+$/.test(search) ? search.replace(/\D/g, '') : '';
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -80,7 +92,21 @@ export class AdminService {
         'o.created_at',
         's.plan_key',
         'p.name as plan_name',
+        's.current_period_end',
+        's.lifetime',
       ])
+      .select(
+        sql<string>`(select count(*) from app.subscription_invoices i
+          where i.organization_id = o.id and i.status = 'pending')`.as(
+          'pending_invoices',
+        ),
+      )
+      .select(
+        sql<boolean>`exists (select 1 from app.subscription_invoices i
+          where i.organization_id = o.id and i.status = 'pending' and i.due_at <= now())`.as(
+          'overdue_invoice',
+        ),
+      )
       .select(
         sql<string[] | null>`(select array_agg(u.contact order by u.contact)
           from app.organization_memberships m join app.user_profiles u on u.id = m.user_id
@@ -113,6 +139,10 @@ export class AdminService {
       lastSaleAt: row.last_sale_at
         ? new Date(row.last_sale_at).toISOString()
         : null,
+      currentPeriodEnd: row.current_period_end?.toISOString() ?? null,
+      lifetime: row.lifetime,
+      pendingInvoices: toNumber(row.pending_invoices),
+      overdueInvoice: row.overdue_invoice,
     };
   }
 
@@ -124,7 +154,7 @@ export class AdminService {
       : q.where('o.status', '<>', 'archived');
     if (query.q) {
       const like = `%${query.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-      const digits = query.q.replace(/\D/g, '');
+      const digits = phoneDigits(query.q);
       q = q.where((eb) =>
         eb.or([
           eb('o.name', 'ilike', like),
@@ -1206,7 +1236,7 @@ export class AdminService {
     if (query.archived === 'false') q = q.where('u.archived_at', 'is', null);
     if (query.q) {
       const like = `%${query.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-      const digits = query.q.replace(/\D/g, '');
+      const digits = phoneDigits(query.q);
       q = q.where((eb) =>
         eb.or([
           eb('u.email', 'ilike', like),

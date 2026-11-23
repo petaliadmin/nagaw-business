@@ -194,6 +194,12 @@ export interface AdminShopListItemDto {
   members: number;
   createdAt: string;
   lastSaleAt: string | null;
+  /** End of the term; null: free offer or lifetime (ADR-073). */
+  currentPeriodEnd: string | null;
+  lifetime: boolean;
+  /** Subscription invoices to collect, and whether one is past due. */
+  pendingInvoices: number;
+  overdueInvoice: boolean;
 }
 
 export interface AdminPlanRequestDto {

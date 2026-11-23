@@ -94,6 +94,26 @@ describe('Archives', () => {
     );
   });
 
+  it('finds an account by e-mail without reading the digits as a phone', async () => {
+    // A phone account whose number holds the digits of Carol's e-mail.
+    const other = await ctx.createUser({ phone: true });
+    const digits = carol.email.replace(/\D/g, '');
+    await ctx.admin.query(
+      `update app.user_profiles set phone = $2 where id = $1`,
+      [other.id, `221${digits}`.padEnd(12, '0')],
+    );
+    const found = (
+      await admin(`/users?q=${encodeURIComponent(carol.email)}`).expect(200)
+    ).body as { id: string }[];
+    expect(found.map((u) => u.id)).toEqual([carol.id]);
+    const byPhone = (
+      await admin(`/users?q=${encodeURIComponent(`+221 ${digits}`)}`).expect(
+        200,
+      )
+    ).body as { id: string }[];
+    expect(byPhone.map((u) => u.id)).toContain(other.id);
+  });
+
   it('archives an account: it opens nothing, its shop and history stay', async () => {
     const found = (
       await admin(`/users?q=${encodeURIComponent(carol.email)}`).expect(200)
