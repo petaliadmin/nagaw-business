@@ -5,6 +5,7 @@ import {
   type PlanDto,
 } from '@nagaw/shared';
 import {
+  Archive,
   Ban,
   CalendarClock,
   Crown,
@@ -12,12 +13,14 @@ import {
   KeyRound,
   Smartphone,
 } from 'lucide-react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { selectOrganization } from '@/app/espace/actions';
 import { SubmitButton } from '@/components/submit-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { buttonClasses } from '@/components/ui/button-styles';
 import { Card, Stat } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
@@ -27,6 +30,7 @@ import { formatContact, formatDateTime } from '@/lib/format';
 import { ROLE_LABELS } from '@/lib/labels';
 import { closeShopAccess } from '../../actions';
 import {
+  ArchiveForm,
   InvoiceDecision,
   OpenAccessForm,
   RenewForm,
@@ -75,6 +79,11 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
           Suspendue le {when(s.suspension.at)} : {s.suspension.reason}
         </Alert>
       )}
+      {s.archive && (
+        <Alert tone="warning">
+          Archivée le {when(s.archive.at)} : {s.archive.reason}
+        </Alert>
+      )}
       {s.status === 'active' && (
         <Card title="Entrer dans la boutique" titleId="access" icon={DoorOpen}>
           {s.access ? (
@@ -84,9 +93,15 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
                 {s.access.reason}
               </p>
               <div className="flex flex-wrap gap-3">
+                <Link
+                  href={`/admin/boutiques/${s.id}/donnees`}
+                  className={buttonClasses('primary')}
+                >
+                  Gérer ses données
+                </Link>
                 <form action={selectOrganization}>
                   <input type="hidden" name="organizationId" value={s.id} />
-                  <SubmitButton pendingLabel="Ouverture…">
+                  <SubmitButton variant="secondary" pendingLabel="Ouverture…">
                     Aller dans la boutique
                   </SubmitButton>
                 </form>
@@ -102,9 +117,10 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
             <>
               <p className="mb-4 text-ink-muted">
                 Vous verrez et ferez tout comme son propriétaire, jusqu’à ce que
-                vous la quittiez. Le motif, votre entrée, votre sortie et
-                chacune de vos actions sont inscrits dans son historique, au nom
-                de « Nagaw (plateforme) ».
+                vous la quittiez : gérer ses produits, clients, ventes et
+                factures depuis l’administration, ou aller dans la boutique. Le
+                motif, votre entrée, votre sortie et chacune de vos actions sont
+                inscrits dans son historique, au nom de « Nagaw (plateforme) ».
               </p>
               <OpenAccessForm shopId={s.id} />
             </>
@@ -320,17 +336,36 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
           </ul>
         )}
       </Card>
+      {s.status !== 'archived' && (
+        <Card
+          title={s.status === 'suspended' ? 'Réactiver' : 'Suspendre'}
+          titleId="suspend"
+          icon={Ban}
+        >
+          <p className="mb-4 text-ink-muted">
+            {s.status === 'suspended'
+              ? 'Les membres retrouvent l’accès à la boutique, avec toutes ses données.'
+              : 'Les membres n’ont plus accès à la boutique ; rien n’est effacé. Le motif est inscrit dans son historique.'}
+          </p>
+          <SuspendForm shopId={s.id} suspended={s.status === 'suspended'} />
+        </Card>
+      )}
       <Card
-        title={s.status === 'suspended' ? 'Réactiver' : 'Suspendre'}
-        titleId="suspend"
-        icon={Ban}
+        title={s.status === 'archived' ? 'Restaurer' : 'Archiver'}
+        titleId="archive"
+        icon={Archive}
       >
         <p className="mb-4 text-ink-muted">
-          {s.status === 'suspended'
-            ? 'Les membres retrouvent l’accès à la boutique, avec toutes ses données.'
-            : 'Les membres n’ont plus accès à la boutique ; rien n’est effacé. Le motif est inscrit dans son historique.'}
+          {s.status === 'archived'
+            ? 'La boutique revient dans les listes et ses membres la retrouvent, avec toutes ses données.'
+            : 'Pour une boutique fermée pour de bon : elle sort des listes et ses membres n’y ont plus accès. Rien n’est effacé.'}
         </p>
-        <SuspendForm shopId={s.id} suspended={s.status === 'suspended'} />
+        <ArchiveForm
+          target="shop"
+          targetId={s.id}
+          name={s.name}
+          archived={s.status === 'archived'}
+        />
       </Card>
     </>
   );

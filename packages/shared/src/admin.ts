@@ -20,7 +20,8 @@ const note = z.string().trim().max(500, '500 caractères au plus');
 export const adminShopQuerySchema = z
   .object({
     q: z.string().trim().max(120).optional(),
-    status: z.enum(['active', 'suspended']).optional(),
+    /** Archived shops show only when asked for (ADR-074). */
+    status: z.enum(['active', 'suspended', 'archived']).optional(),
     ...pageFields,
   })
   .strict();
@@ -71,7 +72,7 @@ export const adminInvoiceQuerySchema = z
 
 /** An invoice of a shop, in the platform's list (ADR-073). */
 export interface AdminInvoiceDto extends SubscriptionInvoiceDto {
-  shop: { id: string; name: string; status: 'active' | 'suspended' };
+  shop: { id: string; name: string; status: AdminShopStatus };
   /** Past its due date and unpaid. */
   overdue: boolean;
 }
@@ -87,6 +88,42 @@ export const adminSuspendSchema = z
   })
   .strict();
 export type AdminSuspendInput = z.infer<typeof adminSuspendSchema>;
+
+/** A shop is active, suspended, or archived: hidden and closed (ADR-074). */
+export type AdminShopStatus = 'active' | 'suspended' | 'archived';
+
+/** Archiving hides and closes, never erases; the platform restores. */
+export const adminArchiveSchema = z
+  .object({
+    reason: z
+      .string()
+      .trim()
+      .min(1, 'Indiquez pourquoi vous archivez')
+      .max(300, '300 caractères au plus'),
+  })
+  .strict();
+export type AdminArchiveInput = z.infer<typeof adminArchiveSchema>;
+
+export const adminUserQuerySchema = z
+  .object({
+    q: z.string().trim().max(120).optional(),
+    archived: z.enum(['true', 'false']).optional(),
+    ...pageFields,
+  })
+  .strict();
+export type AdminUserQuery = z.infer<typeof adminUserQuerySchema>;
+
+/** An account of the platform, with its shops (ADR-074). */
+export interface AdminUserDto {
+  id: string;
+  /** Phone number or e-mail address. */
+  contact: string;
+  displayName: string | null;
+  createdAt: string;
+  archived: { at: string; reason: string } | null;
+  platformAdmin: boolean;
+  shops: { id: string; name: string; role: Role; active: boolean }[];
+}
 
 export const adminOpenAccessSchema = z
   .object({
@@ -151,7 +188,7 @@ export interface AdminOverviewDto {
 export interface AdminShopListItemDto {
   id: string;
   name: string;
-  status: 'active' | 'suspended';
+  status: AdminShopStatus;
   plan: { key: string; name: string };
   ownerEmails: string[];
   members: number;
@@ -178,6 +215,8 @@ export interface AdminShopDto extends AdminShopListItemDto {
   usage: PlanUsage;
   limits: PlanLimits;
   suspension: { at: string; reason: string } | null;
+  /** Archived: hidden and closed until restored (ADR-074). */
+  archive: { at: string; reason: string } | null;
   devices: {
     id: string;
     label: string;
@@ -272,3 +311,42 @@ export interface AdminSyncDto {
     lastSyncedAt: string | null;
   }[];
 }
+
+/** What the administration manages inside a shop (ADR-074). */
+export const ADMIN_DATA_KINDS = [
+  'products',
+  'customers',
+  'suppliers',
+  'categories',
+  'sales',
+  'invoices',
+] as const;
+export type AdminDataKind = (typeof ADMIN_DATA_KINDS)[number];
+
+export const adminDataQuerySchema = z
+  .object({
+    q: z.string().trim().max(120).optional(),
+    /** Archived or cancelled ones. */
+    closed: z.enum(['true', 'false']).default('false'),
+  })
+  .strict();
+export type AdminDataQuery = z.infer<typeof adminDataQuerySchema>;
+
+/** A product, customer, sale… of a shop, as the administration lists it. */
+export interface AdminDataItemDto {
+  id: string;
+  label: string;
+  detail: string;
+  /** Archived (references) or cancelled (sales, invoices). */
+  closed: boolean;
+  /** What the administration can do: archive, restore or cancel. */
+  action: 'archive' | 'restore' | 'cancel' | null;
+  createdAt: string;
+}
+
+export const adminDataActionSchema = z
+  .object({
+    /** Required to archive or cancel; a restore needs none. */
+    reason: z.string().trim().max(300, '300 caractères au plus').default(''),
+  })
+  .strict();

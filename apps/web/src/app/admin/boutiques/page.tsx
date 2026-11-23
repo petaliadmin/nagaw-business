@@ -20,11 +20,30 @@ async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
   if (!admin) return null;
   const raw = await searchParams;
   const q = typeof raw.q === 'string' ? raw.q.trim() : '';
+  // « Toutes » (archived apart), « Suspendues », « Archivées » (ADR-074).
+  const view =
+    raw.vue === 'suspendues'
+      ? 'suspended'
+      : raw.vue === 'archivees'
+        ? 'archived'
+        : null;
   const page = pageNumber(raw.page);
-  const filters = new URLSearchParams(q ? { q } : {});
-  const result = await apiAsUser<AdminShopListItemDto[]>(admin.accessToken, {
-    path: `/admin/shops?${new URLSearchParams({ ...(q ? { q } : {}), ...pageParams(page) })}`,
+  const filters = new URLSearchParams({
+    ...(q ? { q } : {}),
+    ...(typeof raw.vue === 'string' && view ? { vue: raw.vue } : {}),
   });
+  const result = await apiAsUser<AdminShopListItemDto[]>(admin.accessToken, {
+    path: `/admin/shops?${new URLSearchParams({
+      ...(q ? { q } : {}),
+      ...(view ? { status: view } : {}),
+      ...pageParams(page),
+    })}`,
+  });
+  const tabs = [
+    { vue: '', label: 'En service', on: view === null },
+    { vue: 'suspendues', label: 'Suspendues', on: view === 'suspended' },
+    { vue: 'archivees', label: 'Archivées', on: view === 'archived' },
+  ];
   const list = result.ok ? pageRows(result.data) : null;
   return (
     <>
@@ -34,6 +53,7 @@ async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
         role="search"
         className="flex flex-col gap-2 sm:flex-row"
       >
+        {view && <input type="hidden" name="vue" value={String(raw.vue)} />}
         <label htmlFor="shop-search" className="sr-only">
           Chercher une boutique par nom ou e-mail
         </label>
@@ -50,6 +70,21 @@ async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
           Chercher
         </button>
       </form>
+      <nav aria-label="Boutiques" className="flex flex-wrap gap-2">
+        {tabs.map((tab) => (
+          <Link
+            key={tab.label}
+            href={`/admin/boutiques?${new URLSearchParams({
+              ...(tab.vue ? { vue: tab.vue } : {}),
+              ...(q ? { q } : {}),
+            })}`}
+            aria-current={tab.on ? 'page' : undefined}
+            className={`min-h-12 rounded-full border-2 px-4 py-2.5 font-bold ${tab.on ? 'border-ink bg-canvas' : 'border-transparent bg-surface'}`}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </nav>
       {!result.ok ? (
         <Alert tone="error">Boutiques indisponibles : {result.message}</Alert>
       ) : !list || list.rows.length === 0 ? (
@@ -80,6 +115,7 @@ async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
                   {shop.status === 'suspended' && (
                     <Badge tone="danger">Suspendue</Badge>
                   )}
+                  {shop.status === 'archived' && <Badge>Archivée</Badge>}
                 </span>
               </Link>
             </li>

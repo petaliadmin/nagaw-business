@@ -169,3 +169,96 @@ test('the platform extends a term by hand and gives a lifetime subscription', as
     page.getByText('Abonnement à vie, offert par Nagaw : rien à payer.'),
   ).toBeVisible();
 });
+
+test('the platform archives an account and a shop, then restores them (ADR-074)', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'binta', baseURL!);
+  await page.goto('/admin/comptes?q=moussa');
+  await expectAccessible(page, 'comptes');
+  const accounts = page.getByRole('list', { name: 'Liste des comptes' });
+  await accounts.getByLabel('Pourquoi archiver ?').fill('A quitté la boutique');
+  await accounts
+    .getByRole('button', { name: 'Archiver le compte : moussa@acme.test' })
+    .click();
+  await page
+    .getByRole('alertdialog', { name: 'Archiver moussa@acme.test ?' })
+    .getByRole('button', { name: 'Archiver' })
+    .click();
+  await expect(accounts).toHaveCount(0);
+
+  await context.clearCookies();
+  await signInAs(context, 'moussa', baseURL!);
+  await page.goto('/espace');
+  await expect(page.getByText(/Ce compte est archivé/)).toBeVisible();
+
+  await context.clearCookies();
+  await signInAs(context, 'binta', baseURL!);
+  await page.goto('/admin/comptes?vue=archives');
+  await page
+    .getByRole('button', { name: 'Rouvrir le compte : moussa@acme.test' })
+    .click();
+  await expect(page.getByText('Aucun compte archivé')).toBeVisible();
+
+  await page.goto('/admin/boutiques');
+  await page.getByRole('link', { name: /^Globex Sénégal/ }).click();
+  const archive = page.getByRole('region', { name: 'Archiver' });
+  await archive.getByLabel('Pourquoi archiver ?').fill('Fermée');
+  await archive
+    .getByRole('button', { name: 'Archiver la boutique : Globex Sénégal' })
+    .click();
+  await page
+    .getByRole('alertdialog', { name: 'Archiver Globex Sénégal ?' })
+    .getByRole('button', { name: 'Archiver' })
+    .click();
+  await expect(page.getByText(/Archivée le .*Fermée/)).toBeVisible();
+  await page.goto('/admin/boutiques');
+  await expect(page.getByRole('link', { name: /^Globex Sénégal/ })).toHaveCount(
+    0,
+  );
+  await page.getByRole('link', { name: 'Archivées' }).click();
+  await page.getByRole('link', { name: /^Globex Sénégal/ }).click();
+  await page
+    .getByRole('button', { name: 'Restaurer la boutique : Globex Sénégal' })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Suspendre la boutique' }),
+  ).toBeVisible();
+});
+
+test('once entered with a reason, the platform archives a product and restores it (ADR-074)', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'binta', baseURL!);
+  await page.goto('/admin/boutiques');
+  await page.getByRole('link', { name: /^Acme Dakar/ }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Acme Dakar' }),
+  ).toBeVisible();
+  const shopUrl = page.url();
+  await page
+    .getByLabel('Pourquoi entrez-vous dans cette boutique ?')
+    .fill('Ménage demandé par Awa');
+  await page.getByRole('button', { name: 'Entrer dans la boutique' }).click();
+  await page.waitForURL(/\/espace/);
+  await page.goto(shopUrl);
+  await page.getByRole('link', { name: 'Gérer ses données' }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Données de Acme Dakar' }),
+  ).toBeVisible();
+  await expectAccessible(page, 'données de la boutique');
+  const products = page.getByRole('list', {
+    name: 'Produits de la boutique',
+  });
+  const soap = products.getByRole('listitem').filter({ hasText: 'Savon' });
+  await soap.getByLabel('Pourquoi ?').fill('Plus vendu');
+  await soap.getByRole('button', { name: /^Archiver : Savon/ }).click();
+  await expect(products.getByText(/^Savon/)).toHaveCount(0);
+  await page.getByRole('link', { name: 'Archivés' }).click();
+  await products.getByRole('button', { name: /^Restaurer : Savon/ }).click();
+  await expect(page.getByText('Rien ici')).toBeVisible();
+});

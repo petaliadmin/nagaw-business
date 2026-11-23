@@ -43,13 +43,20 @@ export interface UserProfilesTable {
   timezone: Generated<string>;
   created_at: Timestamp;
   updated_at: Timestamp;
+  /** Archived by the platform: no sign-in (ADR-074). */
+  archived_at: NullableTimestamp;
+  archived_by: string | null;
+  archive_reason: string | null;
 }
 
 export interface OrganizationsTable {
   id: Generated<string>;
   name: string;
   slug: string;
-  status: Generated<'active' | 'suspended'>;
+  status: Generated<'active' | 'suspended' | 'archived'>;
+  archived_at: NullableTimestamp;
+  archived_by: string | null;
+  archive_reason: string | null;
   timezone: Generated<string>;
   default_currency: Generated<string>;
   invitation_ttl_hours: Generated<number>;

@@ -1,6 +1,9 @@
 'use server';
 
 import {
+  adminDataActionSchema,
+  adminArchiveSchema,
+  type AdminUserDto,
   adminInvoiceDecisionSchema,
   adminRenewSchema,
   adminSubscriptionSettingsSchema,
@@ -286,5 +289,76 @@ export async function decideInvoice(
       decision === 'paid'
         ? 'Facture marquée payée.'
         : 'Facture annulée : rien n’est dû pour cette période.',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Archives (ADR-074)
+// ---------------------------------------------------------------------------
+
+/** Archive (with a reason) or restore a shop or an account. */
+export async function setArchived(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const target = text(formData, 'target') === 'user' ? 'users' : 'shops';
+  const restore = text(formData, 'restore') === 'true';
+  const parsed = restore
+    ? { ok: true as const, data: undefined }
+    : parseValues(adminArchiveSchema, { reason: text(formData, 'reason') });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<AdminShopDto | AdminUserDto>(token, {
+    method: 'POST',
+    path: `/admin/${target}/${id(formData, 'targetId')}/${restore ? 'restore' : 'archive'}`,
+    ...(parsed.data ? { body: parsed.data } : {}),
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message:
+      target === 'users'
+        ? restore
+          ? 'Compte rouvert : la personne peut se connecter.'
+          : 'Compte archivé : la personne ne peut plus se connecter.'
+        : restore
+          ? 'Boutique restaurée : ses membres la retrouvent.'
+          : 'Boutique archivée : elle est fermée et rangée, rien n’est effacé.',
+  };
+}
+
+/** Archive, restore or cancel an item of a shop (ADR-074). */
+export async function actOnShopData(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const action = text(formData, 'action');
+  const parsed = parseValues(adminDataActionSchema, {
+    reason: text(formData, 'reason'),
+  });
+  if (!parsed.ok) return parsed.state;
+  if (action !== 'restore' && parsed.data.reason === '')
+    return {
+      status: 'error',
+      message: 'Indiquez pourquoi.',
+      fieldErrors: { reason: 'Indiquez pourquoi' },
+    };
+  const result = await apiAsUser<null>(token, {
+    method: 'POST',
+    path: `/admin/shops/${id(formData, 'shopId')}/data/${id(formData, 'kind')}/${id(formData, 'itemId')}/${encodeURIComponent(action)}`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message:
+      action === 'archive'
+        ? 'Archivé.'
+        : action === 'restore'
+          ? 'Restauré.'
+          : 'Annulé.',
   };
 }

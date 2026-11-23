@@ -427,6 +427,8 @@ function memberChangeRefusal(actor, target, change) {
 const orgsOf = (userId) =>
   state.memberships
     .filter((m) => m.userId === userId && m.status === 'active')
+    // An archived shop is closed to its members (ADR-074).
+    .filter((m) => state.organizations[m.organizationId].status !== 'archived')
     .map((m) => ({
       ...state.organizations[m.organizationId],
       role: m.role,
@@ -504,6 +506,13 @@ const server = createServer(async (req, res) => {
   const user = await authenticate(req);
   if (!user)
     return apiError(res, 401, 'UNAUTHENTICATED', 'Authentification requise.');
+  if (state.archivedUsers?.[user.id])
+    return apiError(
+      res,
+      403,
+      'ACCOUNT_ARCHIVED',
+      'Ce compte est archivé. Contactez l’équipe Nagaw pour le rouvrir.',
+    );
   if (user === USERS.broken)
     return apiError(
       res,
@@ -586,6 +595,10 @@ const server = createServer(async (req, res) => {
         org.status === 'suspended'
           ? { at: org.suspendedAt, reason: org.suspensionReason }
           : null,
+      archive:
+        org.status === 'archived'
+          ? { at: org.archivedAt, reason: org.archiveReason }
+          : null,
       devices: [],
       team: state.memberships
         .filter((m) => m.organizationId === org.id)
@@ -607,7 +620,7 @@ const server = createServer(async (req, res) => {
         lifetime: state.subscriptions[org.id].lifetime,
         invoices: state.subscriptions[org.id].invoices,
       },
-      access: null,
+      access: state.accesses?.[org.id] ?? null,
     });
     const allInvoices = () =>
       orgs.flatMap((o) =>
@@ -723,8 +736,72 @@ const server = createServer(async (req, res) => {
         topShops: [],
       });
     }
-    if (path === '/api/v1/admin/shops')
-      return send(res, 200, paged(orgs, url).map(listItem));
+    if (path === '/api/v1/admin/shops') {
+      const status = url.searchParams.get('status');
+      return send(
+        res,
+        200,
+        paged(
+          orgs.filter((o) =>
+            status ? o.status === status : o.status !== 'archived',
+          ),
+          url,
+        ).map(listItem),
+      );
+    }
+    // Accounts (ADR-074).
+    state.archivedUsers ??= {};
+    const userDto = (person) => ({
+      id: person.id,
+      contact: contactOf(person),
+      displayName: null,
+      createdAt: '2026-10-01T09:00:00.000Z',
+      archived: state.archivedUsers[person.id] ?? null,
+      platformAdmin: person.id === USERS.binta.id,
+      shops: state.memberships
+        .filter((m) => m.userId === person.id)
+        .map((m) => ({
+          id: m.organizationId,
+          name: state.organizations[m.organizationId].name,
+          role: m.role,
+          active: m.status === 'active',
+        })),
+    });
+    if (path === '/api/v1/admin/users') {
+      const q = (url.searchParams.get('q') ?? '').toLowerCase();
+      const archived = url.searchParams.get('archived');
+      const people = Object.values(USERS)
+        .filter((p) => p !== USERS.broken)
+        .filter((p) => !q || contactOf(p).toLowerCase().includes(q))
+        .filter(
+          (p) =>
+            archived === null ||
+            (archived === 'true') === Boolean(state.archivedUsers[p.id]),
+        );
+      return send(res, 200, paged(people, url).map(userDto));
+    }
+    const userMatch =
+      /^\/api\/v1\/admin\/users\/([^/]+)\/(archive|restore)$/.exec(path);
+    if (userMatch) {
+      const person = userById(userMatch[1]);
+      if (!person)
+        return apiError(res, 404, 'USER_NOT_FOUND', 'Compte introuvable.');
+      if (userMatch[2] === 'archive') {
+        const { reason } = await readJson(req);
+        if (!reason?.trim())
+          return apiError(
+            res,
+            400,
+            'VALIDATION_FAILED',
+            'Indiquez pourquoi vous archivez',
+          );
+        state.archivedUsers[person.id] = {
+          at: new Date().toISOString(),
+          reason,
+        };
+      } else delete state.archivedUsers[person.id];
+      return send(res, 200, userDto(person));
+    }
     if (path === '/api/v1/admin/plan-requests')
       return send(
         res,
@@ -764,6 +841,92 @@ const server = createServer(async (req, res) => {
       PINS[person.phone] = pin;
       return send(res, 204);
     }
+    state.accesses ??= {};
+    // Entering a shop with a reason (ADR-040), and its data (ADR-074).
+    const accessMatch =
+      /^\/api\/v1\/admin\/shops\/([^/]+)\/access(\/close)?$/.exec(path);
+    if (accessMatch && req.method === 'POST') {
+      const org = state.organizations[accessMatch[1]];
+      if (!org)
+        return apiError(res, 404, 'SHOP_NOT_FOUND', 'Boutique introuvable.');
+      if (accessMatch[2]) delete state.accesses[org.id];
+      else {
+        const { reason } = await readJson(req);
+        state.accesses[org.id] = { openedAt: new Date().toISOString(), reason };
+      }
+      return send(res, 200, shopDto(org));
+    }
+    const dataMatch =
+      /^\/api\/v1\/admin\/shops\/([^/]+)\/data\/([a-z]+)(?:\/([^/]+)\/(archive|restore|cancel))?$/.exec(
+        path,
+      );
+    if (dataMatch) {
+      const [, orgId_, kind, itemId, action] = dataMatch;
+      if (!state.organizations[orgId_])
+        return apiError(res, 404, 'SHOP_NOT_FOUND', 'Boutique introuvable.');
+      if (!state.accesses[orgId_])
+        return apiError(
+          res,
+          403,
+          'SHOP_ACCESS_REQUIRED',
+          'Entrez d’abord dans la boutique, avec un motif.',
+        );
+      const closed = url.searchParams.get('closed') === 'true';
+      const sales = salesState();
+      const sources = {
+        products: catalogState().products.filter(
+          (p) => p.organizationId === orgId_ && !p.systemRole,
+        ),
+        customers: sales.customers.filter((c) => c.organizationId === orgId_),
+        sales: sales.sales.filter((x) => x.organizationId === orgId_),
+      };
+      const rows = sources[kind] ?? [];
+      if (!itemId) {
+        const isClosed = (row) =>
+          kind === 'sales'
+            ? row.status === 'cancelled'
+            : row.status === 'archived';
+        return send(
+          res,
+          200,
+          rows
+            .filter((row) => isClosed(row) === closed)
+            .map((row) => ({
+              id: row.id,
+              label:
+                kind === 'sales' ? `Ticket n° ${row.saleNumber}` : row.name,
+              detail: kind === 'sales' ? `${row.total} F CFA` : '',
+              closed,
+              action:
+                kind === 'sales'
+                  ? closed
+                    ? null
+                    : 'cancel'
+                  : closed
+                    ? 'restore'
+                    : 'archive',
+              createdAt:
+                row.createdAt ?? row.occurredAt ?? new Date().toISOString(),
+            })),
+        );
+      }
+      const row = rows.find((r) => r.id === itemId);
+      if (!row) return apiError(res, 404, 'NOT_FOUND', 'Élément introuvable.');
+      const { reason = '' } = await readJson(req);
+      if (action !== 'restore' && !reason.trim())
+        return apiError(res, 400, 'VALIDATION_FAILED', 'Indiquez pourquoi.');
+      if (kind === 'sales')
+        Object.assign(row, {
+          status: 'cancelled',
+          cancellation: {
+            at: new Date().toISOString(),
+            reason,
+            byEmail: 'Nagaw',
+          },
+        });
+      else row.status = action === 'archive' ? 'archived' : 'active';
+      return send(res, 204);
+    }
     if (path === '/api/v1/admin/invoices')
       return send(
         res,
@@ -798,7 +961,7 @@ const server = createServer(async (req, res) => {
       return send(res, 200, shopDto(org));
     }
     const shopMatch =
-      /^\/api\/v1\/admin\/shops\/([^/]+)(\/plan|\/suspend|\/reactivate|\/renew|\/subscription)?$/.exec(
+      /^\/api\/v1\/admin\/shops\/([^/]+)(\/plan|\/suspend|\/reactivate|\/renew|\/subscription|\/archive|\/restore)?$/.exec(
         path,
       );
     if (shopMatch) {
@@ -863,6 +1026,31 @@ const server = createServer(async (req, res) => {
             'La boutique est déjà sur cette offre.',
           );
         state.subscriptions[org.id].planKey = body.planKey;
+        return send(res, 200, shopDto(org));
+      }
+      if (shopMatch[2] === '/archive') {
+        if (!body.reason?.trim())
+          return apiError(
+            res,
+            400,
+            'VALIDATION_FAILED',
+            'Indiquez pourquoi vous archivez',
+          );
+        Object.assign(org, {
+          status: 'archived',
+          archivedAt: new Date().toISOString(),
+          archiveReason: body.reason,
+          suspendedAt: null,
+          suspensionReason: null,
+        });
+        return send(res, 200, shopDto(org));
+      }
+      if (shopMatch[2] === '/restore') {
+        Object.assign(org, {
+          status: 'active',
+          archivedAt: null,
+          archiveReason: null,
+        });
         return send(res, 200, shopDto(org));
       }
       if (shopMatch[2] === '/suspend') {

@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import {
   shareBasisPoints,
   type AdminInvoiceDto,
+  type AdminUserDto,
+  type AdminUserQuery,
   type SubscriptionPeriod,
   type AdminActivityDto,
   type AdminAlertDto,
@@ -36,7 +38,7 @@ const requestNotFound = () =>
 interface ShopRow {
   id: string;
   name: string;
-  status: 'active' | 'suspended';
+  status: 'active' | 'suspended' | 'archived';
   created_at: Date;
   plan_key: string;
   plan_name: string;
@@ -116,7 +118,10 @@ export class AdminService {
 
   async shops(query: AdminShopQuery): Promise<AdminShopListItemDto[]> {
     let q = this.shopsQuery(this.database.db);
-    if (query.status) q = q.where('o.status', '=', query.status);
+    // Archived shops are out of the way unless asked for (ADR-074).
+    q = query.status
+      ? q.where('o.status', '=', query.status)
+      : q.where('o.status', '<>', 'archived');
     if (query.q) {
       const like = `%${query.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
       const digits = query.q.replace(/\D/g, '');
@@ -215,6 +220,8 @@ export class AdminService {
         'o.max_devices',
         'o.suspended_at',
         'o.suspension_reason',
+        'o.archived_at',
+        'o.archive_reason',
       ])
       .select(
         sql<string>`(select count(*) from app.products x where x.organization_id = o.id and x.status = 'active' and x.system_role is null)`.as(
@@ -270,6 +277,10 @@ export class AdminService {
               at: row.suspended_at.toISOString(),
               reason: row.suspension_reason,
             }
+          : null,
+      archive:
+        row.archived_at && row.archive_reason
+          ? { at: row.archived_at.toISOString(), reason: row.archive_reason }
           : null,
       devices: devices.map((d) => ({
         id: d.id,
@@ -554,6 +565,11 @@ export class AdminService {
     if (!UUID_RE.test(id)) throw shopNotFound();
     return this.database.db.transaction().execute(async (trx) => {
       const shop = await this.lockShop(trx, id);
+      if (shop.status === 'archived')
+        throw conflict(
+          'SHOP_ARCHIVED',
+          'Cette boutique est archivée : restaurez-la d’abord.',
+        );
       const suspend = reason !== null;
       if (suspend === (shop.status === 'suspended'))
         throw conflict(
@@ -1099,5 +1115,205 @@ export class AdminService {
       requestId,
     );
     return this.shop(organizationId, admin.userId);
+  }
+
+  // -------------------------------------------------------------------------
+  // Archives (ADR-074): hidden and closed, never erased
+  // -------------------------------------------------------------------------
+
+  async setShopArchived(
+    admin: AuthContext,
+    id: string,
+    reason: string | null,
+    requestId: string | null,
+  ): Promise<AdminShopDto> {
+    if (!UUID_RE.test(id)) throw shopNotFound();
+    return this.database.db.transaction().execute(async (trx) => {
+      const shop = await this.lockShop(trx, id);
+      const archive = reason !== null;
+      if (archive === (shop.status === 'archived'))
+        throw conflict(
+          'SHOP_STATUS_UNCHANGED',
+          archive
+            ? 'Cette boutique est déjà archivée.'
+            : 'Cette boutique n’est pas archivée.',
+        );
+      await trx
+        .updateTable('app.organizations')
+        .set(
+          archive
+            ? {
+                status: 'archived',
+                archived_at: new Date(),
+                archived_by: admin.userId,
+                archive_reason: reason,
+                // An archive replaces a suspension.
+                suspended_at: null,
+                suspension_reason: null,
+                suspended_invoice_id: null,
+              }
+            : {
+                status: 'active',
+                archived_at: null,
+                archived_by: null,
+                archive_reason: null,
+              },
+        )
+        .where('id', '=', id)
+        .execute();
+      if (archive)
+        // Nobody stays inside an archived shop, the platform neither.
+        await trx
+          .updateTable('app.platform_shop_accesses')
+          .set({ closed_at: new Date() })
+          .where('organization_id', '=', id)
+          .where('closed_at', 'is', null)
+          .execute();
+      await this.audit.record(trx, {
+        organizationId: id,
+        actorType: 'platform_admin',
+        actorId: admin.userId,
+        action: archive ? 'organization.archived' : 'organization.restored',
+        targetType: 'organization',
+        targetId: id,
+        metadata: archive ? { reason } : {},
+        requestId,
+      });
+      return this.shop(id, admin.userId, trx);
+    });
+  }
+
+  async users(
+    query: AdminUserQuery,
+    /** Exactly these accounts, without paging. */
+    only?: string[],
+  ): Promise<AdminUserDto[]> {
+    const db = this.database.db;
+    let q = db
+      .selectFrom('app.user_profiles as u')
+      .leftJoin('app.platform_admins as pa', 'pa.user_id', 'u.id')
+      .select([
+        'u.id',
+        'u.contact',
+        'u.display_name',
+        'u.created_at',
+        'u.archived_at',
+        'u.archive_reason',
+        'pa.user_id as admin_id',
+      ]);
+    if (only) q = q.where('u.id', 'in', only);
+    if (query.archived === 'true') q = q.where('u.archived_at', 'is not', null);
+    if (query.archived === 'false') q = q.where('u.archived_at', 'is', null);
+    if (query.q) {
+      const like = `%${query.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+      const digits = query.q.replace(/\D/g, '');
+      q = q.where((eb) =>
+        eb.or([
+          eb('u.email', 'ilike', like),
+          eb('u.display_name', 'ilike', like),
+          ...(digits ? [eb('u.phone', 'like', `%${digits}%`)] : []),
+        ]),
+      );
+    }
+    const ordered = q.orderBy('u.created_at', 'desc').orderBy('u.id', 'desc');
+    const rows = await (only ? ordered : pageOf(ordered, query, 200)).execute();
+    const ids = rows.map((r) => r.id);
+    const shops =
+      ids.length === 0
+        ? []
+        : await db
+            .selectFrom('app.organization_memberships as m')
+            .innerJoin('app.organizations as o', 'o.id', 'm.organization_id')
+            .select(['m.user_id', 'o.id', 'o.name', 'm.role', 'm.status'])
+            .where('m.user_id', 'in', ids)
+            .orderBy('o.name')
+            .execute();
+    return rows.map((r) => ({
+      id: r.id,
+      contact: r.contact,
+      displayName: r.display_name,
+      createdAt: r.created_at.toISOString(),
+      archived:
+        r.archived_at && r.archive_reason
+          ? { at: r.archived_at.toISOString(), reason: r.archive_reason }
+          : null,
+      platformAdmin: r.admin_id !== null,
+      shops: shops
+        .filter((m) => m.user_id === r.id)
+        .map((m) => ({
+          id: m.id,
+          name: m.name,
+          role: m.role,
+          active: m.status === 'active',
+        })),
+    }));
+  }
+
+  /**
+   * An archived account signs in nowhere; its shops, sales and history
+   * stay. Recorded in the history of each of its shops.
+   */
+  async setUserArchived(
+    admin: AuthContext,
+    userId: string,
+    reason: string | null,
+    requestId: string | null,
+  ): Promise<AdminUserDto> {
+    const missing = () => notFound('USER_NOT_FOUND', 'Compte introuvable.');
+    if (!UUID_RE.test(userId)) throw missing();
+    await this.database.db.transaction().execute(async (trx) => {
+      const person = await trx
+        .selectFrom('app.user_profiles as u')
+        .leftJoin('app.platform_admins as pa', 'pa.user_id', 'u.id')
+        .select(['u.id', 'u.archived_at', 'pa.user_id as admin_id'])
+        .where('u.id', '=', userId)
+        .forUpdate('u')
+        .executeTakeFirst();
+      if (!person) throw missing();
+      const archive = reason !== null;
+      if (archive && person.admin_id !== null)
+        throw conflict(
+          'PLATFORM_ADMIN_ACCOUNT',
+          'Le compte de l’administration ne s’archive pas.',
+        );
+      if (archive === (person.archived_at !== null))
+        throw conflict(
+          'USER_STATUS_UNCHANGED',
+          archive
+            ? 'Ce compte est déjà archivé.'
+            : 'Ce compte n’est pas archivé.',
+        );
+      await trx
+        .updateTable('app.user_profiles')
+        .set(
+          archive
+            ? {
+                archived_at: new Date(),
+                archived_by: admin.userId,
+                archive_reason: reason,
+              }
+            : { archived_at: null, archived_by: null, archive_reason: null },
+        )
+        .where('id', '=', userId)
+        .execute();
+      const memberships = await trx
+        .selectFrom('app.organization_memberships')
+        .select('organization_id')
+        .where('user_id', '=', userId)
+        .execute();
+      for (const { organization_id } of memberships)
+        await this.audit.record(trx, {
+          organizationId: organization_id,
+          actorType: 'platform_admin',
+          actorId: admin.userId,
+          action: archive ? 'user.archived' : 'user.restored',
+          targetType: 'user',
+          targetId: userId,
+          metadata: archive ? { reason } : {},
+          requestId,
+        });
+    });
+    const [dto] = await this.users({ limit: 1, offset: 0 }, [userId]);
+    return dto!;
   }
 }

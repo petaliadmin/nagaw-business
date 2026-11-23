@@ -15,6 +15,8 @@ import {
 } from '@nagaw/shared';
 import { useConfirmedSubmit } from '@/components/ui/confirm-dialog';
 import {
+  actOnShopData,
+  setArchived,
   decideInvoice,
   renewShop,
   setShopSubscription,
@@ -435,6 +437,144 @@ export function InvoiceDecision({
           Annuler
         </SubmitButton>
       </div>
+    </ActionForm>
+  );
+}
+
+/**
+ * Archive a shop or an account, with a reason and a confirmation; or
+ * restore it (ADR-074).
+ */
+export function ArchiveForm({
+  target,
+  targetId,
+  name,
+  archived,
+}: {
+  target: 'shop' | 'user';
+  targetId: string;
+  /** What is archived, in the confirmation and the button's name. */
+  name: string;
+  archived: boolean;
+}) {
+  const [state, action, pending] = useActionState(
+    setArchived,
+    initialFormState,
+  );
+  const [guard, confirmDialog] = useConfirmedSubmit();
+  const label = archived
+    ? target === 'shop'
+      ? 'Restaurer la boutique'
+      : 'Rouvrir le compte'
+    : target === 'shop'
+      ? 'Archiver la boutique'
+      : 'Archiver le compte';
+  return (
+    <form
+      action={action}
+      noValidate
+      onSubmit={(event) =>
+        guard(
+          event,
+          archived
+            ? null
+            : {
+                title: `Archiver ${name} ?`,
+                message:
+                  target === 'shop'
+                    ? 'Ses membres n’y ont plus accès et elle sort des listes. Ventes, factures et historique restent ; vous pourrez la restaurer.'
+                    : 'La personne ne peut plus se connecter, dans aucune boutique. Ses ventes et l’historique restent ; vous pourrez rouvrir le compte.',
+                confirmLabel: 'Archiver',
+                tone: 'danger',
+              },
+        )
+      }
+      className="flex flex-col gap-3"
+    >
+      {confirmDialog}
+      <input type="hidden" name="target" value={target} />
+      <input type="hidden" name="targetId" value={targetId} />
+      <input type="hidden" name="restore" value={String(archived)} />
+      <FormMessage state={state} />
+      {!archived && (
+        <FormField
+          label="Pourquoi archiver ?"
+          name="reason"
+          id={`archive-reason-${targetId}`}
+          maxLength={300}
+          required
+          error={state.fieldErrors?.reason}
+        />
+      )}
+      <div>
+        <SubmitButton
+          variant={archived ? 'primary' : 'danger'}
+          pendingLabel="Enregistrement…"
+          aria-label={`${label} : ${name}`}
+        >
+          {label}
+        </SubmitButton>
+      </div>
+      {pending && <span className="sr-only">Enregistrement…</span>}
+    </form>
+  );
+}
+
+const DATA_ACTION_LABELS = {
+  archive: 'Archiver',
+  restore: 'Restaurer',
+  cancel: 'Annuler',
+} as const;
+
+/** One action on an item of a shop: a reason, then the button (ADR-074). */
+export function ShopDataAction({
+  shopId,
+  kind,
+  itemId,
+  action,
+  label,
+}: {
+  shopId: string;
+  kind: string;
+  itemId: string;
+  action: 'archive' | 'restore' | 'cancel';
+  /** What the item is, for the button's name. */
+  label: string;
+}) {
+  const [state, action_, pending] = useActionState(
+    actOnShopData,
+    initialFormState,
+  );
+  return (
+    <ActionForm
+      action={action_}
+      pending={pending}
+      noValidate
+      className="flex flex-col gap-2 sm:flex-row sm:items-end"
+    >
+      <input type="hidden" name="shopId" value={shopId} />
+      <input type="hidden" name="kind" value={kind} />
+      <input type="hidden" name="itemId" value={itemId} />
+      <input type="hidden" name="action" value={action} />
+      <FormMessage state={state} />
+      {action !== 'restore' && (
+        <div className="flex-1">
+          <FormField
+            label="Pourquoi ?"
+            name="reason"
+            id={`data-reason-${itemId}`}
+            maxLength={300}
+            error={state.fieldErrors?.reason}
+          />
+        </div>
+      )}
+      <SubmitButton
+        variant={action === 'restore' ? 'secondary' : 'danger'}
+        pendingLabel="Enregistrement…"
+        aria-label={`${DATA_ACTION_LABELS[action]} : ${label}`}
+      >
+        {DATA_ACTION_LABELS[action]}
+      </SubmitButton>
     </ActionForm>
   );
 }

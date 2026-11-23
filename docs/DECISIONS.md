@@ -935,3 +935,15 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - chaque prolongation, facture émise, payée ou annulée, suspension et changement est inscrit au journal de la boutique (au nom de « Nagaw (plateforme) » ou du système) ;
   - admin : carte « Durée et factures » de la fiche boutique, page « Factures » (à encaisser, en retard d'abord), alerte du tableau de bord.
 - **Conséquences** : migration `20261123130000_subscription_billing` ; les boutiques déjà payantes reçoivent une période d'un mois à compter de l'application. Le passage quotidien (`/cron/daily`) traite les abonnements avant les notifications. Aucun paiement en ligne : la plateforme confirme chaque paiement.
+
+## ADR-074 — Archiver depuis l'administration : boutiques, comptes, données d'une boutique
+
+- **Statut** : **Proposée**, branche `admin-abonnements` (demande du propriétaire du 2026-11-23).
+- **Contexte** : l'administration pouvait suspendre une boutique, mais ni ranger une boutique fermée pour de bon, ni fermer un compte, ni faire le ménage dans les données d'une boutique sans y entrer et passer par chaque écran.
+- **Décision** :
+  - **archiver ne détruit rien** : ventes, factures et historique restent (comptabilité et loi) ; tout se restaure ; chaque action demande un motif et une confirmation, et s'inscrit au journal de la boutique au nom de « Nagaw (plateforme) » ;
+  - **boutique archivée** (`organizations.status = 'archived'`, migration `20261123140000_archives`) : fermée à ses membres comme une boutique suspendue, absente des listes de l'administration sauf l'onglet « Archivées », plus de suspension ni de renouvellement ; l'archivage ferme l'accès ouvert de l'administrateur ; une boutique archivée se restaure avant d'être suspendue ;
+  - **compte archivé** (`user_profiles.archived_at`) : l'API refuse toute requête de ce compte (`403 ACCOUNT_ARCHIVED`, vérifié par la garde d'authentification) et la connexion par numéro le dit ; ses boutiques et leurs données restent ; le compte de l'administration ne s'archive pas ; nouvelle page « Comptes » (recherche par numéro, e-mail ou nom, onglet « Archivés ») ;
+  - **données d'une boutique** : produits, clients, fournisseurs, catégories (archiver, restaurer), ventes et factures émises (annuler), depuis la page « Données » de la fiche boutique. Elles ne s'ouvrent **qu'après être entré dans la boutique avec un motif** (ADR-040 : le contenu d'une boutique n'est jamais visible autrement, `403 SHOP_ACCESS_REQUIRED`). Chaque action passe par le service de la boutique, avec ses règles (stock rendu, avoir pour une facture), et ajoute au journal `platform.data_changed` avec le motif ;
+  - « Vente au montant » et les frais de livraison (produits système) n'apparaissent pas.
+- **Conséquences** : appliquer `20261123140000_archives` avant l'API. Une requête authentifiée lit désormais `user_profiles.archived_at` (clé primaire).

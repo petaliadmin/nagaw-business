@@ -11,6 +11,17 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ADMIN_DATA_KINDS,
+  adminDataActionSchema,
+  adminDataQuerySchema,
+  type AdminDataItemDto,
+  type AdminDataKind,
+  type AdminDataQuery,
+  adminArchiveSchema,
+  adminUserQuerySchema,
+  type AdminArchiveInput,
+  type AdminUserDto,
+  type AdminUserQuery,
   adminInvoiceDecisionSchema,
   adminInvoiceQuerySchema,
   adminRenewSchema,
@@ -41,11 +52,13 @@ import {
   type AdminSuspendInput,
   type AdminSyncDto,
 } from '@nagaw/shared';
-import type { z } from 'zod';
+import { z } from 'zod';
+import { ApiException } from '../common/api-exception.js';
 import type { AuthContext } from '../common/request-context.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { PhoneAuthService } from '../phone-auth/phone-auth.service.js';
 import { CurrentUser, RequestId } from '../tenancy/current.decorator.js';
+import { AdminDataService } from './admin-data.service.js';
 import { AdminService } from './admin.service.js';
 import { PlatformAdminGuard } from './platform-admin.guard.js';
 
@@ -60,6 +73,7 @@ export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly phoneAuth: PhoneAuthService,
+    private readonly shopData: AdminDataService,
   ) {}
 
   @Get('overview')
@@ -203,6 +217,103 @@ export class AdminController {
     @RequestId() requestId: string | null,
   ): Promise<AdminShopDto> {
     return this.admin.setSuspended(user, id, null, requestId);
+  }
+
+  /** Hidden and closed, never erased; restorable (ADR-074). */
+  @Post('shops/:id/archive')
+  @HttpCode(HttpStatus.OK)
+  archiveShop(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(adminArchiveSchema)) body: AdminArchiveInput,
+    @RequestId() requestId: string | null,
+  ): Promise<AdminShopDto> {
+    return this.admin.setShopArchived(user, id, body.reason, requestId);
+  }
+
+  @Post('shops/:id/restore')
+  @HttpCode(HttpStatus.OK)
+  restoreShop(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @RequestId() requestId: string | null,
+  ): Promise<AdminShopDto> {
+    return this.admin.setShopArchived(user, id, null, requestId);
+  }
+
+  @Get('users')
+  users(
+    @Query(new ZodValidationPipe(adminUserQuerySchema)) query: AdminUserQuery,
+  ): Promise<AdminUserDto[]> {
+    return this.admin.users(query);
+  }
+
+  @Post('users/:id/archive')
+  @HttpCode(HttpStatus.OK)
+  archiveUser(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(adminArchiveSchema)) body: AdminArchiveInput,
+    @RequestId() requestId: string | null,
+  ): Promise<AdminUserDto> {
+    return this.admin.setUserArchived(user, id, body.reason, requestId);
+  }
+
+  @Post('users/:id/restore')
+  @HttpCode(HttpStatus.OK)
+  restoreUser(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @RequestId() requestId: string | null,
+  ): Promise<AdminUserDto> {
+    return this.admin.setUserArchived(user, id, null, requestId);
+  }
+
+  /** Products, customers, sales… of a shop (ADR-074). */
+  @Get('shops/:id/data/:kind')
+  shopDataList(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Param('kind', new ZodValidationPipe(z.enum(ADMIN_DATA_KINDS)))
+    kind: AdminDataKind,
+    @Query(new ZodValidationPipe(adminDataQuerySchema)) query: AdminDataQuery,
+  ): Promise<AdminDataItemDto[]> {
+    return this.shopData.list(user, id, kind, query);
+  }
+
+  @Post('shops/:id/data/:kind/:itemId/:action')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async dataAction(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Param('kind', new ZodValidationPipe(z.enum(ADMIN_DATA_KINDS)))
+    kind: AdminDataKind,
+    @Param('itemId') itemId: string,
+    @Param(
+      'action',
+      new ZodValidationPipe(z.enum(['archive', 'restore', 'cancel'])),
+    )
+    action: 'archive' | 'restore' | 'cancel',
+    @Body(new ZodValidationPipe(adminDataActionSchema))
+    body: { reason: string },
+    @RequestId() requestId: string | null,
+  ): Promise<void> {
+    if (action !== 'restore' && body.reason === '')
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_FAILED',
+        'Indiquez pourquoi.',
+        [{ path: 'reason', message: 'Indiquez pourquoi' }],
+      );
+    await this.shopData.act(
+      user,
+      id,
+      kind,
+      itemId,
+      action,
+      body.reason,
+      requestId,
+    );
   }
 
   /** A forgotten secret code: the team gives a new one (ADR-058). */

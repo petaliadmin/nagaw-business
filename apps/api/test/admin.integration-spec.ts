@@ -141,6 +141,7 @@ describe('Platform administration', () => {
     expect(Object.keys(detail).sort()).toEqual(
       [
         'access',
+        'archive',
         'createdAt',
         'currency',
         'devices',

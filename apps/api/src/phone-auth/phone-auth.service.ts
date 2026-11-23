@@ -115,6 +115,19 @@ export class PhoneAuthService {
 
     if (session) {
       await this.clearFailures(this.database.db, phone);
+      // The code is right, but the platform archived the account (ADR-074).
+      const archived = await this.database.db
+        .selectFrom('app.user_profiles')
+        .select('id')
+        .where('phone', '=', phone)
+        .where('archived_at', 'is not', null)
+        .executeTakeFirst();
+      if (archived)
+        throw new ApiException(
+          HttpStatus.FORBIDDEN,
+          'ACCOUNT_ARCHIVED',
+          'Ce compte est archivé. Contactez l’équipe Nagaw pour le rouvrir.',
+        );
       return session;
     }
 
