@@ -1046,7 +1046,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Création en trois étapes** (2026-11-21, maquettes « Profils ») : 1 Votre boutique, 2 Ce que vous vendez (cartes illustrées), 3 Vos habitudes, puis « Voici votre application » et « C'est parti » ; « Revenir » à côté du titre.
 - **Caisse, étape « Encaisser »** (2026-11-22, demande du propriétaire) : le panier en haut, puis le paiement, puis « Valider la vente », fixé en bas de l'écran sur téléphone ; même ordre sur ordinateur.
 - **Barre du bas selon le profil** (2026-11-22) : « Factures » ou « Ventes », « Crédit » ou le catalogue, selon l'offre et les réglages ; ce qui quitte la barre est dans le Menu ; même barre dans « Voici votre application ».
-- **Non fait (reporté, voir ADR-067)** : rendez-vous, chiffres soins / produits. Suggestion de compter le stock : voir ADR-070. Vendre en tapant un montant, prix à taper et garder un article : voir ADR-069 ci-dessous.
+- **Non fait (reporté, voir ADR-067)** : rendez-vous (voir les commandes). Suggestion de compter le stock : ADR-070 ; services et produits sur l'Accueil : ADR-071. Vendre en tapant un montant, prix à taper et garder un article : voir ADR-069 ci-dessous.
 - **Tests ajoutés** : `organizations.spec.ts` (règles des réponses, tri, parties inconnues), `navigation.test.ts` (parties cachées, nom du catalogue), `organizations.integration-spec.ts` (valeurs par défaut, création, modification auditée, partie inconnue refusée, isolation entre boutiques et membre simple refusé), `workspace.spec.ts` de bout en bout (création d'une boutique simple, Menu, barre, raccourcis, stock éteint, Mon application, « Tout afficher »).
 
 ## Scanner un produit avec la caméra (ADR-068)
@@ -1070,3 +1070,9 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire. Migration `20261123100000_stock_suggestions` à appliquer avant l'API.
 - **Fait** : seuils `stock_suggestion_min_sales`, `stock_suggestion_window_days`, `stock_suggestion_snooze_days` sur la boutique ; table `stock_suggestion_dismissals` ; `StockSuggestionsService` (`GET /stock/suggestions`, `POST /stock/suggestions/:productId/dismiss`, journal `stock_suggestion.dismissed`) ; carte « Compter le stock ? » de l'Accueil (`components/catalog/stock-suggestions.tsx`) ; `?compter=1` sur la modification d'un produit.
 - **Tests** : `stock-suggestions.integration-spec.ts` (produit souvent vendu, seuils de la boutique, « Plus tard » puis de nouveau, « Ne plus proposer », journal, vendeur refusé, isolation entre boutiques, choix inconnu) ; `sales.spec.ts` de bout en bout (produit non compté vendu deux fois, carte, lien, « Plus tard »).
+
+## Services et produits sur l'Accueil (ADR-071)
+
+- **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire.
+- **Fait** : `byKind` dans `/stats/summary` (après la remise de chaque vente) ; « Services » et « Produits » dans la carte sombre de l'Accueil d'une boutique qui vend les deux.
+- **Tests** : `treasury.integration-spec.ts` et `accounting-services.integration-spec.ts` (partage, somme égale au chiffre d'affaires) ; `sales.spec.ts` de bout en bout (affiché pour « Les deux », absent pour « Des produits »).

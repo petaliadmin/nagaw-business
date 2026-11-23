@@ -1,4 +1,4 @@
-import type { Unit } from './catalog.js';
+import type { ProductKind, Unit } from './catalog.js';
 import type { Role } from './permissions.js';
 import type { PaymentMethod } from './sales.js';
 
@@ -24,6 +24,11 @@ export interface StatsSummaryDto {
     coverageBasisPoints: number;
   };
   byMethod: Record<PaymentMethod, number>;
+  /**
+   * Revenue of the products and of the services, after the discount of
+   * each sale (ADR-071), for a shop that sells both.
+   */
+  byKind: Record<ProductKind, number>;
   /** One entry per day of the period, days without sale included. */
   days: { day: string; revenue: number; count: number }[];
   topProducts: {

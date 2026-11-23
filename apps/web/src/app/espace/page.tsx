@@ -164,6 +164,7 @@ function Essentials({
   beforeRange,
   currency,
   period,
+  splitKinds = false,
   children,
 }: {
   stats: StatsSummaryDto;
@@ -172,6 +173,8 @@ function Essentials({
   currency: string;
   /** The period, as a pill that opens the others. */
   period: ReactNode;
+  /** A shop that sells both: services and products apart (ADR-071). */
+  splitKinds?: boolean;
   /** Shown right under the profit: the money and what to do today. */
   children?: ReactNode;
 }) {
@@ -219,6 +222,26 @@ function Essentials({
               />
             </dd>
           </div>
+          {splitKinds &&
+            (
+              [
+                { kind: 'service', label: 'Services' },
+                { kind: 'product', label: 'Produits' },
+              ] as const
+            ).map(({ kind, label }) => (
+              <div
+                key={kind}
+                className="@container flex min-w-0 flex-col gap-0.5"
+              >
+                <dt className="text-base text-[#c9c5ff]">{label}</dt>
+                <dd className="montant-prive font-bold tabular-nums">
+                  <Figure
+                    value={money(stats.byKind[kind])}
+                    className="[--figure-max:1.25rem]"
+                  />
+                </dd>
+              </div>
+            ))}
           <div className="@container flex min-w-0 flex-col gap-0.5 rounded-2xl bg-white/10 p-3">
             <dt className="text-base text-[#9be7c4]">
               {profit(stats) < 0 ? 'Vous avez perdu' : 'Vous avez gagné'}
@@ -1017,6 +1040,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
               beforeRange={range(before.from, before.to)}
               currency={currency}
               period={<PeriodMenu path="/espace" current={period.key} />}
+              splitKinds={organization.offer === 'both'}
             >
               {today}
             </Essentials>

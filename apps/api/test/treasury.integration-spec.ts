@@ -477,6 +477,7 @@ describe('Treasury and statistics', () => {
         costedRevenue: 2500,
         coverageBasisPoints: 7692,
       });
+      expect(stats.byKind).toEqual({ product: 3250, service: 0 });
       expect(stats.days).toEqual([{ day, revenue: 3250, count: 4 }]);
       expect(stats.topProducts[0]).toMatchObject({
         productId: water.id,

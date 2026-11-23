@@ -562,3 +562,38 @@ test('a seller sells and sees only their own sales, and cannot cancel', async ({
     page.getByRole('list', { name: 'Liste des ventes' }).getByRole('listitem'),
   ).toHaveCount(countBefore + 1);
 });
+
+test('a shop that sells both sees its services and its products apart (ADR-071)', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  const essentials = page.getByRole('region', { name: 'L’essentiel' });
+  const offer = async (label: string) => {
+    await page.goto('/espace/parametres?partie=application');
+    await page.waitForLoadState('networkidle');
+    const shop = page.getByRole('region', { name: 'Mon application' });
+    await shop.locator('label', { hasText: label }).click();
+    await shop.getByRole('button', { name: 'Enregistrer' }).click();
+    await expect(shop.getByText('Enregistré.')).toBeVisible();
+  };
+  // Awa's shop sells both.
+  await page.goto('/espace');
+  await expect(essentials.getByText('Services', { exact: true })).toBeVisible();
+  await expect(essentials.getByText('Produits', { exact: true })).toBeVisible();
+  // Only goods were sold here: nothing on « Services ».
+  await expect(
+    essentials
+      .getByRole('term')
+      .filter({ hasText: /^Services$/ })
+      .locator('xpath=following-sibling::dd'),
+  ).toContainText(/^0/);
+
+  await offer('Des produits');
+  await page.goto('/espace');
+  await expect(essentials.getByText('Services', { exact: true })).toHaveCount(
+    0,
+  );
+  await offer('Les deux');
+});

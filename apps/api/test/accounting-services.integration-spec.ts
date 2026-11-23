@@ -157,6 +157,17 @@ describe('Accounts of goods and services', () => {
     expect(on('70')).toEqual([]);
   });
 
+  it('gives the revenue of the products and of the services (ADR-071)', async () => {
+    const stats = (
+      await get(alice, shopId, `/stats/summary?from=${day}&to=${day}`).expect(
+        200,
+      )
+    ).body;
+    // Sales only: the invoice is not a sale of the caisse.
+    expect(stats.byKind).toEqual({ product: 1000, service: 6000 });
+    expect(stats.byKind.product + stats.byKind.service).toBe(stats.revenue);
+  });
+
   it('books a repayment like the credit sales of the customer', async () => {
     const repaid = (await journal()).filter((e) => e.kind === 'repayment');
     expect(repaid.map((e) => [e.account.code, e.receipt])).toEqual([

@@ -894,3 +894,12 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - « Plus tard » : proposé de nouveau après `stock_suggestion_snooze_days` jours (7) ; « Ne plus proposer » : jamais plus pour ce produit. Le choix est gardé dans `app.stock_suggestion_dismissals` et inscrit au journal ;
   - réservé au propriétaire et aux gérants (`catalog.manage`), qui seuls peuvent compter un stock ; `GET /stock/suggestions` et `POST /stock/suggestions/:productId/dismiss`.
 - **Conséquences** : appliquer `20261123100000_stock_suggestions` avant de déployer l'API.
+
+## ADR-071 — Services et produits à part sur l'Accueil d'une boutique qui vend les deux
+
+- **Statut** : **Proposée**, livrée sur la branche `profils-affichage` (demande du propriétaire du 2026-11-23, reportée par ADR-067).
+- **Contexte** : un salon qui vend aussi des produits de soin veut savoir ce que rapportent ses prestations et ce que rapportent ses produits ; l'Accueil ne donnait qu'un chiffre d'affaires.
+- **Décision** :
+  - `StatsSummaryDto.byKind` : chiffre d'affaires des produits et des services de la période, chaque ligne après la remise de sa vente (même calcul que les produits les plus vendus) ; ventes de la caisse seulement, les factures restant dans la comptabilité (ADR-046) ;
+  - la carte sombre de l'Accueil affiche « Services » et « Produits » sous le chiffre d'affaires, seulement pour une boutique qui vend les deux (ADR-047), masqués avec les autres montants.
+- **Conséquences** : aucun changement de base ; un champ de plus dans la réponse de `/stats/summary`.
