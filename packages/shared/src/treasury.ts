@@ -83,6 +83,8 @@ export type CashMovementKind =
   | 'sale_cancelled'
   | 'repayment'
   | 'invoice_payment'
+  | 'order_deposit'
+  | 'order_refund'
   | 'expense'
   | 'transfer_in'
   | 'transfer_out'

@@ -24,6 +24,7 @@ describe('navigation', () => {
     expect(NAV_ITEMS.map((item) => item.label)).toEqual([
       'Tableau de bord',
       'Ventes',
+      'Commandes',
       'Produits et services',
       'Factures / Devis',
       'Clients',
@@ -115,6 +116,22 @@ describe('navigation', () => {
     expect(hrefs('viewer')).toContain('/espace/tresorerie');
     expect(hrefs('member')).toContain('/espace/ventes');
     expect(hrefs('member')).toContain('/espace/produits/fournisseurs');
+  });
+
+  it('shows « Commandes » in the Menu once turned on, never in the bar (ADR-072)', () => {
+    const shop = {
+      offer: 'both' as const,
+      hiddenSections: [],
+      countsStockByDefault: true,
+    };
+    const hrefs = (ordersEnabled: boolean, role: TestRole = 'owner') =>
+      navItemsFor(role, { ...shop, ordersEnabled }).map((item) => item.href);
+    expect(hrefs(false)).not.toContain('/espace/commandes');
+    expect(hrefs(true)).toContain('/espace/commandes');
+    expect(hrefs(true, 'member')).toContain('/espace/commandes');
+    expect(barHrefs('owner', { ...shop, ordersEnabled: true })).not.toContain(
+      '/espace/commandes',
+    );
   });
 
   it('shows each tab only to the roles that may open it', () => {

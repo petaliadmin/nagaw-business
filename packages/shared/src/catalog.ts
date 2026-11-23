@@ -375,7 +375,11 @@ export interface ProductDto {
    * `open_sale`: the shop's « Vente au montant », behind « Taper un
    * montant » in the caisse; never shown in the catalogue (ADR-069).
    */
-  systemRole: 'open_sale' | null;
+  /**
+   * `open_sale`: « Vente au montant » (ADR-069); `delivery_fee`: the
+   * delivery fee of an order (ADR-072).
+   */
+  systemRole: 'open_sale' | 'delivery_fee' | null;
   trackStock: boolean;
   lowStockThreshold: number | null;
   /** Sum of the stock movements. */

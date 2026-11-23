@@ -12,6 +12,7 @@ import {
   type StatsSummaryDto,
   type StockSummaryDto,
   type StockSuggestionDto,
+  type OrdersSummaryDto,
   type CustomerDto,
   type SaleListItemDto,
 } from '@nagaw/shared';
@@ -19,6 +20,7 @@ import {
   ArrowDownToLine,
   Banknote,
   CheckCheck,
+  ClipboardList,
   FileText,
   Plus,
   ShoppingCart,
@@ -548,6 +550,8 @@ interface Shortcut {
   icon: LucideIcon;
   /** Background and colour of its round icon. */
   tone: string;
+  /** A number to act on today (orders due), as a pastille. */
+  badge?: number;
 }
 
 /**
@@ -559,18 +563,28 @@ function Shortcuts({ items }: { items: Shortcut[] }) {
   return (
     <nav aria-label="Raccourcis">
       <ul className="grid grid-cols-4 gap-2 md:max-w-xl">
-        {items.map(({ href, label, icon: Icon, tone }) => (
+        {items.map(({ href, label, icon: Icon, tone, badge }) => (
           <li key={href}>
             <Link
               href={href}
               className="flex flex-col items-center gap-2 rounded-2xl py-1 text-center text-base leading-tight font-bold"
             >
               <span
-                className={`flex size-15 items-center justify-center rounded-full ${tone}`}
+                className={`relative flex size-15 items-center justify-center rounded-full ${tone}`}
               >
                 <Icon aria-hidden className="size-6" />
+                {badge !== undefined && badge > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-danger-strong px-1.5 text-sm font-extrabold text-white">
+                    {badge}
+                  </span>
+                )}
               </span>
               {label}
+              {badge !== undefined && badge > 0 && (
+                <span className="sr-only">
+                  , {badge} à remettre aujourd’hui ou en retard
+                </span>
+              )}
             </Link>
           </li>
         ))}
@@ -909,6 +923,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
     debtors,
     recent,
     suggestions,
+    orders,
   ] = await Promise.all([
     // Only to name the authors of the recent activity.
     canReadAudit
@@ -956,6 +971,13 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
           organizationId: organization.id,
         })
       : null,
+    // Customer orders, once turned on (ADR-072).
+    organization.ordersEnabled && roleHasPermission(role, 'orders.read')
+      ? apiAsUser<OrdersSummaryDto>(accessToken, {
+          path: '/orders/summary',
+          organizationId: organization.id,
+        })
+      : null,
   ]);
 
   // Stock is shown where something is counted: by default, or one product.
@@ -965,6 +987,17 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
       (stock.ok && stock.data.trackedProducts > 0));
 
   const shortcuts: Shortcut[] = [
+    ...(orders
+      ? [
+          {
+            href: '/espace/commandes',
+            label: 'Commandes',
+            icon: ClipboardList,
+            tone: 'bg-invoices-soft text-invoices-ink',
+            badge: orders.ok ? orders.data.dueNow : undefined,
+          },
+        ]
+      : []),
     ...(roleHasPermission(role, 'customers.manage') && shows('credit')
       ? [
           {

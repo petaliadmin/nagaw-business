@@ -35,6 +35,10 @@ export function accountOfMovement(
     case 'sale_cancelled':
     case 'repayment':
     case 'invoice_payment':
+    // A cash journal (ADR-046): a deposit is a receipt of the day it is
+    // received, split like the order it pays for (ADR-072).
+    case 'order_deposit':
+    case 'order_refund':
       return ACCOUNTS.sales;
     case 'expense':
       return expenseAccount ?? ACCOUNTS.cashLoss;

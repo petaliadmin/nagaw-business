@@ -11,6 +11,7 @@ Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est
 - **Prix tapé à chaque vente** (ADR-069) : un produit dont le prix change (poisson, tas d'oignons) affiche « Prix à taper » ; le vendeur tape le prix, sans que cela compte comme une remise.
 - **Compter le stock ?** (ADR-070) : un produit souvent vendu dont le stock n'est pas compté est proposé sur l'Accueil, avec « Compter son stock », « Plus tard » ou « Ne plus proposer ».
 - **Services et produits à part** (ADR-071) : sur l'Accueil d'une boutique qui vend les deux, ce que rapportent les services et ce que rapportent les produits.
+- **Commandes** (ADR-072), option à allumer dans Mon application : prendre une commande (articles du catalogue ou sur mesure, date et heure, retrait ou livraison avec frais à part), recevoir des avances, suivre les étapes jusqu'à « En livraison », remettre au client (une vraie vente, avances déduites, ticket « Commande C-… ») ou annuler en rendant l'avance. Rond « Commandes » sur l'Accueil et entrée du Menu, jamais dans la barre du bas.
 - **Scanner un produit** (ADR-068) : « Scanner » ouvre la caméra ; chaque code-barres ou QR code lu ajoute son produit au panier, une seule fois tant qu'il reste visible. Un lecteur branché fait de même avec « Entrée ».
 - **Ventes** : un bouton « Nouvelle vente » en haut de la page ouvre la caisse (pour qui peut vendre).
 - **Caisse** : le moyen de paiement et l'opérateur choisis sont en vert, la couleur de l'argent qui entre.

@@ -12,7 +12,7 @@
 
 alter table app.products
   add column open_price boolean not null default false,
-  add column system_role text check (system_role in ('open_sale')),
+  add column system_role text check (system_role in ('open_sale', 'delivery_fee')),
   add constraint products_open_sale_shape
     check (system_role is null or (open_price and not track_stock));
 

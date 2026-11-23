@@ -338,6 +338,8 @@ export interface SalePaymentDto {
   provider: MobileMoneyProvider | null;
   reference: string | null;
   amount: number;
+  /** A deposit of the order, received before the handover (ADR-072). */
+  fromOrder?: boolean;
 }
 
 export interface SaleDto {
@@ -361,6 +363,8 @@ export interface SaleDto {
   priceReview: boolean;
   /** Took more goods than the stock the server knew (ADR-036). */
   stockReview: boolean;
+  /** The order this sale handed over (ADR-072). */
+  orderNumber?: string | null;
   cancellation: {
     at: string;
     by: { userId: string; email: string };

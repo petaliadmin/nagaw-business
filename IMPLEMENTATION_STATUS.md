@@ -1046,7 +1046,7 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Création en trois étapes** (2026-11-21, maquettes « Profils ») : 1 Votre boutique, 2 Ce que vous vendez (cartes illustrées), 3 Vos habitudes, puis « Voici votre application » et « C'est parti » ; « Revenir » à côté du titre.
 - **Caisse, étape « Encaisser »** (2026-11-22, demande du propriétaire) : le panier en haut, puis le paiement, puis « Valider la vente », fixé en bas de l'écran sur téléphone ; même ordre sur ordinateur.
 - **Barre du bas selon le profil** (2026-11-22) : « Factures » ou « Ventes », « Crédit » ou le catalogue, selon l'offre et les réglages ; ce qui quitte la barre est dans le Menu ; même barre dans « Voici votre application ».
-- **Non fait (reporté, voir ADR-067)** : rendez-vous (voir les commandes). Suggestion de compter le stock : ADR-070 ; services et produits sur l'Accueil : ADR-071. Vendre en tapant un montant, prix à taper et garder un article : voir ADR-069 ci-dessous.
+- **Rendez-vous** : une commande avec une heure (ADR-072). Suggestion de compter le stock : ADR-070 ; services et produits sur l'Accueil : ADR-071. Vendre en tapant un montant, prix à taper et garder un article : voir ADR-069 ci-dessous.
 - **Tests ajoutés** : `organizations.spec.ts` (règles des réponses, tri, parties inconnues), `navigation.test.ts` (parties cachées, nom du catalogue), `organizations.integration-spec.ts` (valeurs par défaut, création, modification auditée, partie inconnue refusée, isolation entre boutiques et membre simple refusé), `workspace.spec.ts` de bout en bout (création d'une boutique simple, Menu, barre, raccourcis, stock éteint, Mon application, « Tout afficher »).
 
 ## Scanner un produit avec la caméra (ADR-068)
@@ -1076,3 +1076,14 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire.
 - **Fait** : `byKind` dans `/stats/summary` (après la remise de chaque vente) ; « Services » et « Produits » dans la carte sombre de l'Accueil d'une boutique qui vend les deux.
 - **Tests** : `treasury.integration-spec.ts` et `accounting-services.integration-spec.ts` (partage, somme égale au chiffre d'affaires) ; `sales.spec.ts` de bout en bout (affiché pour « Les deux », absent pour « Des produits »).
+
+## Commandes des clients, phase 1 (ADR-072)
+
+- **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire. Migration `20261123110000_orders` à appliquer avant l'API (après `20261123090000_open_price`, qui accepte aussi le produit système `delivery_fee`).
+- **Fait** :
+  - base : `orders_enabled`, `order_ready_reminder_days`, `app.orders`, `app.order_payments` (en ajout seul), `sale_payments.from_order`, séquence `order` ;
+  - contrats (`@nagaw/shared/orders`) : schémas de création, avance, étape, remise, annulation ; `OrderDto`, `OrdersSummaryDto`, `orderTotals` ; permissions `orders.read`, `orders.manage`, `orders.cancel` ; `ordersEnabled` sur la boutique ; mouvements `order_deposit` et `order_refund` ;
+  - API : `OrdersService` et `/orders` (liste, résumé, détail, création, avance, étape, remise, annulation), remise par `SalesService.create` dans la même transaction, Argent et journal ;
+  - web : option dans Mon application, entrée du Menu, rond de l'Accueil avec pastille, pages `/espace/commandes`, `/nouvelle`, `/[id]` (étapes, avance, remise, annulation, bon WhatsApp), ticket « Commande C-… » et « Avance, … ».
+- **Tests** : `orders.integration-spec.ts` (option éteinte et refusée, création idempotente et numérotée, avance dans Argent, contrôles, étapes, remise unique avec avances comptées une fois, stock, statistiques et journal, annulation avec remboursement, retard, droits, isolation entre boutiques, ajout seul en base) ; `orders.spec.ts` (totaux, schémas) ; `navigation.test.ts` ; `orders.spec.ts` de bout en bout (option, Accueil, Menu, prise de commande, étape, avance, remise et ticket, annulation).
+- **Non fait** : voir « Reporté » d'ADR-072.

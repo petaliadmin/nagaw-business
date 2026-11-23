@@ -27,6 +27,8 @@ const SALE_KINDS: CashMovementKind[] = [
   'sale_cancelled',
   'repayment',
   'invoice_payment',
+  'order_deposit',
+  'order_refund',
 ];
 
 interface JournalRow {
@@ -58,6 +60,16 @@ function describe(row: JournalRow): { voucher: string; label: string } {
       return {
         voucher: row.label,
         label: `Paiement de la facture ${row.label}`,
+      };
+    case 'order_deposit':
+      return {
+        voucher: row.label,
+        label: `Avance de la commande ${row.label}`,
+      };
+    case 'order_refund':
+      return {
+        voucher: row.label,
+        label: `Avance rendue, commande ${row.label}`,
       };
     case 'expense':
       return { voucher: row.expense_number ?? '', label: row.label };
@@ -142,8 +154,9 @@ export class AccountingService {
     const saleIds = ids(['sale', 'sale_cancelled']);
     const customerIds = ids(['repayment']);
     const invoiceIds = ids(['invoice_payment']);
+    const orderIds = ids(['order_deposit', 'order_refund']);
     const db = this.database.db;
-    const [sales, customers, invoices] = await Promise.all([
+    const [sales, customers, invoices, orders] = await Promise.all([
       saleIds.length === 0
         ? null
         : sql<{ id: string; goods: string; services: string }>`
@@ -182,10 +195,31 @@ export class AccountingService {
             .where('organization_id', '=', organizationId)
             .where('id', 'in', invoiceIds)
             .execute(),
+      // A deposit is shared like the articles of its order (ADR-072); a
+      // free line is sold as « Vente au montant », of the shop's kind.
+      orderIds.length === 0
+        ? null
+        : sql<{ id: string; goods: string; services: string }>`
+            select o.id,
+                   coalesce(sum((l->>'lineTotal')::bigint) filter (where p.kind = 'product'), 0) as goods,
+                   coalesce(sum((l->>'lineTotal')::bigint) filter (where p.kind = 'service'), 0) as services
+              from app.orders o
+              cross join lateral jsonb_array_elements(o.lines) l
+              join app.products p
+                on p.organization_id = o.organization_id
+               and (p.id = (l->>'productId')::uuid
+                    or (l->>'productId' is null and p.system_role = 'open_sale'))
+             where o.organization_id = ${organizationId}
+               and o.id = any(${orderIds}::uuid[])
+             group by o.id`.execute(db),
     ]);
 
     const shares = new Map<string, SaleShare>();
-    for (const row of [...(sales?.rows ?? []), ...(customers?.rows ?? [])])
+    for (const row of [
+      ...(sales?.rows ?? []),
+      ...(customers?.rows ?? []),
+      ...(orders?.rows ?? []),
+    ])
       shares.set(row.id, {
         goods: toNumber(row.goods),
         services: toNumber(row.services),

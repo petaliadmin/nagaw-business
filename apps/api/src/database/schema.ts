@@ -7,6 +7,7 @@ import type {
   MobileMoneyProvider,
   NotificationCategory,
   NotificationSeverity,
+  OrderStatus,
   PaymentMethod,
   ProductKind,
   ProductPhotoType,
@@ -83,6 +84,8 @@ export interface OrganizationsTable {
   offer: Generated<ShopOffer>;
   hidden_sections: Generated<ShopSection[]>;
   counts_stock_by_default: Generated<boolean>;
+  orders_enabled: Generated<boolean>;
+  order_ready_reminder_days: Generated<number>;
   trade_register: Generated<string>;
   invoice_footer: Generated<string>;
   invoice_due_days: Generated<number>;
@@ -201,7 +204,7 @@ export interface SuppliersTable {
 export interface ProductsTable {
   kind: Generated<ProductKind>;
   open_price: Generated<boolean>;
-  system_role: 'open_sale' | null;
+  system_role: 'open_sale' | 'delivery_fee' | null;
   id: Generated<string>;
   organization_id: string;
   name: string;
@@ -398,6 +401,7 @@ export interface SalePaymentsTable {
   provider: MobileMoneyProvider | null;
   reference: string | null;
   amount: Numeric;
+  from_order: Generated<boolean>;
 }
 
 export interface CustomerPaymentsTable {
@@ -422,9 +426,66 @@ type NullableCalendarDate = ColumnType<
 >;
 type Json<T> = ColumnType<T, string, string>;
 
+/** Frozen when the order is taken (ADR-072). */
+export interface StoredOrderLine {
+  productId: string | null;
+  label: string;
+  unit: Unit;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  note: string;
+}
+
+export interface OrdersTable {
+  id: Generated<string>;
+  organization_id: string;
+  number: string;
+  customer_id: string;
+  status: Generated<OrderStatus>;
+  lines: Json<StoredOrderLine[]>;
+  items_total: Numeric;
+  /** Read it as text (`due_on::text`): pg returns a Date. */
+  due_on: ColumnType<Date, string, string>;
+  due_time: string | null;
+  fulfilment: 'pickup' | 'delivery';
+  delivery_address: Generated<string>;
+  delivery_landmark: Generated<string>;
+  delivery_phone: Generated<string>;
+  delivery_fee: ColumnType<
+    string,
+    number | string | undefined,
+    number | string
+  >;
+  note: Generated<string>;
+  sale_id: string | null;
+  delivered_at: NullableTimestamp;
+  cancelled_at: NullableTimestamp;
+  cancelled_by: string | null;
+  cancellation_reason: string | null;
+  client_operation_id: string;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface OrderPaymentsTable {
+  id: Generated<string>;
+  organization_id: string;
+  order_id: string;
+  kind: 'deposit' | 'refund';
+  method: 'cash' | 'mobile_money' | 'card';
+  provider: MobileMoneyProvider | null;
+  reference: string | null;
+  amount: Numeric;
+  client_operation_id: string;
+  created_by: string;
+  created_at: Timestamp;
+}
+
 export interface DocumentSequencesTable {
   organization_id: string;
-  kind: 'quote' | 'invoice' | 'credit_note' | 'expense';
+  kind: 'quote' | 'invoice' | 'credit_note' | 'expense' | 'order';
   year: number;
   next_number: Generated<number>;
 }
@@ -752,6 +813,8 @@ export interface Database {
   'app.devices': DevicesTable;
   'app.device_users': DeviceUsersTable;
   'app.document_sequences': DocumentSequencesTable;
+  'app.orders': OrdersTable;
+  'app.order_payments': OrderPaymentsTable;
   'app.quotes': QuotesTable;
   'app.invoices': InvoicesTable;
   'app.invoice_payments': InvoicePaymentsTable;

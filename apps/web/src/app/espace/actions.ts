@@ -125,6 +125,10 @@ export async function updateDisplay(
             (section) => !shown.includes(section),
           ),
           // Not asked of a shop of services, which has no stock to count.
+          // An option, never turned on by « Tout afficher » (ADR-072).
+          ...(formData.has('ordersAsked')
+            ? { ordersEnabled: formData.get('ordersEnabled') === 'on' }
+            : {}),
           ...(formData.has('stockAsked')
             ? {
                 countsStockByDefault:

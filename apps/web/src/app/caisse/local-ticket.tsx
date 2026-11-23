@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { buttonClasses } from '@/components/ui/button-styles';
-import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
+import { paymentLabel } from '@/lib/sales/labels';
 import { ticketLabel, ticketText } from '@/lib/sales/ticket';
 import type { LocalTicket, ShopSnapshot } from '@/lib/offline/store';
 import { SaleSteps } from './sale-steps';
@@ -209,7 +209,7 @@ export function LocalTicketView({
           {sale.payments.map((payment, index) => (
             <Row
               key={index}
-              label={`${PAYMENT_LABELS[payment.method]}${payment.provider ? ` (${PROVIDER_LABELS[payment.provider]})` : ''}`}
+              label={paymentLabel(payment)}
               value={money(payment.amount)}
             />
           ))}

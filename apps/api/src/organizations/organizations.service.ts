@@ -544,6 +544,7 @@ const UPDATABLE = {
   offer: 'offer',
   hiddenSections: 'hidden_sections',
   countsStockByDefault: 'counts_stock_by_default',
+  ordersEnabled: 'orders_enabled',
   invoiceDueDays: 'invoice_due_days',
   quoteValidityDays: 'quote_validity_days',
 } as const satisfies Partial<
@@ -575,6 +576,7 @@ function toOrganizationDto(
     offer: row.offer,
     hiddenSections: row.hidden_sections,
     countsStockByDefault: row.counts_stock_by_default,
+    ordersEnabled: row.orders_enabled,
     logoVersion: row.logo_sha256?.slice(0, 16) ?? null,
     signatureVersion: row.signature_sha256?.slice(0, 16) ?? null,
     stampVersion: row.stamp_sha256?.slice(0, 16) ?? null,

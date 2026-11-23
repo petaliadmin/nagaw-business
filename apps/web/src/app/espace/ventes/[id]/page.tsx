@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/ticket-action';
 import { apiAsUser } from '@/lib/api/server';
 import { formatContact, formatDateTime } from '@/lib/format';
-import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
+import { paymentLabel } from '@/lib/sales/labels';
 import { ticketLabel, ticketText, whatsappLink } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import { InvoiceFromSaleForm } from '../../factures/document-actions';
@@ -159,6 +159,7 @@ async function Sale({
             {organization.name}
           </p>
           <p>Ticket {ticketLabel(s)}</p>
+          {s.orderNumber && <p>Commande {s.orderNumber}</p>}
           <p>{formatDateTime(s.occurredAt, organization.timezone)}</p>
           {s.customer && <p>Client : {s.customer.name}</p>}
         </header>
@@ -201,7 +202,7 @@ async function Sale({
           {s.payments.map((payment, index) => (
             <Row
               key={index}
-              label={`${PAYMENT_LABELS[payment.method]}${payment.provider ? ` (${PROVIDER_LABELS[payment.provider]})` : ''}`}
+              label={paymentLabel(payment)}
               value={money(payment.amount)}
             />
           ))}
