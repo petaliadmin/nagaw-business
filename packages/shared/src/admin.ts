@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { pageFields } from './pagination.js';
 import type { Role } from './permissions.js';
-import type { PlanLimits, PlanUsage } from './plans.js';
+import {
+  SUBSCRIPTION_PERIODS,
+  type PlanLimits,
+  type PlanUsage,
+  type SubscriptionInvoiceDto,
+  type SubscriptionPeriod,
+} from './plans.js';
 
 /**
  * Platform administration (ADR-030): accounts, offers and aggregates of
@@ -23,9 +29,52 @@ export type AdminShopQuery = z.infer<typeof adminShopQuerySchema>;
 export const adminSetPlanSchema = z
   .object({
     planKey: z.string().regex(/^[a-z_]{2,30}$/, 'Offre inconnue'),
+    period: z.enum(SUBSCRIPTION_PERIODS).default('month'),
     note: note.default(''),
   })
   .strict();
+
+/** « Prolonger » by hand: payment received (ADR-073). */
+export const adminRenewSchema = z
+  .object({
+    period: z.enum(SUBSCRIPTION_PERIODS),
+    note: note.default(''),
+  })
+  .strict();
+export type AdminRenewInput = z.infer<typeof adminRenewSchema>;
+
+export const adminSubscriptionSettingsSchema = z
+  .object({
+    autoRenew: z.boolean().optional(),
+    /** Only the platform administrator gives it (ADR-073). */
+    lifetime: z.boolean().optional(),
+    note: note.default(''),
+  })
+  .strict()
+  .refine((v) => v.autoRenew !== undefined || v.lifetime !== undefined, {
+    message: 'Aucun champ à modifier',
+  });
+export type AdminSubscriptionSettingsInput = z.infer<
+  typeof adminSubscriptionSettingsSchema
+>;
+
+export const adminInvoiceDecisionSchema = z
+  .object({ note: note.default('') })
+  .strict();
+export type AdminInvoiceDecisionInput = z.infer<
+  typeof adminInvoiceDecisionSchema
+>;
+
+export const adminInvoiceQuerySchema = z
+  .object({ status: z.enum(['pending', 'all']).default('pending') })
+  .strict();
+
+/** An invoice of a shop, in the platform's list (ADR-073). */
+export interface AdminInvoiceDto extends SubscriptionInvoiceDto {
+  shop: { id: string; name: string; status: 'active' | 'suspended' };
+  /** Past its due date and unpaid. */
+  overdue: boolean;
+}
 export type AdminSetPlanInput = z.infer<typeof adminSetPlanSchema>;
 
 export const adminSuspendSchema = z
@@ -66,7 +115,11 @@ export const adminSyncQuerySchema = z
   .strict();
 
 export type AdminAlertKind =
-  'sync_rejections' | 'quota' | 'silent_device' | 'plan_request';
+  | 'sync_rejections'
+  | 'quota'
+  | 'silent_device'
+  | 'plan_request'
+  | 'invoice_overdue';
 
 export interface AdminAlertDto {
   kind: AdminAlertKind;
@@ -83,6 +136,8 @@ export interface AdminOverviewDto {
   };
   users: { total: number; createdLast30Days: number };
   pendingRequests: number;
+  /** Subscription invoices to collect, and those past due (ADR-073). */
+  invoices: { pending: number; overdue: number; pendingAmount: number };
   /** Last 7 days. */
   sync: {
     batches: number;
@@ -109,6 +164,7 @@ export interface AdminPlanRequestDto {
   shop: { id: string; name: string };
   from: { key: string; name: string };
   to: { key: string; name: string };
+  period: SubscriptionPeriod;
   requestedBy: string;
   status: 'pending' | 'cancelled' | 'done' | 'rejected';
   note: string;
@@ -140,6 +196,14 @@ export interface AdminShopDto extends AdminShopListItemDto {
     active: boolean;
   }[];
   requests: AdminPlanRequestDto[];
+  /** Term and renewal of the subscription (ADR-073). */
+  subscription: {
+    period: SubscriptionPeriod;
+    currentPeriodEnd: string | null;
+    autoRenew: boolean;
+    lifetime: boolean;
+    invoices: SubscriptionInvoiceDto[];
+  };
   /** The administrator's open access to the shop (ADR-040), if any. */
   access: { openedAt: string; reason: string } | null;
 }

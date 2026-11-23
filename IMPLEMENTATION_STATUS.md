@@ -1087,3 +1087,9 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - web : option dans Mon application, entrée du Menu, rond de l'Accueil avec pastille, pages `/espace/commandes`, `/nouvelle`, `/[id]` (étapes, avance, remise, annulation, bon WhatsApp), ticket « Commande C-… » et « Avance, … ».
 - **Tests** : `orders.integration-spec.ts` (option éteinte et refusée, création idempotente et numérotée, avance dans Argent, contrôles, étapes, remise unique avec avances comptées une fois, stock, statistiques et journal, annulation avec remboursement, retard, droits, isolation entre boutiques, ajout seul en base) ; `orders.spec.ts` (totaux, schémas) ; `navigation.test.ts` ; `orders.spec.ts` de bout en bout (option, Accueil, Menu, prise de commande, étape, avance, remise et ticket, annulation).
 - **Non fait** : voir « Reporté » d'ADR-072.
+
+## Abonnements : durée, renouvellement, factures, à vie (ADR-073)
+
+- **Statut** : livré sur la branche `admin-abonnements` le 2026-11-23, à valider par le propriétaire. Migration `20261123130000_subscription_billing` à appliquer avant l'API.
+- **Fait** : période et fin d'abonnement, prix annuel, `subscription_invoices`, délai de grâce en base, `BillingService` (début de période, prolongation, factures payées ou annulées, renouvellement, retour en Gratuit, suspension et réouverture, à vie), endpoints `/admin/shops/:id/renew`, `PATCH /admin/shops/:id/subscription`, `/admin/invoices`, `PATCH /subscription` ; écrans de la boutique et de l'administration.
+- **Tests** : `billing.integration-spec.ts` (1 mois ou 1 an, prolongation, facture automatique unique, suspension après le délai et réouverture, retour en Gratuit, à vie réservé à la plateforme, isolation) ; `admin.spec.ts` et `subscription.spec.ts` de bout en bout.

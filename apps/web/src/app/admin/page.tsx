@@ -35,6 +35,7 @@ const ALERT_LABELS: Record<AdminAlertDto['kind'], string> = {
   sync_rejections: 'Synchronisation',
   quota: 'Limite presque atteinte',
   silent_device: 'Téléphone silencieux',
+  invoice_overdue: 'Facture impayée',
 };
 
 /** Offers in their fixed order: the colour follows the offer. */
@@ -86,6 +87,11 @@ function Alerts({ o }: { o: AdminOverviewDto }) {
       {o.pendingRequests > 0 && (
         <Link href="/admin/demandes" className={`mt-3 ${linkClass}`}>
           Traiter les demandes d’offre
+        </Link>
+      )}
+      {o.invoices.overdue > 0 && (
+        <Link href="/admin/factures" className={`mt-3 ${linkClass}`}>
+          Voir les factures impayées
         </Link>
       )}
     </Card>

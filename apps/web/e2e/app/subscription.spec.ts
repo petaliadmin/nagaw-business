@@ -42,7 +42,10 @@ test('the owner sees the offer, its limits, and asks for another one', async ({
     page.getByText(/Demande de passage à l’offre Essentiel envoyée/),
   ).toBeVisible();
   // The shop knows what to send, where, and with which reference.
-  await expect(page.getByText('76 905 58 52')).toBeVisible();
+  const request = page
+    .getByRole('status')
+    .filter({ hasText: /Demande de passage à l’offre Essentiel/ });
+  await expect(request.getByText('76 905 58 52')).toBeVisible();
   await expect(page.getByText(/5\s000\sF/).first()).toBeVisible();
   await expect(page.getByText(/^NGW-[0-9A-F]{6}$/)).toBeVisible();
   await expect(

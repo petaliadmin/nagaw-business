@@ -1,5 +1,17 @@
-import type { AdminShopDto, PlanDto } from '@nagaw/shared';
-import { Ban, Crown, DoorOpen, KeyRound, Smartphone } from 'lucide-react';
+import {
+  formatAmount,
+  SUBSCRIPTION_PERIOD_LABELS,
+  type AdminShopDto,
+  type PlanDto,
+} from '@nagaw/shared';
+import {
+  Ban,
+  CalendarClock,
+  Crown,
+  DoorOpen,
+  KeyRound,
+  Smartphone,
+} from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { selectOrganization } from '@/app/espace/actions';
@@ -15,11 +27,20 @@ import { formatContact, formatDateTime } from '@/lib/format';
 import { ROLE_LABELS } from '@/lib/labels';
 import { closeShopAccess } from '../../actions';
 import {
+  InvoiceDecision,
   OpenAccessForm,
+  RenewForm,
   SetPinForm,
   SetPlanForm,
+  SubscriptionSwitch,
   SuspendForm,
 } from '../../forms';
+
+const INVOICE_STATUS = {
+  pending: 'À payer',
+  paid: 'Payée',
+  cancelled: 'Annulée',
+} as const;
 
 const REQUEST_STATUS = {
   pending: 'En attente',
@@ -136,6 +157,106 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
             </ul>
           </div>
         )}
+      </Card>
+      <Card title="Durée et factures" titleId="term" icon={CalendarClock}>
+        {(() => {
+          const sub = s.subscription;
+          const paid =
+            plans.ok &&
+            (plans.data.find((p) => p.key === s.plan.key)?.monthlyPrice ?? 0) >
+              0;
+          return (
+            <div className="flex flex-col gap-4">
+              <p className="text-lg font-bold">
+                {sub.lifetime
+                  ? 'Abonnement à vie'
+                  : sub.currentPeriodEnd
+                    ? `${SUBSCRIPTION_PERIOD_LABELS[sub.period]}, jusqu’au ${when(sub.currentPeriodEnd)}`
+                    : 'Sans date de fin (offre gratuite)'}
+              </p>
+              {!sub.lifetime && sub.currentPeriodEnd && (
+                <p className="text-ink-muted">
+                  {sub.autoRenew
+                    ? 'Renouvelé automatiquement : à la fin, une facture à payer ; sans paiement marqué après le délai, la boutique est suspendue.'
+                    : 'Pas de renouvellement : la boutique repasse en Gratuit à la fin.'}
+                </p>
+              )}
+              {!sub.lifetime && paid && <RenewForm shopId={s.id} />}
+              <div className="flex flex-wrap gap-3">
+                {!sub.lifetime && sub.currentPeriodEnd && (
+                  <SubscriptionSwitch
+                    shopId={s.id}
+                    field="autoRenew"
+                    value={!sub.autoRenew}
+                    label={
+                      sub.autoRenew
+                        ? 'Arrêter le renouvellement automatique'
+                        : 'Renouveler automatiquement'
+                    }
+                  />
+                )}
+                <SubscriptionSwitch
+                  shopId={s.id}
+                  field="lifetime"
+                  value={!sub.lifetime}
+                  label={
+                    sub.lifetime
+                      ? 'Retirer l’abonnement à vie'
+                      : 'Abonnement à vie'
+                  }
+                  confirmation={
+                    sub.lifetime
+                      ? {
+                          title: 'Retirer l’abonnement à vie ?',
+                          message:
+                            'Une période commence aujourd’hui, puis les règles habituelles : renouvellement et factures.',
+                        }
+                      : {
+                          title: `Abonnement à vie pour ${s.name} ?`,
+                          message: `Offre ${s.plan.name} sans date de fin et sans facture. Les factures en attente sont annulées.`,
+                        }
+                  }
+                />
+              </div>
+              {sub.invoices.length > 0 && (
+                <ul className="flex flex-col divide-y divide-line">
+                  {sub.invoices.map((i) => (
+                    <li key={i.id} className="flex flex-col gap-2 py-3">
+                      <span className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold">
+                          {i.reference} · {i.plan.name},{' '}
+                          {SUBSCRIPTION_PERIOD_LABELS[i.period]} ·{' '}
+                          {formatAmount(i.amount, i.currency)}
+                        </span>
+                        <Badge
+                          tone={
+                            i.status === 'pending'
+                              ? 'warning'
+                              : i.status === 'paid'
+                                ? 'success'
+                                : 'neutral'
+                          }
+                        >
+                          {INVOICE_STATUS[i.status]}
+                        </Badge>
+                      </span>
+                      <span className="text-ink-muted">
+                        Du {when(i.periodStart)} au {when(i.periodEnd)}
+                        {i.status === 'pending'
+                          ? ` · à payer avant le ${when(i.dueAt)}`
+                          : ''}
+                        {i.note ? ` · ${i.note}` : ''}
+                      </span>
+                      {i.status === 'pending' && (
+                        <InvoiceDecision invoice={i} />
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })()}
       </Card>
       <Card title="Équipe et codes secrets" titleId="team" icon={KeyRound}>
         <p className="mb-4 text-ink-muted">

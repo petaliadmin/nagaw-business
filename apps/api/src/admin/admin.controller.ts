@@ -5,11 +5,20 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import {
+  adminInvoiceDecisionSchema,
+  adminInvoiceQuerySchema,
+  adminRenewSchema,
+  adminSubscriptionSettingsSchema,
+  type AdminInvoiceDecisionInput,
+  type AdminInvoiceDto,
+  type AdminRenewInput,
+  type AdminSubscriptionSettingsInput,
   adminOpenAccessSchema,
   adminSetPinSchema,
   adminRequestQuerySchema,
@@ -103,7 +112,76 @@ export class AdminController {
     @Body(new ZodValidationPipe(adminSetPlanSchema)) body: AdminSetPlanInput,
     @RequestId() requestId: string | null,
   ): Promise<AdminShopDto> {
-    return this.admin.setPlan(user, id, body.planKey, body.note, requestId);
+    return this.admin.setPlan(
+      user,
+      id,
+      body.planKey,
+      body.note,
+      requestId,
+      body.period,
+    );
+  }
+
+  /** « Prolonger » by hand, the payment received (ADR-073). */
+  @Post('shops/:id/renew')
+  @HttpCode(HttpStatus.OK)
+  renew(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(adminRenewSchema)) body: AdminRenewInput,
+    @RequestId() requestId: string | null,
+  ): Promise<AdminShopDto> {
+    return this.admin.renew(user, id, body.period, body.note, requestId);
+  }
+
+  /** Automatic renewal, and the lifetime subscription (ADR-073). */
+  @Patch('shops/:id/subscription')
+  subscriptionSettings(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(adminSubscriptionSettingsSchema))
+    body: AdminSubscriptionSettingsInput,
+    @RequestId() requestId: string | null,
+  ): Promise<AdminShopDto> {
+    return this.admin.subscriptionSettings(user, id, body, requestId);
+  }
+
+  @Get('invoices')
+  invoices(
+    @Query(new ZodValidationPipe(adminInvoiceQuerySchema))
+    query: z.infer<typeof adminInvoiceQuerySchema>,
+  ): Promise<AdminInvoiceDto[]> {
+    return this.admin.invoices(query.status === 'pending');
+  }
+
+  @Post('invoices/:id/paid')
+  @HttpCode(HttpStatus.OK)
+  invoicePaid(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(adminInvoiceDecisionSchema))
+    body: AdminInvoiceDecisionInput,
+    @RequestId() requestId: string | null,
+  ): Promise<AdminShopDto> {
+    return this.admin.decideInvoice(user, id, 'paid', body.note, requestId);
+  }
+
+  @Post('invoices/:id/cancel')
+  @HttpCode(HttpStatus.OK)
+  invoiceCancel(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(adminInvoiceDecisionSchema))
+    body: AdminInvoiceDecisionInput,
+    @RequestId() requestId: string | null,
+  ): Promise<AdminShopDto> {
+    return this.admin.decideInvoice(
+      user,
+      id,
+      'cancelled',
+      body.note,
+      requestId,
+    );
   }
 
   @Post('shops/:id/suspend')

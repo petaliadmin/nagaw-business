@@ -9,6 +9,15 @@ import { buttonClasses } from '@/components/ui/button-styles';
 import { PinField } from '@/components/phone-field';
 import { initialFormState } from '@/lib/auth/form-state';
 import {
+  formatAmount,
+  SUBSCRIPTION_PERIOD_LABELS,
+  type SubscriptionInvoiceDto,
+} from '@nagaw/shared';
+import { useConfirmedSubmit } from '@/components/ui/confirm-dialog';
+import {
+  decideInvoice,
+  renewShop,
+  setShopSubscription,
   answerFeedback,
   openShopAccess,
   reactivateShop,
@@ -88,7 +97,17 @@ export function SetPlanForm({
     >
       <input type="hidden" name="shopId" value={shopId} />
       <FormMessage state={state} />
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <SelectField
+          label="Durée"
+          name="period"
+          id="admin-plan-period"
+          defaultValue="month"
+          options={[
+            { value: 'month', label: SUBSCRIPTION_PERIOD_LABELS.month },
+            { value: 'year', label: SUBSCRIPTION_PERIOD_LABELS.year },
+          ]}
+        />
         <SelectField
           label="Nouvelle offre"
           name="planKey"
@@ -289,6 +308,132 @@ export function AnswerFeedbackForm({
         >
           {answered ? 'Marquer comme traité' : 'Répondre et clore'}
         </button>
+      </div>
+    </ActionForm>
+  );
+}
+
+/** « Prolonger » by hand: one month or one year, payment received. */
+export function RenewForm({ shopId }: { shopId: string }) {
+  const [state, action, pending] = useActionState(renewShop, initialFormState);
+  return (
+    <ActionForm
+      action={action}
+      pending={pending}
+      noValidate
+      className="flex flex-col gap-3"
+    >
+      <input type="hidden" name="shopId" value={shopId} />
+      <FormMessage state={state} />
+      <FormField
+        label="Remarque (facultatif)"
+        name="note"
+        id="admin-renew-note"
+        maxLength={500}
+        placeholder="Wave reçu le…"
+      />
+      <div className="flex flex-wrap gap-2">
+        {(['month', 'year'] as const).map((period) => (
+          <SubmitButton
+            key={period}
+            name="period"
+            value={period}
+            variant={period === 'month' ? 'primary' : 'secondary'}
+            pendingLabel="Prolongation…"
+          >
+            {`Prolonger de ${SUBSCRIPTION_PERIOD_LABELS[period]}`}
+          </SubmitButton>
+        ))}
+      </div>
+    </ActionForm>
+  );
+}
+
+/** One switch of the subscription: automatic renewal or lifetime. */
+export function SubscriptionSwitch({
+  shopId,
+  field,
+  value,
+  label,
+  confirmation,
+}: {
+  shopId: string;
+  field: 'autoRenew' | 'lifetime';
+  /** The value it sets. */
+  value: boolean;
+  label: string;
+  confirmation?: { title: string; message: string };
+}) {
+  const [state, action, pending] = useActionState(
+    setShopSubscription,
+    initialFormState,
+  );
+  const [guard, confirmDialog] = useConfirmedSubmit();
+  return (
+    <form
+      action={action}
+      onSubmit={(event) =>
+        guard(
+          event,
+          confirmation ? { ...confirmation, confirmLabel: label } : null,
+        )
+      }
+      className="flex flex-col gap-2"
+    >
+      {confirmDialog}
+      <input type="hidden" name="shopId" value={shopId} />
+      <input type="hidden" name="field" value={field} />
+      <input type="hidden" name="value" value={String(value)} />
+      <FormMessage state={state} />
+      <div>
+        <SubmitButton variant="secondary" pendingLabel="Enregistrement…">
+          {label}
+        </SubmitButton>
+      </div>
+      {pending && <span className="sr-only">Enregistrement…</span>}
+    </form>
+  );
+}
+
+/** « Marquer payée » or « Annuler » on an invoice to collect. */
+export function InvoiceDecision({
+  invoice,
+  shopName,
+}: {
+  invoice: SubscriptionInvoiceDto;
+  shopName?: string;
+}) {
+  const [state, action, pending] = useActionState(
+    decideInvoice,
+    initialFormState,
+  );
+  const amount = formatAmount(invoice.amount, invoice.currency);
+  return (
+    <ActionForm
+      action={action}
+      pending={pending}
+      className="flex flex-col gap-2"
+    >
+      <input type="hidden" name="invoiceId" value={invoice.id} />
+      <FormMessage state={state} />
+      <div className="flex flex-wrap gap-2">
+        <SubmitButton
+          name="decision"
+          value="paid"
+          pendingLabel="Enregistrement…"
+          aria-label={`Marquer payée : ${invoice.reference}${shopName ? `, ${shopName}` : ''}, ${amount}`}
+        >
+          Marquer payée
+        </SubmitButton>
+        <SubmitButton
+          name="decision"
+          value="cancel"
+          variant="secondary"
+          pendingLabel="Annulation…"
+          aria-label={`Annuler la facture ${invoice.reference}${shopName ? `, ${shopName}` : ''}`}
+        >
+          Annuler
+        </SubmitButton>
       </div>
     </ActionForm>
   );

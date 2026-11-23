@@ -85,6 +85,7 @@ export interface OrganizationsTable {
   hidden_sections: Generated<ShopSection[]>;
   counts_stock_by_default: Generated<boolean>;
   orders_enabled: Generated<boolean>;
+  suspended_invoice_id: string | null;
   order_ready_reminder_days: Generated<number>;
   trade_register: Generated<string>;
   invoice_footer: Generated<string>;
@@ -644,6 +645,8 @@ export interface PlansTable {
   max_members: number;
   max_devices: number;
   position: number;
+  /** Null: twelve months at the monthly price (ADR-073). */
+  yearly_price: Numeric | null;
   created_at: ColumnType<Date, never, never>;
   updated_at: ColumnType<Date, never, never>;
 }
@@ -654,6 +657,31 @@ export interface SubscriptionsTable {
   started_at: ColumnType<Date, never, never>;
   updated_at: ColumnType<Date, never, never>;
   changed_by: string | null;
+  period: Generated<'month' | 'year'>;
+  current_period_end: NullableTimestamp;
+  auto_renew: Generated<boolean>;
+  lifetime: Generated<boolean>;
+  lifetime_granted_by: string | null;
+  lifetime_granted_at: NullableTimestamp;
+}
+
+export interface SubscriptionInvoicesTable {
+  id: Generated<string>;
+  organization_id: string;
+  plan_key: string;
+  period: 'month' | 'year';
+  amount: Numeric;
+  currency: string;
+  period_start: Timestamp;
+  period_end: Timestamp;
+  status: Generated<'pending' | 'paid' | 'cancelled'>;
+  due_at: Timestamp;
+  issued_by: string | null;
+  paid_at: NullableTimestamp;
+  paid_by: string | null;
+  note: Generated<string>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
 }
 
 export interface PlanChangeRequestsTable {
@@ -661,6 +689,7 @@ export interface PlanChangeRequestsTable {
   organization_id: string;
   plan_key: string;
   status: Generated<'pending' | 'cancelled' | 'done' | 'rejected'>;
+  period: Generated<'month' | 'year'>;
   requested_by: string;
   created_at: ColumnType<Date, never, never>;
   resolved_at: NullableTimestamp;
@@ -692,6 +721,7 @@ export interface PlatformSettingsTable {
   payment_orange_money_number: string | null;
   pin_max_failures: number;
   pin_lock_minutes: number;
+  subscription_grace_days: Generated<number>;
   updated_at: ColumnType<Date, never, never>;
 }
 
@@ -827,6 +857,7 @@ export interface Database {
   'app.plans': PlansTable;
   'app.subscriptions': SubscriptionsTable;
   'app.plan_change_requests': PlanChangeRequestsTable;
+  'app.subscription_invoices': SubscriptionInvoicesTable;
   'app.platform_admins': PlatformAdminsTable;
   'app.platform_shop_accesses': PlatformShopAccessesTable;
   'app.platform_settings': PlatformSettingsTable;

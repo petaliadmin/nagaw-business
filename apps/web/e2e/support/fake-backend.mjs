@@ -66,6 +66,7 @@ const PLANS = [
     key: 'free',
     name: 'Gratuit',
     monthlyPrice: 0,
+    yearlyPrice: 0,
     currency: 'XOF',
     limits: { products: 10, members: 2, devices: 1 },
   },
@@ -73,6 +74,7 @@ const PLANS = [
     key: 'essential',
     name: 'Essentiel',
     monthlyPrice: 5000,
+    yearlyPrice: 60000,
     currency: 'XOF',
     limits: { products: 50, members: 5, devices: 3 },
   },
@@ -80,6 +82,7 @@ const PLANS = [
     key: 'pro',
     name: 'Pro',
     monthlyPrice: 15000,
+    yearlyPrice: 180000,
     currency: 'XOF',
     limits: { products: null, members: 20, devices: 10 },
   },
@@ -224,8 +227,41 @@ function makeState() {
     // Feedback of the shops (ADR-032).
     feedback: [],
     subscriptions: {
-      [ACME]: { planKey: 'pro', pending: null },
-      [GLOBEX]: { planKey: 'free', pending: null },
+      // Acme's term ends in ten days, with an invoice to pay (ADR-073).
+      [ACME]: {
+        planKey: 'pro',
+        pending: null,
+        period: 'month',
+        currentPeriodEnd: new Date(Date.now() + 10 * 86_400_000).toISOString(),
+        autoRenew: true,
+        lifetime: false,
+        invoices: [
+          {
+            id: 'abababab-0000-4000-8000-000000000001',
+            reference: 'AB-ABABAB',
+            plan: { key: 'pro', name: 'Pro' },
+            period: 'month',
+            amount: 15000,
+            currency: 'XOF',
+            periodStart: new Date(Date.now() - 20 * 86_400_000).toISOString(),
+            periodEnd: new Date(Date.now() + 10 * 86_400_000).toISOString(),
+            status: 'pending',
+            dueAt: new Date(Date.now() + 5 * 86_400_000).toISOString(),
+            paidAt: null,
+            note: '',
+            createdAt: new Date(Date.now() - 10 * 86_400_000).toISOString(),
+          },
+        ],
+      },
+      [GLOBEX]: {
+        planKey: 'free',
+        pending: null,
+        period: 'month',
+        currentPeriodEnd: null,
+        autoRenew: true,
+        lifetime: false,
+        invoices: [],
+      },
     },
   };
 }
@@ -532,6 +568,7 @@ const server = createServer(async (req, res) => {
           name: plan(state.subscriptions[org.id].planKey).name,
         },
         to: { key: r.planKey, name: plan(r.planKey).name },
+        period: r.period ?? 'month',
         requestedBy: owners(org.id)[0] ?? '',
         status: r.status ?? 'pending',
         note: r.note ?? '',
@@ -563,8 +600,24 @@ const server = createServer(async (req, res) => {
           };
         }),
       requests: state.subscriptions[org.id].pending ? [requestDto(org)] : [],
+      subscription: {
+        period: state.subscriptions[org.id].period,
+        currentPeriodEnd: state.subscriptions[org.id].currentPeriodEnd,
+        autoRenew: state.subscriptions[org.id].autoRenew,
+        lifetime: state.subscriptions[org.id].lifetime,
+        invoices: state.subscriptions[org.id].invoices,
+      },
       access: null,
     });
+    const allInvoices = () =>
+      orgs.flatMap((o) =>
+        state.subscriptions[o.id].invoices.map((i) => ({
+          ...i,
+          shop: { id: o.id, name: o.name, status: o.status },
+          overdue:
+            i.status === 'pending' && i.dueAt <= new Date().toISOString(),
+        })),
+      );
     const orgs = Object.values(state.organizations);
     const pending = orgs.filter(
       (o) =>
@@ -587,6 +640,13 @@ const server = createServer(async (req, res) => {
         },
         users: { total: Object.keys(USERS).length, createdLast30Days: 0 },
         pendingRequests: pending.length,
+        invoices: {
+          pending: allInvoices().filter((i) => i.status === 'pending').length,
+          overdue: allInvoices().filter((i) => i.overdue).length,
+          pendingAmount: allInvoices()
+            .filter((i) => i.status === 'pending')
+            .reduce((t, i) => t + i.amount, 0),
+        },
         sync: { batches: 0, accepted: 0, rejected: 0, rejectionBasisPoints: 0 },
         alerts: pending.length
           ? [
@@ -704,8 +764,41 @@ const server = createServer(async (req, res) => {
       PINS[person.phone] = pin;
       return send(res, 204);
     }
+    if (path === '/api/v1/admin/invoices')
+      return send(
+        res,
+        200,
+        allInvoices().filter(
+          (i) =>
+            url.searchParams.get('status') === 'all' || i.status === 'pending',
+        ),
+      );
+    const invoiceMatch =
+      /^\/api\/v1\/admin\/invoices\/([^/]+)\/(paid|cancel)$/.exec(path);
+    if (invoiceMatch) {
+      const org = orgs.find((o) =>
+        state.subscriptions[o.id].invoices.some(
+          (i) => i.id === invoiceMatch[1],
+        ),
+      );
+      if (!org)
+        return apiError(res, 404, 'INVOICE_NOT_FOUND', 'Facture introuvable.');
+      const invoice = state.subscriptions[org.id].invoices.find(
+        (i) => i.id === invoiceMatch[1],
+      );
+      if (invoice.status !== 'pending')
+        return apiError(res, 409, 'INVOICE_NOT_PENDING', 'Déjà traitée.');
+      const { note = '' } = await readJson(req);
+      Object.assign(
+        invoice,
+        invoiceMatch[2] === 'paid'
+          ? { status: 'paid', paidAt: new Date().toISOString(), note }
+          : { status: 'cancelled', note },
+      );
+      return send(res, 200, shopDto(org));
+    }
     const shopMatch =
-      /^\/api\/v1\/admin\/shops\/([^/]+)(\/plan|\/suspend|\/reactivate)?$/.exec(
+      /^\/api\/v1\/admin\/shops\/([^/]+)(\/plan|\/suspend|\/reactivate|\/renew|\/subscription)?$/.exec(
         path,
       );
     if (shopMatch) {
@@ -714,6 +807,51 @@ const server = createServer(async (req, res) => {
         return apiError(res, 404, 'SHOP_NOT_FOUND', 'Boutique introuvable.');
       if (!shopMatch[2]) return send(res, 200, shopDto(org));
       const body = await readJson(req);
+      const sub = state.subscriptions[org.id];
+      if (shopMatch[2] === '/renew') {
+        if (sub.lifetime || plan(sub.planKey).monthlyPrice === 0)
+          return apiError(res, 409, 'SUBSCRIPTION_FREE', 'Rien à prolonger.');
+        const from = new Date(
+          Math.max(Date.now(), Date.parse(sub.currentPeriodEnd ?? '0')),
+        );
+        const end = new Date(from);
+        end.setUTCMonth(end.getUTCMonth() + (body.period === 'year' ? 12 : 1));
+        sub.invoices.unshift({
+          id: randomUUID(),
+          reference: 'AB-NEW',
+          plan: { key: sub.planKey, name: plan(sub.planKey).name },
+          period: body.period,
+          amount:
+            body.period === 'year'
+              ? plan(sub.planKey).yearlyPrice
+              : plan(sub.planKey).monthlyPrice,
+          currency: 'XOF',
+          periodStart: from.toISOString(),
+          periodEnd: end.toISOString(),
+          status: 'paid',
+          dueAt: new Date().toISOString(),
+          paidAt: new Date().toISOString(),
+          note: body.note ?? '',
+          createdAt: new Date().toISOString(),
+        });
+        Object.assign(sub, {
+          period: body.period,
+          currentPeriodEnd: end.toISOString(),
+        });
+        return send(res, 200, shopDto(org));
+      }
+      if (shopMatch[2] === '/subscription') {
+        if (body.lifetime !== undefined) {
+          sub.lifetime = body.lifetime;
+          if (body.lifetime) {
+            Object.assign(sub, { currentPeriodEnd: null, autoRenew: false });
+            for (const i of sub.invoices)
+              if (i.status === 'pending') i.status = 'cancelled';
+          }
+        }
+        if (body.autoRenew !== undefined) sub.autoRenew = body.autoRenew;
+        return send(res, 200, shopDto(org));
+      }
       if (shopMatch[2] === '/plan') {
         if (!plan(body.planKey))
           return apiError(res, 400, 'VALIDATION_FAILED', 'Offre inconnue.');
@@ -1300,18 +1438,29 @@ const server = createServer(async (req, res) => {
           ? {
               id: subscription.pending.id,
               plan: plan(subscription.pending.planKey),
+              period: subscription.pending.period ?? 'month',
               createdAt: subscription.pending.createdAt,
             }
           : null,
+      period: subscription.period,
+      currentPeriodEnd: subscription.currentPeriodEnd,
+      autoRenew: subscription.autoRenew,
+      lifetime: subscription.lifetime,
+      invoices: subscription.invoices,
     });
     if (path === '/api/v1/subscription' && req.method === 'GET')
       return send(res, 200, dto());
     if (role !== 'owner') return forbidden(res);
+    if (path === '/api/v1/subscription' && req.method === 'PATCH') {
+      const { autoRenew } = await readJson(req);
+      subscription.autoRenew = autoRenew;
+      return send(res, 200, dto());
+    }
     if (path === '/api/v1/subscription/requests' && req.method === 'POST') {
-      const { planKey } = await readJson(req);
+      const { planKey, period = 'month' } = await readJson(req);
       if (!plan(planKey))
         return apiError(res, 400, 'VALIDATION_FAILED', 'Offre inconnue.');
-      if (planKey === subscription.planKey)
+      if (planKey === subscription.planKey && period === subscription.period)
         return apiError(
           res,
           409,
@@ -1328,6 +1477,7 @@ const server = createServer(async (req, res) => {
       subscription.pending = {
         id: randomUUID(),
         planKey,
+        period,
         createdAt: new Date().toISOString(),
       };
       return send(res, 201, dto());

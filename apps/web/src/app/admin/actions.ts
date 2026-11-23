@@ -1,6 +1,9 @@
 'use server';
 
 import {
+  adminInvoiceDecisionSchema,
+  adminRenewSchema,
+  adminSubscriptionSettingsSchema,
   answerFeedbackSchema,
   adminOpenAccessSchema,
   adminResolveRequestSchema,
@@ -70,6 +73,7 @@ export async function setShopPlan(
   const token = await adminToken();
   const parsed = parseValues(adminSetPlanSchema, {
     planKey: text(formData, 'planKey'),
+    period: text(formData, 'period') || 'month',
     note: text(formData, 'note'),
   });
   if (!parsed.ok) return parsed.state;
@@ -197,5 +201,90 @@ export async function answerFeedback(
     status: 'success',
     message:
       result.data.status === 'done' ? 'Avis traité.' : 'Avis marqué comme lu.',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Terms and invoices (ADR-073)
+// ---------------------------------------------------------------------------
+
+/** « Prolonger d’un mois / d’un an »: payment received. */
+export async function renewShop(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const parsed = parseValues(adminRenewSchema, {
+    period: text(formData, 'period'),
+    note: text(formData, 'note'),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<AdminShopDto>(token, {
+    method: 'POST',
+    path: `/admin/shops/${id(formData, 'shopId')}/renew`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return { status: 'success', message: 'Abonnement prolongé.' };
+}
+
+/** Automatic renewal on or off, lifetime given or taken back. */
+export async function setShopSubscription(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const field = text(formData, 'field');
+  const value = text(formData, 'value') === 'true';
+  const parsed = parseValues(adminSubscriptionSettingsSchema, {
+    [field === 'lifetime' ? 'lifetime' : 'autoRenew']: value,
+    note: text(formData, 'note'),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<AdminShopDto>(token, {
+    method: 'PATCH',
+    path: `/admin/shops/${id(formData, 'shopId')}/subscription`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message:
+      field === 'lifetime'
+        ? value
+          ? 'Abonnement à vie accordé.'
+          : 'Abonnement à vie retiré : une période commence aujourd’hui.'
+        : value
+          ? 'Renouvellement automatique activé.'
+          : 'Renouvellement automatique arrêté.',
+  };
+}
+
+/** The payment of an invoice received, or the invoice forgiven. */
+export async function decideInvoice(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const decision = text(formData, 'decision') === 'cancel' ? 'cancel' : 'paid';
+  const parsed = parseValues(adminInvoiceDecisionSchema, {
+    note: text(formData, 'note'),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<AdminShopDto>(token, {
+    method: 'POST',
+    path: `/admin/invoices/${id(formData, 'invoiceId')}/${decision}`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message:
+      decision === 'paid'
+        ? 'Facture marquée payée.'
+        : 'Facture annulée : rien n’est dû pour cette période.',
   };
 }

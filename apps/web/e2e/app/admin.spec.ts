@@ -114,3 +114,58 @@ test('the platform suspends and reactivates a shop', async ({
   ).toBeVisible();
   await expectAccessible(page, 'synchronisation');
 });
+
+test('an invoice to pay shows to the owner, and the platform marks it paid (ADR-073)', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/abonnement');
+  await expect(page.getByText(/^Facture à payer : 15\s000/)).toBeVisible();
+  await expect(page.getByText('AB-ABABAB', { exact: true })).toBeVisible();
+
+  await context.clearCookies();
+  await signInAs(context, 'binta', baseURL!);
+  await page.goto('/admin/factures');
+  await expectAccessible(page, 'factures');
+  await page
+    .getByRole('button', { name: /^Marquer payée : AB-ABABAB, Acme Dakar/ })
+    .click();
+  // Paid, it leaves the invoices to collect.
+  await expect(page.getByText('Rien à encaisser')).toBeVisible();
+});
+
+test('the platform extends a term by hand and gives a lifetime subscription', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'binta', baseURL!);
+  await page.goto('/admin/boutiques');
+  await page.getByRole('link', { name: /^Acme Dakar/ }).click();
+  const term = page.getByRole('region', { name: 'Durée et factures' });
+  await term.getByLabel('Remarque (facultatif)').fill('Espèces');
+  await term.getByRole('button', { name: 'Prolonger de 1 an' }).click();
+  await expect(page.getByText('Abonnement prolongé.')).toBeVisible();
+  await expect(term).toContainText('1 an, jusqu’au');
+
+  await term
+    .getByRole('button', { name: 'Abonnement à vie', exact: true })
+    .click();
+  const dialog = page.getByRole('alertdialog', {
+    name: 'Abonnement à vie pour Acme Dakar ?',
+  });
+  await dialog.getByRole('button', { name: 'Abonnement à vie' }).click();
+  await expect(term).toContainText('Abonnement à vie');
+  await expect(
+    term.getByRole('button', { name: 'Retirer l’abonnement à vie' }),
+  ).toBeVisible();
+
+  await context.clearCookies();
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/abonnement');
+  await expect(
+    page.getByText('Abonnement à vie, offert par Nagaw : rien à payer.'),
+  ).toBeVisible();
+});

@@ -153,6 +153,7 @@ describe('Platform administration', () => {
         'plan',
         'requests',
         'status',
+        'subscription',
         'suspension',
         'team',
         'timezone',

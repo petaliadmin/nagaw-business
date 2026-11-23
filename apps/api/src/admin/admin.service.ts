@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
   shareBasisPoints,
+  type AdminInvoiceDto,
+  type SubscriptionPeriod,
   type AdminActivityDto,
   type AdminAlertDto,
   type AdminFinancesDto,
@@ -25,6 +27,7 @@ import { pageOf } from '../common/page.js';
 import type { AuthContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import type { Database } from '../database/schema.js';
+import { BillingService } from '../subscriptions/billing.service.js';
 
 const shopNotFound = () => notFound('SHOP_NOT_FOUND', 'Boutique introuvable.');
 const requestNotFound = () =>
@@ -53,6 +56,7 @@ export class AdminService {
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    private readonly billing: BillingService,
   ) {}
 
   private settings(executor: Executor) {
@@ -168,6 +172,7 @@ export class AdminService {
         'cur.name as from_name',
         'r.plan_key as to_key',
         'want.name as to_name',
+        'r.period',
         'u.contact',
         'r.status',
         'r.resolution_note',
@@ -182,6 +187,7 @@ export class AdminService {
       shop: { id: r.organization_id, name: r.shop_name },
       from: { key: r.from_key, name: r.from_name },
       to: { key: r.to_key, name: r.to_name },
+      period: r.period,
       requestedBy: r.contact,
       status: r.status,
       note: r.resolution_note,
@@ -232,6 +238,11 @@ export class AdminService {
       .where('m.organization_id', '=', id)
       .orderBy('m.created_at')
       .execute();
+    const subscription = await executor
+      .selectFrom('app.subscriptions')
+      .select(['period', 'current_period_end', 'auto_renew', 'lifetime'])
+      .where('organization_id', '=', id)
+      .executeTakeFirstOrThrow();
     const access = await executor
       .selectFrom('app.platform_shop_accesses')
       .select(['opened_at', 'reason'])
@@ -274,6 +285,14 @@ export class AdminService {
         active: m.status === 'active',
       })),
       requests: await this.requestsOf(executor, id, false),
+      subscription: {
+        period: subscription.period,
+        currentPeriodEnd:
+          subscription.current_period_end?.toISOString() ?? null,
+        autoRenew: subscription.auto_renew,
+        lifetime: subscription.lifetime,
+        invoices: await this.billing.invoicesOf(executor, id),
+      },
       access: access
         ? { openedAt: access.opened_at.toISOString(), reason: access.reason }
         : null,
@@ -370,6 +389,7 @@ export class AdminService {
     planKey: string,
     requestId: string | null,
     origin: Record<string, unknown>,
+    period: SubscriptionPeriod = 'month',
   ) {
     const plan = await trx
       .selectFrom('app.plans')
@@ -379,11 +399,11 @@ export class AdminService {
     if (!plan) throw invalid('planKey', 'Offre inconnue.');
     const current = await trx
       .selectFrom('app.subscriptions')
-      .select('plan_key')
+      .select(['plan_key', 'period'])
       .where('organization_id', '=', organizationId)
       .executeTakeFirst();
     if (!current) throw shopNotFound();
-    if (current.plan_key === plan.key)
+    if (current.plan_key === plan.key && current.period === period)
       throw conflict(
         'ALREADY_ON_PLAN',
         `La boutique est déjà sur l’offre ${plan.name}.`,
@@ -393,6 +413,15 @@ export class AdminService {
       .set({ plan_key: plan.key, changed_by: admin.userId })
       .where('organization_id', '=', organizationId)
       .execute();
+    // Payment received: the term starts today (ADR-073).
+    await this.billing.startTerm(
+      trx,
+      admin,
+      organizationId,
+      plan.key,
+      period,
+      typeof origin.note === 'string' ? origin.note : '',
+    );
     await this.audit.record(trx, {
       organizationId,
       actorType: 'platform_admin',
@@ -400,7 +429,7 @@ export class AdminService {
       action: 'subscription.plan_changed',
       targetType: 'organization',
       targetId: organizationId,
-      metadata: { from: current.plan_key, to: plan.key, ...origin },
+      metadata: { from: current.plan_key, to: plan.key, period, ...origin },
       requestId,
     });
   }
@@ -412,6 +441,7 @@ export class AdminService {
     planKey: string,
     note: string,
     requestId: string | null,
+    period: SubscriptionPeriod = 'month',
   ) {
     if (!UUID_RE.test(id)) throw shopNotFound();
     return this.database.db.transaction().execute(async (trx) => {
@@ -423,6 +453,7 @@ export class AdminService {
         planKey,
         requestId,
         note ? { note } : {},
+        period,
       );
       // A pending request for this very offer is thereby fulfilled.
       await trx
@@ -463,7 +494,7 @@ export class AdminService {
     return this.database.db.transaction().execute(async (trx) => {
       const request = await trx
         .selectFrom('app.plan_change_requests')
-        .select(['id', 'organization_id', 'plan_key', 'status'])
+        .select(['id', 'organization_id', 'plan_key', 'status', 'period'])
         .where('id', '=', id)
         .forUpdate()
         .executeTakeFirst();
@@ -484,6 +515,7 @@ export class AdminService {
           {
             requestIdOfChange: request.id,
           },
+          request.period,
         );
       else
         await this.audit.record(trx, {
@@ -834,60 +866,74 @@ export class AdminService {
   async overview(): Promise<AdminOverviewDto> {
     const db = this.database.db;
     const settings = await this.settings(db);
-    const [shops, byPlan, users, pending, sync, perShopSync, quotas, silent] =
-      await Promise.all([
-        sql<{ active: string; suspended: string; recent: string }>`
+    const [
+      shops,
+      byPlan,
+      users,
+      pending,
+      sync,
+      perShopSync,
+      quotas,
+      silent,
+      invoices,
+    ] = await Promise.all([
+      sql<{ active: string; suspended: string; recent: string }>`
         select count(*) filter (where status = 'active') as active,
                count(*) filter (where status = 'suspended') as suspended,
                count(*) filter (where created_at > now() - interval '30 days') as recent
           from app.organizations`.execute(db),
-        db
-          .selectFrom('app.plans as p')
-          .leftJoin('app.subscriptions as s', 's.plan_key', 'p.key')
-          .select([
-            'p.key',
-            'p.name',
-            (eb) => eb.fn.count<string>('s.organization_id').as('count'),
-          ])
-          .groupBy(['p.key', 'p.name', 'p.position'])
-          .orderBy('p.position')
-          .execute(),
-        sql<{ total: string; recent: string }>`
+      db
+        .selectFrom('app.plans as p')
+        .leftJoin('app.subscriptions as s', 's.plan_key', 'p.key')
+        .select([
+          'p.key',
+          'p.name',
+          (eb) => eb.fn.count<string>('s.organization_id').as('count'),
+        ])
+        .groupBy(['p.key', 'p.name', 'p.position'])
+        .orderBy('p.position')
+        .execute(),
+      sql<{ total: string; recent: string }>`
         select count(*) as total, count(*) filter (where created_at > now() - interval '30 days') as recent
           from app.user_profiles`.execute(db),
-        sql<{
-          count: string;
-        }>`select count(*) as count from app.plan_change_requests where status = 'pending'`.execute(
-          db,
-        ),
-        sql<{ batches: string; accepted: string; rejected: string }>`
+      sql<{
+        count: string;
+      }>`select count(*) as count from app.plan_change_requests where status = 'pending'`.execute(
+        db,
+      ),
+      sql<{ batches: string; accepted: string; rejected: string }>`
         select count(*) as batches, coalesce(sum(accepted), 0) as accepted, coalesce(sum(rejected), 0) as rejected
           from app.sync_batches where received_at > now() - interval '7 days'`.execute(
-          db,
-        ),
-        sql<{ id: string; name: string; accepted: string; rejected: string }>`
+        db,
+      ),
+      sql<{ id: string; name: string; accepted: string; rejected: string }>`
         select o.id, o.name, sum(b.accepted) as accepted, sum(b.rejected) as rejected
           from app.sync_batches b join app.organizations o on o.id = b.organization_id
          where b.received_at > now() - interval '7 days'
          group by o.id, o.name
         having sum(b.rejected) > 0`.execute(db),
-        sql<{
-          id: string;
-          name: string;
-          products: string;
-          members: string;
-          devices: string;
-          max_products: number | null;
-          max_members: number;
-          max_devices: number;
-        }>`
+      sql<{
+        id: string;
+        name: string;
+        products: string;
+        members: string;
+        devices: string;
+        max_products: number | null;
+        max_members: number;
+        max_devices: number;
+      }>`
         select o.id, o.name, o.max_products, o.max_members, o.max_devices,
                (select count(*) from app.products x where x.organization_id = o.id and x.status = 'active' and x.system_role is null) as products,
                (select count(*) from app.organization_memberships x where x.organization_id = o.id and x.status = 'active') as members,
                (select count(*) from app.devices x where x.organization_id = o.id and x.revoked_at is null) as devices
           from app.organizations o where o.status = 'active'`.execute(db),
-        this.silentDevices(db, settings.silent_device_days),
-      ]);
+      this.silentDevices(db, settings.silent_device_days),
+      sql<{ pending: string; overdue: string; amount: string }>`
+        select count(*) as pending,
+               count(*) filter (where due_at <= now()) as overdue,
+               coalesce(sum(amount), 0) as amount
+          from app.subscription_invoices where status = 'pending'`.execute(db),
+    ]);
 
     const alerts: AdminAlertDto[] = [];
     const pendingCount = toNumber(pending.rows[0]!.count);
@@ -895,6 +941,13 @@ export class AdminService {
       alerts.push({
         kind: 'plan_request',
         message: `${pendingCount} demande${pendingCount > 1 ? 's' : ''} de changement d’offre en attente.`,
+        shop: null,
+      });
+    const inv = invoices.rows[0]!;
+    if (toNumber(inv.overdue) > 0)
+      alerts.unshift({
+        kind: 'invoice_overdue',
+        message: `${toNumber(inv.overdue)} facture${toNumber(inv.overdue) > 1 ? 's' : ''} d’abonnement en retard : la boutique est suspendue tant qu’elle n’est pas marquée payée.`,
         shop: null,
       });
     for (const s of perShopSync.rows) {
@@ -952,6 +1005,11 @@ export class AdminService {
         createdLast30Days: toNumber(users.rows[0]!.recent),
       },
       pendingRequests: pendingCount,
+      invoices: {
+        pending: toNumber(inv.pending),
+        overdue: toNumber(inv.overdue),
+        pendingAmount: toNumber(inv.amount),
+      },
       sync: {
         batches: toNumber(s.batches),
         accepted,
@@ -960,5 +1018,86 @@ export class AdminService {
       },
       alerts,
     };
+  }
+
+  // -------------------------------------------------------------------------
+  // Terms and invoices of the subscriptions (ADR-073)
+  // -------------------------------------------------------------------------
+
+  async invoices(pendingOnly: boolean): Promise<AdminInvoiceDto[]> {
+    let q = this.database.db
+      .selectFrom('app.subscription_invoices as i')
+      .innerJoin('app.organizations as o', 'o.id', 'i.organization_id')
+      .innerJoin('app.plans as p', 'p.key', 'i.plan_key')
+      .selectAll('i')
+      .select([
+        'o.name as shop_name',
+        'o.status as shop_status',
+        'p.name as plan_name',
+      ]);
+    if (pendingOnly) q = q.where('i.status', '=', 'pending');
+    const rows = await q
+      .orderBy(sql`case i.status when 'pending' then 0 else 1 end`)
+      .orderBy('i.due_at')
+      .limit(300)
+      .execute();
+    const now = new Date();
+    return rows.map((r) => ({
+      ...this.billing.toDto(r, r.plan_name),
+      shop: { id: r.organization_id, name: r.shop_name, status: r.shop_status },
+      overdue: r.status === 'pending' && r.due_at <= now,
+    }));
+  }
+
+  async renew(
+    admin: AuthContext,
+    id: string,
+    period: SubscriptionPeriod,
+    note: string,
+    requestId: string | null,
+  ): Promise<AdminShopDto> {
+    if (!UUID_RE.test(id)) throw shopNotFound();
+    return this.database.db.transaction().execute(async (trx) => {
+      await this.lockShop(trx, id);
+      await this.billing.renew(trx, admin, id, period, note, requestId);
+      return this.shop(id, admin.userId, trx);
+    });
+  }
+
+  async subscriptionSettings(
+    admin: AuthContext,
+    id: string,
+    input: { autoRenew?: boolean; lifetime?: boolean; note: string },
+    requestId: string | null,
+  ): Promise<AdminShopDto> {
+    if (!UUID_RE.test(id)) throw shopNotFound();
+    return this.database.db.transaction().execute(async (trx) => {
+      await this.lockShop(trx, id);
+      await this.billing.settings(
+        trx,
+        { userId: admin.userId, platform: true },
+        id,
+        input,
+        requestId,
+      );
+      return this.shop(id, admin.userId, trx);
+    });
+  }
+
+  async decideInvoice(
+    admin: AuthContext,
+    invoiceId: string,
+    decision: 'paid' | 'cancelled',
+    note: string,
+    requestId: string | null,
+  ): Promise<AdminShopDto> {
+    const { organizationId } = await this.billing.decide(
+      admin,
+      invoiceId,
+      decision,
+      note,
+      requestId,
+    );
+    return this.shop(organizationId, admin.userId);
   }
 }
