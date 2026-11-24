@@ -4,8 +4,12 @@
 // cancellation by managers putting the goods back in stock.
 import { randomUUID } from 'node:crypto';
 import {
+  cancelOrderSchema,
   cancelSaleSchema,
   computeSaleTotals,
+  createOrderSchema,
+  deliverOrderSchema,
+  orderDepositSchema,
   createCustomerSchema,
   createSaleSchema,
   customerRepaymentSchema,
@@ -53,6 +57,10 @@ function seed() {
     ],
     repayments: [],
     devices: [],
+    /** `${orgId}|${productId}` → 'later' | 'never' (ADR-070). */
+    dismissed: {},
+    /** Customer orders (ADR-072). */
+    orders: [],
   };
 }
 
@@ -116,6 +124,7 @@ function saleDto(sale, userById) {
     deviceTicket: sale.deviceTicket ?? null,
     priceReview: sale.priceReview ?? false,
     stockReview: sale.stockReview ?? false,
+    orderNumber: state.orders.find((o) => o.saleId === sale.id)?.number ?? null,
     cancellation: sale.cancellation
       ? {
           ...sale.cancellation,
@@ -226,6 +235,361 @@ export async function handleSales(ctx) {
       })),
     );
   }
+  // Customer orders (ADR-072), as the real API does, simply.
+  const orderOf = (id) => state.orders.find((o) => mine(o) && o.id === id);
+  const orderDto = (o) => {
+    const customer = state.customers.find((c) => c.id === o.customerId);
+    const paid = o.payments.reduce(
+      (t, p) => t + (p.kind === 'deposit' ? p.amount : -p.amount),
+      0,
+    );
+    const total = o.itemsTotal + o.deliveryFee;
+    const open = !['delivered', 'cancelled'].includes(o.status);
+    return {
+      ...o,
+      organizationId: undefined,
+      customerId: undefined,
+      customer: {
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+      },
+      total,
+      paid,
+      remaining: Math.max(total - paid, 0),
+      late: open && o.dueOn < today(timeZone),
+    };
+  };
+  const orderOpen = (o) => !['delivered', 'cancelled'].includes(o.status);
+  if (path === '/api/v1/orders' && req.method === 'GET') {
+    const closed = url.searchParams.get('state') === 'closed';
+    return reply(
+      200,
+      state.orders
+        .filter((o) => mine(o) && orderOpen(o) !== closed)
+        .sort((a, b) => a.dueOn.localeCompare(b.dueOn))
+        .map(orderDto),
+    );
+  }
+  if (path === '/api/v1/orders/summary' && req.method === 'GET') {
+    const open = state.orders.filter((o) => mine(o) && orderOpen(o));
+    const day = today(timeZone);
+    return reply(200, {
+      dueNow: open.filter((o) => o.dueOn <= day).length,
+      late: open.filter((o) => o.dueOn < day).length,
+      waitingReady: 0,
+    });
+  }
+  if (path === '/api/v1/orders' && req.method === 'POST') {
+    if (role === 'viewer') return deny();
+    if (!ctx.organization?.ordersEnabled)
+      return fail(
+        403,
+        'ORDERS_DISABLED',
+        'Les commandes ne sont pas activées.',
+      );
+    const parsed = createOrderSchema.safeParse(await ctx.readJson(req));
+    if (!parsed.success) return invalid(parsed.error.issues);
+    const input = parsed.data;
+    const replay = state.orders.find(
+      (o) => mine(o) && o.clientOperationId === input.clientOperationId,
+    );
+    if (replay) return reply(200, orderDto(replay));
+    const catalog = catalogState();
+    const lines = [];
+    for (const [index, line] of input.lines.entries()) {
+      if (!line.productId) {
+        lines.push({
+          productId: null,
+          label: line.label,
+          unit: 'piece',
+          quantity: line.quantity,
+          unitPrice: Math.round(line.agreedTotal / line.quantity),
+          lineTotal: line.agreedTotal,
+          note: line.note,
+        });
+        continue;
+      }
+      const product = catalog.products.find(
+        (p) => mine(p) && p.id === line.productId && !p.systemRole,
+      );
+      if (!product)
+        return invalid([
+          { path: ['lines', index, 'productId'], message: 'Produit inconnu.' },
+        ]);
+      lines.push({
+        productId: product.id,
+        label: product.name,
+        unit: product.unit,
+        quantity: line.quantity,
+        unitPrice: product.salePrice,
+        lineTotal:
+          line.agreedTotal ?? Math.round(product.salePrice * line.quantity),
+        note: line.note,
+      });
+    }
+    const itemsTotal = lines.reduce((t, l) => t + l.lineTotal, 0);
+    if (input.deposit && input.deposit.amount > itemsTotal + input.deliveryFee)
+      return invalid([
+        {
+          path: ['deposit', 'amount'],
+          message: 'L’avance ne peut pas dépasser le total.',
+        },
+      ]);
+    state.orderNumber = (state.orderNumber ?? 0) + 1;
+    const now = new Date().toISOString();
+    const o = {
+      id: randomUUID(),
+      organizationId: orgId,
+      number: `C-${today(timeZone).slice(0, 4)}-${String(state.orderNumber).padStart(4, '0')}`,
+      status: 'received',
+      customerId: input.customerId,
+      lines,
+      itemsTotal,
+      deliveryFee: input.deliveryFee,
+      dueOn: input.dueOn,
+      dueTime: input.dueTime,
+      fulfilment: input.fulfilment,
+      deliveryAddress: input.deliveryAddress,
+      deliveryLandmark: input.deliveryLandmark,
+      deliveryPhone: input.deliveryPhone,
+      note: input.note,
+      payments: input.deposit
+        ? [
+            {
+              id: randomUUID(),
+              kind: 'deposit',
+              ...input.deposit,
+              createdAt: now,
+            },
+          ]
+        : [],
+      saleId: null,
+      deliveredAt: null,
+      cancellation: null,
+      clientOperationId: input.clientOperationId,
+      createdAt: now,
+    };
+    state.orders.push(o);
+    return reply(201, orderDto(o));
+  }
+  const orderMatch =
+    /^\/api\/v1\/orders\/([^/]+)(?:\/(payments|status|deliver|cancel))?$/.exec(
+      path,
+    );
+  if (orderMatch && path !== '/api/v1/orders/summary') {
+    const o = orderOf(orderMatch[1]);
+    if (!o) return fail(404, 'ORDER_NOT_FOUND', 'Commande introuvable.');
+    const step = orderMatch[2];
+    if (!step && req.method === 'GET') return reply(200, orderDto(o));
+    if (req.method !== 'POST') return false;
+    if (role === 'viewer') return deny();
+    if (step === 'cancel' && !manager) return deny();
+    const body = await ctx.readJson(req);
+    if (!orderOpen(o))
+      return fail(
+        409,
+        'ORDER_CLOSED',
+        'Cette commande est déjà remise ou annulée.',
+      );
+    const now = new Date().toISOString();
+    if (step === 'status') {
+      o.status = body.status;
+      return reply(200, orderDto(o));
+    }
+    if (step === 'payments') {
+      const parsed = orderDepositSchema.safeParse(body);
+      if (!parsed.success) return invalid(parsed.error.issues);
+      if (parsed.data.amount > orderDto(o).remaining)
+        return invalid([
+          { path: ['amount'], message: 'L’avance ne peut pas dépasser.' },
+        ]);
+      const { clientOperationId, ...payment } = parsed.data;
+      if (!o.payments.some((p) => p.clientOperationId === clientOperationId))
+        o.payments.push({
+          id: randomUUID(),
+          kind: 'deposit',
+          clientOperationId,
+          ...payment,
+          createdAt: now,
+        });
+      return reply(201, orderDto(o));
+    }
+    if (step === 'cancel') {
+      const parsed = cancelOrderSchema.safeParse(body);
+      if (!parsed.success) return invalid(parsed.error.issues);
+      const paid = orderDto(o).paid;
+      if (paid > 0 && !parsed.data.refund)
+        return invalid([
+          { path: ['refund'], message: 'Comment rendre l’avance ?' },
+        ]);
+      if (paid > 0)
+        o.payments.push({
+          id: randomUUID(),
+          kind: 'refund',
+          ...parsed.data.refund,
+          amount: paid,
+          createdAt: now,
+        });
+      o.status = 'cancelled';
+      o.cancellation = { at: now, reason: parsed.data.reason };
+      return reply(200, orderDto(o));
+    }
+    // The handover: an ordinary sale, the deposits first.
+    const parsed = deliverOrderSchema.safeParse(body);
+    if (!parsed.success) return invalid(parsed.error.issues);
+    const dto = orderDto(o);
+    const fresh = parsed.data.payments;
+    if (fresh.reduce((t, p) => t + p.amount, 0) !== dto.remaining)
+      return invalid([
+        {
+          path: ['payments'],
+          message: 'Le total des paiements doit être égal au montant à payer.',
+        },
+      ]);
+    const catalog = catalogState();
+    state.nextNumber[orgId] = (state.nextNumber[orgId] ?? 0) + 1;
+    const sale = {
+      id: randomUUID(),
+      organizationId: orgId,
+      saleNumber: state.nextNumber[orgId],
+      status: 'completed',
+      customerId: o.customerId,
+      sellerId: user.id,
+      lines: [
+        ...o.lines,
+        ...(o.deliveryFee > 0
+          ? [
+              {
+                productId: null,
+                label: 'Frais de livraison',
+                unit: 'piece',
+                quantity: 1,
+                unitPrice: o.deliveryFee,
+                lineTotal: o.deliveryFee,
+              },
+            ]
+          : []),
+      ].map((l, index) => ({
+        position: index + 1,
+        productId: l.productId,
+        label: l.label,
+        unit: l.unit,
+        unitPrice: l.unitPrice,
+        quantity: l.quantity,
+        lineTotal: l.lineTotal,
+        listTotal: l.lineTotal,
+        taxRateBasisPoints: null,
+        taxAmount: 0,
+      })),
+      payments: [
+        ...o.payments
+          .filter((p) => p.kind === 'deposit')
+          .map((p) => ({
+            method: p.method,
+            provider: p.provider ?? null,
+            reference: p.reference ?? null,
+            amount: p.amount,
+            fromOrder: true,
+          })),
+        ...fresh.map((p) => ({
+          method: p.method,
+          provider: p.provider,
+          reference: p.reference,
+          amount: p.amount,
+        })),
+      ],
+      subtotal: dto.total,
+      discount: 0,
+      total: dto.total,
+      taxTotal: 0,
+      cashReceived: parsed.data.cashReceived,
+      changeGiven:
+        parsed.data.cashReceived === null
+          ? null
+          : parsed.data.cashReceived -
+            fresh
+              .filter((p) => p.method === 'cash')
+              .reduce((t, p) => t + p.amount, 0),
+      clientOperationId: o.id,
+      occurredAt: now,
+      deviceTicket: null,
+      priceReview: false,
+      stockReview: false,
+      cancellation: null,
+    };
+    state.sales.push(sale);
+    for (const l of o.lines) {
+      const product = catalog.products.find((p) => p.id === l.productId);
+      if (product?.trackStock)
+        catalog.movements.push({
+          id: randomUUID(),
+          organizationId: orgId,
+          productId: product.id,
+          kind: 'sale',
+          quantity: -l.quantity,
+          countedQuantity: null,
+          unitCost: null,
+          supplierId: null,
+          reason: null,
+          clientOperationId: randomUUID(),
+          createdBy: user.id,
+          occurredAt: now,
+        });
+    }
+    o.status = 'delivered';
+    o.saleId = sale.id;
+    o.deliveredAt = now;
+    return reply(200, orderDto(o));
+  }
+
+  // « Compter le stock ? » (ADR-070): two sales are enough here.
+  if (path === '/api/v1/stock/suggestions' && req.method === 'GET') {
+    if (!manager) return deny();
+    const counts = new Map();
+    for (const sale of state.sales.filter(
+      (s) => mine(s) && s.status === 'completed',
+    ))
+      for (const id of new Set(sale.lines.map((l) => l.productId)))
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+    const list = catalogState()
+      .products.filter(
+        (p) =>
+          mine(p) &&
+          p.status === 'active' &&
+          (p.kind ?? 'product') === 'product' &&
+          !p.trackStock &&
+          !p.systemRole &&
+          (counts.get(p.id) ?? 0) >= 2 &&
+          !state.dismissed[`${orgId}|${p.id}`],
+      )
+      .map((p) => ({
+        productId: p.id,
+        name: p.name,
+        unit: p.unit,
+        sales: counts.get(p.id),
+        windowDays: 14,
+      }))
+      .slice(0, 3);
+    return reply(200, list);
+  }
+  const dismissMatch = /^\/api\/v1\/stock\/suggestions\/([^/]+)\/dismiss$/.exec(
+    path,
+  );
+  if (dismissMatch && req.method === 'POST') {
+    if (!manager) return deny();
+    const body = await ctx.readJson(req);
+    if (!['later', 'never'].includes(body?.choice))
+      return invalid([{ path: ['choice'], message: 'Choix inconnu' }]);
+    if (
+      !catalogState().products.some((p) => mine(p) && p.id === dismissMatch[1])
+    )
+      return fail(404, 'PRODUCT_NOT_FOUND', 'Produit introuvable.');
+    state.dismissed[`${orgId}|${dismissMatch[1]}`] = body.choice;
+    res.writeHead(204);
+    res.end();
+    return true;
+  }
   if (path === '/api/v1/sales/summary' && req.method === 'GET') {
     const day = url.searchParams.get('day') ?? today(timeZone);
     const ofDay = visibleSales().filter(
@@ -274,10 +638,37 @@ export async function handleSales(ctx) {
           'Produit inconnu ou archivé.',
           `lines.${index}.productId`,
         );
+      if (line.label && product.systemRole !== 'open_sale')
+        return refusal(
+          400,
+          'VALIDATION_FAILED',
+          `« ${product.name} » garde son nom sur le ticket.`,
+          `lines.${index}.label`,
+        );
+      // A price typed at each sale (ADR-069).
+      const typed = product.openPrice
+        ? device
+          ? line.unitPrice
+          : line.agreedTotal === null
+            ? null
+            : line.agreedTotal / line.quantity
+        : null;
+      if (product.openPrice && !(typed > 0))
+        return refusal(
+          400,
+          'VALIDATION_FAILED',
+          `Tapez le prix de « ${line.label ?? product.name} ».`,
+          `lines.${index}.agreedTotal`,
+        );
       lines.push({
         product,
         quantity: line.quantity,
-        unitPrice: device ? line.unitPrice : product.salePrice,
+        label: line.label ?? product.name,
+        unitPrice: product.openPrice
+          ? typed
+          : device
+            ? line.unitPrice
+            : product.salePrice,
       });
     }
     const rate = (product) =>
@@ -321,10 +712,10 @@ export async function handleSales(ctx) {
       status: 'completed',
       customerId: input.customerId,
       sellerId: device?.soldBy ?? user.id,
-      lines: lines.map(({ product, quantity, unitPrice }, index) => ({
+      lines: lines.map(({ product, quantity, unitPrice, label }, index) => ({
         position: index + 1,
         productId: product.id,
-        label: product.name,
+        label,
         unit: product.unit,
         unitPrice,
         quantity,
@@ -348,7 +739,9 @@ export async function handleSales(ctx) {
       clientOperationId: input.clientOperationId,
       occurredAt: device?.occurredAt ?? new Date().toISOString(),
       deviceTicket: device?.deviceTicket ?? null,
-      priceReview: lines.some((l) => l.unitPrice !== l.product.salePrice),
+      priceReview: lines.some(
+        (l) => !l.product.openPrice && l.unitPrice !== l.product.salePrice,
+      ),
       // More than the known stock: accepted, flagged (ADR-036).
       stockReview: lines.some(
         (l) => l.product.trackStock && l.quantity > stockOf(l.product.id),

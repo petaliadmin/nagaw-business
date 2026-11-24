@@ -18,10 +18,27 @@ export interface CartLine {
   quantityText: string;
   /** Amount agreed with the customer for the line; '' when none. */
   agreedText: string;
+  /**
+   * What was sold, typed for « Taper un montant » (ADR-069): it becomes
+   * the label of the line on the ticket.
+   */
+  label?: string;
+  /** Each amount typed is a line of its own (ADR-069). */
+  entry?: string;
 }
 
-export const lineKey = (line: Pick<CartLine, 'productId' | 'optionKey'>) =>
-  `${line.productId}|${line.optionKey}`;
+export const lineKey = (
+  line: Pick<CartLine, 'productId' | 'optionKey' | 'entry'>,
+) =>
+  line.entry
+    ? `${line.productId}|${line.optionKey}|${line.entry}`
+    : `${line.productId}|${line.optionKey}`;
+
+/** Name of a line in the cart and on the ticket. */
+export const lineLabel = (
+  line: Pick<CartLine, 'label'>,
+  product: Pick<ProductDto, 'name'>,
+) => line.label?.trim() || product.name;
 
 export const parseQuantity = (text: string): number => {
   const value = text.replace(/\s/g, '').replace(',', '.');
@@ -75,6 +92,20 @@ export function priceCart(
     const quantity = parseQuantity(line.quantityText);
     const valid = quantityError(option, quantity) === null;
     const agreed = line.agreedText.trim() ? parseFrancs(line.agreedText) : null;
+    const agreedTotal =
+      agreed !== null && Number.isFinite(agreed) ? agreed : null;
+    // A price typed at each sale (ADR-069): what was typed is the price of
+    // the line, never a negotiation.
+    const pricing = product.openPrice
+      ? {
+          basis: 'unit' as const,
+          unitPrice:
+            valid && agreedTotal !== null && agreedTotal > 0
+              ? agreedTotal / quantity
+              : 0,
+          pricedQuantity: valid ? quantity : 0,
+        }
+      : pricingOf(option, product.salePrice, valid ? quantity : 0);
     return [
       {
         line,
@@ -84,11 +115,21 @@ export function priceCart(
         baseQuantity: valid
           ? (baseQuantityOf(quantity, option.factor) ?? Number.NaN)
           : Number.NaN,
-        pricing: pricingOf(option, product.salePrice, valid ? quantity : 0),
-        agreedTotal: agreed !== null && Number.isFinite(agreed) ? agreed : null,
+        pricing,
+        agreedTotal,
       },
     ];
   });
+}
+
+/** The first line whose price is still to be typed (ADR-069). */
+export function missingPrice(lines: readonly PricedLine[]): PricedLine | null {
+  return (
+    lines.find(
+      ({ product, agreedTotal }) =>
+        product.openPrice && !(agreedTotal !== null && agreedTotal > 0),
+    ) ?? null
+  );
 }
 
 export function totalsOf(lines: readonly PricedLine[], discount: number) {

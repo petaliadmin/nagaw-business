@@ -4,6 +4,7 @@ import {
   roleHasPermission,
   shareBasisPoints,
   type PaymentMethod,
+  type ProductKind,
   type PeriodQuery,
   type ShopSummaryDto,
   type StatsSummaryDto,
@@ -49,7 +50,7 @@ export class StatsService {
     const inPeriod = sql`s.organization_id = ${organizationId} and s.status = 'completed'
       and (s.occurred_at at time zone ${timeZone})::date between ${from} and ${to}`;
 
-    const [totals, methods, days, margin, top, slow, expenses] =
+    const [totals, methods, days, margin, top, slow, expenses, kinds] =
       await Promise.all([
         sql<{ count: string; revenue: string; discount: string; tax: string }>`
         select count(*) as count, coalesce(sum(total), 0) as revenue,
@@ -107,6 +108,15 @@ export class StatsService {
         select coalesce(sum(amount), 0) as amount from app.expenses
          where organization_id = ${organizationId} and status = 'recorded'
            and occurred_on between ${from} and ${to}`.execute(db),
+        // Products and services (ADR-071), after each sale's discount.
+        sql<{ kind: ProductKind; revenue: string }>`
+        select p.kind,
+               coalesce(round(sum(l.line_total::numeric * s.total / nullif(s.subtotal, 0))), 0) as revenue
+          from app.sale_lines l
+          join app.sales s on s.organization_id = l.organization_id and s.id = l.sale_id
+          join app.products p on p.organization_id = l.organization_id and p.id = l.product_id
+         where ${inPeriod}
+         group by p.kind`.execute(db),
       ]);
 
     const row = totals.rows[0]!;
@@ -117,6 +127,8 @@ export class StatsService {
       PAYMENT_METHODS.map((m) => [m, 0]),
     ) as Record<PaymentMethod, number>;
     for (const m of methods.rows) byMethod[m.method] = toNumber(m.amount);
+    const byKind: Record<ProductKind, number> = { product: 0, service: 0 };
+    for (const k of kinds.rows) byKind[k.kind] = toNumber(k.revenue);
     return {
       from,
       to,
@@ -131,6 +143,7 @@ export class StatsService {
         coverageBasisPoints: shareBasisPoints(costedRevenue, revenue),
       },
       byMethod,
+      byKind,
       days: days.rows.map((d) => ({
         day: d.day,
         revenue: toNumber(d.revenue),

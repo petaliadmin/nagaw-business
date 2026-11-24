@@ -4,6 +4,7 @@ import { ProductsService } from './products.service.js';
 import { ReferencesController } from './references.controller.js';
 import { ReferencesService } from './references.service.js';
 import { StockService } from './stock.service.js';
+import { StockSuggestionsService } from './stock-suggestions.service.js';
 import { UnitTemplatesController } from './unit-templates.controller.js';
 import { UnitTemplatesService } from './unit-templates.service.js';
 
@@ -17,9 +18,11 @@ import { UnitTemplatesService } from './unit-templates.service.js';
     ReferencesService,
     ProductsService,
     StockService,
+    StockSuggestionsService,
     UnitTemplatesService,
   ],
   // The offline checkout sends stock corrections with its sales.
-  exports: [StockService],
+  // The administration archives products and references (ADR-074).
+  exports: [StockService, ProductsService, ReferencesService],
 })
 export class CatalogModule {}

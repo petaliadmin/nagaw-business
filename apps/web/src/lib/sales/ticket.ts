@@ -4,7 +4,7 @@ import {
   internationalPhone,
   type SaleDto,
 } from '@nagaw/shared';
-import { PAYMENT_LABELS, PROVIDER_LABELS, ticketNumber } from './labels';
+import { paymentLabel, ticketNumber } from './labels';
 
 /**
  * `n° 000042`, `n° 000042 (B-000012)` for a sale made on a device, or
@@ -35,6 +35,7 @@ export function ticketText(
   const lines = [
     shop.name,
     `Ticket ${ticketLabel(sale)} — ${when}`,
+    ...(sale.orderNumber ? [`Commande ${sale.orderNumber}`] : []),
     '',
     ...sale.lines.map(
       (line) =>
@@ -44,14 +45,8 @@ export function ticketText(
   ];
   if (sale.discount > 0) lines.push(`Remise : −${money(sale.discount)}`);
   lines.push(`TOTAL : ${money(sale.total)}`);
-  for (const payment of sale.payments) {
-    const provider = payment.provider
-      ? ` (${PROVIDER_LABELS[payment.provider]})`
-      : '';
-    lines.push(
-      `${PAYMENT_LABELS[payment.method]}${provider} : ${money(payment.amount)}`,
-    );
-  }
+  for (const payment of sale.payments)
+    lines.push(`${paymentLabel(payment)} : ${money(payment.amount)}`);
   if (sale.changeGiven !== null && sale.changeGiven > 0)
     lines.push(`Rendu : ${money(sale.changeGiven)}`);
   if (sale.status === 'cancelled') lines.push('', 'VENTE ANNULÉE');

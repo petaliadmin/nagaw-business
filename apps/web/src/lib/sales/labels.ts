@@ -20,3 +20,19 @@ export const PROVIDER_LABELS: Record<MobileMoneyProvider, string> = {
 export function ticketNumber(saleNumber: number): string {
   return `n° ${String(saleNumber).padStart(6, '0')}`;
 }
+
+/**
+ * « Espèces », « Mobile Money (Wave) », « Avance, Espèces » for a deposit
+ * of the order received before the handover (ADR-072).
+ */
+export function paymentLabel(payment: {
+  method: PaymentMethod;
+  provider: MobileMoneyProvider | null;
+  fromOrder?: boolean;
+}): string {
+  const provider = payment.provider
+    ? ` (${PROVIDER_LABELS[payment.provider]})`
+    : '';
+  const label = `${PAYMENT_LABELS[payment.method]}${provider}`;
+  return payment.fromOrder ? `Avance, ${label}` : label;
+}

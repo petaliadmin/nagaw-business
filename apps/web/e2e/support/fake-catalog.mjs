@@ -56,9 +56,19 @@ function seed() {
       lowStockThreshold: null,
       version: 1,
       photo: null,
+      openPrice: false,
+      systemRole: null,
       clientOperationId: randomUUID(),
       ...fields,
     });
+  // Behind « Taper un montant » in the caisse (ADR-069).
+  const amount = product('dddddddd-0000-4000-8000-000000000000', {
+    name: 'Vente au montant',
+    salePrice: 0,
+    trackStock: false,
+    openPrice: true,
+    systemRole: 'open_sale',
+  });
   const water = product('dddddddd-0000-4000-8000-000000000001', {
     name: 'Eau minérale 1,5 L',
     categoryId: drinks.id,
@@ -67,6 +77,8 @@ function seed() {
     purchasePrice: 350,
     taxRateId: vat.id,
     lowStockThreshold: 6,
+    // Read by the caisse's scanner and by a reader (ADR-068).
+    barcode: '6111234500014',
   });
   const soap = product('dddddddd-0000-4000-8000-000000000002', {
     name: 'Savon de Marseille',
@@ -78,7 +90,7 @@ function seed() {
     categories: [drinks],
     taxRates: [vat],
     suppliers: [supplier],
-    products: [water, soap],
+    products: [amount, water, soap],
     movements: [
       {
         id: randomUUID(),
@@ -165,6 +177,8 @@ export function productDto(p) {
     ...stock,
     stockLevel: stockLevel(stock),
     status: p.status,
+    openPrice: p.openPrice ?? false,
+    systemRole: p.systemRole ?? null,
     version: p.version,
     photoVersion: p.photo?.sha256.slice(0, 16) ?? null,
     units: [],
@@ -347,9 +361,10 @@ export async function handleCatalog(ctx) {
       Object.fromEntries(url.searchParams),
     );
     if (!query.success) return invalid(query.error.issues);
-    const { q, categoryId, stock, status, kind } = query.data;
+    const { q, categoryId, stock, status, kind, system } = query.data;
     const list = catalog.products
       .filter((p) => mine(p) && p.status === status)
+      .filter((p) => system === 'include' || !p.systemRole)
       .filter((p) => !categoryId || p.categoryId === categoryId)
       .filter((p) => !kind || (p.kind ?? 'product') === kind)
       .filter(

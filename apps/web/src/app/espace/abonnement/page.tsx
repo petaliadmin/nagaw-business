@@ -1,6 +1,8 @@
 import {
   formatAmount,
   paymentReference,
+  SUBSCRIPTION_PERIOD_LABELS,
+  type SubscriptionInvoiceDto,
   roleHasPermission,
   usagePercent,
   type PlanDto,
@@ -15,10 +17,14 @@ import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
-import { formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { PLAN_LIMITS, planCount, planPrice } from '@/lib/plans';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
-import { CancelPlanRequestForm, RequestPlanForm } from './plan-forms';
+import {
+  AutoRenewForm,
+  CancelPlanRequestForm,
+  RequestPlanForm,
+} from './plan-forms';
 
 export const metadata: Metadata = { title: 'Abonnement — Nagaw Business' };
 
@@ -88,9 +94,14 @@ function PaymentSteps({ subscription: s }: { subscription: SubscriptionDto }) {
       <span>
         Pour activer l’offre, envoyez{' '}
         <strong>
-          {formatAmount(request.plan.monthlyPrice, request.plan.currency)}
+          {formatAmount(
+            request.period === 'year'
+              ? request.plan.yearlyPrice
+              : request.plan.monthlyPrice,
+            request.plan.currency,
+          )}
         </strong>{' '}
-        pour un mois :
+        pour {SUBSCRIPTION_PERIOD_LABELS[request.period]} :
       </span>
       {wave && (
         <span>
@@ -107,6 +118,48 @@ function PaymentSteps({ subscription: s }: { subscription: SubscriptionDto }) {
         L’offre change dès que l’équipe a reçu le paiement.
       </span>
     </span>
+  );
+}
+
+/** An invoice to pay: amount, before when, and how (ADR-073). */
+function InvoiceToPay({
+  invoice,
+  payment,
+  timeZone,
+}: {
+  invoice: SubscriptionInvoiceDto;
+  payment: SubscriptionDto['payment'];
+  timeZone: string;
+}) {
+  return (
+    <Alert tone="warning">
+      <span className="block font-bold">
+        Facture à payer : {formatAmount(invoice.amount, invoice.currency)} pour{' '}
+        {SUBSCRIPTION_PERIOD_LABELS[invoice.period]} ({invoice.plan.name}),
+        avant le {formatDate(invoice.dueAt, timeZone)}.
+      </span>
+      <span className="mt-1 block">
+        Sans paiement à cette date, la boutique sera suspendue jusqu’à ce que
+        l’équipe Nagaw le reçoive.
+      </span>
+      {(payment.wave || payment.orangeMoney) && (
+        <span className="mt-2 flex flex-col gap-1">
+          {payment.wave && (
+            <span>
+              Par Wave au <strong>{payment.wave}</strong>
+            </span>
+          )}
+          {payment.orangeMoney && (
+            <span>
+              Par Orange Money au <strong>{payment.orangeMoney}</strong>
+            </span>
+          )}
+          <span>
+            Indiquez la référence <strong>{invoice.reference}</strong>.
+          </span>
+        </span>
+      )}
+    </Alert>
   );
 }
 
@@ -156,7 +209,19 @@ async function Subscription() {
       />
 
       <Card title={`Offre ${s.plan.name}`} titleId="current-plan" icon={Crown}>
-        <p className="mb-4 text-lg font-bold">{planPrice(s.plan)}</p>
+        <p className="text-lg font-bold">{planPrice(s.plan)}</p>
+        <p className="mb-4 text-ink-muted">
+          {s.lifetime
+            ? 'Abonnement à vie, offert par Nagaw : rien à payer.'
+            : s.currentPeriodEnd
+              ? `${SUBSCRIPTION_PERIOD_LABELS[s.period]}, valable jusqu’au ${formatDate(s.currentPeriodEnd, organization.timezone)}. ${s.autoRenew ? 'Renouvelé automatiquement : une facture arrive à la fin de la période.' : 'Pas de renouvellement : la boutique repassera en Gratuit à cette date.'}`
+              : 'Sans date de fin.'}
+        </p>
+        {s.lifetime && (
+          <p className="mb-4">
+            <Badge tone="success">À vie</Badge>
+          </p>
+        )}
         <div className="flex flex-col gap-4">
           {PLAN_LIMITS.map((l) => (
             <Gauge
@@ -168,6 +233,24 @@ async function Subscription() {
           ))}
         </div>
       </Card>
+
+      {s.invoices
+        .filter((i) => i.status === 'pending')
+        .map((invoice) => (
+          <InvoiceToPay
+            key={invoice.id}
+            invoice={invoice}
+            payment={s.payment}
+            timeZone={organization.timezone}
+          />
+        ))}
+
+      {isOwner && !s.lifetime && s.currentPeriodEnd && (
+        <AutoRenewForm
+          organizationId={organization.id}
+          autoRenew={s.autoRenew}
+        />
+      )}
 
       {s.pendingRequest && (
         <Alert>
@@ -217,15 +300,17 @@ async function Subscription() {
                     Ventes, factures, trésorerie, comptabilité
                   </li>
                 </ul>
-                {isOwner && !current && !s.pendingRequest && (
-                  <div className="mt-auto">
-                    <RequestPlanForm
-                      organizationId={organization.id}
-                      planKey={plan.key}
-                      planName={plan.name}
-                    />
-                  </div>
-                )}
+                {isOwner &&
+                  !s.lifetime &&
+                  !s.pendingRequest &&
+                  (!current || plan.monthlyPrice > 0) && (
+                    <div className="mt-auto">
+                      <RequestPlanForm
+                        organizationId={organization.id}
+                        plan={plan}
+                      />
+                    </div>
+                  )}
               </li>
             );
           })}
@@ -236,6 +321,31 @@ async function Subscription() {
           </p>
         )}
       </section>
+
+      {s.invoices.some((i) => i.status !== 'pending') && (
+        <Card title="Factures" titleId="invoices">
+          <ul className="flex flex-col divide-y divide-line">
+            {s.invoices
+              .filter((i) => i.status !== 'pending')
+              .map((i) => (
+                <li
+                  key={i.id}
+                  className="flex flex-wrap justify-between gap-2 py-2"
+                >
+                  <span>
+                    {i.reference} · {i.plan.name},{' '}
+                    {SUBSCRIPTION_PERIOD_LABELS[i.period]} du{' '}
+                    {formatDate(i.periodStart, organization.timezone)}
+                  </span>
+                  <span className="font-bold tabular-nums">
+                    {formatAmount(i.amount, i.currency)} ·{' '}
+                    {i.status === 'paid' ? 'payée' : 'annulée'}
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </Card>
+      )}
     </>
   );
 }

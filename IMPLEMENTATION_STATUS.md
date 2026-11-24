@@ -1046,5 +1046,62 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Création en trois étapes** (2026-11-21, maquettes « Profils ») : 1 Votre boutique, 2 Ce que vous vendez (cartes illustrées), 3 Vos habitudes, puis « Voici votre application » et « C'est parti » ; « Revenir » à côté du titre.
 - **Caisse, étape « Encaisser »** (2026-11-22, demande du propriétaire) : le panier en haut, puis le paiement, puis « Valider la vente », fixé en bas de l'écran sur téléphone ; même ordre sur ordinateur.
 - **Barre du bas selon le profil** (2026-11-22) : « Factures » ou « Ventes », « Crédit » ou le catalogue, selon l'offre et les réglages ; ce qui quitte la barre est dans le Menu ; même barre dans « Voici votre application ».
-- **Non fait (reporté, voir ADR-067)** : vendre en tapant un montant, prix à taper, garder un article, suggestion de compter le stock, rendez-vous, chiffres soins / produits.
+- **Rendez-vous** : une commande avec une heure (ADR-072). Suggestion de compter le stock : ADR-070 ; services et produits sur l'Accueil : ADR-071. Vendre en tapant un montant, prix à taper et garder un article : voir ADR-069 ci-dessous.
 - **Tests ajoutés** : `organizations.spec.ts` (règles des réponses, tri, parties inconnues), `navigation.test.ts` (parties cachées, nom du catalogue), `organizations.integration-spec.ts` (valeurs par défaut, création, modification auditée, partie inconnue refusée, isolation entre boutiques et membre simple refusé), `workspace.spec.ts` de bout en bout (création d'une boutique simple, Menu, barre, raccourcis, stock éteint, Mon application, « Tout afficher »).
+
+## Scanner un produit avec la caméra (ADR-068)
+
+- **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire.
+- **Fait** : `components/sales/barcode-scanner.tsx` (caméra arrière, lecteur natif ou WebAssembly servi par l'application), `lib/sales/barcode.ts` (`findByCode`, `isNewRead`), bouton « Scanner » de la caisse, « Entrée » d'un lecteur branché dans la recherche ; dépendances `barcode-detector` 3.2.4 et `zxing-wasm` 3.1.7.
+- **Tests** : `barcode.test.ts` (code du produit, code d'une unité, QR code, inconnu, une fois tant que visible) ; `sales.spec.ts` de bout en bout : lecteur branché, caméra simulée qui filme un vrai EAN-13 (produit ajouté une seule fois), caméra absente.
+
+## Vendre en tapant un montant, prix tapés (ADR-069)
+
+- **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire. Migration `20261123090000_open_price` à appliquer avant l'API.
+- **Fait** :
+  - base : `products.open_price`, `products.system_role` (`open_sale`, un par boutique, index unique), contrainte « prix tapé, stock non compté » ; « Vente au montant » ajoutée aux boutiques existantes ;
+  - contrats : `openPrice` à la création et en modification, `openPrice` et `systemRole` dans `ProductDto`, `label` sur les lignes de vente (en ligne et hors ligne), `system=include` sur la liste des produits ;
+  - API : produit « Vente au montant » créé avec la boutique, protégé (`SYSTEM_PRODUCT`), hors liste et hors limite de l'offre ; prix tapé pris dans le montant de la ligne, sans remise ni prix à vérifier ; libellé refusé sur un produit ordinaire ;
+  - web : « Taper un montant » et pavé de prix dans la caisse (`AmountSheet`), ligne nommée par ce qui est tapé, « Prix à taper » sur les tuiles, le catalogue et la fiche ; choix du prix dans le formulaire ; « Ajouter « … » à vos produits » sur le ticket, formulaire prérempli (`?nom=&prix=`).
+- **Tests** : `open-price.integration-spec.ts` (création avec la boutique selon l'offre, protection, hors limite, vente au montant nommée, prix tapé sur plusieurs pièces, prix manquant, libellé refusé, vente hors ligne sans prix à vérifier, isolation entre boutiques) ; `cart.test.ts` (prix tapé sans remise, prix manquant, une ligne par montant) ; `catalog.test.ts` (prix habituel facultatif) ; `sales.spec.ts` de bout en bout (montant tapé, ticket, ajout au catalogue, vente au prix tapé).
+
+## Proposer de compter le stock (ADR-070)
+
+- **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire. Migration `20261123100000_stock_suggestions` à appliquer avant l'API.
+- **Fait** : seuils `stock_suggestion_min_sales`, `stock_suggestion_window_days`, `stock_suggestion_snooze_days` sur la boutique ; table `stock_suggestion_dismissals` ; `StockSuggestionsService` (`GET /stock/suggestions`, `POST /stock/suggestions/:productId/dismiss`, journal `stock_suggestion.dismissed`) ; carte « Compter le stock ? » de l'Accueil (`components/catalog/stock-suggestions.tsx`) ; `?compter=1` sur la modification d'un produit.
+- **Tests** : `stock-suggestions.integration-spec.ts` (produit souvent vendu, seuils de la boutique, « Plus tard » puis de nouveau, « Ne plus proposer », journal, vendeur refusé, isolation entre boutiques, choix inconnu) ; `sales.spec.ts` de bout en bout (produit non compté vendu deux fois, carte, lien, « Plus tard »).
+
+## Services et produits sur l'Accueil (ADR-071)
+
+- **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire.
+- **Fait** : `byKind` dans `/stats/summary` (après la remise de chaque vente) ; « Services » et « Produits » dans la carte sombre de l'Accueil d'une boutique qui vend les deux.
+- **Tests** : `treasury.integration-spec.ts` et `accounting-services.integration-spec.ts` (partage, somme égale au chiffre d'affaires) ; `sales.spec.ts` de bout en bout (affiché pour « Les deux », absent pour « Des produits »).
+
+## Commandes des clients, phase 1 (ADR-072)
+
+- **Statut** : livré sur la branche `profils-affichage` le 2026-11-23, à valider par le propriétaire. Migration `20261123110000_orders` à appliquer avant l'API (après `20261123090000_open_price`, qui accepte aussi le produit système `delivery_fee`).
+- **Fait** :
+  - base : `orders_enabled`, `order_ready_reminder_days`, `app.orders`, `app.order_payments` (en ajout seul), `sale_payments.from_order`, séquence `order` ;
+  - contrats (`@nagaw/shared/orders`) : schémas de création, avance, étape, remise, annulation ; `OrderDto`, `OrdersSummaryDto`, `orderTotals` ; permissions `orders.read`, `orders.manage`, `orders.cancel` ; `ordersEnabled` sur la boutique ; mouvements `order_deposit` et `order_refund` ;
+  - API : `OrdersService` et `/orders` (liste, résumé, détail, création, avance, étape, remise, annulation), remise par `SalesService.create` dans la même transaction, Argent et journal ;
+  - web : option dans Mon application, entrée du Menu, rond de l'Accueil avec pastille, pages `/espace/commandes`, `/nouvelle`, `/[id]` (étapes, avance, remise, annulation, bon WhatsApp), ticket « Commande C-… » et « Avance, … ».
+- **Tests** : `orders.integration-spec.ts` (option éteinte et refusée, création idempotente et numérotée, avance dans Argent, contrôles, étapes, remise unique avec avances comptées une fois, stock, statistiques et journal, annulation avec remboursement, retard, droits, isolation entre boutiques, ajout seul en base) ; `orders.spec.ts` (totaux, schémas) ; `navigation.test.ts` ; `orders.spec.ts` de bout en bout (option, Accueil, Menu, prise de commande, étape, avance, remise et ticket, annulation).
+- **Non fait** : voir « Reporté » d'ADR-072.
+
+## Abonnements : durée, renouvellement, factures, à vie (ADR-073)
+
+- **Statut** : livré sur la branche `admin-abonnements` le 2026-11-23, à valider par le propriétaire. Migration `20261123130000_subscription_billing` à appliquer avant l'API.
+- **Fait** : période et fin d'abonnement, prix annuel, `subscription_invoices`, délai de grâce en base, `BillingService` (début de période, prolongation, factures payées ou annulées, renouvellement, retour en Gratuit, suspension et réouverture, à vie), endpoints `/admin/shops/:id/renew`, `PATCH /admin/shops/:id/subscription`, `/admin/invoices`, `PATCH /subscription` ; écrans de la boutique et de l'administration.
+- **Tests** : `billing.integration-spec.ts` (1 mois ou 1 an, prolongation, facture automatique unique, suspension après le délai et réouverture, retour en Gratuit, à vie réservé à la plateforme, isolation) ; `admin.spec.ts` et `subscription.spec.ts` de bout en bout.
+
+## Archiver depuis l'administration (ADR-074)
+
+- **Statut** : livré sur la branche `admin-abonnements` le 2026-11-23, à valider par le propriétaire. Migration `20261123140000_archives` à appliquer avant l'API.
+- **Fait** : statut `archived` des boutiques et archivage des comptes (garde d'authentification, connexion par numéro) ; `/admin/shops/:id/archive|restore`, `/admin/users`, `/admin/users/:id/archive|restore` ; `AdminDataService` et `/admin/shops/:id/data/:kind` (liste, archiver, restaurer, annuler), réservés à l'administrateur entré dans la boutique ; pages « Comptes » et « Données », onglets « Suspendues » et « Archivées » des boutiques.
+- **Tests** : `archives.integration-spec.ts` (boutique fermée et rangée puis restaurée, compte refusé puis rouvert, compte de l'administration protégé, droits) ; `admin-data.integration-spec.ts` (accès avec motif exigé, produits et clients archivés et restaurés au nom de la plateforme, vente et facture annulées avec leurs règles, isolation) ; `admin.spec.ts` de bout en bout.
+
+## Administration plus simple
+
+- **Statut** : livré sur la branche `admin-abonnements` le 2026-11-23, à valider par le propriétaire. Aucune migration.
+- **Fait** : bloc « À faire » du tableau de bord (factures à encaisser avec montant et retards, demandes d'offre, boutiques suspendues) ; menu réordonné (Tableau de bord, Boutiques, Comptes, Factures, Demandes d'offre, Finances, Synchronisation, Avis) ; liste des boutiques avec pastilles « À vie », « jusqu'au … », « Facture à payer » ou « en retard » (`currentPeriodEnd`, `lifetime`, `pendingInvoices`, `overdueInvoice` ajoutés à la liste) ; fiche boutique avec ligne d'état et navigation « Sur cette fiche ».
+- **Tests** : `admin.integration-spec.ts` (nouveaux champs de la liste) ; `admin.spec.ts` de bout en bout (« À faire » mène aux factures, liens de la fiche).

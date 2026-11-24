@@ -1,6 +1,12 @@
 'use server';
 
 import {
+  adminDataActionSchema,
+  adminArchiveSchema,
+  type AdminUserDto,
+  adminInvoiceDecisionSchema,
+  adminRenewSchema,
+  adminSubscriptionSettingsSchema,
   answerFeedbackSchema,
   adminOpenAccessSchema,
   adminResolveRequestSchema,
@@ -70,6 +76,7 @@ export async function setShopPlan(
   const token = await adminToken();
   const parsed = parseValues(adminSetPlanSchema, {
     planKey: text(formData, 'planKey'),
+    period: text(formData, 'period') || 'month',
     note: text(formData, 'note'),
   });
   if (!parsed.ok) return parsed.state;
@@ -197,5 +204,161 @@ export async function answerFeedback(
     status: 'success',
     message:
       result.data.status === 'done' ? 'Avis traité.' : 'Avis marqué comme lu.',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Terms and invoices (ADR-073)
+// ---------------------------------------------------------------------------
+
+/** « Prolonger d’un mois / d’un an »: payment received. */
+export async function renewShop(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const parsed = parseValues(adminRenewSchema, {
+    period: text(formData, 'period'),
+    note: text(formData, 'note'),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<AdminShopDto>(token, {
+    method: 'POST',
+    path: `/admin/shops/${id(formData, 'shopId')}/renew`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return { status: 'success', message: 'Abonnement prolongé.' };
+}
+
+/** Automatic renewal on or off, lifetime given or taken back. */
+export async function setShopSubscription(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const field = text(formData, 'field');
+  const value = text(formData, 'value') === 'true';
+  const parsed = parseValues(adminSubscriptionSettingsSchema, {
+    [field === 'lifetime' ? 'lifetime' : 'autoRenew']: value,
+    note: text(formData, 'note'),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<AdminShopDto>(token, {
+    method: 'PATCH',
+    path: `/admin/shops/${id(formData, 'shopId')}/subscription`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message:
+      field === 'lifetime'
+        ? value
+          ? 'Abonnement à vie accordé.'
+          : 'Abonnement à vie retiré : une période commence aujourd’hui.'
+        : value
+          ? 'Renouvellement automatique activé.'
+          : 'Renouvellement automatique arrêté.',
+  };
+}
+
+/** The payment of an invoice received, or the invoice forgiven. */
+export async function decideInvoice(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const decision = text(formData, 'decision') === 'cancel' ? 'cancel' : 'paid';
+  const parsed = parseValues(adminInvoiceDecisionSchema, {
+    note: text(formData, 'note'),
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<AdminShopDto>(token, {
+    method: 'POST',
+    path: `/admin/invoices/${id(formData, 'invoiceId')}/${decision}`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message:
+      decision === 'paid'
+        ? 'Facture marquée payée.'
+        : 'Facture annulée : rien n’est dû pour cette période.',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Archives (ADR-074)
+// ---------------------------------------------------------------------------
+
+/** Archive (with a reason) or restore a shop or an account. */
+export async function setArchived(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const target = text(formData, 'target') === 'user' ? 'users' : 'shops';
+  const restore = text(formData, 'restore') === 'true';
+  const parsed = restore
+    ? { ok: true as const, data: undefined }
+    : parseValues(adminArchiveSchema, { reason: text(formData, 'reason') });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<AdminShopDto | AdminUserDto>(token, {
+    method: 'POST',
+    path: `/admin/${target}/${id(formData, 'targetId')}/${restore ? 'restore' : 'archive'}`,
+    ...(parsed.data ? { body: parsed.data } : {}),
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message:
+      target === 'users'
+        ? restore
+          ? 'Compte rouvert : la personne peut se connecter.'
+          : 'Compte archivé : la personne ne peut plus se connecter.'
+        : restore
+          ? 'Boutique restaurée : ses membres la retrouvent.'
+          : 'Boutique archivée : elle est fermée et rangée, rien n’est effacé.',
+  };
+}
+
+/** Archive, restore or cancel an item of a shop (ADR-074). */
+export async function actOnShopData(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const action = text(formData, 'action');
+  const parsed = parseValues(adminDataActionSchema, {
+    reason: text(formData, 'reason'),
+  });
+  if (!parsed.ok) return parsed.state;
+  if (action !== 'restore' && parsed.data.reason === '')
+    return {
+      status: 'error',
+      message: 'Indiquez pourquoi.',
+      fieldErrors: { reason: 'Indiquez pourquoi' },
+    };
+  const result = await apiAsUser<null>(token, {
+    method: 'POST',
+    path: `/admin/shops/${id(formData, 'shopId')}/data/${id(formData, 'kind')}/${id(formData, 'itemId')}/${encodeURIComponent(action)}`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message:
+      action === 'archive'
+        ? 'Archivé.'
+        : action === 'restore'
+          ? 'Restauré.'
+          : 'Annulé.',
   };
 }

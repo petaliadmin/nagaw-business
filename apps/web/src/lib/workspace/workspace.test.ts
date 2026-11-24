@@ -27,6 +27,7 @@ function org(id: string): OrganizationWithRoleDto {
     offer: 'both',
     hiddenSections: [],
     countsStockByDefault: true,
+    ordersEnabled: false,
     logoVersion: null,
     signatureVersion: null,
     stampVersion: null,

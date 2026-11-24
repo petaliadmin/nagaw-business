@@ -11,6 +11,7 @@ import {
 import {
   Banknote,
   ChartColumn,
+  ClipboardList,
   Contact,
   FileText,
   HandCoins,
@@ -40,12 +41,14 @@ export interface NavItem {
   permission?: Permission;
   /** Hidden when the shop hides this part of the application (ADR-067). */
   section?: ShopSection;
+  /** Shown only once the merchant turns the option on (ADR-072). */
+  option?: 'orders';
 }
 
 /**
  * Menu in the owner's order (2026-10-25). Every entry points to a page that
- * exists: « Commandes » and « Achats » join it when their module ships (no
- * dead links). Accounting, team, history and subscription are tabs of
+ * exists: « Commandes » shows once the shop turns it on (ADR-072), and
+ * « Achats » joins it when its module ships (no dead links). Accounting, team, history and subscription are tabs of
  * their section. The phone bottom bar holds at most four of them, around
  * « Caisse » in the middle (ADR-063, DESIGN.md): what a shopkeeper opens
  * every day — today, what was sold, what is left, where the money is. The
@@ -64,6 +67,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Ventes',
     icon: Receipt,
     bottomBar: true,
+  },
+  {
+    // Never in the bottom bar: the home shortcuts and the Menu (ADR-072).
+    href: '/espace/commandes',
+    option: 'orders',
+    label: 'Commandes',
+    icon: ClipboardList,
+    bottomBar: false,
+    permission: 'orders.read',
   },
   {
     href: '/espace/produits',
@@ -164,7 +176,8 @@ export function navItemsFor(
     (item) =>
       (!item.permission || roleHasPermission(role, item.permission)) &&
       (sellsGoods(offer) || item.href !== '/espace/produits/fournisseurs') &&
-      (!item.section || showsSection(display, item.section)),
+      (!item.section || showsSection(display, item.section)) &&
+      (item.option !== 'orders' || display.ordersEnabled === true),
   ).map((item) =>
     item.href === '/espace/produits'
       ? {

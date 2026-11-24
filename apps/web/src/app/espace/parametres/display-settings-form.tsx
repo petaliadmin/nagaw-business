@@ -126,6 +126,26 @@ export function DisplaySettingsForm({
             </label>
           </fieldset>
         )}
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1.5 text-base font-semibold">Options</legend>
+          <input type="hidden" name="ordersAsked" value="1" />
+          <label className="flex min-h-16 cursor-pointer items-center gap-3 rounded-3xl bg-surface px-4 py-2">
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="font-bold">Commandes</span>
+              <span className="text-sm text-ink-muted">
+                Ce que le client reçoit plus tard : couture, gâteau, livraison,
+                rendez-vous. Avec avance, date et heure, dans l’Accueil et le
+                Menu.
+              </span>
+            </span>
+            <Toggle
+              name="ordersEnabled"
+              value="on"
+              defaultChecked={organization.ordersEnabled}
+              label="Commandes"
+            />
+          </label>
+        </fieldset>
         <p className="flex gap-2 rounded-2xl bg-sales-soft p-3 font-bold text-sales-ink">
           <Lock aria-hidden className="mt-0.5 size-5 shrink-0" />
           Caisse, Ventes, Produits et Argent restent toujours. Cacher une partie

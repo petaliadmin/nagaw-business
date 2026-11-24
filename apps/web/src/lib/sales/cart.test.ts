@@ -1,6 +1,9 @@
 import type { ProductDto } from '@nagaw/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  lineKey,
+  lineLabel,
+  missingPrice,
   negotiationProblem,
   priceCart,
   quantityError,
@@ -26,6 +29,8 @@ const rice: ProductDto = {
   stockLevel: 'ok',
   status: 'active',
   version: 1,
+  openPrice: false,
+  systemRole: null,
   photoVersion: null,
   units: [
     {
@@ -133,5 +138,49 @@ describe('cart in several units (ADR-038)', () => {
         'XOF',
       ),
     ).toBeNull();
+  });
+});
+
+describe('prices typed at each sale (ADR-069)', () => {
+  const fish: ProductDto = {
+    ...rice,
+    id: 'fish',
+    name: 'Poisson',
+    unit: 'piece',
+    salePrice: 0,
+    purchasePrice: null,
+    trackStock: false,
+    openPrice: true,
+    units: [],
+  };
+  const both = new Map([
+    [rice.id, rice],
+    [fish.id, fish],
+  ]);
+
+  it('takes what was typed as the price, never as a discount', () => {
+    const lines = priceCart(
+      [line({ productId: 'fish', quantityText: '2', agreedText: '3000' })],
+      both,
+    );
+    const totals = totalsOf(lines, 0);
+    expect(totals.total).toBe(3000);
+    expect(totals.listSubtotal).toBe(3000);
+    expect(negotiationProblem(lines, totals, seller, 'XOF')).toBeNull();
+    expect(missingPrice(lines)).toBeNull();
+  });
+
+  it('asks for the price while none is typed', () => {
+    const lines = priceCart([line({ productId: 'fish' })], both);
+    expect(totalsOf(lines, 0).total).toBe(0);
+    expect(missingPrice(lines)?.product.name).toBe('Poisson');
+  });
+
+  it('keeps each amount typed on a line of its own, with its words', () => {
+    const a = line({ productId: 'fish', entry: 'a', label: 'Pain' });
+    const b = line({ productId: 'fish', entry: 'b' });
+    expect(lineKey(a)).not.toBe(lineKey(b));
+    expect(lineLabel(a, fish)).toBe('Pain');
+    expect(lineLabel(b, fish)).toBe('Poisson');
   });
 });

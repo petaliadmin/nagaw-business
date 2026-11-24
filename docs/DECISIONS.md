@@ -855,3 +855,95 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 - **Reporté (phases suivantes, à valider)** : vendre en tapant un montant, prix à taper à chaque vente, garder un article après une vente libre, suggestion de compter le stock d'un produit souvent vendu, rendez-vous du jour, chiffres soins / produits sur l'Accueil d'une boutique qui vend les deux. Elles touchent la vente, la synchronisation hors ligne et la comptabilité (ADR-046) : chacune aura sa décision.
 - **Point ouvert** : pour une boutique qui vend les deux et compte ses produits, la barre affiche « Stock » (règle d'ADR-047) alors que ses services n'en ont pas.
 - **Conséquences** : appliquer `20261121090000_shop_display` avant de déployer l'API.
+
+## ADR-068 — Scanner un produit avec la caméra, droit dans le panier
+
+- **Statut** : **Proposée**, livrée sur la branche `profils-affichage` (demande du propriétaire du 2026-11-23 : « scanner le code ou le QR code d'un produit pour l'ajouter directement au panier »).
+- **Contexte** : le bouton « Scanner » de la caisse (ADR-063) plaçait seulement le curseur dans la recherche, pour un lecteur branché ; la recherche filtrait la liste sans rien ajouter. La plupart des boutiques n'ont pas de lecteur, mais toutes ont un téléphone avec une caméra.
+- **Décision** :
+  - « Scanner » ouvre un panneau avec la **caméra arrière**, qui lit les codes-barres (EAN-13, EAN-8, UPC-A, UPC-E, Code 128, Code 39, ITF) et les **QR codes** dont le texte est le code du produit ; chaque produit lu va **directement dans le panier**, dans l'unité que nomme le code (le code d'une unité de vente vend cette unité, ADR-038) ; le panneau reste ouvert pour le suivant ;
+  - un code **compte une fois tant qu'il reste visible**, et de nouveau après 0,8 s hors de vue (la boîte suivante du même produit) ; le téléphone vibre à chaque ajout ; le message dit ce qui a été ajouté, ou « Code … inconnu », sans rien ajouter (`role="status"`) ;
+  - un **lecteur branché** suit le même chemin : un code exact suivi d'« Entrée » dans la recherche ajoute son produit et vide la recherche ; un code inconnu reste un filtre ;
+  - **lecture** : le lecteur du téléphone quand il en a un (`BarcodeDetector`, Chrome sur Android), sinon le même lecteur en WebAssembly (`barcode-detector`, `zxing-wasm`, licences MIT et Apache-2.0), chargé seulement à l'ouverture du panneau ; le fichier WebAssembly est **servi par l'application** (`/_next/static/media`, comme le lecteur de PDF), jamais par un site externe, et gardé par le service worker pour la vente hors ligne après une première ouverture avec réseau ;
+  - caméra déjà permise par `Permissions-Policy: camera=(self)` (photos) ; refusée ou absente : le panneau le dit et rappelle le lecteur ou la recherche ;
+  - la recherche du produit par code est une fonction pure testée (`lib/sales/barcode.ts`) ; le serveur revérifie la vente comme toute autre (ADR-024, ADR-025).
+- **Conséquences** : environ 0,9 Mo (0,4 Mo compressé) chargés une fois sur un téléphone sans lecteur intégré ; aucun changement d'API ni de base.
+
+## ADR-069 — Vendre en tapant un montant, et des prix tapés à chaque vente
+
+- **Statut** : **Proposée**, livrée sur la branche `profils-affichage` (demande du propriétaire du 2026-11-23 : « implémenter les fonctions discutées dans profils-affichage », reportées par ADR-067).
+- **Contexte** : une étale vend ce qu'elle n'a pas mis au catalogue (« du pain pour 1 500 F ») et des articles dont le prix change avec le client ou le tas (poisson, oignons). La caisse ne vendait qu'un produit du catalogue à son prix, que le vendeur pouvait seulement baisser (ADR-038), avec la limite de remise des vendeurs.
+- **Décision** :
+  - `products.open_price` : le prix d'un produit se **tape à chaque vente** ; `sale_price` n'est qu'un prix habituel, 0 quand il n'y en a pas. Ce qui est tapé est le prix de la ligne, jamais une négociation : ni prix barré, ni remise comptée, ni « prix à vérifier » d'une vente hors ligne ;
+  - `products.system_role = 'open_sale'` : **un produit « Vente au montant » par boutique** (migration `20261123090000_open_price`, qui l'ajoute aux boutiques existantes ; l'API le crée avec chaque nouvelle boutique), produit ou service selon l'offre, prix tapé, stock non compté. Une vente au montant est donc une ligne comme les autres : ticket, statistiques, biens ou services dans la comptabilité (ADR-046), synchronisation hors ligne (ADR-020) ;
+  - il n'est **pas un produit de la boutique** : absent du catalogue, des factures et du stock (la liste ne le donne qu'avec `system=include`, que seule la caisse demande), hors de la limite de produits de l'offre ; l'API refuse de l'archiver, de lui donner un prix fixe ou de compter son stock (`409 SYSTEM_PRODUCT`) ;
+  - le **libellé** d'une ligne (`label`, 120 caractères) se tape seulement pour « Vente au montant » (« Pour quoi ? ») ; un autre produit garde son nom sur le ticket (400) ;
+  - le serveur prend le prix tapé dans le montant de la ligne (`agreedTotal ÷ quantité`), à défaut dans le prix envoyé par le téléphone ; sans prix, la vente est refusée (« Tapez le prix de … ») ;
+  - caisse : « Taper un montant » au-dessus des produits (montant, puis « Pour quoi ? » facultatif) ; chaque montant est une ligne à part ; un produit à prix tapé affiche « Prix à taper » et ouvre le pavé à chaque toucher, une ligne par prix ; « Valider la vente » rappelle un prix oublié ;
+  - **garder l'article** : après une vente, le propriétaire et les gérants (`catalog.manage`) voient « Ajouter « Pain » à vos produits », qui ouvre le formulaire d'un nouveau produit avec le nom et le prix ; le formulaire propose « Toujours le même » ou « Tapé à chaque vente ».
+- **Conséquences** : appliquer `20261123090000_open_price` avant de déployer l'API ; les téléphones qui n'ont pas encore la nouvelle caisse continuent de vendre comme avant.
+
+## ADR-070 — Proposer de compter le stock d'un produit souvent vendu
+
+- **Statut** : **Proposée**, livrée sur la branche `profils-affichage` (demande du propriétaire du 2026-11-23, reportée par ADR-067).
+- **Contexte** : une boutique qui ne compte pas son stock (ADR-067) peut finir par vendre chaque jour un même article ; savoir quand le racheter devient alors utile, sans que la boutique ait à y penser.
+- **Décision** :
+  - un produit (pas un service), actif, dont le stock n'est pas compté et qui n'est pas « Vente au montant » (ADR-069), présent dans au moins `stock_suggestion_min_sales` ventes (5) sur les `stock_suggestion_window_days` derniers jours (14), est proposé sur l'Accueil : « Vous vendez souvent … Compter son stock ? » ; trois au plus, les plus vendus d'abord ;
+  - **seuils en base**, par boutique (migration `20261123100000_stock_suggestions`), comme les autres seuils des alertes ;
+  - « Compter son stock » ouvre la modification du produit avec « Suivre le stock » coché ; rien ne change sans « Enregistrer » ;
+  - « Plus tard » : proposé de nouveau après `stock_suggestion_snooze_days` jours (7) ; « Ne plus proposer » : jamais plus pour ce produit. Le choix est gardé dans `app.stock_suggestion_dismissals` et inscrit au journal ;
+  - réservé au propriétaire et aux gérants (`catalog.manage`), qui seuls peuvent compter un stock ; `GET /stock/suggestions` et `POST /stock/suggestions/:productId/dismiss`.
+- **Conséquences** : appliquer `20261123100000_stock_suggestions` avant de déployer l'API.
+
+## ADR-071 — Services et produits à part sur l'Accueil d'une boutique qui vend les deux
+
+- **Statut** : **Proposée**, livrée sur la branche `profils-affichage` (demande du propriétaire du 2026-11-23, reportée par ADR-067).
+- **Contexte** : un salon qui vend aussi des produits de soin veut savoir ce que rapportent ses prestations et ce que rapportent ses produits ; l'Accueil ne donnait qu'un chiffre d'affaires.
+- **Décision** :
+  - `StatsSummaryDto.byKind` : chiffre d'affaires des produits et des services de la période, chaque ligne après la remise de sa vente (même calcul que les produits les plus vendus) ; ventes de la caisse seulement, les factures restant dans la comptabilité (ADR-046) ;
+  - la carte sombre de l'Accueil affiche « Services » et « Produits » sous le chiffre d'affaires, seulement pour une boutique qui vend les deux (ADR-047), masqués avec les autres montants.
+- **Conséquences** : aucun changement de base ; un champ de plus dans la réponse de `/stats/summary`.
+
+## ADR-072 — Commandes des clients, phase 1 : suivre et remettre
+
+- **Statut** : **Proposée**, livrée sur la branche `profils-affichage` (note de conception « Commandes clients » du 2026-11-22, décisions du propriétaire des 22 et 23 novembre 2026 ; un rendez-vous est une commande avec une heure).
+- **Contexte** : une commande est une vente promise : le client choisit aujourd'hui, paie tout, une partie ou rien, et reçoit plus tard (couture, produit à faire venir, livraison, traiteur, rendez-vous). L'application ne savait vendre que tout de suite.
+- **Décision** :
+  - **option éteinte au départ** pour toutes les boutiques : `organizations.orders_enabled` (migration `20261123110000_orders`), allumée seulement par le propriétaire ou un gérant dans Paramètres › Mon application, jamais par « Tout afficher » ni par les réponses à la création. L'API refuse d'en créer quand elle est éteinte (`403 ORDERS_DISABLED`) mais laisse suivre, remettre ou annuler celles qui existent ;
+  - **allumée**, elle se voit à deux endroits : un rond « Commandes » dans les raccourcis de l'Accueil, avec le nombre à remettre aujourd'hui ou en retard, et l'entrée « Commandes » du Menu ; **jamais dans la barre du bas** (ADR-067) ;
+  - `app.orders` : numéro `C-AAAA-NNNN` donné par le serveur (même séquence verrouillée que les documents), client obligatoire, articles du catalogue ou « sur mesure » avec leur prix, une note par article, date et heure facultative, retrait ou livraison (adresse, repère, téléphone), **frais de livraison à part**, note ; les prix sont figés à la prise de commande ;
+  - étapes : Reçue, En préparation, Prête, **En livraison** (seulement pour une livraison), puis Remise ou Annulée ; une commande dont la date est passée est « En retard » sans changer d'étape ;
+  - **avances** (`app.order_payments`, en ajout seul) : espèces, Mobile Money avec opérateur, carte ; jamais plus que ce qui reste ; elles entrent dans Argent le jour où elles sont reçues. Total, payé et reste sont calculés (`orderTotals`), jamais stockés ;
+  - **remise** : une vraie vente (ticket, stock qui baisse, statistiques, comptes), dans la même transaction que la commande se ferme ; ses premiers paiements sont les avances, marqués `sale_payments.from_order` pour ne pas entrer deux fois dans Argent ; le reste se paie par n'importe quel moyen, ou à crédit (plafond vérifié, ADR-024). L'identifiant de la commande sert d'identifiant d'opération : une remise envoyée deux fois ne crée qu'une vente. Une ligne « sur mesure » est vendue comme « Vente au montant » avec son nom (ADR-069) ; les frais de livraison, comme le produit système `delivery_fee` « Frais de livraison » (un service, hors catalogue). Le ticket porte « Commande C-… » et « Avance, Espèces » ;
+  - **annulation** par le propriétaire ou un gérant, avec un motif ; **l'avance est toujours rendue en entier** (sortie d'Argent par le moyen choisi) ; une commande remise ne s'annule pas : c'est sa vente qui s'annule ;
+  - droits : `orders.read` (tous), `orders.manage` (propriétaire, gérant, vendeur : prendre, avance, étapes, remettre), `orders.cancel` (propriétaire, gérant) ;
+  - **comptabilité** : le journal est un journal de recettes et de dépenses (ADR-046) : une avance y est une recette du jour où elle est reçue, répartie entre 701 et 706 comme les articles de la commande, une avance rendue la reprend ; la remise n'y ajoute que ce qui est payé ce jour-là. Le compte 4191 « Clients, avances et acomptes reçus » proposé par la note reste **à valider avec le comptable**, comme le compte des frais de livraison (706 pour l'instant).
+- **Reporté (phase 2 et suivantes)** : modifier une commande après coup, réservation du stock, photo du modèle, mesures sur la fiche client, devis accepté → commande, commande et avance hors ligne, bouton « Commande » dans la caisse, « Annulée, avance à rendre plus tard », message « Votre commande est prête », ligne « Avances reçues, à livrer » des rapports, rappel des commandes prêtes non retirées sur l'Accueil (le seuil `order_ready_reminder_days`, 7 jours, est déjà en base et compté par `/orders/summary`).
+- **Conséquences** : appliquer `20261123110000_orders` (après `20261123090000_open_price`) avant de déployer l'API. Un vendeur limité dans ses remises ne peut remettre une commande dont un prix convenu dépasse sa limite : le propriétaire ou un gérant la remet.
+
+## ADR-073 — Abonnements d'un mois ou d'un an, renouvellement et factures, abonnement à vie
+
+- **Statut** : **Proposée**, branche `admin-abonnements` (demande du propriétaire du 2026-11-23).
+- **Contexte** : un abonnement payant n'avait pas de date de fin ; la plateforme changeait l'offre à la main après un paiement reçu (ADR-056), sans rien pour le renouveler ni pour réclamer un paiement.
+- **Décision** :
+  - une offre payante dure **1 mois**, ou **1 an** si la boutique le choisit (`subscriptions.period`, `current_period_end`) ; le prix d'un an est `plans.yearly_price`, ou douze mois quand il est vide ; une offre gratuite n'a pas de fin ;
+  - **renouvellement manuel** : l'administrateur « prolonge » d'un mois ou d'un an depuis la fin de la période (paiement reçu), ce qui crée une facture payée ; accepter une demande ou changer l'offre démarre une période aujourd'hui, avec sa facture payée ;
+  - **renouvellement automatique** (`auto_renew`, coché au départ ; le propriétaire ou l'administrateur l'arrête) : à la fin de la période, le passage quotidien crée une **facture à payer** et ouvre la période suivante, sans prélever d'argent ; la boutique voit la facture, le montant, la date limite, les numéros Wave et Orange Money et la référence `AB-…` ;
+  - **suspension pour impayé** : si l'administrateur n'a pas marqué la facture payée après `platform_settings.subscription_grace_days` jours (15), la boutique est suspendue (`suspended_invoice_id`) ; marquer la facture payée, l'annuler ou accorder l'abonnement à vie la rouvre aussitôt, sauf autre facture en retard ;
+  - sans renouvellement, la boutique repasse en **Gratuit** à la fin de la période ; rien n'est effacé ;
+  - **abonnement à vie** : seul l'administrateur de la plateforme (ADR-039) l'accorde ou le retire, avec confirmation ; il n'a ni fin ni facture, et annule les factures en attente ; retiré, une période commence le jour même ;
+  - chaque prolongation, facture émise, payée ou annulée, suspension et changement est inscrit au journal de la boutique (au nom de « Nagaw (plateforme) » ou du système) ;
+  - admin : carte « Durée et factures » de la fiche boutique, page « Factures » (à encaisser, en retard d'abord), alerte du tableau de bord.
+- **Conséquences** : migration `20261123130000_subscription_billing` ; les boutiques déjà payantes reçoivent une période d'un mois à compter de l'application. Le passage quotidien (`/cron/daily`) traite les abonnements avant les notifications. Aucun paiement en ligne : la plateforme confirme chaque paiement.
+
+## ADR-074 — Archiver depuis l'administration : boutiques, comptes, données d'une boutique
+
+- **Statut** : **Proposée**, branche `admin-abonnements` (demande du propriétaire du 2026-11-23).
+- **Contexte** : l'administration pouvait suspendre une boutique, mais ni ranger une boutique fermée pour de bon, ni fermer un compte, ni faire le ménage dans les données d'une boutique sans y entrer et passer par chaque écran.
+- **Décision** :
+  - **archiver ne détruit rien** : ventes, factures et historique restent (comptabilité et loi) ; tout se restaure ; chaque action demande un motif et une confirmation, et s'inscrit au journal de la boutique au nom de « Nagaw (plateforme) » ;
+  - **boutique archivée** (`organizations.status = 'archived'`, migration `20261123140000_archives`) : fermée à ses membres comme une boutique suspendue, absente des listes de l'administration sauf l'onglet « Archivées », plus de suspension ni de renouvellement ; l'archivage ferme l'accès ouvert de l'administrateur ; une boutique archivée se restaure avant d'être suspendue ;
+  - **compte archivé** (`user_profiles.archived_at`) : l'API refuse toute requête de ce compte (`403 ACCOUNT_ARCHIVED`, vérifié par la garde d'authentification) et la connexion par numéro le dit ; ses boutiques et leurs données restent ; le compte de l'administration ne s'archive pas ; nouvelle page « Comptes » (recherche par numéro, e-mail ou nom, onglet « Archivés ») ;
+  - **données d'une boutique** : produits, clients, fournisseurs, catégories (archiver, restaurer), ventes et factures émises (annuler), depuis la page « Données » de la fiche boutique. Elles ne s'ouvrent **qu'après être entré dans la boutique avec un motif** (ADR-040 : le contenu d'une boutique n'est jamais visible autrement, `403 SHOP_ACCESS_REQUIRED`). Chaque action passe par le service de la boutique, avec ses règles (stock rendu, avoir pour une facture), et ajoute au journal `platform.data_changed` avec le motif ;
+  - « Vente au montant » et les frais de livraison (produits système) n'apparaissent pas.
+- **Conséquences** : appliquer `20261123140000_archives` avant l'API. Une requête authentifiée lit désormais `user_profiles.archived_at` (clé primaire).

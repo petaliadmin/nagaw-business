@@ -21,11 +21,14 @@ export const metadata: Metadata = {
 
 async function EditProduct({
   params,
+  searchParams,
 }: PageProps<'/espace/produits/[id]/modifier'>) {
   const workspace = await requireReadyWorkspace();
   if (!workspace) return null;
   const { organization, accessToken } = workspace;
   const { id } = await params;
+  // From « Compter son stock » on the home page (ADR-070).
+  const countStock = (await searchParams).compter === '1';
   if (!roleHasPermission(organization.role, 'catalog.manage')) {
     return (
       <>
@@ -62,6 +65,12 @@ async function EditProduct({
   return (
     <>
       <PageHeader title={`Modifier « ${product.data.name} »`} />
+      {countStock && !product.data.trackStock && (
+        <Alert>
+          « Suivre le stock » est coché : enregistrez, puis comptez ce que vous
+          avez sur la fiche du produit.
+        </Alert>
+      )}
       <Card>
         <ProductForm
           offer={organization.offer}
@@ -70,6 +79,7 @@ async function EditProduct({
           categories={categories.data.filter((c) => c.status === 'active')}
           taxRates={taxRates.data.filter((t) => t.status === 'active')}
           product={product.data}
+          countStock={countStock}
         />
       </Card>
     </>

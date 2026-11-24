@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import {
@@ -77,6 +78,25 @@ export class OrganizationsService {
               organization_id: organization.id,
               user_id: user.userId,
               role: 'owner',
+            })
+            .execute();
+
+          // « Taper un montant » in the caisse sells this one (ADR-069).
+          const services = organization.offer === 'services';
+          await trx
+            .insertInto('app.products')
+            .values({
+              organization_id: organization.id,
+              name: 'Vente au montant',
+              unit: services ? 'prestation' : 'piece',
+              sale_price: 0,
+              track_stock: false,
+              kind: services ? 'service' : 'product',
+              open_price: true,
+              system_role: 'open_sale',
+              status: 'active',
+              client_operation_id: randomUUID(),
+              created_by: user.userId,
             })
             .execute();
 
@@ -524,6 +544,7 @@ const UPDATABLE = {
   offer: 'offer',
   hiddenSections: 'hidden_sections',
   countsStockByDefault: 'counts_stock_by_default',
+  ordersEnabled: 'orders_enabled',
   invoiceDueDays: 'invoice_due_days',
   quoteValidityDays: 'quote_validity_days',
 } as const satisfies Partial<
@@ -555,6 +576,7 @@ function toOrganizationDto(
     offer: row.offer,
     hiddenSections: row.hidden_sections,
     countsStockByDefault: row.counts_stock_by_default,
+    ordersEnabled: row.orders_enabled,
     logoVersion: row.logo_sha256?.slice(0, 16) ?? null,
     signatureVersion: row.signature_sha256?.slice(0, 16) ?? null,
     stampVersion: row.stamp_sha256?.slice(0, 16) ?? null,

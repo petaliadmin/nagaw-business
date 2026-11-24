@@ -67,6 +67,8 @@ export interface ShopDisplay {
   hiddenSections: readonly ShopSection[];
   /** Whether a new product counts its stock, before the owner chooses. */
   countsStockByDefault: boolean;
+  /** Customer orders, turned on by the merchant only (ADR-072). */
+  ordersEnabled?: boolean;
 }
 
 export const showsSection = (
@@ -216,6 +218,8 @@ export const updateOrganizationSchema = z
     offer: offerSchema.optional(),
     hiddenSections: hiddenSectionsSchema.optional(),
     countsStockByDefault: z.boolean().optional(),
+    /** Customer orders, off until the merchant turns them on (ADR-072). */
+    ordersEnabled: z.boolean().optional(),
     invoiceDueDays: days(0, 365).optional(),
     quoteValidityDays: days(1, 365).optional(),
   })
@@ -231,7 +235,7 @@ export interface OrganizationDto {
   id: string;
   name: string;
   slug: string;
-  status: 'active' | 'suspended';
+  status: 'active' | 'suspended' | 'archived';
   timezone: string;
   defaultCurrency: string;
   /** Lifetime of new invitations. */
@@ -251,6 +255,8 @@ export interface OrganizationDto {
   hiddenSections: ShopSection[];
   /** Whether a new product counts its stock at first (ADR-067). */
   countsStockByDefault: boolean;
+  /** Customer orders, an option the merchant turns on (ADR-072). */
+  ordersEnabled: boolean;
   /** Colour of the shop's documents, `#rrggbb` (ADR-044). */
   documentColor: string;
   /** Changes with the logo (cache key); null without logo. */

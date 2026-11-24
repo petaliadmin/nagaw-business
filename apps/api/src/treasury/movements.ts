@@ -8,7 +8,9 @@ import { sql, type RawBuilder } from 'kysely';
  * A payment lands on the account of its kind: cash → cash drawer, Mobile
  * Money → the account of its operator, card, transfer and cheque → bank;
  * credit brings no money. A cancelled sale gives its money back the day it
- * is cancelled. Invoice payments copied from a sale are already counted.
+ * is cancelled. Invoice payments copied from a sale are already counted,
+ * and so are the deposits of an order, counted the day they were received
+ * and copied on the sale of the handover (ADR-072).
  */
 export function movementsCte(
   organizationId: string,
@@ -32,6 +34,7 @@ export function movementsCte(
         join app.sales s on s.organization_id = p.organization_id and s.id = p.sale_id
         join acc a on ${accountOf(sql.ref('p.method'), sql.ref('p.provider'))}
        where p.organization_id = ${organizationId} and p.method <> 'credit'
+         and not p.from_order
       union all
       select a.id, (s.cancelled_at at time zone ${timeZone})::date, -p.amount::bigint, 'sale_cancelled',
              lpad(s.sale_number::text, 6, '0'), s.id
@@ -51,6 +54,15 @@ export function movementsCte(
         join app.invoices i on i.organization_id = ip.organization_id and i.id = ip.invoice_id
         join acc a on ${accountOf(sql.ref('ip.method'), sql.ref('ip.provider'))}
        where ip.organization_id = ${organizationId} and not ip.from_sale
+      union all
+      select a.id, (op.created_at at time zone ${timeZone})::date,
+             case op.kind when 'deposit' then op.amount::bigint else -op.amount::bigint end,
+             case op.kind when 'deposit' then 'order_deposit' else 'order_refund' end,
+             o.number, o.id
+        from app.order_payments op
+        join app.orders o on o.organization_id = op.organization_id and o.id = op.order_id
+        join acc a on ${accountOf(sql.ref('op.method'), sql.ref('op.provider'))}
+       where op.organization_id = ${organizationId}
       union all
       select e.cash_account_id, e.occurred_on, -e.amount::bigint, 'expense', e.label, e.id
         from app.expenses e

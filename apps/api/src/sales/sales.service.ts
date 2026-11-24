@@ -103,8 +103,14 @@ export class SalesService {
           .onRef('c.organization_id', '=', 's.organization_id')
           .onRef('c.id', '=', 's.customer_id'),
       )
+      .leftJoin('app.orders as o', (join) =>
+        join
+          .onRef('o.organization_id', '=', 's.organization_id')
+          .onRef('o.sale_id', '=', 's.id'),
+      )
       .selectAll('s')
       .select([
+        'o.number as order_number',
         'u.contact as seller_email',
         'x.contact as cancelled_by_email',
         'c.name as customer_name',
@@ -167,7 +173,9 @@ export class SalesService {
         provider: payment.provider,
         reference: payment.reference,
         amount: toNumber(payment.amount),
+        ...(payment.from_order ? { fromOrder: true } : {}),
       })),
+      orderNumber: sale.order_number,
       subtotal: toNumber(sale.subtotal),
       discount: toNumber(sale.discount),
       total: toNumber(sale.total),
@@ -425,6 +433,15 @@ export class SalesService {
     requestId: string | null,
     /** Set for a sale coming from a device: its prices, ticket and time. */
     device?: DeviceSale,
+    /**
+     * The handover of an order (ADR-072): its first `deposits` payments
+     * were received before, and `onRecorded` closes the order in the same
+     * transaction as the sale.
+     */
+    order?: {
+      deposits: number;
+      onRecorded: (trx: Executor, saleId: string) => Promise<void>;
+    },
   ): Promise<{ sale: SaleDto; replayed: boolean }> {
     try {
       return await this.database.db.transaction().execute(async (trx) => {
@@ -478,6 +495,8 @@ export class SalesService {
             'p.track_stock',
             'p.status',
             'p.low_stock_threshold',
+            'p.open_price',
+            'p.system_role',
             't.rate_basis_points',
           ])
           .where('p.organization_id', '=', tenant.organizationId)
@@ -570,11 +589,57 @@ export class SalesService {
               `lines.${index}.quantity`,
               `Quantité trop précise pour « ${product.name} » (${named}).`,
             );
+          // What the seller typed for « Vente au montant » names the line.
+          // Only a product of the caisse (« Vente au montant », the
+          // delivery fee) takes the words typed for it.
+          if (line.label !== null && product.system_role === null)
+            throw invalid(
+              `lines.${index}.label`,
+              `« ${product.name} » garde son nom sur le ticket.`,
+            );
           const pricing = pricingOf(
             option,
             toNumber(product.sale_price),
             line.quantity,
           );
+          // A price typed at each sale (ADR-069): the seller's price is the
+          // price, in the stock unit, never a negotiation nor a difference.
+          if (product.open_price) {
+            if (unit || conversion)
+              throw invalid(
+                `lines.${index}.productUnitId`,
+                `Le prix de « ${product.name} » se tape pour l’article entier.`,
+              );
+            // The amount typed for the line, else (an older phone) its
+            // price for one.
+            const typed =
+              line.agreedTotal !== null
+                ? line.agreedTotal / line.quantity
+                : device
+                  ? device.unitPrices[index]!
+                  : null;
+            if (typed === null || typed <= 0)
+              throw invalid(
+                `lines.${index}.agreedTotal`,
+                `Tapez le prix de « ${line.label ?? product.name} ».`,
+              );
+            return {
+              line,
+              product,
+              unit,
+              label: option.label,
+              factor: option.factor,
+              baseQuantity,
+              basis: 'unit' as const,
+              pricedQuantity: line.quantity,
+              unitPrice: typed,
+              catalogPrice: typed,
+              unitCost:
+                product.purchase_price === null
+                  ? null
+                  : toNumber(product.purchase_price),
+            };
+          }
           return {
             line,
             product,
@@ -658,9 +723,15 @@ export class SalesService {
             `« ${belowCost[0]!.name} » serait vendu sous son prix d’achat (${formatAmount(belowCost[0]!.loss, org.default_currency)} de perte) : demandez au propriétaire ou à un gérant.`,
           );
 
+        // Deposits of an order were received before (ADR-072): the rest
+        // is what is paid now, and the change is given on it only.
+        const fresh = input.payments.slice(order?.deposits ?? 0);
+        const already = input.payments
+          .slice(0, order?.deposits ?? 0)
+          .reduce((sum, p) => sum + p.amount, 0);
         const problem = paymentProblem({
-          total: totals.total,
-          payments: input.payments,
+          total: totals.total - already,
+          payments: fresh,
           cashReceived: input.cashReceived,
           customerId: input.customerId,
         });
@@ -708,7 +779,7 @@ export class SalesService {
             : [];
         });
 
-        const cash = input.payments
+        const cash = fresh
           .filter((p) => p.method === 'cash')
           .reduce((sum, p) => sum + p.amount, 0);
         const { id } = await trx
@@ -764,13 +835,14 @@ export class SalesService {
                   sale_id: id,
                   position: index + 1,
                   product_id: product.id,
-                  label: product.name,
+                  label: line.label ?? product.name,
                   unit: product.unit,
                   product_unit_id: unit?.id ?? null,
                   unit_label: label,
                   unit_factor: factor,
                   price_basis: basis,
-                  unit_price: unitPrice,
+                  // A typed total over several pieces may leave a fraction.
+                  unit_price: Math.round(unitPrice),
                   quantity: line.quantity,
                   list_total: listTotal === lineTotal ? null : listTotal,
                   line_total: lineTotal,
@@ -786,13 +858,14 @@ export class SalesService {
         await trx
           .insertInto('app.sale_payments')
           .values(
-            input.payments.map((payment) => ({
+            input.payments.map((payment, index) => ({
               organization_id: tenant.organizationId,
               sale_id: id,
               method: payment.method,
               provider: payment.provider,
               reference: payment.reference,
               amount: payment.amount,
+              from_order: index < (order?.deposits ?? 0),
             })),
           )
           .execute();
@@ -814,6 +887,7 @@ export class SalesService {
               })),
             )
             .execute();
+        await order?.onRecorded(trx, id);
         await this.audit.record(trx, {
           organizationId: tenant.organizationId,
           actorType: 'user',

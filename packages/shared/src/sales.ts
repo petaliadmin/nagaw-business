@@ -188,6 +188,17 @@ export const saleLineFields = {
   quantity: quantitySchema.positive('La quantité doit être positive'),
   /** Amount agreed with the customer for the line; null: catalogue price. */
   agreedTotal: amountSchema.nullable().default(null),
+  /**
+   * What was sold, typed by the seller, for a line of « Vente au montant »
+   * (« poisson »): it becomes the label of the line (ADR-069).
+   */
+  label: z
+    .string()
+    .trim()
+    .max(120, '120 caractères au plus')
+    .transform((value) => (value === '' ? null : value))
+    .nullable()
+    .default(null),
 };
 
 /** A line is sold in one unit: a selling unit or a conversion, not both. */
@@ -327,6 +338,8 @@ export interface SalePaymentDto {
   provider: MobileMoneyProvider | null;
   reference: string | null;
   amount: number;
+  /** A deposit of the order, received before the handover (ADR-072). */
+  fromOrder?: boolean;
 }
 
 export interface SaleDto {
@@ -350,6 +363,8 @@ export interface SaleDto {
   priceReview: boolean;
   /** Took more goods than the stock the server knew (ADR-036). */
   stockReview: boolean;
+  /** The order this sale handed over (ADR-072). */
+  orderNumber?: string | null;
   cancellation: {
     at: string;
     by: { userId: string; email: string };

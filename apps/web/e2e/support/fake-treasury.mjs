@@ -639,6 +639,7 @@ export async function handleTreasury(ctx) {
     }
     const catalog = catalogState();
     const byProduct = new Map();
+    const byKind = { product: 0, service: 0 };
     let costedRevenue = 0;
     let cost = 0;
     for (const x of sales)
@@ -658,6 +659,7 @@ export async function handleTreasury(ctx) {
         entry.revenue += net;
         byProduct.set(l.productId, entry);
         const product = catalog.products.find((p) => p.id === l.productId);
+        byKind[product?.kind ?? 'product'] += net;
         if (product?.purchasePrice != null) {
           costedRevenue += net;
           cost += Math.round(l.quantity * product.purchasePrice);
@@ -681,6 +683,7 @@ export async function handleTreasury(ctx) {
         coverageBasisPoints: shareBasisPoints(costedRevenue, revenue),
       },
       byMethod,
+      byKind,
       days,
       topProducts: [...byProduct.values()]
         .sort((a, b) => b.revenue - a.revenue)

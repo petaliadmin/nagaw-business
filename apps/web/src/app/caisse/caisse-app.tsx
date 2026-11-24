@@ -49,6 +49,7 @@ import {
   type ShopSnapshot,
 } from '@/lib/offline/store';
 import { classifyAnswer } from '@/lib/offline/delivery';
+import { lineLabel } from '@/lib/sales/cart';
 import { Checkout, type SaleDraft } from './checkout';
 import { LocalTicketView } from './local-ticket';
 
@@ -432,6 +433,8 @@ export function CaisseApp() {
   const [soldId, setSoldId] = useState<string | null>(null);
   // Selling, or the sales of this phone: both inside the checkout.
   const [view, setView] = useState<'sell' | 'sales'>('sell');
+  // Each touch of « Scanner » opens the camera in the checkout (ADR-068).
+  const [scanRequests, setScanRequests] = useState(0);
   const [confirm, confirmDialog] = useConfirm();
   /** The only way out of the checkout: explicit, after a question. */
   async function quit() {
@@ -693,13 +696,19 @@ export function CaisseApp() {
             customerId: pendingCustomer ? null : (draft.customer?.id ?? null),
             customerOperationId: pendingCustomer?.pendingOperationId ?? null,
             lines: draft.lines.map(
-              ({ product, option, quantity, pricing, agreedTotal }) => ({
+              ({ product, option, quantity, pricing, agreedTotal, line }) => ({
                 productId: product.id,
                 productUnitId: option.productUnitId,
                 conversion: option.conversion,
                 quantity,
-                unitPrice: pricing.unitPrice,
+                // A typed price over several pieces may not be whole; the
+                // server prices it from agreedTotal (ADR-069).
+                unitPrice: Math.round(pricing.unitPrice),
                 agreedTotal,
+                label:
+                  product.systemRole === 'open_sale'
+                    ? line.label?.trim() || null
+                    : null,
               }),
             ),
             discount: draft.totals.discount,
@@ -723,8 +732,11 @@ export function CaisseApp() {
                   pricing,
                   lineTotal,
                   listTotal,
+                  line,
                 }) => ({
-                  label: product.name,
+                  label: lineLabel(line, product),
+                  typed:
+                    product.systemRole === 'open_sale' && !!line.label?.trim(),
                   unit: product.unit,
                   quantity,
                   unitPrice: pricing.unitPrice,
@@ -866,13 +878,10 @@ export function CaisseApp() {
         <button
           type="button"
           onClick={() => {
-            const search = document.querySelector('[data-checkout-search]');
-            if (search instanceof HTMLInputElement) {
-              search.focus();
-              search.select();
-            }
+            setView('sell');
+            setScanRequests((count) => count + 1);
           }}
-          aria-label="Scanner un code-barres : passez-le au lecteur ou tapez-le"
+          aria-label="Scanner un produit avec la caméra"
           className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-ink text-canvas"
         >
           <ScanLine aria-hidden className="size-6" />
@@ -994,6 +1003,9 @@ export function CaisseApp() {
             shop={snapshot.shop}
             money={money}
             justSold={ticket.clientOperationId === soldId}
+            canAddProducts={
+              role !== undefined && roleHasPermission(role, 'catalog.manage')
+            }
             onNext={() => {
               backToSell.current = true;
               setView('sell');
@@ -1026,6 +1038,7 @@ export function CaisseApp() {
             onRecord={onRecord}
             onCreateCustomer={onCreateCustomer}
             onCorrectStock={onCorrectStock}
+            scanRequests={scanRequests}
           />
         </div>
       </main>

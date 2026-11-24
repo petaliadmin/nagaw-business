@@ -7,6 +7,7 @@ import type {
   MobileMoneyProvider,
   NotificationCategory,
   NotificationSeverity,
+  OrderStatus,
   PaymentMethod,
   ProductKind,
   ProductPhotoType,
@@ -42,13 +43,20 @@ export interface UserProfilesTable {
   timezone: Generated<string>;
   created_at: Timestamp;
   updated_at: Timestamp;
+  /** Archived by the platform: no sign-in (ADR-074). */
+  archived_at: NullableTimestamp;
+  archived_by: string | null;
+  archive_reason: string | null;
 }
 
 export interface OrganizationsTable {
   id: Generated<string>;
   name: string;
   slug: string;
-  status: Generated<'active' | 'suspended'>;
+  status: Generated<'active' | 'suspended' | 'archived'>;
+  archived_at: NullableTimestamp;
+  archived_by: string | null;
+  archive_reason: string | null;
   timezone: Generated<string>;
   default_currency: Generated<string>;
   invitation_ttl_hours: Generated<number>;
@@ -83,6 +91,9 @@ export interface OrganizationsTable {
   offer: Generated<ShopOffer>;
   hidden_sections: Generated<ShopSection[]>;
   counts_stock_by_default: Generated<boolean>;
+  orders_enabled: Generated<boolean>;
+  suspended_invoice_id: string | null;
+  order_ready_reminder_days: Generated<number>;
   trade_register: Generated<string>;
   invoice_footer: Generated<string>;
   invoice_due_days: Generated<number>;
@@ -93,6 +104,9 @@ export interface OrganizationsTable {
     number | string
   >;
   stock_forecast_days: Generated<number>;
+  stock_suggestion_min_sales: Generated<number>;
+  stock_suggestion_window_days: Generated<number>;
+  stock_suggestion_snooze_days: Generated<number>;
   stock_forecast_window_days: Generated<number>;
   credit_overdue_days: Generated<number>;
   credit_near_limit_percent: Generated<number>;
@@ -197,6 +211,8 @@ export interface SuppliersTable {
 
 export interface ProductsTable {
   kind: Generated<ProductKind>;
+  open_price: Generated<boolean>;
+  system_role: 'open_sale' | 'delivery_fee' | null;
   id: Generated<string>;
   organization_id: string;
   name: string;
@@ -350,6 +366,15 @@ export interface DevicesTable {
   created_at: ColumnType<Date, never, never>;
 }
 
+export interface StockSuggestionDismissalsTable {
+  organization_id: string;
+  product_id: string;
+  /** Null: never suggested again. */
+  until: Date | null;
+  dismissed_by: string;
+  dismissed_at: Generated<Date>;
+}
+
 export interface SaleLinesTable {
   id: Generated<string>;
   organization_id: string;
@@ -384,6 +409,7 @@ export interface SalePaymentsTable {
   provider: MobileMoneyProvider | null;
   reference: string | null;
   amount: Numeric;
+  from_order: Generated<boolean>;
 }
 
 export interface CustomerPaymentsTable {
@@ -408,9 +434,66 @@ type NullableCalendarDate = ColumnType<
 >;
 type Json<T> = ColumnType<T, string, string>;
 
+/** Frozen when the order is taken (ADR-072). */
+export interface StoredOrderLine {
+  productId: string | null;
+  label: string;
+  unit: Unit;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  note: string;
+}
+
+export interface OrdersTable {
+  id: Generated<string>;
+  organization_id: string;
+  number: string;
+  customer_id: string;
+  status: Generated<OrderStatus>;
+  lines: Json<StoredOrderLine[]>;
+  items_total: Numeric;
+  /** Read it as text (`due_on::text`): pg returns a Date. */
+  due_on: ColumnType<Date, string, string>;
+  due_time: string | null;
+  fulfilment: 'pickup' | 'delivery';
+  delivery_address: Generated<string>;
+  delivery_landmark: Generated<string>;
+  delivery_phone: Generated<string>;
+  delivery_fee: ColumnType<
+    string,
+    number | string | undefined,
+    number | string
+  >;
+  note: Generated<string>;
+  sale_id: string | null;
+  delivered_at: NullableTimestamp;
+  cancelled_at: NullableTimestamp;
+  cancelled_by: string | null;
+  cancellation_reason: string | null;
+  client_operation_id: string;
+  created_by: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface OrderPaymentsTable {
+  id: Generated<string>;
+  organization_id: string;
+  order_id: string;
+  kind: 'deposit' | 'refund';
+  method: 'cash' | 'mobile_money' | 'card';
+  provider: MobileMoneyProvider | null;
+  reference: string | null;
+  amount: Numeric;
+  client_operation_id: string;
+  created_by: string;
+  created_at: Timestamp;
+}
+
 export interface DocumentSequencesTable {
   organization_id: string;
-  kind: 'quote' | 'invoice' | 'credit_note' | 'expense';
+  kind: 'quote' | 'invoice' | 'credit_note' | 'expense' | 'order';
   year: number;
   next_number: Generated<number>;
 }
@@ -569,6 +652,8 @@ export interface PlansTable {
   max_members: number;
   max_devices: number;
   position: number;
+  /** Null: twelve months at the monthly price (ADR-073). */
+  yearly_price: Numeric | null;
   created_at: ColumnType<Date, never, never>;
   updated_at: ColumnType<Date, never, never>;
 }
@@ -579,6 +664,31 @@ export interface SubscriptionsTable {
   started_at: ColumnType<Date, never, never>;
   updated_at: ColumnType<Date, never, never>;
   changed_by: string | null;
+  period: Generated<'month' | 'year'>;
+  current_period_end: NullableTimestamp;
+  auto_renew: Generated<boolean>;
+  lifetime: Generated<boolean>;
+  lifetime_granted_by: string | null;
+  lifetime_granted_at: NullableTimestamp;
+}
+
+export interface SubscriptionInvoicesTable {
+  id: Generated<string>;
+  organization_id: string;
+  plan_key: string;
+  period: 'month' | 'year';
+  amount: Numeric;
+  currency: string;
+  period_start: Timestamp;
+  period_end: Timestamp;
+  status: Generated<'pending' | 'paid' | 'cancelled'>;
+  due_at: Timestamp;
+  issued_by: string | null;
+  paid_at: NullableTimestamp;
+  paid_by: string | null;
+  note: Generated<string>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
 }
 
 export interface PlanChangeRequestsTable {
@@ -586,6 +696,7 @@ export interface PlanChangeRequestsTable {
   organization_id: string;
   plan_key: string;
   status: Generated<'pending' | 'cancelled' | 'done' | 'rejected'>;
+  period: Generated<'month' | 'year'>;
   requested_by: string;
   created_at: ColumnType<Date, never, never>;
   resolved_at: NullableTimestamp;
@@ -617,6 +728,7 @@ export interface PlatformSettingsTable {
   payment_orange_money_number: string | null;
   pin_max_failures: number;
   pin_lock_minutes: number;
+  subscription_grace_days: Generated<number>;
   updated_at: ColumnType<Date, never, never>;
 }
 
@@ -729,6 +841,7 @@ export interface Database {
   'app.organization_logos': OrganizationLogosTable;
   'app.organization_marks': OrganizationMarksTable;
   'app.stock_movements': StockMovementsTable;
+  'app.stock_suggestion_dismissals': StockSuggestionDismissalsTable;
   'app.customers': CustomersTable;
   'app.sales': SalesTable;
   'app.sale_lines': SaleLinesTable;
@@ -737,6 +850,8 @@ export interface Database {
   'app.devices': DevicesTable;
   'app.device_users': DeviceUsersTable;
   'app.document_sequences': DocumentSequencesTable;
+  'app.orders': OrdersTable;
+  'app.order_payments': OrderPaymentsTable;
   'app.quotes': QuotesTable;
   'app.invoices': InvoicesTable;
   'app.invoice_payments': InvoicePaymentsTable;
@@ -749,6 +864,7 @@ export interface Database {
   'app.plans': PlansTable;
   'app.subscriptions': SubscriptionsTable;
   'app.plan_change_requests': PlanChangeRequestsTable;
+  'app.subscription_invoices': SubscriptionInvoicesTable;
   'app.platform_admins': PlatformAdminsTable;
   'app.platform_shop_accesses': PlatformShopAccessesTable;
   'app.platform_settings': PlatformSettingsTable;

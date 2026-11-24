@@ -250,7 +250,21 @@ describe('negotiated prices (ADR-038)', () => {
       conversion: null,
       quantity: 2,
       agreedTotal: null,
+      label: null,
     });
+  });
+
+  it('keeps the words typed for « Vente au montant », trimmed (ADR-069)', () => {
+    const line = (label: unknown) =>
+      createSaleSchema.parse({
+        clientOperationId: OP,
+        lines: [{ productId: PRODUCT, quantity: 1, agreedTotal: 500, label }],
+        payments: [{ method: 'cash', amount: 500 }],
+        expectedTotal: 500,
+      }).lines[0]!.label;
+    expect(line('  Pain ')).toBe('Pain');
+    expect(line('   ')).toBeNull();
+    expect(() => line('x'.repeat(121))).toThrow();
   });
 
   it('names the unit of a line and its price', () => {

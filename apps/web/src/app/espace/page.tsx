@@ -11,6 +11,8 @@ import {
   type SalesDaySummaryDto,
   type StatsSummaryDto,
   type StockSummaryDto,
+  type StockSuggestionDto,
+  type OrdersSummaryDto,
   type CustomerDto,
   type SaleListItemDto,
 } from '@nagaw/shared';
@@ -18,6 +20,7 @@ import {
   ArrowDownToLine,
   Banknote,
   CheckCheck,
+  ClipboardList,
   FileText,
   Plus,
   ShoppingCart,
@@ -73,6 +76,7 @@ import { ContactAvatar } from '@/components/contacts/contact-actions';
 import { HideAmountsButton } from '@/components/ui/hide-amounts';
 import { previousPeriod, resolvePeriod } from '@/lib/treasury/period';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { StockSuggestions } from '@/components/catalog/stock-suggestions';
 
 export const metadata: Metadata = {
   title: 'Tableau de bord — Nagaw Business',
@@ -162,6 +166,7 @@ function Essentials({
   beforeRange,
   currency,
   period,
+  splitKinds = false,
   children,
 }: {
   stats: StatsSummaryDto;
@@ -170,6 +175,8 @@ function Essentials({
   currency: string;
   /** The period, as a pill that opens the others. */
   period: ReactNode;
+  /** A shop that sells both: services and products apart (ADR-071). */
+  splitKinds?: boolean;
   /** Shown right under the profit: the money and what to do today. */
   children?: ReactNode;
 }) {
@@ -217,6 +224,26 @@ function Essentials({
               />
             </dd>
           </div>
+          {splitKinds &&
+            (
+              [
+                { kind: 'service', label: 'Services' },
+                { kind: 'product', label: 'Produits' },
+              ] as const
+            ).map(({ kind, label }) => (
+              <div
+                key={kind}
+                className="@container flex min-w-0 flex-col gap-0.5"
+              >
+                <dt className="text-base text-[#c9c5ff]">{label}</dt>
+                <dd className="montant-prive font-bold tabular-nums">
+                  <Figure
+                    value={money(stats.byKind[kind])}
+                    className="[--figure-max:1.25rem]"
+                  />
+                </dd>
+              </div>
+            ))}
           <div className="@container flex min-w-0 flex-col gap-0.5 rounded-2xl bg-white/10 p-3">
             <dt className="text-base text-[#9be7c4]">
               {profit(stats) < 0 ? 'Vous avez perdu' : 'Vous avez gagné'}
@@ -523,6 +550,8 @@ interface Shortcut {
   icon: LucideIcon;
   /** Background and colour of its round icon. */
   tone: string;
+  /** A number to act on today (orders due), as a pastille. */
+  badge?: number;
 }
 
 /**
@@ -534,18 +563,28 @@ function Shortcuts({ items }: { items: Shortcut[] }) {
   return (
     <nav aria-label="Raccourcis">
       <ul className="grid grid-cols-4 gap-2 md:max-w-xl">
-        {items.map(({ href, label, icon: Icon, tone }) => (
+        {items.map(({ href, label, icon: Icon, tone, badge }) => (
           <li key={href}>
             <Link
               href={href}
               className="flex flex-col items-center gap-2 rounded-2xl py-1 text-center text-base leading-tight font-bold"
             >
               <span
-                className={`flex size-15 items-center justify-center rounded-full ${tone}`}
+                className={`relative flex size-15 items-center justify-center rounded-full ${tone}`}
               >
                 <Icon aria-hidden className="size-6" />
+                {badge !== undefined && badge > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-danger-strong px-1.5 text-sm font-extrabold text-white">
+                    {badge}
+                  </span>
+                )}
               </span>
               {label}
+              {badge !== undefined && badge > 0 && (
+                <span className="sr-only">
+                  , {badge} à remettre aujourd’hui ou en retard
+                </span>
+              )}
             </Link>
           </li>
         ))}
@@ -883,6 +922,8 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
     mine,
     debtors,
     recent,
+    suggestions,
+    orders,
   ] = await Promise.all([
     // Only to name the authors of the recent activity.
     canReadAudit
@@ -923,6 +964,20 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
       path: `/sales?${new URLSearchParams({ all: 'true', limit: '4', offset: '0' })}`,
       organizationId: organization.id,
     }),
+    // Products sold often, not counted (ADR-070): for who can count them.
+    sellsGoods(organization.offer) && roleHasPermission(role, 'catalog.manage')
+      ? apiAsUser<StockSuggestionDto[]>(accessToken, {
+          path: '/stock/suggestions',
+          organizationId: organization.id,
+        })
+      : null,
+    // Customer orders, once turned on (ADR-072).
+    organization.ordersEnabled && roleHasPermission(role, 'orders.read')
+      ? apiAsUser<OrdersSummaryDto>(accessToken, {
+          path: '/orders/summary',
+          organizationId: organization.id,
+        })
+      : null,
   ]);
 
   // Stock is shown where something is counted: by default, or one product.
@@ -932,6 +987,17 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
       (stock.ok && stock.data.trackedProducts > 0));
 
   const shortcuts: Shortcut[] = [
+    ...(orders
+      ? [
+          {
+            href: '/espace/commandes',
+            label: 'Commandes',
+            icon: ClipboardList,
+            tone: 'bg-invoices-soft text-invoices-ink',
+            badge: orders.ok ? orders.data.dueNow : undefined,
+          },
+        ]
+      : []),
     ...(roleHasPermission(role, 'customers.manage') && shows('credit')
       ? [
           {
@@ -1007,6 +1073,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
               beforeRange={range(before.from, before.to)}
               currency={currency}
               period={<PeriodMenu path="/espace" current={period.key} />}
+              splitKinds={organization.offer === 'both'}
             >
               {today}
             </Essentials>
@@ -1019,6 +1086,18 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
       {showToday && <TodayCard summary={sales} currency={currency} />}
 
       {mine && <MyFiguresCard figures={mine} currency={currency} />}
+
+      {suggestions && !suggestions.ok && (
+        <Alert tone="error">
+          Suggestions de stock indisponibles : {suggestions.message}
+        </Alert>
+      )}
+      {suggestions?.ok && suggestions.data.length > 0 && (
+        <StockSuggestions
+          organizationId={organization.id}
+          suggestions={suggestions.data}
+        />
+      )}
 
       {countsStock && (
         <StockCard

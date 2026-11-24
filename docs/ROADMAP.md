@@ -35,7 +35,7 @@ Les anciennes phases 8 (approbations), 9 (outils et intégrations), 10 (document
 
 Après la Phase 18 : **notifications, accès élargi des vendeurs et contrôle du stock à la vente** (ADR-036, validée le 2026-10-26).
 
-**Réglages d'affichage selon la boutique** (ADR-067, proposée le 2026-11-21) : phase 1 sur la branche `profils-affichage` ; vente au montant, prix à taper, suggestion de stock et rendez-vous en phases suivantes, chacune à valider.
+**Réglages d'affichage selon la boutique** (ADR-067, proposée le 2026-11-21) : phase 1 sur la branche `profils-affichage`, puis sur la même branche (2026-11-23, à valider) : vente au montant et prix tapés (ADR-069), suggestion de compter le stock (ADR-070), services et produits sur l'Accueil (ADR-071), commandes et rendez-vous, phase 1 (ADR-072). Commandes phases 2 et 3 : voir ADR-072.
 
 **Version 1.0.0** (2026-11-04, ADR-061) : clôture de tout ce qui est livré ci-dessus et des lots fusionnés jusqu'au 2026-11-03. Contenu et réserves dans `CHANGELOG.md`. Le pilote de la Phase 18 reste à mener.
 

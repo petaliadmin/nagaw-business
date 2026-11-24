@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { CatalogModule } from '../catalog/catalog.module.js';
 import { CustomersService } from './customers.service.js';
 import { DevicesService } from './devices.service.js';
+import { OrdersController } from './orders.controller.js';
+import { OrdersService } from './orders.service.js';
 import { SalesController } from './sales.controller.js';
 import { SalesService } from './sales.service.js';
 import { SyncController } from './sync.controller.js';
@@ -9,7 +11,15 @@ import { SyncService } from './sync.service.js';
 
 @Module({
   imports: [CatalogModule],
-  controllers: [SalesController, SyncController],
-  providers: [SalesService, CustomersService, DevicesService, SyncService],
+  controllers: [SalesController, SyncController, OrdersController],
+  providers: [
+    SalesService,
+    CustomersService,
+    DevicesService,
+    SyncService,
+    OrdersService,
+  ],
+  // The administration cancels sales and archives customers (ADR-074).
+  exports: [SalesService, CustomersService],
 })
 export class SalesModule {}

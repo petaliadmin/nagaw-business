@@ -147,7 +147,16 @@ async function Product({
           <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">
             {p.name}
           </h1>
-          <p className="text-3xl font-extrabold tabular-nums text-stock-ink">
+          {p.openPrice && (
+            <p className="text-lg font-semibold text-ink-muted">
+              Prix tapé à chaque vente
+              {p.salePrice > 0 ? ', habituellement :' : '.'}
+            </p>
+          )}
+          <p
+            hidden={p.openPrice && p.salePrice === 0}
+            className="text-3xl font-extrabold tabular-nums text-stock-ink"
+          >
             {formatAmount(p.salePrice, currency)}
             <span className="text-lg font-semibold text-ink-muted">
               {' '}

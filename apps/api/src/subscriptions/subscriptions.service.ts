@@ -1,5 +1,11 @@
+import { sql } from 'kysely';
 import { HttpStatus, Injectable } from '@nestjs/common';
-import type { PlanDto, SubscriptionDto } from '@nagaw/shared';
+import type {
+  PlanDto,
+  SubscriptionDto,
+  SubscriptionPeriod,
+  SubscriptionSettingsInput,
+} from '@nagaw/shared';
 import type { Selectable } from 'kysely';
 import { AuditService } from '../audit/audit.service.js';
 import {
@@ -13,12 +19,14 @@ import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
 import type { PlansTable } from '../database/schema.js';
+import { BillingService, yearlyPriceOf } from './billing.service.js';
 
 function toPlanDto(row: Selectable<PlansTable>): PlanDto {
   return {
     key: row.key,
     name: row.name,
     monthlyPrice: toNumber(row.monthly_price),
+    yearlyPrice: yearlyPriceOf(row),
     currency: row.currency,
     limits: {
       products: row.max_products,
@@ -38,6 +46,7 @@ export class SubscriptionsService {
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    private readonly billing: BillingService,
   ) {}
 
   async plans(): Promise<PlanDto[]> {
@@ -69,6 +78,9 @@ export class SubscriptionsService {
       .where('organization_id', '=', organizationId);
     if (table === 'app.devices') query = query.where('revoked_at', 'is', null);
     else query = query.where('status', '=', 'active');
+    // The « Vente au montant » product is not one the shop added (ADR-069).
+    if (table === 'app.products')
+      query = query.where(sql<boolean>`system_role is null`);
     return toNumber((await query.executeTakeFirstOrThrow()).count);
   }
 
@@ -80,7 +92,14 @@ export class SubscriptionsService {
       await Promise.all([
         executor
           .selectFrom('app.subscriptions')
-          .select(['plan_key', 'started_at'])
+          .select([
+            'plan_key',
+            'started_at',
+            'period',
+            'current_period_end',
+            'auto_renew',
+            'lifetime',
+          ])
           .where('organization_id', '=', organizationId)
           .executeTakeFirstOrThrow(),
         executor
@@ -93,7 +112,7 @@ export class SubscriptionsService {
         this.count(executor, 'app.devices', organizationId),
         executor
           .selectFrom('app.plan_change_requests')
-          .select(['id', 'plan_key', 'created_at'])
+          .select(['id', 'plan_key', 'period', 'created_at'])
           .where('organization_id', '=', organizationId)
           .where('status', '=', 'pending')
           .executeTakeFirst(),
@@ -122,9 +141,15 @@ export class SubscriptionsService {
           ? {
               id: pending.id,
               plan: pendingPlan,
+              period: pending.period,
               createdAt: pending.created_at.toISOString(),
             }
           : null,
+      period: subscription.period,
+      currentPeriodEnd: subscription.current_period_end?.toISOString() ?? null,
+      autoRenew: subscription.auto_renew,
+      lifetime: subscription.lifetime,
+      invoices: await this.billing.invoicesOf(executor, organizationId),
       payment: {
         wave: settings?.payment_wave_number ?? null,
         orangeMoney: settings?.payment_orange_money_number ?? null,
@@ -136,6 +161,7 @@ export class SubscriptionsService {
     tenant: TenantContext,
     user: AuthContext,
     planKey: string,
+    period: SubscriptionPeriod,
     requestId: string | null,
   ): Promise<SubscriptionDto> {
     try {
@@ -152,10 +178,16 @@ export class SubscriptionsService {
           .executeTakeFirstOrThrow();
         const current = await trx
           .selectFrom('app.subscriptions')
-          .select('plan_key')
+          .select(['plan_key', 'period', 'lifetime'])
           .where('organization_id', '=', tenant.organizationId)
           .executeTakeFirstOrThrow();
-        if (current.plan_key === plan.key)
+        if (current.lifetime)
+          throw conflict(
+            'SUBSCRIPTION_LIFETIME',
+            'Votre abonnement est à vie : il n’y a rien à changer.',
+          );
+        // The same offer for one year instead of one month is a change.
+        if (current.plan_key === plan.key && current.period === period)
           throw conflict(
             'ALREADY_ON_PLAN',
             `La boutique est déjà sur l’offre ${plan.name}.`,
@@ -165,6 +197,7 @@ export class SubscriptionsService {
           .values({
             organization_id: tenant.organizationId,
             plan_key: plan.key,
+            period,
             requested_by: user.userId,
           })
           .returning('id')
@@ -176,7 +209,7 @@ export class SubscriptionsService {
           action: 'subscription.change_requested',
           targetType: 'plan_change_request',
           targetId: id,
-          metadata: { from: current.plan_key, to: plan.key },
+          metadata: { from: current.plan_key, to: plan.key, period },
           requestId,
         });
         return this.subscription(tenant.organizationId, trx);
@@ -229,6 +262,25 @@ export class SubscriptionsService {
         metadata: { to: pending.plan_key },
         requestId,
       });
+      return this.subscription(tenant.organizationId, trx);
+    });
+  }
+
+  /** The owner turns the automatic renewal on or off (ADR-073). */
+  async updateSettings(
+    tenant: TenantContext,
+    user: AuthContext,
+    input: SubscriptionSettingsInput,
+    requestId: string | null,
+  ): Promise<SubscriptionDto> {
+    return this.database.db.transaction().execute(async (trx) => {
+      await this.billing.settings(
+        trx,
+        { userId: user.userId, platform: false },
+        tenant.organizationId,
+        { autoRenew: input.autoRenew },
+        requestId,
+      );
       return this.subscription(tenant.organizationId, trx);
     });
   }

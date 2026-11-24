@@ -9,6 +9,17 @@ import { buttonClasses } from '@/components/ui/button-styles';
 import { PinField } from '@/components/phone-field';
 import { initialFormState } from '@/lib/auth/form-state';
 import {
+  formatAmount,
+  SUBSCRIPTION_PERIOD_LABELS,
+  type SubscriptionInvoiceDto,
+} from '@nagaw/shared';
+import { useConfirmedSubmit } from '@/components/ui/confirm-dialog';
+import {
+  actOnShopData,
+  setArchived,
+  decideInvoice,
+  renewShop,
+  setShopSubscription,
   answerFeedback,
   openShopAccess,
   reactivateShop,
@@ -88,7 +99,17 @@ export function SetPlanForm({
     >
       <input type="hidden" name="shopId" value={shopId} />
       <FormMessage state={state} />
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <SelectField
+          label="Durée"
+          name="period"
+          id="admin-plan-period"
+          defaultValue="month"
+          options={[
+            { value: 'month', label: SUBSCRIPTION_PERIOD_LABELS.month },
+            { value: 'year', label: SUBSCRIPTION_PERIOD_LABELS.year },
+          ]}
+        />
         <SelectField
           label="Nouvelle offre"
           name="planKey"
@@ -290,6 +311,270 @@ export function AnswerFeedbackForm({
           {answered ? 'Marquer comme traité' : 'Répondre et clore'}
         </button>
       </div>
+    </ActionForm>
+  );
+}
+
+/** « Prolonger » by hand: one month or one year, payment received. */
+export function RenewForm({ shopId }: { shopId: string }) {
+  const [state, action, pending] = useActionState(renewShop, initialFormState);
+  return (
+    <ActionForm
+      action={action}
+      pending={pending}
+      noValidate
+      className="flex flex-col gap-3"
+    >
+      <input type="hidden" name="shopId" value={shopId} />
+      <FormMessage state={state} />
+      <FormField
+        label="Remarque (facultatif)"
+        name="note"
+        id="admin-renew-note"
+        maxLength={500}
+        placeholder="Wave reçu le…"
+      />
+      <div className="flex flex-wrap gap-2">
+        {(['month', 'year'] as const).map((period) => (
+          <SubmitButton
+            key={period}
+            name="period"
+            value={period}
+            variant={period === 'month' ? 'primary' : 'secondary'}
+            pendingLabel="Prolongation…"
+          >
+            {`Prolonger de ${SUBSCRIPTION_PERIOD_LABELS[period]}`}
+          </SubmitButton>
+        ))}
+      </div>
+    </ActionForm>
+  );
+}
+
+/** One switch of the subscription: automatic renewal or lifetime. */
+export function SubscriptionSwitch({
+  shopId,
+  field,
+  value,
+  label,
+  confirmation,
+}: {
+  shopId: string;
+  field: 'autoRenew' | 'lifetime';
+  /** The value it sets. */
+  value: boolean;
+  label: string;
+  confirmation?: { title: string; message: string };
+}) {
+  const [state, action, pending] = useActionState(
+    setShopSubscription,
+    initialFormState,
+  );
+  const [guard, confirmDialog] = useConfirmedSubmit();
+  return (
+    <form
+      action={action}
+      onSubmit={(event) =>
+        guard(
+          event,
+          confirmation ? { ...confirmation, confirmLabel: label } : null,
+        )
+      }
+      className="flex flex-col gap-2"
+    >
+      {confirmDialog}
+      <input type="hidden" name="shopId" value={shopId} />
+      <input type="hidden" name="field" value={field} />
+      <input type="hidden" name="value" value={String(value)} />
+      <FormMessage state={state} />
+      <div>
+        <SubmitButton variant="secondary" pendingLabel="Enregistrement…">
+          {label}
+        </SubmitButton>
+      </div>
+      {pending && <span className="sr-only">Enregistrement…</span>}
+    </form>
+  );
+}
+
+/** « Marquer payée » or « Annuler » on an invoice to collect. */
+export function InvoiceDecision({
+  invoice,
+  shopName,
+}: {
+  invoice: SubscriptionInvoiceDto;
+  shopName?: string;
+}) {
+  const [state, action, pending] = useActionState(
+    decideInvoice,
+    initialFormState,
+  );
+  const amount = formatAmount(invoice.amount, invoice.currency);
+  return (
+    <ActionForm
+      action={action}
+      pending={pending}
+      className="flex flex-col gap-2"
+    >
+      <input type="hidden" name="invoiceId" value={invoice.id} />
+      <FormMessage state={state} />
+      <div className="flex flex-wrap gap-2">
+        <SubmitButton
+          name="decision"
+          value="paid"
+          pendingLabel="Enregistrement…"
+          aria-label={`Marquer payée : ${invoice.reference}${shopName ? `, ${shopName}` : ''}, ${amount}`}
+        >
+          Marquer payée
+        </SubmitButton>
+        <SubmitButton
+          name="decision"
+          value="cancel"
+          variant="secondary"
+          pendingLabel="Annulation…"
+          aria-label={`Annuler la facture ${invoice.reference}${shopName ? `, ${shopName}` : ''}`}
+        >
+          Annuler
+        </SubmitButton>
+      </div>
+    </ActionForm>
+  );
+}
+
+/**
+ * Archive a shop or an account, with a reason and a confirmation; or
+ * restore it (ADR-074).
+ */
+export function ArchiveForm({
+  target,
+  targetId,
+  name,
+  archived,
+}: {
+  target: 'shop' | 'user';
+  targetId: string;
+  /** What is archived, in the confirmation and the button's name. */
+  name: string;
+  archived: boolean;
+}) {
+  const [state, action, pending] = useActionState(
+    setArchived,
+    initialFormState,
+  );
+  const [guard, confirmDialog] = useConfirmedSubmit();
+  const label = archived
+    ? target === 'shop'
+      ? 'Restaurer la boutique'
+      : 'Rouvrir le compte'
+    : target === 'shop'
+      ? 'Archiver la boutique'
+      : 'Archiver le compte';
+  return (
+    <form
+      action={action}
+      noValidate
+      onSubmit={(event) =>
+        guard(
+          event,
+          archived
+            ? null
+            : {
+                title: `Archiver ${name} ?`,
+                message:
+                  target === 'shop'
+                    ? 'Ses membres n’y ont plus accès et elle sort des listes. Ventes, factures et historique restent ; vous pourrez la restaurer.'
+                    : 'La personne ne peut plus se connecter, dans aucune boutique. Ses ventes et l’historique restent ; vous pourrez rouvrir le compte.',
+                confirmLabel: 'Archiver',
+                tone: 'danger',
+              },
+        )
+      }
+      className="flex flex-col gap-3"
+    >
+      {confirmDialog}
+      <input type="hidden" name="target" value={target} />
+      <input type="hidden" name="targetId" value={targetId} />
+      <input type="hidden" name="restore" value={String(archived)} />
+      <FormMessage state={state} />
+      {!archived && (
+        <FormField
+          label="Pourquoi archiver ?"
+          name="reason"
+          id={`archive-reason-${targetId}`}
+          maxLength={300}
+          required
+          error={state.fieldErrors?.reason}
+        />
+      )}
+      <div>
+        <SubmitButton
+          variant={archived ? 'primary' : 'danger'}
+          pendingLabel="Enregistrement…"
+          aria-label={`${label} : ${name}`}
+        >
+          {label}
+        </SubmitButton>
+      </div>
+      {pending && <span className="sr-only">Enregistrement…</span>}
+    </form>
+  );
+}
+
+const DATA_ACTION_LABELS = {
+  archive: 'Archiver',
+  restore: 'Restaurer',
+  cancel: 'Annuler',
+} as const;
+
+/** One action on an item of a shop: a reason, then the button (ADR-074). */
+export function ShopDataAction({
+  shopId,
+  kind,
+  itemId,
+  action,
+  label,
+}: {
+  shopId: string;
+  kind: string;
+  itemId: string;
+  action: 'archive' | 'restore' | 'cancel';
+  /** What the item is, for the button's name. */
+  label: string;
+}) {
+  const [state, action_, pending] = useActionState(
+    actOnShopData,
+    initialFormState,
+  );
+  return (
+    <ActionForm
+      action={action_}
+      pending={pending}
+      noValidate
+      className="flex flex-col gap-2 sm:flex-row sm:items-end"
+    >
+      <input type="hidden" name="shopId" value={shopId} />
+      <input type="hidden" name="kind" value={kind} />
+      <input type="hidden" name="itemId" value={itemId} />
+      <input type="hidden" name="action" value={action} />
+      <FormMessage state={state} />
+      {action !== 'restore' && (
+        <div className="flex-1">
+          <FormField
+            label="Pourquoi ?"
+            name="reason"
+            id={`data-reason-${itemId}`}
+            maxLength={300}
+            error={state.fieldErrors?.reason}
+          />
+        </div>
+      )}
+      <SubmitButton
+        variant={action === 'restore' ? 'secondary' : 'danger'}
+        pendingLabel="Enregistrement…"
+        aria-label={`${DATA_ACTION_LABELS[action]} : ${label}`}
+      >
+        {DATA_ACTION_LABELS[action]}
+      </SubmitButton>
     </ActionForm>
   );
 }

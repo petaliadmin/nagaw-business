@@ -1,11 +1,26 @@
-import type { AdminShopDto, PlanDto } from '@nagaw/shared';
-import { Ban, Crown, DoorOpen, KeyRound, Smartphone } from 'lucide-react';
+import {
+  formatAmount,
+  SUBSCRIPTION_PERIOD_LABELS,
+  type AdminShopDto,
+  type PlanDto,
+} from '@nagaw/shared';
+import {
+  Archive,
+  Ban,
+  CalendarClock,
+  Crown,
+  DoorOpen,
+  KeyRound,
+  Smartphone,
+} from 'lucide-react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { selectOrganization } from '@/app/espace/actions';
 import { SubmitButton } from '@/components/submit-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { buttonClasses } from '@/components/ui/button-styles';
 import { Card, Stat } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
@@ -15,11 +30,21 @@ import { formatContact, formatDateTime } from '@/lib/format';
 import { ROLE_LABELS } from '@/lib/labels';
 import { closeShopAccess } from '../../actions';
 import {
+  ArchiveForm,
+  InvoiceDecision,
   OpenAccessForm,
+  RenewForm,
   SetPinForm,
   SetPlanForm,
+  SubscriptionSwitch,
   SuspendForm,
 } from '../../forms';
+
+const INVOICE_STATUS = {
+  pending: 'À payer',
+  paid: 'Payée',
+  cancelled: 'Annulée',
+} as const;
 
 const REQUEST_STATUS = {
   pending: 'En attente',
@@ -49,9 +74,45 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
         title={s.name}
         description={`${s.ownerEmails.map(formatContact).join(', ') || 'Sans propriétaire actif'} · créée le ${when(s.createdAt)} · ${s.timezone} · ${s.currency}`}
       />
+      <div className="flex flex-wrap gap-2">
+        <Badge tone="brand">Offre {s.plan.name}</Badge>
+        {s.status === 'suspended' && <Badge tone="danger">Suspendue</Badge>}
+        {s.status === 'archived' && <Badge>Archivée</Badge>}
+        {s.subscription.lifetime && <Badge tone="success">À vie</Badge>}
+        {s.subscription.invoices.some((i) => i.status === 'pending') && (
+          <Badge tone="warning">Facture à payer</Badge>
+        )}
+        {s.requests.some((r) => r.status === 'pending') && (
+          <Badge tone="warning">Demande d’offre en attente</Badge>
+        )}
+      </div>
+      <nav aria-label="Sur cette fiche" className="flex flex-wrap gap-2">
+        {[
+          ...(s.status === 'active' ? [['#access', 'Entrer']] : []),
+          ['#plan', 'Offre'],
+          ['#term', 'Durée et factures'],
+          ['#team', 'Équipe'],
+          ['#devices', 'Téléphones'],
+          ...(s.status !== 'archived' ? [['#suspend', 'Suspendre']] : []),
+          ['#archive', 'Archiver'],
+        ].map(([href, label]) => (
+          <a
+            key={href}
+            href={href}
+            className="inline-flex min-h-12 items-center rounded-full bg-surface px-4 font-semibold hover:bg-surface-muted"
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
       {s.suspension && (
         <Alert tone="warning">
           Suspendue le {when(s.suspension.at)} : {s.suspension.reason}
+        </Alert>
+      )}
+      {s.archive && (
+        <Alert tone="warning">
+          Archivée le {when(s.archive.at)} : {s.archive.reason}
         </Alert>
       )}
       {s.status === 'active' && (
@@ -63,9 +124,15 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
                 {s.access.reason}
               </p>
               <div className="flex flex-wrap gap-3">
+                <Link
+                  href={`/admin/boutiques/${s.id}/donnees`}
+                  className={buttonClasses('primary')}
+                >
+                  Gérer ses données
+                </Link>
                 <form action={selectOrganization}>
                   <input type="hidden" name="organizationId" value={s.id} />
-                  <SubmitButton pendingLabel="Ouverture…">
+                  <SubmitButton variant="secondary" pendingLabel="Ouverture…">
                     Aller dans la boutique
                   </SubmitButton>
                 </form>
@@ -81,9 +148,10 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
             <>
               <p className="mb-4 text-ink-muted">
                 Vous verrez et ferez tout comme son propriétaire, jusqu’à ce que
-                vous la quittiez. Le motif, votre entrée, votre sortie et
-                chacune de vos actions sont inscrits dans son historique, au nom
-                de « Nagaw (plateforme) ».
+                vous la quittiez : gérer ses produits, clients, ventes et
+                factures depuis l’administration, ou aller dans la boutique. Le
+                motif, votre entrée, votre sortie et chacune de vos actions sont
+                inscrits dans son historique, au nom de « Nagaw (plateforme) ».
               </p>
               <OpenAccessForm shopId={s.id} />
             </>
@@ -136,6 +204,106 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
             </ul>
           </div>
         )}
+      </Card>
+      <Card title="Durée et factures" titleId="term" icon={CalendarClock}>
+        {(() => {
+          const sub = s.subscription;
+          const paid =
+            plans.ok &&
+            (plans.data.find((p) => p.key === s.plan.key)?.monthlyPrice ?? 0) >
+              0;
+          return (
+            <div className="flex flex-col gap-4">
+              <p className="text-lg font-bold">
+                {sub.lifetime
+                  ? 'Abonnement à vie'
+                  : sub.currentPeriodEnd
+                    ? `${SUBSCRIPTION_PERIOD_LABELS[sub.period]}, jusqu’au ${when(sub.currentPeriodEnd)}`
+                    : 'Sans date de fin (offre gratuite)'}
+              </p>
+              {!sub.lifetime && sub.currentPeriodEnd && (
+                <p className="text-ink-muted">
+                  {sub.autoRenew
+                    ? 'Renouvelé automatiquement : à la fin, une facture à payer ; sans paiement marqué après le délai, la boutique est suspendue.'
+                    : 'Pas de renouvellement : la boutique repasse en Gratuit à la fin.'}
+                </p>
+              )}
+              {!sub.lifetime && paid && <RenewForm shopId={s.id} />}
+              <div className="flex flex-wrap gap-3">
+                {!sub.lifetime && sub.currentPeriodEnd && (
+                  <SubscriptionSwitch
+                    shopId={s.id}
+                    field="autoRenew"
+                    value={!sub.autoRenew}
+                    label={
+                      sub.autoRenew
+                        ? 'Arrêter le renouvellement automatique'
+                        : 'Renouveler automatiquement'
+                    }
+                  />
+                )}
+                <SubscriptionSwitch
+                  shopId={s.id}
+                  field="lifetime"
+                  value={!sub.lifetime}
+                  label={
+                    sub.lifetime
+                      ? 'Retirer l’abonnement à vie'
+                      : 'Abonnement à vie'
+                  }
+                  confirmation={
+                    sub.lifetime
+                      ? {
+                          title: 'Retirer l’abonnement à vie ?',
+                          message:
+                            'Une période commence aujourd’hui, puis les règles habituelles : renouvellement et factures.',
+                        }
+                      : {
+                          title: `Abonnement à vie pour ${s.name} ?`,
+                          message: `Offre ${s.plan.name} sans date de fin et sans facture. Les factures en attente sont annulées.`,
+                        }
+                  }
+                />
+              </div>
+              {sub.invoices.length > 0 && (
+                <ul className="flex flex-col divide-y divide-line">
+                  {sub.invoices.map((i) => (
+                    <li key={i.id} className="flex flex-col gap-2 py-3">
+                      <span className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold">
+                          {i.reference} · {i.plan.name},{' '}
+                          {SUBSCRIPTION_PERIOD_LABELS[i.period]} ·{' '}
+                          {formatAmount(i.amount, i.currency)}
+                        </span>
+                        <Badge
+                          tone={
+                            i.status === 'pending'
+                              ? 'warning'
+                              : i.status === 'paid'
+                                ? 'success'
+                                : 'neutral'
+                          }
+                        >
+                          {INVOICE_STATUS[i.status]}
+                        </Badge>
+                      </span>
+                      <span className="text-ink-muted">
+                        Du {when(i.periodStart)} au {when(i.periodEnd)}
+                        {i.status === 'pending'
+                          ? ` · à payer avant le ${when(i.dueAt)}`
+                          : ''}
+                        {i.note ? ` · ${i.note}` : ''}
+                      </span>
+                      {i.status === 'pending' && (
+                        <InvoiceDecision invoice={i} />
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })()}
       </Card>
       <Card title="Équipe et codes secrets" titleId="team" icon={KeyRound}>
         <p className="mb-4 text-ink-muted">
@@ -199,17 +367,36 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
           </ul>
         )}
       </Card>
+      {s.status !== 'archived' && (
+        <Card
+          title={s.status === 'suspended' ? 'Réactiver' : 'Suspendre'}
+          titleId="suspend"
+          icon={Ban}
+        >
+          <p className="mb-4 text-ink-muted">
+            {s.status === 'suspended'
+              ? 'Les membres retrouvent l’accès à la boutique, avec toutes ses données.'
+              : 'Les membres n’ont plus accès à la boutique ; rien n’est effacé. Le motif est inscrit dans son historique.'}
+          </p>
+          <SuspendForm shopId={s.id} suspended={s.status === 'suspended'} />
+        </Card>
+      )}
       <Card
-        title={s.status === 'suspended' ? 'Réactiver' : 'Suspendre'}
-        titleId="suspend"
-        icon={Ban}
+        title={s.status === 'archived' ? 'Restaurer' : 'Archiver'}
+        titleId="archive"
+        icon={Archive}
       >
         <p className="mb-4 text-ink-muted">
-          {s.status === 'suspended'
-            ? 'Les membres retrouvent l’accès à la boutique, avec toutes ses données.'
-            : 'Les membres n’ont plus accès à la boutique ; rien n’est effacé. Le motif est inscrit dans son historique.'}
+          {s.status === 'archived'
+            ? 'La boutique revient dans les listes et ses membres la retrouvent, avec toutes ses données.'
+            : 'Pour une boutique fermée pour de bon : elle sort des listes et ses membres n’y ont plus accès. Rien n’est effacé.'}
         </p>
-        <SuspendForm shopId={s.id} suspended={s.status === 'suspended'} />
+        <ArchiveForm
+          target="shop"
+          targetId={s.id}
+          name={s.name}
+          archived={s.status === 'archived'}
+        />
       </Card>
     </>
   );

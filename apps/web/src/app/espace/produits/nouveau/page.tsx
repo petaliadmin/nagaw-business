@@ -18,10 +18,26 @@ export const metadata: Metadata = {
   title: 'Ajouter un produit ou un service — Nagaw Business',
 };
 
-async function NewProduct() {
+async function NewProduct({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const workspace = await requireReadyWorkspace();
   if (!workspace) return null;
   const { organization, accessToken } = workspace;
+  // From the ticket of a « Vente au montant » (ADR-069).
+  const params = await searchParams;
+  const one = (value: string | string[] | undefined) =>
+    typeof value === 'string' ? value : '';
+  const name = one(params.nom).trim().slice(0, 120);
+  const price = Number(one(params.prix));
+  const prefill = name
+    ? {
+        name,
+        salePrice: Number.isInteger(price) && price > 0 ? price : null,
+      }
+    : undefined;
   const header = (
     <PageHeader
       title={`Ajouter un ${CATALOG_NOUNS[organization.offer]}`}
@@ -73,16 +89,21 @@ async function NewProduct() {
           currency={organization.defaultCurrency}
           categories={categories.data.filter((c) => c.status === 'active')}
           taxRates={taxRates.data.filter((t) => t.status === 'active')}
+          prefill={prefill}
         />
       </Card>
     </>
   );
 }
 
-export default function NewProductPage() {
+export default function NewProductPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
     <Suspense fallback={<PageFallback variant="form" />}>
-      <NewProduct />
+      <NewProduct searchParams={searchParams} />
     </Suspense>
   );
 }

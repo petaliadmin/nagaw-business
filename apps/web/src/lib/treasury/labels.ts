@@ -5,6 +5,8 @@ export const MOVEMENT_LABELS: Record<CashMovementKind, string> = {
   sale_cancelled: 'Vente annulée',
   repayment: 'Remboursement de',
   invoice_payment: 'Paiement de la facture',
+  order_deposit: 'Avance de la commande',
+  order_refund: 'Avance rendue, commande',
   expense: 'Dépense',
   transfer_in: 'Reçu de',
   transfer_out: 'Envoyé vers',

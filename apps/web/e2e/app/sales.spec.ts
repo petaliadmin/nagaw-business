@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { expectAccessible } from '../support/a11y';
 import { resetBackend, signInAs } from '../support/session';
 
 test.describe.configure({ mode: 'serial' });
@@ -107,6 +108,264 @@ test('a cash sale shows the change, the ticket and lowers the stock', async ({
   await expect(
     page.getByRole('region', { name: 'Ce qui reste' }),
   ).toContainText('21 bouteilles');
+});
+
+test('« Taper un montant » sells what is not in the catalogue, then it can become a product (ADR-069)', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/vendre');
+  // « Vente au montant » is behind its button, never a tile.
+  await expect(
+    page
+      .getByRole('list', { name: 'Produits à vendre' })
+      .getByRole('button', { name: /Vente au montant/ }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: /^Taper un montant/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Taper un montant' });
+  await sheet.getByRole('button', { name: 'Ajouter au panier' }).click();
+  await expect(sheet.getByText(/Tapez un montant en chiffres/)).toBeVisible();
+  await sheet.getByLabel('Montant que le client paie').fill('1500');
+  await sheet.getByLabel(/^Pour quoi \?/).fill('Pain');
+  await sheet.getByRole('button', { name: 'Ajouter au panier' }).click();
+  await expect(sheet).toBeHidden();
+  await addToCart(page, 'Eau minérale 1,5 L');
+  await openPayment(page, isMobile);
+  const cart = page.getByRole('list', { name: 'Articles du panier' });
+  await expect(cart.getByLabel('Pain', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /^Valider la vente/ }).click();
+  await expect(page.getByText('Vente enregistrée.')).toBeVisible();
+  const ticket = page.getByRole('article', { name: /^Ticket n°/ });
+  await expect(ticket).toContainText('Pain');
+  expect(plain(await ticket.textContent())).toContain('TOTAL2 000 F CFA');
+
+  // The owner keeps it in the catalogue, with its price typed each time.
+  await page
+    .getByRole('link', { name: 'Ajouter « Pain » à vos produits' })
+    .click();
+  await expect(page.getByLabel('Nom du produit')).toHaveValue('Pain');
+  await expect(page.getByLabel(/^Prix de vente/)).toHaveValue('1500');
+  await page.getByText('Tapé à chaque vente').click();
+  await expect(page.getByLabel(/^Prix habituel/)).toBeVisible();
+  await page.getByLabel(/^Prix habituel/).fill('');
+  await page.getByLabel('En stock').fill('10');
+  await page.getByRole('button', { name: /^Enregistrer/ }).click();
+  await expect(page.getByRole('heading', { name: 'Pain' })).toBeVisible();
+  await expect(page.getByText('Prix tapé à chaque vente.')).toBeVisible();
+
+  await page.goto('/espace/vendre');
+  const tile = page
+    .getByRole('list', { name: 'Produits à vendre' })
+    .getByRole('button', { name: /^Ajouter Pain/ });
+  await expect(tile).toContainText('Prix à taper');
+  await tile.click();
+  const price = page.getByRole('dialog', { name: 'Prix de « Pain »' });
+  await price.getByLabel(/^Prix que le client paie/).fill('700');
+  await price.getByRole('button', { name: 'Garder ce prix' }).click();
+  await openPayment(page, isMobile);
+  await page.getByRole('button', { name: /^Valider la vente/ }).click();
+  await expect(page.getByText('Vente enregistrée.')).toBeVisible();
+  expect(
+    plain(
+      await page.getByRole('article', { name: /^Ticket n°/ }).textContent(),
+    ),
+  ).toContain('TOTAL700 F CFA');
+});
+
+test('a product sold often, not counted, is suggested on the home page (ADR-070)', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/produits/nouveau');
+  await page.getByLabel('Nom du produit').fill('Beignet');
+  await page.getByLabel(/^Prix de vente/).fill('100');
+  await page.getByText('Code-barres, catégorie, seuil d’alerte').click();
+  await page.getByLabel('Suivre le stock de ce produit').uncheck();
+  await page.getByRole('button', { name: 'Enregistrer le produit' }).click();
+  await expect(page.getByRole('heading', { name: 'Beignet' })).toBeVisible();
+
+  for (let i = 0; i < 2; i++) {
+    await page.goto('/espace/vendre');
+    await addToCart(page, 'Beignet');
+    await openPayment(page, isMobile);
+    await page.getByRole('button', { name: /^Valider la vente/ }).click();
+    await expect(page.getByText('Vente enregistrée.')).toBeVisible();
+  }
+
+  await page.goto('/espace');
+  const card = page.getByRole('region', { name: 'Compter le stock ?' });
+  await expect(card).toContainText('Vous vendez souvent Beignet');
+  await card.getByRole('link', { name: 'Compter son stock' }).click();
+  await expect(page).toHaveURL(/\/modifier\?compter=1$/);
+  await expect(page.getByLabel('Suivre le stock de ce produit')).toBeChecked();
+
+  await page.goto('/espace');
+  await card.getByRole('button', { name: 'Plus tard' }).click();
+  await expect(card).toBeHidden();
+});
+
+test('a code read by a reader puts its product straight in the cart (ADR-068)', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/caisse');
+  const search = page.getByRole('searchbox', { name: /Chercher un produit/ });
+  // An unknown code adds nothing: it only filters the list.
+  await search.fill('0000000000000');
+  await search.press('Enter');
+  await expect(search).toHaveValue('0000000000000');
+  // A reader types the code, then « Entrée »: twice, two bottles.
+  await search.fill('6111234500014');
+  await search.press('Enter');
+  await expect(search).toHaveValue('');
+  await expect(
+    page.getByText('Eau minérale 1,5 L ajouté au panier.'),
+  ).toBeAttached();
+  await search.fill('6111234500014');
+  await search.press('Enter');
+  await openPayment(page, isMobile);
+  const cart = page.getByRole('list', { name: 'Articles du panier' });
+  await expect(
+    cart.getByLabel('Eau minérale 1,5 L', { exact: true }),
+  ).toHaveValue('2');
+});
+
+/** The bars of EAN-13 6111234500014, the water's code in the fake shop. */
+function ean13Bars(code: string): string {
+  const L = [
+    '0001101',
+    '0011001',
+    '0010011',
+    '0111101',
+    '0100011',
+    '0110001',
+    '0101111',
+    '0111011',
+    '0110111',
+    '0001011',
+  ];
+  const G = [
+    '0100111',
+    '0110011',
+    '0011011',
+    '0100001',
+    '0011101',
+    '0111001',
+    '0000101',
+    '0010001',
+    '0001001',
+    '0010111',
+  ];
+  const R = [
+    '1110010',
+    '1100110',
+    '1101100',
+    '1000010',
+    '1011100',
+    '1001110',
+    '1010000',
+    '1000100',
+    '1001000',
+    '1110100',
+  ];
+  const PARITY = [
+    'LLLLLL',
+    'LLGLGG',
+    'LLGGLG',
+    'LLGGGL',
+    'LGLLGG',
+    'LGGLLG',
+    'LGGGLL',
+    'LGLGLG',
+    'LGLGGL',
+    'LGGLGL',
+  ];
+  const d = [...code].map(Number);
+  let bits = '101';
+  d.slice(1, 7).forEach((n, i) => {
+    bits += (PARITY.at(d[0]!)!.at(i) === 'L' ? L : G).at(n);
+  });
+  bits += '01010';
+  d.slice(7).forEach((n) => {
+    bits += R.at(n);
+  });
+  return bits + '101';
+}
+
+test('the camera reads a barcode and its product goes in the cart once (ADR-068)', async ({
+  page,
+  context,
+  baseURL,
+  isMobile,
+}) => {
+  // The camera films a drawn barcode, held in view the whole time.
+  await page.addInitScript((bits: string) => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 480;
+      const g = canvas.getContext('2d')!;
+      const draw = () => {
+        g.fillStyle = '#fff';
+        g.fillRect(0, 0, 640, 480);
+        g.fillStyle = '#000';
+        const x0 = (640 - bits.length * 4) / 2;
+        [...bits].forEach((bit, i) => {
+          if (bit === '1') g.fillRect(x0 + i * 4, 140, 4, 200);
+        });
+      };
+      draw();
+      setInterval(draw, 100);
+      return canvas.captureStream(10);
+    };
+  }, ean13Bars('6111234500014'));
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/caisse');
+  await page
+    .getByRole('button', { name: 'Scanner un produit avec la caméra' })
+    .click();
+  const sheet = page.getByRole('dialog', { name: 'Scanner un produit' });
+  await expect(sheet.getByRole('status')).toHaveText(
+    'Eau minérale 1,5 L ajouté au panier.',
+    { timeout: 15_000 },
+  );
+  // Still in view two seconds later: counted once, not again.
+  await page.waitForTimeout(2_000);
+  await sheet.getByRole('button', { name: 'Terminé' }).click();
+  await openPayment(page, isMobile);
+  await expect(
+    page
+      .getByRole('list', { name: 'Articles du panier' })
+      .getByLabel('Eau minérale 1,5 L', { exact: true }),
+  ).toHaveValue('1');
+});
+
+test('« Scanner » opens the camera, and says so when there is none', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/caisse');
+  await page
+    .getByRole('button', { name: 'Scanner un produit avec la caméra' })
+    .click();
+  const sheet = page.getByRole('dialog', { name: 'Scanner un produit' });
+  await expect(sheet).toBeVisible();
+  // No camera on the test browser: the sheet says what to do instead.
+  await expect(sheet.getByRole('alert')).toContainText(/caméra/);
+  await expectAccessible(page, 'scanner');
+  await sheet.getByRole('button', { name: 'Terminé' }).click();
+  await expect(sheet).toBeHidden();
 });
 
 test('the checkout asks what is missing before sending', async ({
@@ -257,6 +516,10 @@ test('sales of the day are listed with their totals, and on the home page', asyn
   const summary = page.getByRole('region', { name: 'Aujourd’hui' });
   await expect(summary.getByRole('heading')).toContainText(/\d+ ventes?/);
   await expect(sellLink(page, isMobile)).toBeVisible();
+  // « Nouvelle vente » opens the caisse from the list of sales.
+  await expect(
+    page.getByRole('main').getByRole('link', { name: 'Nouvelle vente' }),
+  ).toHaveAttribute('href', '/caisse');
   await page.getByRole('link', { name: 'Hier' }).click();
   await expect(page.getByText('Aucune vente ce jour-là')).toBeVisible();
 
@@ -298,4 +561,39 @@ test('a seller sells and sees only their own sales, and cannot cancel', async ({
   await expect(
     page.getByRole('list', { name: 'Liste des ventes' }).getByRole('listitem'),
   ).toHaveCount(countBefore + 1);
+});
+
+test('a shop that sells both sees its services and its products apart (ADR-071)', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await signInAs(context, 'awa', baseURL!);
+  const essentials = page.getByRole('region', { name: 'L’essentiel' });
+  const offer = async (label: string) => {
+    await page.goto('/espace/parametres?partie=application');
+    await page.waitForLoadState('networkidle');
+    const shop = page.getByRole('region', { name: 'Mon application' });
+    await shop.locator('label', { hasText: label }).click();
+    await shop.getByRole('button', { name: 'Enregistrer' }).click();
+    await expect(shop.getByText('Enregistré.')).toBeVisible();
+  };
+  // Awa's shop sells both.
+  await page.goto('/espace');
+  await expect(essentials.getByText('Services', { exact: true })).toBeVisible();
+  await expect(essentials.getByText('Produits', { exact: true })).toBeVisible();
+  // Only goods were sold here: nothing on « Services ».
+  await expect(
+    essentials
+      .getByRole('term')
+      .filter({ hasText: /^Services$/ })
+      .locator('xpath=following-sibling::dd'),
+  ).toContainText(/^0/);
+
+  await offer('Des produits');
+  await page.goto('/espace');
+  await expect(essentials.getByText('Services', { exact: true })).toHaveCount(
+    0,
+  );
+  await offer('Les deux');
 });

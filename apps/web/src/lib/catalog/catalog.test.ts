@@ -30,6 +30,7 @@ describe('catalogue forms', () => {
       name: 'Riz parfumé',
       categoryId: null,
       unit: 'sac',
+      openPrice: false,
       salePrice: 12500,
       purchasePrice: null,
       taxRateId: null,
@@ -42,6 +43,25 @@ describe('catalogue forms', () => {
       clientOperationId: '6f1c1b2e-5d7a-4c3e-9f10-2b3c4d5e6f70',
     });
     expect(parsed.success).toBe(true);
+  });
+
+  it('lets a price typed at each sale go without a usual price (ADR-069)', () => {
+    const values = productValues(
+      form({
+        name: 'Poisson',
+        unit: 'piece',
+        openPrice: 'true',
+        salePrice: '',
+      }),
+      'XOF',
+    );
+    expect(values).toMatchObject({ openPrice: true, salePrice: 0 });
+    expect(
+      createProductSchema.safeParse({
+        ...values,
+        clientOperationId: '6f1c1b2e-5d7a-4c3e-9f10-2b3c4d5e6f70',
+      }).success,
+    ).toBe(true);
   });
 
   it('turns unreadable numbers into errors on the right field', () => {

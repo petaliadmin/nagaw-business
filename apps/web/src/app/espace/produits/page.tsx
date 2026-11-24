@@ -369,10 +369,12 @@ async function Products({ searchParams }: PageProps<'/espace/produits'>) {
                     {product.name}
                   </span>
                   <span className="text-xl font-extrabold tabular-nums">
-                    {formatAmount(
-                      product.salePrice,
-                      organization.defaultCurrency,
-                    )}
+                    {product.openPrice
+                      ? 'Prix à taper'
+                      : formatAmount(
+                          product.salePrice,
+                          organization.defaultCurrency,
+                        )}
                   </span>
                   <span className="flex flex-wrap items-center gap-2">
                     <Badge tone={catalogBadge(product).tone}>
