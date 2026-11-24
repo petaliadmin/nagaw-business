@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { tabClasses } from '@/components/ui/button-styles';
 import type { SectionTab } from './navigation';
 
 /**
@@ -30,11 +31,7 @@ export function SectionTabs({
               <Link
                 href={tab.href}
                 aria-current={active ? 'page' : undefined}
-                className={`inline-flex min-h-12 items-center rounded-full border-2 px-4 text-base font-bold ${
-                  active
-                    ? 'border-ink bg-ink text-canvas'
-                    : 'border-transparent bg-surface text-ink hover:bg-line'
-                }`}
+                className={tabClasses(active)}
               >
                 {tab.label}
               </Link>

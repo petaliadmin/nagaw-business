@@ -9,7 +9,7 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { CONTROL } from '@/components/form-field';
 import { Alert } from '@/components/ui/alert';
-import { buttonClasses } from '@/components/ui/button-styles';
+import { buttonClasses, tabClasses } from '@/components/ui/button-styles';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
@@ -106,8 +106,7 @@ async function ShopData({ params, searchParams }: Props) {
       Object.fromEntries(Object.entries(next).filter(([, v]) => v !== '')),
     )}`;
   };
-  const pill = (on: boolean) =>
-    `min-h-12 rounded-full border-2 px-4 py-2.5 font-bold ${on ? 'border-ink bg-canvas' : 'border-transparent bg-surface'}`;
+  const pill = tabClasses;
   return (
     <>
       <Link

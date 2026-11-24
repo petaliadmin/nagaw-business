@@ -5,7 +5,7 @@ import { Suspense } from 'react';
 import { CONTROL } from '@/components/form-field';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { buttonClasses } from '@/components/ui/button-styles';
+import { buttonClasses, tabClasses } from '@/components/ui/button-styles';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
@@ -79,7 +79,7 @@ async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
               ...(q ? { q } : {}),
             })}`}
             aria-current={tab.on ? 'page' : undefined}
-            className={`min-h-12 rounded-full border-2 px-4 py-2.5 font-bold ${tab.on ? 'border-ink bg-canvas' : 'border-transparent bg-surface'}`}
+            className={tabClasses(tab.on)}
           >
             {tab.label}
           </Link>
@@ -110,7 +110,8 @@ async function Shops({ searchParams }: PageProps<'/admin/boutiques'>) {
                       : 'Aucune vente'}
                   </span>
                 </span>
-                <span className="flex flex-col items-end gap-1">
+                {/* On a phone, a row of badges under the name; beside it from 640 px. */}
+                <span className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end sm:gap-1">
                   <Badge tone="brand">{shop.plan.name}</Badge>
                   {shop.lifetime ? (
                     <Badge tone="success">À vie</Badge>
