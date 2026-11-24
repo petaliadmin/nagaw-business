@@ -1105,3 +1105,9 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Statut** : livré sur la branche `admin-abonnements` le 2026-11-23, à valider par le propriétaire. Aucune migration.
 - **Fait** : bloc « À faire » du tableau de bord (factures à encaisser avec montant et retards, demandes d'offre, boutiques suspendues) ; menu réordonné (Tableau de bord, Boutiques, Comptes, Factures, Demandes d'offre, Finances, Synchronisation, Avis) ; liste des boutiques avec pastilles « À vie », « jusqu'au … », « Facture à payer » ou « en retard » (`currentPeriodEnd`, `lifetime`, `pendingInvoices`, `overdueInvoice` ajoutés à la liste) ; fiche boutique avec ligne d'état et navigation « Sur cette fiche ».
 - **Tests** : `admin.integration-spec.ts` (nouveaux champs de la liste) ; `admin.spec.ts` de bout en bout (« À faire » mène aux factures, liens de la fiche).
+
+## L'administration à la charte de l'application
+
+- **Statut** : livré sur la branche `admin-charte` le 2026-11-24, à valider par le propriétaire. Aucune migration, aucun changement d'API.
+- **Fait** : cadre `app/admin/layout.tsx` calqué sur `AppShell` (barre latérale blanche, `MoreMenu`, barre du bas), `AdminNav` en trois formes (`sidebar`, `sheet`, `bottom`) ; `tabClasses` partagé dans `button-styles.ts` (onglets de l'administration et `SectionTabs`) ; tuiles « À faire » et pastilles de la liste des boutiques ajustées.
+- **Tests** : `admin.spec.ts` et `subscription.spec.ts` de bout en bout, ordinateur et téléphone.

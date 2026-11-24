@@ -86,7 +86,7 @@ async function Feedback({ searchParams }: PageProps<'/admin/avis'>) {
               </div>
               <p className="whitespace-pre-line">{f.message}</p>
               {f.answer && (
-                <p className="rounded-xl bg-surface-muted p-3">
+                <p className="rounded-2xl bg-surface-muted p-3">
                   Réponse : {f.answer}
                 </p>
               )}

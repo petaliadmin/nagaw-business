@@ -93,7 +93,7 @@ function ToDo({ o, currency }: { o: AdminOverviewDto; currency: string }) {
             <li key={href}>
               <Link
                 href={href}
-                className={`flex min-h-24 items-center gap-3 rounded-3xl p-4 shadow-sm ${
+                className={`flex min-h-20 items-center gap-3 rounded-3xl px-4 py-3 ${
                   count > 0
                     ? urgent
                       ? 'bg-danger-soft text-danger-ink'
@@ -101,7 +101,9 @@ function ToDo({ o, currency }: { o: AdminOverviewDto; currency: string }) {
                     : 'bg-surface text-ink'
                 }`}
               >
-                <Icon aria-hidden className="size-7 shrink-0" />
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-canvas">
+                  <Icon aria-hidden className="size-6" />
+                </span>
                 <span className="flex min-w-0 flex-col">
                   <span className="text-sm font-bold">{label}</span>
                   <span className="text-3xl font-extrabold tabular-nums">

@@ -2,6 +2,10 @@
 
 Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est close par une PR fusionnée dans `main`, puis l'étiquette `vX.Y.Z` posée par le propriétaire sur le commit de fusion.
 
+## Non publié — branche `admin-charte`
+
+- **L'administration à la charte de l'application** (ADR-063) : barre latérale blanche avec liens en pilules, sur téléphone barre du haut avec « Retour », « Administration » et « Menu » (tuiles rondes), barre du bas Accueil · Boutiques · Comptes · Factures ; onglets en pilules noires comme dans les boutiques ; cartes « À faire » sans ombre, icônes sur pastille ; pastilles de la liste des boutiques en ligne sur téléphone.
+
 ## Non publié — branche `profils-affichage`
 
 - **Recherche de l'administration corrigée** : chercher un compte par son adresse e-mail, ou une boutique dont le nom contient un chiffre, ne remonte plus les numéros de téléphone qui contiennent ces chiffres.

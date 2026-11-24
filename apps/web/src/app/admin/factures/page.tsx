@@ -4,6 +4,7 @@ import {
   type AdminInvoiceDto,
 } from '@nagaw/shared';
 import Link from 'next/link';
+import { tabClasses } from '@/components/ui/button-styles';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -38,14 +39,14 @@ async function Invoices({ searchParams }: Props) {
         <Link
           href="/admin/factures"
           aria-current={all ? undefined : 'page'}
-          className={`min-h-12 rounded-full border-2 px-4 py-2.5 font-bold ${all ? 'border-transparent bg-surface' : 'border-ink bg-canvas'}`}
+          className={tabClasses(!all)}
         >
           À encaisser
         </Link>
         <Link
           href="/admin/factures?vue=toutes"
           aria-current={all ? 'page' : undefined}
-          className={`min-h-12 rounded-full border-2 px-4 py-2.5 font-bold ${all ? 'border-ink bg-canvas' : 'border-transparent bg-surface'}`}
+          className={tabClasses(all)}
         >
           Toutes
         </Link>
