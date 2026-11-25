@@ -14,7 +14,7 @@ import { ButtonLink } from '@/components/ui/button-link';
 import { apiPublic } from '@/lib/api/server';
 import { getArticle } from '@/lib/blog/articles';
 import { siteUrl } from '@/lib/env';
-import { PLAN_LIMITS, planCount } from '@/lib/plans';
+import { PlanFeatures } from '@/components/plans/plan-features';
 import { SITE_SUMMARY } from '@/lib/seo';
 import {
   appId,
@@ -344,22 +344,10 @@ async function Pricing() {
                 </span>
                 <span className="text-lg text-ink-muted">par mois</span>
               </p>
-              <ul className="flex flex-1 flex-col gap-2">
-                {PLAN_LIMITS.map((limit) => (
-                  <li key={limit.key} className="flex items-start gap-2">
-                    <Check
-                      aria-hidden
-                      className="mt-0.5 size-5 shrink-0 text-sales-ink"
-                    />
-                    <span>
-                      {planCount(plan.limits[limit.key], limit.unit)}
-                      {limit.detail &&
-                        plan.limits[limit.key] !== null &&
-                        ` ${limit.detail}`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <PlanFeatures
+                limits={plan.limits}
+                grid={plans.data.map((p) => p.limits)}
+              />
               <ButtonLink
                 href="/inscription"
                 variant={free ? 'primary' : 'secondary'}

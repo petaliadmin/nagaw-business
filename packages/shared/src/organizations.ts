@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { PlanModule } from './plans.js';
 import { documentColorSchema } from './document-colors.js';
 import type { MemberStatus } from './members.js';
 import { roleSchema } from './permissions.js';
@@ -257,6 +258,10 @@ export interface OrganizationDto {
   countsStockByDefault: boolean;
   /** Customer orders, an option the merchant turns on (ADR-072). */
   ordersEnabled: boolean;
+  /** Modules the shop's offer includes (ADR-075). */
+  planModules: PlanModule[];
+  /** Months of history the offer shows; null: all of it (ADR-075). */
+  historyMonths: number | null;
   /** Colour of the shop's documents, `#rrggbb` (ADR-044). */
   documentColor: string;
   /** Changes with the logo (cache key); null without logo. */

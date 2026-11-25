@@ -8,6 +8,7 @@ import type {
   NotificationCategory,
   NotificationSeverity,
   OrderStatus,
+  PlanModule,
   PaymentMethod,
   ProductKind,
   ProductPhotoType,
@@ -654,8 +655,26 @@ export interface PlansTable {
   position: number;
   /** Null: twelve months at the monthly price (ADR-073). */
   yearly_price: Numeric | null;
+  /** Limits of ADR-075; null: no limit. */
+  max_sales_per_month: number | null;
+  max_invoices_per_month: number | null;
+  max_quotes_per_month: number | null;
+  max_customers: number | null;
+  max_suppliers: number | null;
+  history_months: number | null;
+  modules: Generated<PlanModule[]>;
+  updated_by: string | null;
   created_at: ColumnType<Date, never, never>;
   updated_at: ColumnType<Date, never, never>;
+}
+
+export interface PlanRevisionsTable {
+  id: Generated<string>;
+  plan_key: string;
+  changed_by: string;
+  before: unknown;
+  after: unknown;
+  created_at: ColumnType<Date, never, never>;
 }
 
 export interface SubscriptionsTable {
@@ -862,6 +881,7 @@ export interface Database {
   'app.cash_closings': CashClosingsTable;
   'app.expense_receipts': ExpenseReceiptsTable;
   'app.plans': PlansTable;
+  'app.plan_revisions': PlanRevisionsTable;
   'app.subscriptions': SubscriptionsTable;
   'app.plan_change_requests': PlanChangeRequestsTable;
   'app.subscription_invoices': SubscriptionInvoicesTable;

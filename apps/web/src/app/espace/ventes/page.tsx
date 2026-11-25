@@ -29,6 +29,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Figure } from '@/components/ui/figure';
 import { InlineAmount } from '@/components/ui/inline-amount';
 import { PageFallback } from '@/components/ui/page-fallback';
+import { HistoryNote } from '@/components/plans/history-note';
 import { PageHeader } from '@/components/ui/page-header';
 import { Pagination } from '@/components/ui/pagination';
 import { apiAsUser } from '@/lib/api/server';
@@ -116,6 +117,7 @@ async function Sales({ searchParams }: PageProps<'/espace/ventes'>) {
           roleHasPermission(organization.role, 'sales.create') ? (
             <ButtonLink href="/caisse">
               <Plus aria-hidden className="size-5" />
+              <HistoryNote months={organization.historyMonths} />
               Nouvelle vente
             </ButtonLink>
           ) : undefined

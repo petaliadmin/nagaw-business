@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HistoryNote } from '@/components/plans/history-note';
 import { PageHeader } from '@/components/ui/page-header';
 import { Pagination } from '@/components/ui/pagination';
 import { apiAsUser } from '@/lib/api/server';
@@ -66,6 +67,8 @@ export async function DocumentList({
   return (
     <>
       <PageHeader title={title} description={description} />
+      {/* What is still owed always shows (ADR-075). */}
+      {!owing && <HistoryNote months={organization.historyMonths} />}
 
       {!documents.ok ? (
         <Alert tone="error">

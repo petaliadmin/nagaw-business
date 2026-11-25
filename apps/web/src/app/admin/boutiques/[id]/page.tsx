@@ -1,5 +1,9 @@
 import {
   formatAmount,
+  historyLabel,
+  PLAN_MODULE_LABELS,
+  PLAN_MODULES,
+  USAGE_OF,
   SUBSCRIPTION_PERIOD_LABELS,
   type AdminShopDto,
   type PlanDto,
@@ -24,6 +28,7 @@ import { buttonClasses } from '@/components/ui/button-styles';
 import { Card, Stat } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
+import { PLAN_LIMITS } from '@/lib/plans';
 import { requirePlatformAdmin } from '@/lib/admin/load';
 import { apiAsUser } from '@/lib/api/server';
 import { formatContact, formatDateTime } from '@/lib/format';
@@ -160,19 +165,32 @@ async function Shop({ params }: PageProps<'/admin/boutiques/[id]'>) {
       )}
       <Card title={`Offre ${s.plan.name}`} titleId="plan" icon={Crown}>
         <dl className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Stat
-            label="Produits"
-            value={`${s.usage.products} / ${s.limits.products ?? 'sans limite'}`}
-          />
-          <Stat
-            label="Personnes"
-            value={`${s.usage.members} / ${s.limits.members}`}
-          />
-          <Stat
-            label="Téléphones"
-            value={`${s.usage.devices} / ${s.limits.devices}`}
-          />
+          {/* Counts only, never the content (ADR-040, ADR-075). */}
+          {PLAN_LIMITS.filter((l) => l.always || s.limits[l.key] !== null).map(
+            (l) => (
+              <Stat
+                key={l.key}
+                label={l.label}
+                value={`${s.usage[USAGE_OF[l.key]]} / ${s.limits[l.key] ?? 'sans limite'}`}
+              />
+            ),
+          )}
         </dl>
+        {(s.limits.historyMonths !== null ||
+          s.limits.modules.length < PLAN_MODULES.length) && (
+          <p className="mb-4 text-ink-muted">
+            {s.limits.historyMonths !== null &&
+              `Historique : ${historyLabel(s.limits.historyMonths)}. `}
+            {s.limits.modules.length < PLAN_MODULES.length &&
+              `Modules : ${
+                s.limits.modules.length === 0
+                  ? 'aucun'
+                  : s.limits.modules
+                      .map((m) => PLAN_MODULE_LABELS[m])
+                      .join(', ')
+              }.`}
+          </p>
+        )}
         {plans.ok ? (
           <SetPlanForm
             shopId={s.id}

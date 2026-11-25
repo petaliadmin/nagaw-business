@@ -15,6 +15,7 @@ import { invalid, toNumber } from '../catalog/catalog.errors.js';
 import type { TenantContext } from '../common/request-context.js';
 import { today } from '../common/today.js';
 import { DatabaseService } from '../database/database.service.js';
+import { laterDay, outsideHistory, reportsFrom } from '../plans/plan-limits.js';
 import { addDays, TreasuryService } from './treasury.service.js';
 
 /**
@@ -34,9 +35,14 @@ export class StatsService {
       this.database.db,
       organizationId,
     );
-    const to = query.to ?? today(timeZone);
-    const from = query.from ?? to;
-    if (from > to) throw invalid('to', 'La fin est avant le début.');
+    const day = today(timeZone);
+    const to = query.to ?? day;
+    const asked = query.from ?? to;
+    if (asked > to) throw invalid('to', 'La fin est avant le début.');
+    // What the offer shows (ADR-075): older sales stay, only not counted.
+    const floor = await reportsFrom(this.database.db, organizationId, day);
+    if (floor.from && to < floor.from) throw outsideHistory(floor.statistics);
+    const from = laterDay(asked, floor.from) ?? asked;
     return { timeZone, from, to };
   }
 
@@ -188,7 +194,11 @@ export class StatsService {
       readable.map(async (shop) => {
         const day = today(shop.timezone);
         const to = query.to ?? day;
-        const from = query.from ?? addDays(to, -29);
+        // What each shop's offer shows (ADR-075).
+        const floor = await reportsFrom(db, shop.id, day);
+        const from =
+          laterDay(query.from ?? addDays(to, -29), floor.from) ??
+          addDays(to, -29);
         const { rows } = await sql<{
           today_revenue: string;
           today_count: string;

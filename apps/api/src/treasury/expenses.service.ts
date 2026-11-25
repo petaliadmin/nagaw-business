@@ -31,6 +31,7 @@ import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
 import { takeSequenceNumber } from '../database/sequences.js';
 import { AlertsService } from '../notifications/alerts.service.js';
+import { historyFrom, laterDay } from '../plans/plan-limits.js';
 import { addDays, TreasuryService } from './treasury.service.js';
 
 const categoryNotFound = () =>
@@ -238,7 +239,9 @@ export class ExpensesService {
       tenant.organizationId,
     );
     const to = query.to ?? today(timeZone);
-    const from = query.from ?? addDays(to, -30);
+    // What the offer shows (ADR-075): older expenses stay, only not listed.
+    const shown = await historyFrom(this.database.db, tenant.organizationId);
+    const from = laterDay(query.from ?? addDays(to, -30), shown) ?? to;
     const list = this.select(this.database.db, tenant.organizationId)
       .where('e.occurred_on', '>=', from)
       .where('e.occurred_on', '<=', to)

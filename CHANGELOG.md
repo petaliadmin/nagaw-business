@@ -2,6 +2,11 @@
 
 Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est close par une PR fusionnée dans `main`, puis l'étiquette `vX.Y.Z` posée par le propriétaire sur le commit de fusion.
 
+## Non publié — branche `limites-offres`
+
+- **Limites des offres réglées depuis l'administration** (ADR-075) : nouvelle page « Offres » pour changer les prix, les limites et les modules de chaque offre, sans déploiement, avec l'historique des changements. Nouvelles limites : ventes, factures et devis par mois, clients, fournisseurs, historique affiché ; modules réservables : Comptabilité, Trésorerie et dépenses, Commandes des clients, Rapports et statistiques. Au départ, rien n'est limité de plus : aucune boutique ne perd quoi que ce soit avant que la grille soit réglée.
+- Côté boutique : jauges sur « Abonnement », grille des offres qui dit ce que chacune comprend ou non, page explicative pour un module non compris (« Voir les offres »), mention de l'historique affiché sur les listes, alerte sur l'Accueil quand les ventes du mois dépassent l'offre (aucune vente n'est refusée).
+
 ## Non publié — branche `admin-charte`
 
 - **L'administration à la charte de l'application** (ADR-063) : barre latérale blanche avec liens en pilules, sur téléphone barre du haut avec « Retour », « Administration » et « Menu » (tuiles rondes), barre du bas Accueil · Boutiques · Comptes · Factures ; onglets en pilules noires comme dans les boutiques ; cartes « À faire » sans ombre, icônes sur pastille ; pastilles de la liste des boutiques en ligne sur téléphone.

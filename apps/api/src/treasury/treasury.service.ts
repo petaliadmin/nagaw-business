@@ -27,6 +27,7 @@ import { today } from '../common/today.js';
 import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
 import type { Database } from '../database/schema.js';
+import { historyFrom, laterDay, outsideHistory } from '../plans/plan-limits.js';
 import { movementsCte } from './movements.js';
 
 const accountNotFound = () =>
@@ -214,8 +215,12 @@ export class TreasuryService {
     const timeZone = await this.timeZone(db, organizationId);
     const row = await this.account(db, organizationId, query.accountId);
     const to = query.to ?? today(timeZone);
-    const from = query.from ?? addDays(to, -30);
-    if (from > to) throw invalid('to', 'La fin est avant le début.');
+    const asked = query.from ?? addDays(to, -30);
+    if (asked > to) throw invalid('to', 'La fin est avant le début.');
+    // What the offer shows (ADR-075); balances still count everything.
+    const shown = await historyFrom(db, organizationId);
+    if (shown && to < shown) throw outsideHistory(true);
+    const from = laterDay(asked, shown) ?? asked;
     const [before, inPeriod, untilTo, allSums, lastClosingDay] =
       await Promise.all([
         this.sums(db, organizationId, timeZone, addDays(from, -1)),

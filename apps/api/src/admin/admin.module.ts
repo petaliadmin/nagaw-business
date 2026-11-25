@@ -5,6 +5,7 @@ import { PhoneAuthModule } from '../phone-auth/phone-auth.module.js';
 import { SalesModule } from '../sales/sales.module.js';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module.js';
 import { AdminDataService } from './admin-data.service.js';
+import { AdminPlansService } from './admin-plans.service.js';
 import { AdminController } from './admin.controller.js';
 import { AdminService } from './admin.service.js';
 import { PlatformAdminGuard } from './platform-admin.guard.js';
@@ -18,6 +19,11 @@ import { PlatformAdminGuard } from './platform-admin.guard.js';
     DocumentsModule,
   ],
   controllers: [AdminController],
-  providers: [AdminService, AdminDataService, PlatformAdminGuard],
+  providers: [
+    AdminService,
+    AdminDataService,
+    AdminPlansService,
+    PlatformAdminGuard,
+  ],
 })
 export class AdminModule {}

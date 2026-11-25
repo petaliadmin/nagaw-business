@@ -15,7 +15,7 @@ import {
 import type { Selectable, Transaction } from 'kysely';
 import { PDFDocument } from 'pdf-lib';
 import { AuditService } from '../audit/audit.service.js';
-import { invalid } from '../catalog/catalog.errors.js';
+import { invalid, type Executor } from '../catalog/catalog.errors.js';
 import { detectImageType } from '../catalog/products.service.js';
 import { ApiException } from '../common/api-exception.js';
 import type { AuthContext } from '../common/request-context.js';
@@ -112,7 +112,7 @@ export class OrganizationsService {
           });
 
           return {
-            ...toOrganizationDto(organization),
+            ...(await withPlan(trx, toOrganizationDto(organization))),
             role: 'owner' as Role,
             maxDiscountBasisPoints: null,
             platformAccess: false,
@@ -140,7 +140,7 @@ export class OrganizationsService {
       .selectAll()
       .where('id', '=', organizationId)
       .executeTakeFirstOrThrow();
-    return toOrganizationDto(organization);
+    return withPlan(this.database.db, toOrganizationDto(organization));
   }
 
   async update(
@@ -189,7 +189,7 @@ export class OrganizationsService {
         requestId,
       });
 
-      return toOrganizationDto(updated);
+      return withPlan(trx, toOrganizationDto(updated));
     });
   }
 
@@ -341,7 +341,7 @@ export class OrganizationsService {
       targetId: organizationId,
       requestId,
     });
-    return toOrganizationDto(updated);
+    return withPlan(trx, toOrganizationDto(updated));
   }
 
   /** The shop's current logo (ADR-044). */
@@ -421,7 +421,7 @@ export class OrganizationsService {
         targetId: organizationId,
         requestId,
       });
-      return toOrganizationDto(updated);
+      return withPlan(trx, toOrganizationDto(updated));
     });
   }
 
@@ -446,7 +446,7 @@ export class OrganizationsService {
         targetId: organizationId,
         requestId,
       });
-      return toOrganizationDto(updated);
+      return withPlan(trx, toOrganizationDto(updated));
     });
   }
 
@@ -507,6 +507,14 @@ export class OrganizationsService {
         .execute(),
     ]);
     const member = new Set(memberships.map((row) => row.id));
+    const plans = await plansOf(db, [
+      ...memberships.map((row) => row.id),
+      ...accesses.map((row) => row.id),
+    ]);
+    const toOrganizationDto = (row: Selectable<OrganizationsTable>) => ({
+      ...toBaseDto(row),
+      ...plans.get(row.id)!,
+    });
     return [
       ...memberships.map((row) => ({
         ...toOrganizationDto(row),
@@ -551,9 +559,40 @@ const UPDATABLE = {
   Record<keyof UpdateOrganizationInput, keyof OrganizationsTable>
 >;
 
+type PlanAccess = Pick<OrganizationDto, 'planModules' | 'historyMonths'>;
+
+/** What the shop's offer opens (ADR-075), for its menus and lists. */
+async function withPlan(
+  executor: Executor,
+  dto: Omit<OrganizationDto, keyof PlanAccess>,
+): Promise<OrganizationDto> {
+  return { ...dto, ...(await plansOf(executor, [dto.id])).get(dto.id)! };
+}
+
+async function plansOf(
+  executor: Executor,
+  ids: string[],
+): Promise<Map<string, PlanAccess>> {
+  if (ids.length === 0) return new Map();
+  const rows = await executor
+    .selectFrom('app.subscriptions as s')
+    .innerJoin('app.plans as p', 'p.key', 's.plan_key')
+    .select(['s.organization_id', 'p.modules', 'p.history_months'])
+    .where('s.organization_id', 'in', ids)
+    .execute();
+  return new Map(
+    rows.map((r) => [
+      r.organization_id,
+      { planModules: r.modules, historyMonths: r.history_months },
+    ]),
+  );
+}
+
+const toBaseDto = toOrganizationDto;
+
 function toOrganizationDto(
   row: Selectable<OrganizationsTable>,
-): OrganizationDto {
+): Omit<OrganizationDto, keyof PlanAccess> {
   return {
     id: row.id,
     name: row.name,

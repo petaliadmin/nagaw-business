@@ -8,6 +8,11 @@ test.beforeAll(async () => {
   await resetBackend();
 });
 
+// An offer changed here must not reach the next files.
+test.afterAll(async () => {
+  await resetBackend();
+});
+
 test('a shop owner cannot open the administration', async ({
   page,
   context,
@@ -278,4 +283,50 @@ test('once entered with a reason, the platform archives a product and restores i
   await page.getByRole('link', { name: 'Archivés' }).click();
   await products.getByRole('button', { name: /^Restaurer : Savon/ }).click();
   await expect(page.getByText('Rien ici')).toBeVisible();
+});
+
+test('the platform sets the limits of an offer, and the shop sees them (ADR-075)', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  // Acme back on Pro: an earlier test of this file changes its offer.
+  await resetBackend();
+  await signInAs(context, 'binta', baseURL!);
+  await page.goto('/admin/offres');
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Offres' }),
+  ).toBeVisible();
+  await expectAccessible(page, 'offres');
+  // Acme is on Pro.
+  const pro = page.getByRole('region', { name: 'Offre Pro' });
+  await pro.getByLabel('Clients', { exact: true }).fill('50');
+  await pro.getByLabel('Historique affiché (mois)').fill('2');
+  await pro.getByRole('checkbox', { name: 'Comptabilité' }).uncheck();
+  const save = pro.getByRole('button', { name: 'Enregistrer l’offre Pro' });
+  await save.click();
+  // Under 3 months, refused: nothing changes.
+  await expect(pro.getByText(/Au moins 3 mois/).first()).toBeVisible();
+  // What was typed stays.
+  await expect(pro.getByLabel('Clients', { exact: true })).toHaveValue('50');
+  await pro.getByLabel('Historique affiché (mois)').fill('6');
+  await save.click();
+  await expect(pro.getByText(/Offre Pro enregistrée/)).toBeVisible();
+  await expect(pro.getByText(/Comptabilité retiré/)).toBeVisible();
+
+  // The owner of Acme: accounting explained, never an empty page.
+  await signInAs(context, 'awa', baseURL!);
+  await page.goto('/espace/comptabilite');
+  await expect(
+    page.getByRole('heading', { name: 'Pas compris dans votre offre' }),
+  ).toBeVisible();
+  await expectAccessible(page, 'module non compris');
+  await page.getByRole('link', { name: 'Voir les offres' }).click();
+  const current = page.getByRole('region', { name: 'Offre Pro' });
+  await expect(current.getByText('Clients', { exact: true })).toBeVisible();
+  await expect(current.getByText('0 sur 50')).toBeVisible();
+  await expect(current.getByText(/Historique affiché/)).toBeVisible();
+  // The grid says what each offer leaves out.
+  const grid = page.getByRole('listitem', { name: 'Offre Pro' });
+  await expect(grid.getByText(/Comptabilité.*non compris/)).toBeVisible();
 });

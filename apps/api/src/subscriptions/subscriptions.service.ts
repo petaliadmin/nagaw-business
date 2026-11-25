@@ -2,6 +2,7 @@ import { sql } from 'kysely';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import type {
   PlanDto,
+  PlanLimits,
   SubscriptionDto,
   SubscriptionPeriod,
   SubscriptionSettingsInput,
@@ -19,20 +20,33 @@ import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
 import type { PlansTable } from '../database/schema.js';
+import { planLimitsOf, planUsageExtra } from '../plans/plan-limits.js';
 import { BillingService, yearlyPriceOf } from './billing.service.js';
 
-function toPlanDto(row: Selectable<PlansTable>): PlanDto {
+/** What an offer gives, as its row says (ADR-029, ADR-075). */
+export function planLimitsOfRow(row: Selectable<PlansTable>): PlanLimits {
+  return {
+    products: row.max_products,
+    members: row.max_members,
+    devices: row.max_devices,
+    salesPerMonth: row.max_sales_per_month,
+    invoicesPerMonth: row.max_invoices_per_month,
+    quotesPerMonth: row.max_quotes_per_month,
+    customers: row.max_customers,
+    suppliers: row.max_suppliers,
+    historyMonths: row.history_months,
+    modules: row.modules,
+  };
+}
+
+export function toPlanDto(row: Selectable<PlansTable>): PlanDto {
   return {
     key: row.key,
     name: row.name,
     monthlyPrice: toNumber(row.monthly_price),
     yearlyPrice: yearlyPriceOf(row),
     currency: row.currency,
-    limits: {
-      products: row.max_products,
-      members: row.max_members,
-      devices: row.max_devices,
-    },
+    limits: planLimitsOfRow(row),
   };
 }
 
@@ -88,39 +102,44 @@ export class SubscriptionsService {
     organizationId: string,
     executor: Executor = this.database.db,
   ): Promise<SubscriptionDto> {
-    const [subscription, org, products, members, devices, pending, settings] =
-      await Promise.all([
-        executor
-          .selectFrom('app.subscriptions')
-          .select([
-            'plan_key',
-            'started_at',
-            'period',
-            'current_period_end',
-            'auto_renew',
-            'lifetime',
-          ])
-          .where('organization_id', '=', organizationId)
-          .executeTakeFirstOrThrow(),
-        executor
-          .selectFrom('app.organizations')
-          .select(['max_products', 'max_members', 'max_devices'])
-          .where('id', '=', organizationId)
-          .executeTakeFirstOrThrow(),
-        this.count(executor, 'app.products', organizationId),
-        this.count(executor, 'app.organization_memberships', organizationId),
-        this.count(executor, 'app.devices', organizationId),
-        executor
-          .selectFrom('app.plan_change_requests')
-          .select(['id', 'plan_key', 'period', 'created_at'])
-          .where('organization_id', '=', organizationId)
-          .where('status', '=', 'pending')
-          .executeTakeFirst(),
-        executor
-          .selectFrom('app.platform_settings')
-          .select(['payment_wave_number', 'payment_orange_money_number'])
-          .executeTakeFirst(),
-      ]);
+    const [
+      subscription,
+      limits,
+      extra,
+      products,
+      members,
+      devices,
+      pending,
+      settings,
+    ] = await Promise.all([
+      executor
+        .selectFrom('app.subscriptions')
+        .select([
+          'plan_key',
+          'started_at',
+          'period',
+          'current_period_end',
+          'auto_renew',
+          'lifetime',
+        ])
+        .where('organization_id', '=', organizationId)
+        .executeTakeFirstOrThrow(),
+      planLimitsOf(executor, organizationId),
+      planUsageExtra(executor, organizationId),
+      this.count(executor, 'app.products', organizationId),
+      this.count(executor, 'app.organization_memberships', organizationId),
+      this.count(executor, 'app.devices', organizationId),
+      executor
+        .selectFrom('app.plan_change_requests')
+        .select(['id', 'plan_key', 'period', 'created_at'])
+        .where('organization_id', '=', organizationId)
+        .where('status', '=', 'pending')
+        .executeTakeFirst(),
+      executor
+        .selectFrom('app.platform_settings')
+        .select(['payment_wave_number', 'payment_orange_money_number'])
+        .executeTakeFirst(),
+    ]);
     const plan = await this.plan(executor, subscription.plan_key);
     if (!plan)
       throw new Error(`Subscription to unknown plan ${subscription.plan_key}`);
@@ -130,12 +149,8 @@ export class SubscriptionsService {
     return {
       plan,
       startedAt: subscription.started_at.toISOString(),
-      usage: { products, members, devices },
-      limits: {
-        products: org.max_products,
-        members: org.max_members,
-        devices: org.max_devices,
-      },
+      usage: { products, members, devices, ...extra },
+      limits,
       pendingRequest:
         pending && pendingPlan
           ? {

@@ -923,7 +923,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-073 — Abonnements d'un mois ou d'un an, renouvellement et factures, abonnement à vie
 
-- **Statut** : **Proposée**, branche `admin-abonnements` (demande du propriétaire du 2026-11-23).
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-11-23, fusionnée le 2026-11-24, PR #58).
 - **Contexte** : un abonnement payant n'avait pas de date de fin ; la plateforme changeait l'offre à la main après un paiement reçu (ADR-056), sans rien pour le renouveler ni pour réclamer un paiement.
 - **Décision** :
   - une offre payante dure **1 mois**, ou **1 an** si la boutique le choisit (`subscriptions.period`, `current_period_end`) ; le prix d'un an est `plans.yearly_price`, ou douze mois quand il est vide ; une offre gratuite n'a pas de fin ;
@@ -938,7 +938,7 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 
 ## ADR-074 — Archiver depuis l'administration : boutiques, comptes, données d'une boutique
 
-- **Statut** : **Proposée**, branche `admin-abonnements` (demande du propriétaire du 2026-11-23).
+- **Statut** : **Acceptée** (demande du propriétaire du 2026-11-23, fusionnée le 2026-11-24, PR #58).
 - **Contexte** : l'administration pouvait suspendre une boutique, mais ni ranger une boutique fermée pour de bon, ni fermer un compte, ni faire le ménage dans les données d'une boutique sans y entrer et passer par chaque écran.
 - **Décision** :
   - **archiver ne détruit rien** : ventes, factures et historique restent (comptabilité et loi) ; tout se restaure ; chaque action demande un motif et une confirmation, et s'inscrit au journal de la boutique au nom de « Nagaw (plateforme) » ;
@@ -947,3 +947,18 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **données d'une boutique** : produits, clients, fournisseurs, catégories (archiver, restaurer), ventes et factures émises (annuler), depuis la page « Données » de la fiche boutique. Elles ne s'ouvrent **qu'après être entré dans la boutique avec un motif** (ADR-040 : le contenu d'une boutique n'est jamais visible autrement, `403 SHOP_ACCESS_REQUIRED`). Chaque action passe par le service de la boutique, avec ses règles (stock rendu, avoir pour une facture), et ajoute au journal `platform.data_changed` avec le motif ;
   - « Vente au montant » et les frais de livraison (produits système) n'apparaissent pas.
 - **Conséquences** : appliquer `20261123140000_archives` avant l'API. Une requête authentifiée lit désormais `user_profiles.archived_at` (clé primaire).
+
+## ADR-075 — Limites des offres réglées depuis l'administration : volumes du mois, fichiers, modules, historique
+
+- **Statut** : **Proposée**, branche `limites-offres` (demande du propriétaire du 2026-11-25 : « limiter les ressources en fonction du type d'abonnement » ; choix : volumes par mois, clients et fournisseurs, modules réservés, historique ; valeurs réglées depuis l'administration).
+- **Contexte** : une offre limitait les produits, les personnes et les téléphones de caisse (ADR-029, ADR-054), réglés en base seulement. Ventes, factures, trésorerie et comptabilité étaient dans toutes les offres.
+- **Décision** :
+  - **nouvelles limites d'une offre** (`plans`, vides = sans limite) : ventes par mois, factures par mois, devis par mois, clients, fournisseurs, mois d'historique, et **modules compris** (`modules`) parmi Comptabilité, Trésorerie (caisse, dépenses, clôtures), Commandes des clients, Rapports et statistiques ;
+  - **page « Offres » de l'administration** : prix du mois et de l'an, toutes les limites et les modules de chaque offre, modifiables sans déploiement ; chaque changement est gardé dans `plan_revisions` (avant, après, qui, quand). Les plafonds de produits, personnes et téléphones changés sur une offre s'appliquent aussitôt aux boutiques de cette offre (déclencheur, comme au changement d'offre) ; **rien de déjà créé n'est supprimé** : seuls les ajouts au-delà sont refusés ;
+  - **valeurs de départ** : les nouvelles limites sont vides et tous les modules compris, pour qu'aucune boutique ne perde rien à la mise en ligne ; le propriétaire règle la grille dans « Offres » ;
+  - **ventes du mois : limite souple**. Une vente est faite dans la boutique, souvent hors ligne (ADR-020) : la refuser à la synchronisation ferait perdre une vente déjà encaissée et le stock déjà sorti. Elle est donc toujours acceptée et comptée ; au-delà, la boutique est prévenue (Accueil, Abonnement) et l'administration voit une alerte ;
+  - **factures et devis du mois : limite stricte**, numérotés en ligne par le serveur : au-delà, `409 PLAN_LIMIT_REACHED`. Compte chaque document créé dans le mois (brouillon, annulé ou non), dans le fuseau de la boutique ; une facture faite depuis une vente ou un devis compte comme facture ;
+  - **clients et fournisseurs : limite stricte** à la création en ligne ; un client créé hors ligne à la caisse est **toujours accepté** à la synchronisation (une vente peut le désigner) ;
+  - **modules** : l'API refuse les routes d'un module absent de l'offre (`403 MODULE_NOT_IN_PLAN`, décorateur `@RequireModule`, vérifié par la garde de la boutique) ; l'écran garde l'entrée du menu et montre ce que le module apporte avec « Changer d'offre » ; l'Accueil (chiffres du jour, ventes, commandes à préparer) reste ouvert à tous ;
+  - **historique** : les listes de ventes, factures et devis, les rapports, les mouvements de trésorerie et les dépenses ne montrent que les N derniers mois. **Rien n'est effacé** : changer d'offre rend tout l'historique visible. La **comptabilité n'est pas concernée** (conservation légale SYSCOHADA) ; une vente ou une facture ouverte directement (lien, client) reste lisible.
+- **Conséquences** : migration `20261125100000_plan_limits` à appliquer avant l'API. Une route d'un module lit l'offre de la boutique à chaque requête (clé primaire `subscriptions`, jointure `plans`).

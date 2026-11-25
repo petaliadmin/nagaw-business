@@ -15,6 +15,7 @@ import { ButtonLink } from '@/components/ui/button-link';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FoldCard } from '@/components/ui/fold-card';
 import { PageFallback } from '@/components/ui/page-fallback';
+import { HistoryNote } from '@/components/plans/history-note';
 import { PageHeader } from '@/components/ui/page-header';
 import { Pagination } from '@/components/ui/pagination';
 import { apiAsUser } from '@/lib/api/server';
@@ -78,6 +79,7 @@ async function Expenses({
         title="Dépenses"
         description="Ce que la boutique paie en dehors de la marchandise vendue."
       />
+      <HistoryNote months={organization.historyMonths} />
 
       {raw.enregistree === '1' && (
         <Alert tone="success">Dépense enregistrée.</Alert>

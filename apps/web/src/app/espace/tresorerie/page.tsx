@@ -14,6 +14,7 @@ import { Card, Stat } from '@/components/ui/card';
 import { Figure } from '@/components/ui/figure';
 import { FoldCard } from '@/components/ui/fold-card';
 import { PageFallback } from '@/components/ui/page-fallback';
+import { HistoryNote } from '@/components/plans/history-note';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { accountOptions } from '@/lib/treasury/labels';
@@ -65,6 +66,7 @@ async function Treasury({ searchParams }: PageProps<'/espace/tresorerie'>) {
         title="Argent"
         description="L’argent de la boutique, caisse par caisse."
       />
+      <HistoryNote months={organization.historyMonths} />
 
       {/* The answer first, blurred by « Masquer », then the gestures of
           every day in round buttons (ADR-063). */}

@@ -33,6 +33,7 @@ import {
   CurrentUser,
   RequestId,
 } from '../tenancy/current.decorator.js';
+import { RequireModule } from '../tenancy/require-module.decorator.js';
 import { RequirePermission } from '../tenancy/require-permission.decorator.js';
 import { OrdersService } from './orders.service.js';
 
@@ -40,6 +41,7 @@ import { OrdersService } from './orders.service.js';
  * Customer orders (ADR-072). Sellers take orders and deposits and hand
  * them over; the owner and the managers cancel and refund.
  */
+@RequireModule('orders')
 @Controller('orders')
 export class OrdersController {
   constructor(

@@ -28,6 +28,8 @@ function org(id: string): OrganizationWithRoleDto {
     hiddenSections: [],
     countsStockByDefault: true,
     ordersEnabled: false,
+    planModules: ['accounting', 'treasury', 'orders', 'statistics'],
+    historyMonths: null,
     logoVersion: null,
     signatureVersion: null,
     stampVersion: null,

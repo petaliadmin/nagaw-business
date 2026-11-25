@@ -12,6 +12,7 @@ import {
   type StatsSummaryDto,
   type StockSummaryDto,
   type StockSuggestionDto,
+  type SubscriptionDto,
   type OrdersSummaryDto,
   type CustomerDto,
   type SaleListItemDto,
@@ -924,6 +925,7 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
     recent,
     suggestions,
     orders,
+    subscription,
   ] = await Promise.all([
     // Only to name the authors of the recent activity.
     canReadAudit
@@ -972,13 +974,28 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
         })
       : null,
     // Customer orders, once turned on (ADR-072).
-    organization.ordersEnabled && roleHasPermission(role, 'orders.read')
+    organization.ordersEnabled &&
+    organization.planModules.includes('orders') &&
+    roleHasPermission(role, 'orders.read')
       ? apiAsUser<OrdersSummaryDto>(accessToken, {
           path: '/orders/summary',
           organizationId: organization.id,
         })
       : null,
+    // Sales beyond the month of the offer are kept, and said (ADR-075).
+    roleHasPermission(role, 'subscription.read')
+      ? apiAsUser<SubscriptionDto>(accessToken, {
+          path: '/subscription',
+          organizationId: organization.id,
+        })
+      : null,
   ]);
+  const salesCap = subscription?.ok
+    ? {
+        used: subscription.data.usage.salesThisMonth,
+        limit: subscription.data.limits.salesPerMonth,
+      }
+    : null;
 
   // Stock is shown where something is counted: by default, or one product.
   const countsStock =
@@ -1061,6 +1078,25 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
     <>
       {/* The shop's name is in the top bar: no title to repeat it. */}
       <h1 className="sr-only">{organization.name}</h1>
+
+      {salesCap &&
+        salesCap.limit !== null &&
+        salesCap.used >= salesCap.limit && (
+          <Alert tone="warning">
+            <span className="block font-bold">
+              {salesCap.used} ventes ce mois-ci : votre offre en prévoit{' '}
+              {salesCap.limit}.
+            </span>
+            Toutes vos ventes restent enregistrées. Pour continuer à vendre
+            autant, passez à une offre plus grande.{' '}
+            <Link
+              href="/espace/abonnement"
+              className="font-semibold underline underline-offset-4"
+            >
+              Voir les offres
+            </Link>
+          </Alert>
+        )}
 
       {stats && statsBefore && (
         <>

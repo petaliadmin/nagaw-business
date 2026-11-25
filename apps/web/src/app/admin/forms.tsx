@@ -10,7 +10,11 @@ import { PinField } from '@/components/phone-field';
 import { initialFormState } from '@/lib/auth/form-state';
 import {
   formatAmount,
+  PLAN_MODULE_DESCRIPTIONS,
+  PLAN_MODULE_LABELS,
+  PLAN_MODULES,
   SUBSCRIPTION_PERIOD_LABELS,
+  type AdminPlanDto,
   type SubscriptionInvoiceDto,
 } from '@nagaw/shared';
 import { useConfirmedSubmit } from '@/components/ui/confirm-dialog';
@@ -27,6 +31,7 @@ import {
   setMemberPin,
   setShopPlan,
   suspendShop,
+  updatePlan,
 } from './actions';
 
 export function SetPinForm({
@@ -575,6 +580,215 @@ export function ShopDataAction({
       >
         {DATA_ACTION_LABELS[action]}
       </SubmitButton>
+    </ActionForm>
+  );
+}
+
+/** « à la boutique de l’offre », « aux 3 boutiques de l’offre ». */
+export function shopsOf(n: number): string {
+  if (n === 0) return 'aux boutiques qui la prendront';
+  return n === 1 ? 'à la boutique de l’offre' : `aux ${n} boutiques de l’offre`;
+}
+
+/** A number of the offer: empty means « sans limite » where it may be. */
+function LimitField({
+  plan,
+  name,
+  label,
+  value,
+  error,
+  optional = true,
+  hint,
+  placeholder = 'Sans limite',
+}: {
+  plan: string;
+  name: string;
+  label: string;
+  value: number | null;
+  error: string | undefined;
+  optional?: boolean;
+  hint?: string;
+  placeholder?: string;
+}) {
+  return (
+    <FormField
+      label={label}
+      name={name}
+      id={`${plan}-${name}`}
+      inputMode="numeric"
+      autoComplete="off"
+      defaultValue={value === null ? '' : String(value)}
+      placeholder={optional ? placeholder : undefined}
+      hint={hint ?? (optional ? 'Vide : sans limite.' : undefined)}
+      error={error}
+    />
+  );
+}
+
+/**
+ * Prices, limits and modules of an offer (ADR-075). Saved, it applies at
+ * once to every shop of the offer: what they have stays, only what they
+ * add beyond is refused.
+ */
+export function PlanForm({ plan }: { plan: AdminPlanDto }) {
+  const [state, action, pending] = useActionState(updatePlan, initialFormState);
+  const errors = state.status === 'error' ? (state.fieldErrors ?? {}) : {};
+  const { limits } = plan;
+  const label = `Enregistrer l’offre ${plan.name}`;
+  return (
+    // Keeps what was typed when a number is refused.
+    <ActionForm
+      action={action}
+      pending={pending}
+      noValidate
+      className="flex flex-col gap-6"
+    >
+      <input type="hidden" name="planKey" value={plan.key} />
+      <FormMessage state={state} />
+
+      <fieldset className="flex flex-col gap-4">
+        <legend className="mb-2 text-lg font-bold">Prix (F CFA)</legend>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <LimitField
+            plan={plan.key}
+            name="monthlyPrice"
+            label="Par mois"
+            value={plan.monthlyPrice}
+            optional={false}
+            hint="0 : offre gratuite."
+            error={errors.monthlyPrice}
+          />
+          <LimitField
+            plan={plan.key}
+            name="yearlyPrice"
+            label="Pour un an"
+            value={plan.yearlyPriceSet}
+            placeholder="Douze mois"
+            hint={`Vide : douze mois, ${formatAmount(plan.monthlyPrice * 12, plan.currency)}.`}
+            error={errors.yearlyPrice}
+          />
+        </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-4">
+        <legend className="mb-2 text-lg font-bold">
+          Ce que l’offre permet
+        </legend>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <LimitField
+            plan={plan.key}
+            name="limits.products"
+            label="Produits"
+            value={limits.products}
+            error={errors['limits.products']}
+          />
+          <LimitField
+            plan={plan.key}
+            name="limits.members"
+            label="Personnes dans l’équipe"
+            value={limits.members}
+            optional={false}
+            error={errors['limits.members']}
+          />
+          <LimitField
+            plan={plan.key}
+            name="limits.devices"
+            label="Téléphones de caisse"
+            value={limits.devices}
+            optional={false}
+            error={errors['limits.devices']}
+          />
+          <LimitField
+            plan={plan.key}
+            name="limits.customers"
+            label="Clients"
+            value={limits.customers}
+            hint="Vide : sans limite. Un client créé à la caisse hors ligne est toujours accepté."
+            error={errors['limits.customers']}
+          />
+          <LimitField
+            plan={plan.key}
+            name="limits.suppliers"
+            label="Fournisseurs"
+            value={limits.suppliers}
+            error={errors['limits.suppliers']}
+          />
+          <LimitField
+            plan={plan.key}
+            name="limits.salesPerMonth"
+            label="Ventes par mois"
+            value={limits.salesPerMonth}
+            hint="Vide : sans limite. Une vente n’est jamais refusée : au-delà, la boutique est prévenue."
+            error={errors['limits.salesPerMonth']}
+          />
+          <LimitField
+            plan={plan.key}
+            name="limits.invoicesPerMonth"
+            label="Factures par mois"
+            value={limits.invoicesPerMonth}
+            error={errors['limits.invoicesPerMonth']}
+          />
+          <LimitField
+            plan={plan.key}
+            name="limits.quotesPerMonth"
+            label="Devis par mois"
+            value={limits.quotesPerMonth}
+            error={errors['limits.quotesPerMonth']}
+          />
+          <LimitField
+            plan={plan.key}
+            name="limits.historyMonths"
+            label="Historique affiché (mois)"
+            value={limits.historyMonths}
+            hint="Vide : tout l’historique. Au moins 3 mois. Rien n’est effacé, et la comptabilité reste entière."
+            error={errors['limits.historyMonths']}
+          />
+        </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-2 text-lg font-bold">Modules compris</legend>
+        {PLAN_MODULES.map((module) => (
+          <label
+            key={module}
+            className="flex min-h-12 items-start gap-3 rounded-2xl bg-surface-muted px-4 py-3"
+          >
+            <input
+              type="checkbox"
+              name="modules"
+              value={module}
+              defaultChecked={limits.modules.includes(module)}
+              aria-label={PLAN_MODULE_LABELS[module]}
+              aria-describedby={`${plan.key}-module-${module}`}
+              className="mt-1 size-6 shrink-0 accent-brand-strong"
+            />
+            <span className="flex flex-col">
+              <span className="font-bold">{PLAN_MODULE_LABELS[module]}</span>
+              <span
+                id={`${plan.key}-module-${module}`}
+                className="text-ink-muted"
+              >
+                {PLAN_MODULE_DESCRIPTIONS[module]}
+              </span>
+            </span>
+          </label>
+        ))}
+        {errors['limits.modules'] && (
+          <p className="font-semibold text-danger-ink">
+            {errors['limits.modules']}
+          </p>
+        )}
+      </fieldset>
+
+      <p className="text-ink-muted">
+        Enregistrée, l’offre s’applique tout de suite {shopsOf(plan.shops)}.
+        Rien de ce qu’elles ont déjà n’est supprimé : seuls les ajouts au-delà
+        sont refusés.
+      </p>
+      <div>
+        <SubmitButton pendingLabel="Enregistrement…">{label}</SubmitButton>
+      </div>
+      {pending && <span className="sr-only">Enregistrement…</span>}
     </ActionForm>
   );
 }

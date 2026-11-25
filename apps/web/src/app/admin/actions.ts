@@ -1,6 +1,8 @@
 'use server';
 
 import {
+  adminPlanUpdateSchema,
+  type AdminPlanDto,
   adminDataActionSchema,
   adminArchiveSchema,
   type AdminUserDto,
@@ -360,5 +362,57 @@ export async function actOnShopData(
         : action === 'restore'
           ? 'Restauré.'
           : 'Annulé.',
+  };
+}
+
+/** « 1 500 » → 1500; empty → null (no limit); anything else stays as is. */
+function count(formData: FormData, name: string): number | null | string {
+  const raw = text(formData, name).replace(/[\s  ]/g, '');
+  if (raw === '') return null;
+  return /^\d+$/.test(raw) ? Number(raw) : raw;
+}
+
+/** Prices, limits and modules of an offer (ADR-075). */
+export async function updatePlan(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await adminToken();
+  const key = text(formData, 'planKey');
+  const parsed = parseValues(adminPlanUpdateSchema, {
+    monthlyPrice: count(formData, 'monthlyPrice') ?? 0,
+    yearlyPrice: count(formData, 'yearlyPrice'),
+    limits: {
+      products: count(formData, 'limits.products'),
+      members: count(formData, 'limits.members'),
+      devices: count(formData, 'limits.devices'),
+      salesPerMonth: count(formData, 'limits.salesPerMonth'),
+      invoicesPerMonth: count(formData, 'limits.invoicesPerMonth'),
+      quotesPerMonth: count(formData, 'limits.quotesPerMonth'),
+      customers: count(formData, 'limits.customers'),
+      suppliers: count(formData, 'limits.suppliers'),
+      historyMonths: count(formData, 'limits.historyMonths'),
+      modules: formData.getAll('modules').map(String),
+    },
+  });
+  if (!parsed.ok) return parsed.state;
+  if (!/^[a-z_]{2,30}$/.test(key))
+    return { status: 'error', message: 'Offre inconnue.' };
+  const result = await apiAsUser<AdminPlanDto>(token, {
+    method: 'PATCH',
+    path: `/admin/plans/${key}`,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message: `Offre ${result.data.name} enregistrée : elle s’applique tout de suite ${
+      result.data.shops === 0
+        ? 'aux boutiques qui la prendront'
+        : result.data.shops === 1
+          ? 'à la boutique de l’offre'
+          : `aux ${result.data.shops} boutiques de l’offre`
+    }.`,
   };
 }

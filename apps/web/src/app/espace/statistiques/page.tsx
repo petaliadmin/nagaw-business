@@ -18,6 +18,7 @@ import { Alert } from '@/components/ui/alert';
 import { Card, Stat } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageFallback } from '@/components/ui/page-fallback';
+import { HistoryNote } from '@/components/plans/history-note';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { formatQuantity } from '@/lib/catalog/labels';
@@ -77,6 +78,7 @@ async function Statistics({ searchParams }: PageProps<'/espace/statistiques'>) {
         title="Statistiques"
         description={`Ventes de la boutique, ${range}.`}
       />
+      <HistoryNote months={organization.historyMonths} />
       <PeriodPicker
         path="/espace/statistiques"
         current={period.key}

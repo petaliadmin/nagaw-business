@@ -2,6 +2,17 @@ import { randomUUID } from 'node:crypto';
 import type { TestContext, TestUser } from './support/app.js';
 import { createTestContext, randomPhone } from './support/app.js';
 
+/** The limits of ADR-075, open on every offer until the owner sets them. */
+const ADR_075_OPEN = {
+  salesPerMonth: null,
+  invoicesPerMonth: null,
+  quotesPerMonth: null,
+  customers: null,
+  suppliers: null,
+  historyMonths: null,
+  modules: ['accounting', 'treasury', 'orders', 'statistics'],
+};
+
 describe('Offers, subscriptions and quotas', () => {
   let ctx: TestContext;
   let alice: TestUser; // owner of Acme
@@ -77,14 +88,19 @@ describe('Offers, subscriptions and quotas', () => {
     const plans = (
       await ctx.http().get('/api/v1/plans').set(as(dan)).expect(200)
     ).body;
-    expect(plans).toEqual([
+    // Only the shared offers: other files add offers of their own.
+    expect(
+      plans.filter((p: { key: string }) =>
+        ['free', 'essential', 'pro'].includes(p.key),
+      ),
+    ).toEqual([
       {
         key: 'free',
         name: 'Gratuit',
         monthlyPrice: 0,
         yearlyPrice: 0,
         currency: 'XOF',
-        limits: { products: 10, members: 2, devices: 1 },
+        limits: { ...ADR_075_OPEN, products: 10, members: 2, devices: 1 },
       },
       {
         key: 'essential',
@@ -92,7 +108,7 @@ describe('Offers, subscriptions and quotas', () => {
         monthlyPrice: 5000,
         yearlyPrice: 60000,
         currency: 'XOF',
-        limits: { products: 50, members: 5, devices: 3 },
+        limits: { ...ADR_075_OPEN, products: 50, members: 5, devices: 3 },
       },
       {
         key: 'pro',
@@ -100,7 +116,7 @@ describe('Offers, subscriptions and quotas', () => {
         monthlyPrice: 15000,
         yearlyPrice: 180000,
         currency: 'XOF',
-        limits: { products: null, members: 20, devices: 10 },
+        limits: { ...ADR_075_OPEN, products: null, members: 20, devices: 10 },
       },
     ]);
     // Public for the home page: the same grid, and nothing about a shop.
@@ -112,7 +128,7 @@ describe('Offers, subscriptions and quotas', () => {
     const s = (await get(alice, acmeId, '/subscription').expect(200)).body;
     expect(s).toMatchObject({
       plan: { key: 'free' },
-      limits: { products: 10, members: 2, devices: 1 },
+      limits: { ...ADR_075_OPEN, products: 10, members: 2, devices: 1 },
       usage: { products: 0, members: 1, devices: 0 },
       pendingRequest: null,
     });
@@ -150,6 +166,11 @@ describe('Offers, subscriptions and quotas', () => {
     expect(
       (await get(alice, acmeId, '/subscription').expect(200)).body.usage,
     ).toEqual({
+      salesThisMonth: 0,
+      invoicesThisMonth: 0,
+      quotesThisMonth: 0,
+      customers: 0,
+      suppliers: 0,
       products: 10,
       members: 1,
       devices: 2,
@@ -162,7 +183,7 @@ describe('Offers, subscriptions and quotas', () => {
       (await get(alice, acmeId, '/subscription').expect(200)).body,
     ).toMatchObject({
       plan: { key: 'essential', name: 'Essentiel' },
-      limits: { products: 50, members: 5, devices: 3 },
+      limits: { ...ADR_075_OPEN, products: 50, members: 5, devices: 3 },
     });
     await product('Article 11').expect(201);
     await device().expect(201);
@@ -170,8 +191,22 @@ describe('Offers, subscriptions and quotas', () => {
 
     await ctx.setPlan(acmeId, 'free');
     const s = (await get(alice, acmeId, '/subscription').expect(200)).body;
-    expect(s.usage).toEqual({ products: 11, members: 1, devices: 3 });
-    expect(s.limits).toEqual({ products: 10, members: 2, devices: 1 });
+    expect(s.usage).toEqual({
+      products: 11,
+      members: 1,
+      devices: 3,
+      salesThisMonth: 0,
+      invoicesThisMonth: 0,
+      quotesThisMonth: 0,
+      customers: 0,
+      suppliers: 0,
+    });
+    expect(s.limits).toEqual({
+      ...ADR_075_OPEN,
+      products: 10,
+      members: 2,
+      devices: 1,
+    });
     // Nothing is taken away; no more products can be added.
     expect(
       (await get(alice, acmeId, '/products').expect(200)).body,
@@ -184,7 +219,12 @@ describe('Offers, subscriptions and quotas', () => {
   it('sets no product limit on the Pro offer', async () => {
     await ctx.setPlan(acmeId, 'pro');
     const s = (await get(alice, acmeId, '/subscription').expect(200)).body;
-    expect(s.limits).toEqual({ products: null, members: 20, devices: 10 });
+    expect(s.limits).toEqual({
+      ...ADR_075_OPEN,
+      products: null,
+      members: 20,
+      devices: 10,
+    });
     // Beyond the 50 of Essentiel: 11 already, 40 more.
     for (let i = 12; i <= 51; i++) await product(`Article ${i}`).expect(201);
     expect(

@@ -29,6 +29,7 @@ import { pageOf } from '../common/page.js';
 import type { AuthContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import type { Database } from '../database/schema.js';
+import { planLimitsOf, planUsageExtra } from '../plans/plan-limits.js';
 import { BillingService } from '../subscriptions/billing.service.js';
 
 const shopNotFound = () => notFound('SHOP_NOT_FOUND', 'Boutique introuvable.');
@@ -291,16 +292,14 @@ export class AdminService {
       ...this.toListItem(row as ShopRow),
       timezone: row.timezone,
       currency: row.default_currency,
+      // Counts only, never the content (ADR-040).
       usage: {
         products: toNumber(row.products),
         members: toNumber(row.members),
         devices: active,
+        ...(await planUsageExtra(executor, id)),
       },
-      limits: {
-        products: row.max_products,
-        members: row.max_members,
-        devices: row.max_devices,
-      },
+      limits: await planLimitsOf(executor, id),
       suspension:
         row.suspended_at && row.suspension_reason
           ? {
@@ -967,12 +966,33 @@ export class AdminService {
         max_products: number | null;
         max_members: number;
         max_devices: number;
+        customers: string;
+        suppliers: string;
+        sales_month: string;
+        invoices_month: string;
+        quotes_month: string;
+        max_customers: number | null;
+        max_suppliers: number | null;
+        max_sales_per_month: number | null;
+        max_invoices_per_month: number | null;
+        max_quotes_per_month: number | null;
       }>`
         select o.id, o.name, o.max_products, o.max_members, o.max_devices,
+               p.max_customers, p.max_suppliers, p.max_sales_per_month,
+               p.max_invoices_per_month, p.max_quotes_per_month,
                (select count(*) from app.products x where x.organization_id = o.id and x.status = 'active' and x.system_role is null) as products,
                (select count(*) from app.organization_memberships x where x.organization_id = o.id and x.status = 'active') as members,
-               (select count(*) from app.devices x where x.organization_id = o.id and x.revoked_at is null) as devices
-          from app.organizations o where o.status = 'active'`.execute(db),
+               (select count(*) from app.devices x where x.organization_id = o.id and x.revoked_at is null) as devices,
+               (select count(*) from app.customers x where x.organization_id = o.id and x.status = 'active') as customers,
+               (select count(*) from app.suppliers x where x.organization_id = o.id and x.status = 'active') as suppliers,
+               (select count(*) from app.sales x where x.organization_id = o.id and x.status <> 'cancelled' and x.occurred_at >= m.start) as sales_month,
+               (select count(*) from app.invoices x where x.organization_id = o.id and x.kind = 'invoice' and x.created_at >= m.start) as invoices_month,
+               (select count(*) from app.quotes x where x.organization_id = o.id and x.created_at >= m.start) as quotes_month
+          from app.organizations o
+          join app.subscriptions s on s.organization_id = o.id
+          join app.plans p on p.key = s.plan_key
+          cross join lateral (select date_trunc('month', now() at time zone o.timezone) at time zone o.timezone as start) m
+         where o.status = 'active'`.execute(db),
       this.silentDevices(db, settings.silent_device_days),
       sql<{ pending: string; overdue: string; amount: string }>`
         select count(*) as pending,
@@ -1010,6 +1030,11 @@ export class AdminService {
       ['products', 'max_products', 'produits'],
       ['members', 'max_members', 'personnes'],
       ['devices', 'max_devices', 'téléphones de caisse'],
+      ['customers', 'max_customers', 'clients'],
+      ['suppliers', 'max_suppliers', 'fournisseurs'],
+      ['sales_month', 'max_sales_per_month', 'ventes ce mois-ci'],
+      ['invoices_month', 'max_invoices_per_month', 'factures ce mois-ci'],
+      ['quotes_month', 'max_quotes_per_month', 'devis ce mois-ci'],
     ] as const;
     for (const q of quotas.rows)
       for (const [used, max, label] of quotaLabels) {
@@ -1019,7 +1044,11 @@ export class AdminService {
         if (shareBasisPoints(n, limit) >= settings.quota_alert_basis_points)
           alerts.push({
             kind: 'quota',
-            message: `${n} ${label} sur ${limit} permis par l’offre.`,
+            // Sales are never refused (ADR-075): say when it is exceeded.
+            message:
+              n > limit
+                ? `${n} ${label} : au-delà des ${limit} permis par l’offre.`
+                : `${n} ${label} sur ${limit} permis par l’offre.`,
             shop: { id: q.id, name: q.name },
           });
       }

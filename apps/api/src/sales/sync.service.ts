@@ -211,6 +211,7 @@ export class SyncService {
         user,
         { ...operation.data, clientOperationId: operation.clientOperationId },
         options.requestId,
+        true,
       );
       return {
         clientOperationId: operation.clientOperationId,

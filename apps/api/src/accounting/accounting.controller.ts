@@ -11,6 +11,7 @@ import type { z } from 'zod';
 import type { TenantContext } from '../common/request-context.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { CurrentTenant } from '../tenancy/current.decorator.js';
+import { RequireModule } from '../tenancy/require-module.decorator.js';
 import { RequirePermission } from '../tenancy/require-permission.decorator.js';
 import { AccountingService } from './accounting.service.js';
 
@@ -23,6 +24,7 @@ function download(res: Response, file: { name: string; body: string }): string {
 }
 
 /** Journal of receipts and expenses, end of year statement (ADR-028). */
+@RequireModule('accounting')
 @Controller('accounting')
 export class AccountingController {
   constructor(private readonly accounting: AccountingService) {}

@@ -16,9 +16,11 @@ import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
 import type { Database } from '../database/schema.js';
+import { assertPlanRoom } from '../plans/plan-limits.js';
 import {
   conflict,
   limitReached,
+  lockOrganization,
   notFound,
   toNullableNumber,
   toNumber,
@@ -198,6 +200,11 @@ export class CustomersService {
     user: AuthContext,
     input: CreateCustomerInput,
     requestId: string | null,
+    /**
+     * Made at the till while offline: always taken in, a sale may name it
+     * (ADR-075); the offer's cap applies to the other creations.
+     */
+    offline = false,
   ): Promise<{ customer: CustomerDto; replayed: boolean }> {
     const existing = await trx
       .selectFrom('app.customers')
@@ -224,6 +231,7 @@ export class CustomersService {
       .executeTakeFirstOrThrow();
     if (Number(count) >= org.max_customers)
       throw limitReached('clients', org.max_customers);
+    if (!offline) await assertPlanRoom(trx, tenant.organizationId, 'customers');
     const { id } = await trx
       .insertInto('app.customers')
       .values({
@@ -261,10 +269,13 @@ export class CustomersService {
     user: AuthContext,
     input: CreateCustomerInput,
     requestId: string | null,
+    offline = false,
   ) {
     return this.database.db
       .transaction()
-      .execute((trx) => this.create(trx, tenant, user, input, requestId));
+      .execute((trx) =>
+        this.create(trx, tenant, user, input, requestId, offline),
+      );
   }
 
   async update(
@@ -292,6 +303,11 @@ export class CustomersService {
         if (to !== undefined && to !== from) changes[key] = { from, to };
       }
       if (Object.keys(changes).length === 0) return before;
+      // Put back, a customer takes a place of the offer again (ADR-075).
+      if (input.status === 'active' && before.status === 'archived') {
+        await lockOrganization(trx, tenant.organizationId);
+        await assertPlanRoom(trx, tenant.organizationId, 'customers');
+      }
       await trx
         .updateTable('app.customers')
         .set({

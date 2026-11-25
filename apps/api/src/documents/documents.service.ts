@@ -37,8 +37,14 @@ import type { Database } from '../database/schema.js';
 import { AlertsService } from '../notifications/alerts.service.js';
 import type { DocumentLogo, DocumentMarks } from './pdf.js';
 import {
+  assertPlanRoom,
+  historyFrom,
+  onOrAfterDay,
+} from '../plans/plan-limits.js';
+import {
   conflict,
   invalid,
+  lockOrganization,
   notFound,
   toNumber,
   UUID_RE,
@@ -394,6 +400,8 @@ export class DocumentsService {
   ): Promise<DocumentListItemDto[]> {
     const { timezone } = await this.shop(this.database.db, organizationId);
     const day = today(timezone);
+    // What the offer shows (ADR-075): older quotes stay, only not listed.
+    const shown = await historyFrom(this.database.db, organizationId);
     const list = this.database.db
       .selectFrom('app.quotes as q')
       .innerJoin('app.customers as c', (join) =>
@@ -411,6 +419,9 @@ export class DocumentsService {
       .select(sql<string>`q.issue_date::text`.as('issue_day'))
       .select(sql<string>`q.valid_until::text`.as('valid_day'))
       .where('q.organization_id', '=', organizationId)
+      .$if(shown !== null, (q) =>
+        q.where(onOrAfterDay('q.created_at', organizationId, shown!)),
+      )
       .orderBy('q.created_at', 'desc')
       .orderBy('q.id', 'desc');
     const rows = await pageOf(list, page, 200).execute();
@@ -449,6 +460,9 @@ export class DocumentsService {
           quote: await this.getQuote(trx, tenant.organizationId, previous.id),
           replayed: true,
         };
+      // Each quote of the month counts against the offer (ADR-075).
+      await lockOrganization(trx, tenant.organizationId);
+      await assertPlanRoom(trx, tenant.organizationId, 'quotesPerMonth');
       const shop = await this.shop(trx, tenant.organizationId);
       const day = today(shop.timezone);
       const validUntil =
@@ -768,6 +782,10 @@ export class DocumentsService {
   ): Promise<DocumentListItemDto[]> {
     const { timezone } = await this.shop(this.database.db, organizationId);
     const day = today(timezone);
+    // What the offer shows (ADR-075); what is still owed always shows.
+    const shown = filter.owing
+      ? null
+      : await historyFrom(this.database.db, organizationId);
     const list = this.database.db
       .selectFrom('app.invoices as i')
       .innerJoin('app.customers as c', (join) =>
@@ -792,6 +810,9 @@ export class DocumentsService {
         ),
       )
       .where('i.organization_id', '=', organizationId)
+      .$if(shown !== null, (q) =>
+        q.where(onOrAfterDay('i.created_at', organizationId, shown!)),
+      )
       .$if(filter.owing, (q) =>
         q
           .where('i.kind', '=', 'invoice')
@@ -894,6 +915,9 @@ export class DocumentsService {
       origin?: Record<string, unknown>;
     },
   ): Promise<{ invoice: InvoiceDto; replayed: boolean }> {
+    // Each invoice of the month counts against the offer (ADR-075).
+    await lockOrganization(trx, tenant.organizationId);
+    await assertPlanRoom(trx, tenant.organizationId, 'invoicesPerMonth');
     await this.customer(trx, tenant.organizationId, draft.customerId);
     await this.checkLines(trx, tenant.organizationId, draft.lines);
     const { columns } = this.totalsColumns(draft.lines, draft.discount);

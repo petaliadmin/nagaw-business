@@ -5,10 +5,17 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { roleHasPermission, type Permission } from '@nagaw/shared';
+import {
+  PLAN_MODULE_LABELS,
+  roleHasPermission,
+  type Permission,
+  type PlanModule,
+} from '@nagaw/shared';
 import { ApiException } from '../common/api-exception.js';
 import type { AppRequest } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
+import { planAccessOf } from '../plans/plan-limits.js';
+import { REQUIRED_MODULE } from './require-module.decorator.js';
 import { REQUIRED_PERMISSION } from './require-permission.decorator.js';
 
 const UUID_RE =
@@ -76,6 +83,20 @@ export class TenantGuard implements CanActivate {
         'PERMISSION_DENIED',
         'Votre rôle ne permet pas cette action.',
       );
+    }
+
+    const module = this.reflector.getAllAndOverride<PlanModule | undefined>(
+      REQUIRED_MODULE,
+      [context.getHandler(), context.getClass()],
+    );
+    if (module) {
+      const { modules } = await planAccessOf(this.database.db, organizationId);
+      if (!modules.includes(module))
+        throw new ApiException(
+          HttpStatus.FORBIDDEN,
+          'MODULE_NOT_IN_PLAN',
+          `« ${PLAN_MODULE_LABELS[module]} » n’est pas compris dans l’offre de la boutique. Changez d’offre dans « Abonnement ».`,
+        );
     }
 
     request.tenant = { organizationId, role: membership.role };

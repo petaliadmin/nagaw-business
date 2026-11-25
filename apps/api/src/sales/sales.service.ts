@@ -40,6 +40,7 @@ import {
   AlertsService,
   type StockChange,
 } from '../notifications/alerts.service.js';
+import { historyFrom, onOrAfterDay } from '../plans/plan-limits.js';
 import { balances } from './customers.service.js';
 
 /** A sale recorded on a device, possibly offline (ADR-020, ADR-025). */
@@ -258,6 +259,12 @@ export class SalesService {
       .where('s.organization_id', '=', tenant.organizationId)
       .orderBy('s.occurred_at', 'desc')
       .orderBy('s.id', 'desc');
+    // What the offer shows (ADR-075): older sales stay, only not listed.
+    const shown = await historyFrom(this.database.db, tenant.organizationId);
+    if (shown)
+      rows = rows.where(
+        onOrAfterDay('s.occurred_at', tenant.organizationId, shown),
+      );
     if (!query.all) {
       const bounds = await this.dayOf(tenant.organizationId, query.day);
       rows = rows.where(

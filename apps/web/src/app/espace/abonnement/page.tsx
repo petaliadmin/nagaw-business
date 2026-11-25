@@ -1,6 +1,8 @@
 import {
   formatAmount,
+  historyLabel,
   paymentReference,
+  USAGE_OF,
   SUBSCRIPTION_PERIOD_LABELS,
   type SubscriptionInvoiceDto,
   roleHasPermission,
@@ -8,7 +10,7 @@ import {
   type PlanDto,
   type SubscriptionDto,
 } from '@nagaw/shared';
-import { Check, Crown } from 'lucide-react';
+import { Crown } from 'lucide-react';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Alert } from '@/components/ui/alert';
@@ -18,7 +20,8 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { formatDate, formatDateTime } from '@/lib/format';
-import { PLAN_LIMITS, planCount, planPrice } from '@/lib/plans';
+import { PlanFeatures } from '@/components/plans/plan-features';
+import { PLAN_LIMITS, planPrice } from '@/lib/plans';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 import {
   AutoRenewForm,
@@ -223,14 +226,23 @@ async function Subscription() {
           </p>
         )}
         <div className="flex flex-col gap-4">
-          {PLAN_LIMITS.map((l) => (
-            <Gauge
-              key={l.key}
-              label={l.label}
-              used={s.usage[l.key]}
-              limit={s.limits[l.key]}
-            />
-          ))}
+          {PLAN_LIMITS.filter((l) => l.always || s.limits[l.key] !== null).map(
+            (l) => (
+              <Gauge
+                key={l.key}
+                label={l.label}
+                used={s.usage[USAGE_OF[l.key]]}
+                limit={s.limits[l.key]}
+              />
+            ),
+          )}
+          {s.limits.historyMonths !== null && (
+            <p>
+              <span className="font-semibold">Historique affiché : </span>
+              {historyLabel(s.limits.historyMonths)}. Rien n’est effacé : une
+              autre offre montre tout.
+            </p>
+          )}
         </div>
       </Card>
 
@@ -288,18 +300,10 @@ async function Subscription() {
                   {current && <Badge tone="brand">Votre offre</Badge>}
                 </div>
                 <p className="text-2xl font-extrabold">{planPrice(plan)}</p>
-                <ul className="flex flex-col gap-1">
-                  {PLAN_LIMITS.map((l) => (
-                    <li key={l.key} className="flex items-center gap-2">
-                      <Check aria-hidden className="size-5 text-sales-ink" />
-                      {planCount(plan.limits[l.key], l.unit)}
-                    </li>
-                  ))}
-                  <li className="flex items-center gap-2">
-                    <Check aria-hidden className="size-5 text-sales-ink" />
-                    Ventes, factures, trésorerie, comptabilité
-                  </li>
-                </ul>
+                <PlanFeatures
+                  limits={plan.limits}
+                  grid={plans.data.map((p) => p.limits)}
+                />
                 {isOwner &&
                   !s.lifetime &&
                   !s.pendingRequest &&

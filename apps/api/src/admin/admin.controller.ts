@@ -12,6 +12,9 @@ import {
 } from '@nestjs/common';
 import {
   ADMIN_DATA_KINDS,
+  adminPlanUpdateSchema,
+  type AdminPlanDto,
+  type AdminPlanUpdateInput,
   adminDataActionSchema,
   adminDataQuerySchema,
   type AdminDataItemDto,
@@ -59,6 +62,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { PhoneAuthService } from '../phone-auth/phone-auth.service.js';
 import { CurrentUser, RequestId } from '../tenancy/current.decorator.js';
 import { AdminDataService } from './admin-data.service.js';
+import { AdminPlansService } from './admin-plans.service.js';
 import { AdminService } from './admin.service.js';
 import { PlatformAdminGuard } from './platform-admin.guard.js';
 
@@ -74,6 +78,7 @@ export class AdminController {
     private readonly admin: AdminService,
     private readonly phoneAuth: PhoneAuthService,
     private readonly shopData: AdminDataService,
+    private readonly plans: AdminPlansService,
   ) {}
 
   @Get('overview')
@@ -158,6 +163,22 @@ export class AdminController {
     @RequestId() requestId: string | null,
   ): Promise<AdminShopDto> {
     return this.admin.subscriptionSettings(user, id, body, requestId);
+  }
+
+  /** The offers: prices, limits and modules, set here (ADR-075). */
+  @Get('plans')
+  planList(): Promise<AdminPlanDto[]> {
+    return this.plans.list();
+  }
+
+  @Patch('plans/:key')
+  updatePlan(
+    @CurrentUser() user: AuthContext,
+    @Param('key') key: string,
+    @Body(new ZodValidationPipe(adminPlanUpdateSchema))
+    body: AdminPlanUpdateInput,
+  ): Promise<AdminPlanDto> {
+    return this.plans.update(user, key, body);
   }
 
   @Get('invoices')

@@ -61,14 +61,25 @@ const USERS = {
   },
 };
 
-const PLANS = [
+const PLANS_SEED = [
   {
     key: 'free',
     name: 'Gratuit',
     monthlyPrice: 0,
     yearlyPrice: 0,
     currency: 'XOF',
-    limits: { products: 10, members: 2, devices: 1 },
+    limits: {
+      products: 10,
+      members: 2,
+      devices: 1,
+      salesPerMonth: null,
+      invoicesPerMonth: null,
+      quotesPerMonth: null,
+      customers: null,
+      suppliers: null,
+      historyMonths: null,
+      modules: ['accounting', 'treasury', 'orders', 'statistics'],
+    },
   },
   {
     key: 'essential',
@@ -76,7 +87,18 @@ const PLANS = [
     monthlyPrice: 5000,
     yearlyPrice: 60000,
     currency: 'XOF',
-    limits: { products: 50, members: 5, devices: 3 },
+    limits: {
+      products: 50,
+      members: 5,
+      devices: 3,
+      salesPerMonth: null,
+      invoicesPerMonth: null,
+      quotesPerMonth: null,
+      customers: null,
+      suppliers: null,
+      historyMonths: null,
+      modules: ['accounting', 'treasury', 'orders', 'statistics'],
+    },
   },
   {
     key: 'pro',
@@ -84,9 +106,56 @@ const PLANS = [
     monthlyPrice: 15000,
     yearlyPrice: 180000,
     currency: 'XOF',
-    limits: { products: null, members: 20, devices: 10 },
+    limits: {
+      products: null,
+      members: 20,
+      devices: 10,
+      salesPerMonth: null,
+      invoicesPerMonth: null,
+      quotesPerMonth: null,
+      customers: null,
+      suppliers: null,
+      historyMonths: null,
+      modules: ['accounting', 'treasury', 'orders', 'statistics'],
+    },
   },
 ];
+
+/** What the shop's offer opens (ADR-075), as the real API adds it. */
+const planAccess = (organizationId) => {
+  const key = state.subscriptions[organizationId]?.planKey ?? 'free';
+  const limits = state.plans.find((p) => p.key === key).limits;
+  return { planModules: limits.modules, historyMonths: limits.historyMonths };
+};
+
+const stateOfPlan = (p) =>
+  structuredClone({
+    monthlyPrice: p.monthlyPrice,
+    yearlyPrice: p.yearlyPrice,
+    limits: p.limits,
+  });
+
+/** An offer as the administration edits it. */
+const adminPlan = (p) => ({
+  key: p.key,
+  name: p.name,
+  monthlyPrice: p.monthlyPrice,
+  yearlyPrice: p.yearlyPrice,
+  currency: p.currency,
+  limits: p.limits,
+  yearlyPriceSet: p.yearlyPriceSet ?? null,
+  shops: Object.values(state.subscriptions).filter((s) => s.planKey === p.key)
+    .length,
+  revisions: state.planRevisions.filter((r) => r.planKey === p.key).slice(0, 5),
+});
+
+const EXTRA_USAGE = {
+  salesThisMonth: 0,
+  invoicesThisMonth: 0,
+  quotesThisMonth: 0,
+  customers: 0,
+  suppliers: 0,
+};
 
 const DOCUMENT_SETTINGS = {
   legalName: '',
@@ -226,6 +295,9 @@ function makeState() {
     invitations: [],
     // Feedback of the shops (ADR-032).
     feedback: [],
+    // The offers and their changes (ADR-075): reset with the rest.
+    plans: structuredClone(PLANS_SEED),
+    planRevisions: [],
     subscriptions: {
       // Acme's term ends in ten days, with an invoice to pay (ADR-073).
       [ACME]: {
@@ -431,6 +503,7 @@ const orgsOf = (userId) =>
     .filter((m) => state.organizations[m.organizationId].status !== 'archived')
     .map((m) => ({
       ...state.organizations[m.organizationId],
+      ...planAccess(m.organizationId),
       role: m.role,
       maxDiscountBasisPoints: m.maxDiscountBasisPoints ?? null,
       platformAccess: false,
@@ -502,7 +575,7 @@ const server = createServer(async (req, res) => {
     return apiError(res, 404, 'NOT_FOUND', 'Introuvable.');
   // The offer grid, the same for everyone and public (ADR-029, ADR-034).
   if (path === '/api/v1/plans' && req.method === 'GET')
-    return send(res, 200, PLANS);
+    return send(res, 200, state.plans);
   const user = await authenticate(req);
   if (!user)
     return apiError(res, 401, 'UNAUTHENTICATED', 'Authentification requise.');
@@ -542,7 +615,7 @@ const server = createServer(async (req, res) => {
         'PLATFORM_ADMIN_REQUIRED',
         'Réservé à l’administration de la plateforme.',
       );
-    const plan = (key) => PLANS.find((p) => p.key === key);
+    const plan = (key) => state.plans.find((p) => p.key === key);
     const owners = (orgId) =>
       state.memberships
         .filter(
@@ -595,7 +668,12 @@ const server = createServer(async (req, res) => {
       ...listItem(org),
       timezone: org.timezone,
       currency: org.defaultCurrency,
-      usage: { products: 2, members: listItem(org).members, devices: 0 },
+      usage: {
+        products: 2,
+        members: listItem(org).members,
+        devices: 0,
+        ...EXTRA_USAGE,
+      },
       limits: plan(state.subscriptions[org.id].planKey).limits,
       suspension:
         org.status === 'suspended'
@@ -649,7 +727,7 @@ const server = createServer(async (req, res) => {
           active: orgs.filter((o) => o.status === 'active').length,
           suspended: orgs.filter((o) => o.status === 'suspended').length,
           createdLast30Days: 0,
-          byPlan: PLANS.map((p) => ({
+          byPlan: state.plans.map((p) => ({
             key: p.key,
             name: p.name,
             count: orgs.filter(
@@ -689,7 +767,7 @@ const server = createServer(async (req, res) => {
     };
     if (path === '/api/v1/admin/finances') {
       const active = orgs.filter((o) => o.status === 'active');
-      const byPlan = PLANS.map((p) => {
+      const byPlan = state.plans.map((p) => {
         const shops = active.filter(
           (o) => state.subscriptions[o.id].planKey === p.key,
         ).length;
@@ -932,6 +1010,45 @@ const server = createServer(async (req, res) => {
         });
       else row.status = action === 'archive' ? 'archived' : 'active';
       return send(res, 204);
+    }
+    // The offers, set by the platform (ADR-075).
+    if (path === '/api/v1/admin/plans' && req.method === 'GET')
+      return send(res, 200, state.plans.map(adminPlan));
+    const planMatch = path.match(/^\/api\/v1\/admin\/plans\/([a-z_]+)$/);
+    if (planMatch && req.method === 'PATCH') {
+      const target = state.plans.find((p) => p.key === planMatch[1]);
+      if (!target)
+        return apiError(res, 404, 'PLAN_NOT_FOUND', 'Offre introuvable.');
+      const body = await readJson(req);
+      if (body.limits.historyMonths !== null && body.limits.historyMonths < 3)
+        return send(res, 400, {
+          error: {
+            code: 'VALIDATION_FAILED',
+            message: 'Données invalides.',
+            details: [
+              {
+                path: 'limits.historyMonths',
+                message: 'Au moins 3 mois : l’Accueil compare deux mois',
+              },
+            ],
+          },
+        });
+      const before = stateOfPlan(target);
+      Object.assign(target, {
+        monthlyPrice: body.monthlyPrice,
+        yearlyPrice: body.yearlyPrice ?? body.monthlyPrice * 12,
+        yearlyPriceSet: body.yearlyPrice,
+        limits: body.limits,
+      });
+      state.planRevisions.unshift({
+        id: String(state.planRevisions.length + 1),
+        planKey: target.key,
+        changedBy: '221770000003',
+        before,
+        after: stateOfPlan(target),
+        createdAt: new Date().toISOString(),
+      });
+      return send(res, 200, adminPlan(target));
     }
     if (path === '/api/v1/admin/invoices')
       return send(
@@ -1203,6 +1320,7 @@ const server = createServer(async (req, res) => {
     });
     return send(res, 201, {
       ...state.organizations[id],
+      ...planAccess(id),
       role: 'owner',
       maxDiscountBasisPoints: null,
       platformAccess: false,
@@ -1262,6 +1380,7 @@ const server = createServer(async (req, res) => {
     );
     return send(res, 201, {
       ...state.organizations[invitation.organizationId],
+      ...planAccess(invitation.organizationId),
       role: invitation.role,
     });
   }
@@ -1284,7 +1403,10 @@ const server = createServer(async (req, res) => {
   const canManage = membership.role === 'owner' || membership.role === 'admin';
 
   if (path === '/api/v1/organizations/current' && req.method === 'GET')
-    return send(res, 200, state.organizations[orgId]);
+    return send(res, 200, {
+      ...state.organizations[orgId],
+      ...planAccess(orgId),
+    });
   if (path === '/api/v1/organizations/current' && req.method === 'PATCH') {
     if (!canManage)
       return apiError(
@@ -1611,10 +1733,19 @@ const server = createServer(async (req, res) => {
     return send(res, 201, dto(feedback));
   }
   if (path.startsWith('/api/v1/subscription')) {
-    const subscription = state.subscriptions[orgId];
+    // A shop starts on the free offer, as the database trigger does.
+    const subscription = (state.subscriptions[orgId] ??= {
+      planKey: 'free',
+      pending: null,
+      period: 'month',
+      currentPeriodEnd: null,
+      autoRenew: true,
+      lifetime: false,
+      invoices: [],
+    });
     const role = membership.role;
     if (!['owner', 'admin'].includes(role)) return forbidden(res);
-    const plan = (key) => PLANS.find((p) => p.key === key);
+    const plan = (key) => state.plans.find((p) => p.key === key);
     const dto = () => ({
       plan: plan(subscription.planKey),
       startedAt: '2026-10-01T09:00:00.000Z',
@@ -1624,6 +1755,7 @@ const server = createServer(async (req, res) => {
           (m) => m.organizationId === orgId && m.status === 'active',
         ).length,
         devices: 0,
+        ...EXTRA_USAGE,
       },
       limits: plan(subscription.planKey).limits,
       payment: { wave: '76 905 58 52', orangeMoney: null },

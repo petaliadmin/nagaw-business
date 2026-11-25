@@ -14,6 +14,7 @@ import { AuditService } from '../audit/audit.service.js';
 import type { AuthContext, TenantContext } from '../common/request-context.js';
 import { DatabaseService } from '../database/database.service.js';
 import { pgErrorCode, UNIQUE_VIOLATION } from '../database/pg-errors.js';
+import { assertPlanRoom } from '../plans/plan-limits.js';
 import {
   limitReached,
   lockOrganization,
@@ -348,6 +349,7 @@ export class ReferencesService {
           .executeTakeFirstOrThrow();
         if (Number(count) >= org.max_suppliers)
           throw limitReached('fournisseurs', org.max_suppliers);
+        await assertPlanRoom(trx, tenant.organizationId, 'suppliers');
         const { id } = await trx
           .insertInto('app.suppliers')
           .values({
@@ -387,6 +389,11 @@ export class ReferencesService {
       const changes = changedFields(before, input);
       if (Object.keys(changes).length > 0) {
         await this.database.db.transaction().execute(async (trx) => {
+          // Put back, a supplier takes a place of the offer again (ADR-075).
+          if (input.status === 'active' && before.status === 'archived') {
+            await lockOrganization(trx, tenant.organizationId);
+            await assertPlanRoom(trx, tenant.organizationId, 'suppliers');
+          }
           await trx
             .updateTable('app.suppliers')
             .set({

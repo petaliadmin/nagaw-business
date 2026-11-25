@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Crown,
   FileText,
   Inbox,
   LayoutDashboard,
@@ -25,6 +26,7 @@ const LINKS = [
   { href: '/admin/comptes', label: 'Comptes', icon: Users },
   { href: '/admin/factures', label: 'Factures', icon: FileText },
   { href: '/admin/demandes', label: 'Demandes d’offre', icon: Inbox },
+  { href: '/admin/offres', label: 'Offres', icon: Crown },
   { href: '/admin/finances', label: 'Finances', icon: Wallet },
   { href: '/admin/synchronisation', label: 'Synchronisation', icon: RefreshCw },
   { href: '/admin/avis', label: 'Avis', icon: MessageSquare },

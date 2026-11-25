@@ -54,6 +54,7 @@ import {
   CurrentUser,
   RequestId,
 } from '../tenancy/current.decorator.js';
+import { RequireModule } from '../tenancy/require-module.decorator.js';
 import { RequirePermission } from '../tenancy/require-permission.decorator.js';
 import { ExpensesService } from './expenses.service.js';
 import { StatsService } from './stats.service.js';
@@ -99,12 +100,14 @@ export class TreasuryController {
 
   @Get('treasury')
   @RequirePermission('treasury.read')
+  @RequireModule('treasury')
   overview(@CurrentTenant() tenant: TenantContext): Promise<TreasuryDto> {
     return this.treasury.treasury(tenant);
   }
 
   @Get('treasury/movements')
   @RequirePermission('treasury.read')
+  @RequireModule('treasury')
   movements(
     @CurrentTenant() tenant: TenantContext,
     @Query(new ZodValidationPipe(movementsQuerySchema)) query: MovementsQuery,
@@ -114,6 +117,7 @@ export class TreasuryController {
 
   @Patch('treasury/accounts/:id')
   @RequirePermission('treasury.manage')
+  @RequireModule('treasury')
   updateAccount(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,
@@ -127,6 +131,7 @@ export class TreasuryController {
 
   @Post('treasury/transfers')
   @RequirePermission('treasury.manage')
+  @RequireModule('treasury')
   async transfer(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,
@@ -149,6 +154,7 @@ export class TreasuryController {
 
   @Get('treasury/closings')
   @RequirePermission('treasury.read')
+  @RequireModule('treasury')
   closings(
     @CurrentTenant() tenant: TenantContext,
     @Query(new ZodValidationPipe(closingListQuerySchema))
@@ -159,6 +165,7 @@ export class TreasuryController {
 
   @Get('treasury/closings/expected')
   @RequirePermission('treasury.read')
+  @RequireModule('treasury')
   expected(
     @CurrentTenant() tenant: TenantContext,
     @Query(new ZodValidationPipe(expectedClosingQuerySchema))
@@ -173,6 +180,7 @@ export class TreasuryController {
 
   @Post('treasury/closings')
   @RequirePermission('treasury.manage')
+  @RequireModule('treasury')
   async close(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,
@@ -194,6 +202,7 @@ export class TreasuryController {
 
   @Get('expense-categories')
   @RequirePermission('treasury.read')
+  @RequireModule('treasury')
   categories(
     @CurrentTenant() tenant: TenantContext,
   ): Promise<ExpenseCategoryDto[]> {
@@ -202,6 +211,7 @@ export class TreasuryController {
 
   @Post('expense-categories')
   @RequirePermission('treasury.manage')
+  @RequireModule('treasury')
   createCategory(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,
@@ -214,6 +224,7 @@ export class TreasuryController {
 
   @Patch('expense-categories/:id')
   @RequirePermission('treasury.manage')
+  @RequireModule('treasury')
   updateCategory(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,
@@ -227,6 +238,7 @@ export class TreasuryController {
 
   @Get('expenses')
   @RequirePermission('treasury.read')
+  @RequireModule('treasury')
   listExpenses(
     @CurrentTenant() tenant: TenantContext,
     @Query(new ZodValidationPipe(expenseListQuerySchema))
@@ -237,6 +249,7 @@ export class TreasuryController {
 
   @Post('expenses')
   @RequirePermission('treasury.manage')
+  @RequireModule('treasury')
   async createExpense(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,
@@ -257,6 +270,7 @@ export class TreasuryController {
   /** Raw image body (WebP, JPEG or PNG), resized on the device. */
   @Put('expenses/:id/receipt')
   @RequirePermission('treasury.manage')
+  @RequireModule('treasury')
   setReceipt(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,
@@ -277,6 +291,7 @@ export class TreasuryController {
 
   @Get('expenses/:id/receipt')
   @RequirePermission('treasury.read')
+  @RequireModule('treasury')
   async receipt(
     @CurrentTenant() tenant: TenantContext,
     @Param('id') id: string,
@@ -291,6 +306,7 @@ export class TreasuryController {
   @Post('expenses/:id/cancel')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('treasury.manage')
+  @RequireModule('treasury')
   cancelExpense(
     @CurrentTenant() tenant: TenantContext,
     @CurrentUser() user: AuthContext,

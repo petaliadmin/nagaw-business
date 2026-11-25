@@ -1111,3 +1111,13 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Statut** : livré sur la branche `admin-charte` le 2026-11-24, à valider par le propriétaire. Aucune migration, aucun changement d'API.
 - **Fait** : cadre `app/admin/layout.tsx` calqué sur `AppShell` (barre latérale blanche, `MoreMenu`, barre du bas), `AdminNav` en trois formes (`sidebar`, `sheet`, `bottom`) ; `tabClasses` partagé dans `button-styles.ts` (onglets de l'administration et `SectionTabs`) ; tuiles « À faire » et pastilles de la liste des boutiques ajustées.
 - **Tests** : `admin.spec.ts` et `subscription.spec.ts` de bout en bout, ordinateur et téléphone.
+
+## Limites des offres (ADR-075)
+
+- **Statut** : livré sur la branche `limites-offres` le 2026-11-25, à valider par le propriétaire. Migration `20261125100000_plan_limits` à appliquer avant l'API.
+- **Fait** :
+  - base : colonnes de limites et `modules` sur `plans`, droits de modification pour l'API, déclencheur `plans_apply_caps` (produits, personnes, téléphones appliqués aux boutiques de l'offre), table `plan_revisions` (ajout seul) ;
+  - API : `plans/plan-limits.ts` (limites, usage, plafonds stricts, plancher d'historique) ; `@RequireModule` vérifié par `TenantGuard` (`403 MODULE_NOT_IN_PLAN`) sur comptabilité, trésorerie et dépenses, commandes ; rapports limités à 3 mois sans le module ; plafonds `PLAN_LIMIT_REACHED` sur clients (sauf créés hors ligne), fournisseurs (création et restauration), factures et devis du mois (jamais les avoirs) ; ventes du mois comptées sans refus, alertes dans l'administration ; historique sur les listes de ventes, factures, devis, mouvements et dépenses et sur les rapports (`HISTORY_NOT_IN_PLAN`), jamais sur la comptabilité ni les factures encore dues ; `GET/PATCH /admin/plans` ;
+  - web : page admin « Offres », limites dans la fiche boutique, `ModuleGate` (comptabilité, statistiques, trésorerie, commandes), `HistoryNote`, jauges et grille `PlanFeatures` (Abonnement, page d'accueil), alerte de ventes sur l'Accueil.
+- **Tests** : `plan-limits.integration-spec.ts` (droits de l'administration, historique des changements, modules et isolation entre boutiques, clients hors ligne, fournisseurs, factures, devis et avoirs, ventes au-delà, historique) ; `plans.spec.ts` ; e2e `admin.spec.ts` (offre réglée, module expliqué à la boutique, jauges et grille).
+- **Reste au propriétaire** : régler la grille dans « Offres » après l'application de la migration.
