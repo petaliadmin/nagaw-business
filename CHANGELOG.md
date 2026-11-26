@@ -2,6 +2,10 @@
 
 Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est close par une PR fusionnée dans `main`, puis l'étiquette `vX.Y.Z` posée par le propriétaire sur le commit de fusion.
 
+## Non publié — branche `installation-iphone`
+
+- **Installation sur iPhone et iPad** : les étapes suivent maintenant le navigateur. Safari d'iOS 26 (« … », Partager, Sur l'écran d'accueil, « Ouvrir comme app web »), Safari plus ancien (Partager en bas), Chrome, Edge et Firefox (qui savent aussi l'ajouter à l'écran d'accueil). Dans le navigateur d'Instagram, Facebook ou TikTok, la fenêtre dit d'ouvrir la page dans Safari, avec l'adresse à copier. L'iPad, qui se présente comme un Mac, est reconnu à son écran tactile. Une phrase prévient qu'il faut se connecter une fois dans l'application installée.
+
 ## Non publié — branche `admin-charte`
 
 - **L'administration à la charte de l'application** (ADR-063) : barre latérale blanche avec liens en pilules, sur téléphone barre du haut avec « Retour », « Administration » et « Menu » (tuiles rondes), barre du bas Accueil · Boutiques · Comptes · Factures ; onglets en pilules noires comme dans les boutiques ; cartes « À faire » sans ombre, icônes sur pastille ; pastilles de la liste des boutiques en ligne sur téléphone.
