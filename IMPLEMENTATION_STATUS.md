@@ -1111,3 +1111,9 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Statut** : livré sur la branche `admin-charte` le 2026-11-24, à valider par le propriétaire. Aucune migration, aucun changement d'API.
 - **Fait** : cadre `app/admin/layout.tsx` calqué sur `AppShell` (barre latérale blanche, `MoreMenu`, barre du bas), `AdminNav` en trois formes (`sidebar`, `sheet`, `bottom`) ; `tabClasses` partagé dans `button-styles.ts` (onglets de l'administration et `SectionTabs`) ; tuiles « À faire » et pastilles de la liste des boutiques ajustées.
 - **Tests** : `admin.spec.ts` et `subscription.spec.ts` de bout en bout, ordinateur et téléphone.
+
+## Installation sur iPhone et iPad
+
+- **Statut** : livré sur la branche `installation-iphone` le 2026-11-26, à valider par le propriétaire. Aucune migration.
+- **Fait** : `iosGuide` (`lib/pwa/install.ts`) distingue Safari 26 (version de Safari, la version d'iOS étant figée dans l'agent depuis iOS 26), Safari plus ancien, Chrome, Edge et Firefox, et les navigateurs intégrés aux applications ; iPad reconnu par `maxTouchPoints` ; `install-app.tsx` montre les étapes de chacun, l'adresse à copier pour Safari, et la reconnexion à prévoir.
+- **Tests** : `install.test.ts` ; e2e `install-iphone.spec.ts` (Safari 26, Instagram). Non vérifié sur un iPhone réel depuis l'environnement de développement.

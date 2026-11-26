@@ -1,21 +1,33 @@
 'use client';
 
-import { Download, Share, SquarePlus, X } from 'lucide-react';
+import {
+  Compass,
+  Copy,
+  Download,
+  Ellipsis,
+  LogIn,
+  Share,
+  SquarePlus,
+  X,
+} from 'lucide-react';
 import {
   useEffect,
   useId,
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from 'react';
 import { buttonClasses } from '@/components/ui/button-styles';
 import {
   currentInstallState,
+  currentIosGuide,
   dismissInstall,
   installDismissed,
   promptInstall,
   subscribeInstall,
   type InstallState,
+  type IosGuide,
 } from '@/lib/pwa/install';
 
 /** `state|dismissed`: a primitive, as useSyncExternalStore wants it. */
@@ -28,6 +40,166 @@ function useInstall(): { state: InstallState; dismissed: boolean } {
   );
   const [state, dismissed] = snapshot.split('|') as [InstallState, string];
   return { state, dismissed: dismissed === '1' };
+}
+
+type Step = { icon: typeof Share; text: ReactNode };
+
+/** The taps on this iPhone or iPad, by browser (see `iosGuide`). */
+const STEPS: Record<IosGuide, Step[]> = {
+  'safari-26': [
+    {
+      icon: Ellipsis,
+      text: (
+        <>
+          Touchez <strong>« … »</strong>, à droite de l’adresse du site.
+        </>
+      ),
+    },
+    {
+      icon: Share,
+      text: (
+        <>
+          Touchez <strong>Partager</strong>.
+        </>
+      ),
+    },
+    {
+      icon: SquarePlus,
+      text: (
+        <>
+          Choisissez <strong>Sur l’écran d’accueil</strong>, laissez{' '}
+          <strong>Ouvrir comme app web</strong> activé, puis touchez{' '}
+          <strong>Ajouter</strong>.
+        </>
+      ),
+    },
+  ],
+  safari: [
+    {
+      icon: Share,
+      text: (
+        <>
+          Touchez <strong>Partager</strong> (le carré avec une flèche), en bas
+          de l’écran, ou en haut sur iPad.
+        </>
+      ),
+    },
+    {
+      icon: SquarePlus,
+      text: (
+        <>
+          Choisissez <strong>Sur l’écran d’accueil</strong>, puis touchez{' '}
+          <strong>Ajouter</strong>.
+        </>
+      ),
+    },
+  ],
+  browser: [
+    {
+      icon: Share,
+      text: (
+        <>
+          Touchez <strong>Partager</strong> : à côté de l’adresse du site, ou
+          dans le menu <strong>« … »</strong> du navigateur.
+        </>
+      ),
+    },
+    {
+      icon: SquarePlus,
+      text: (
+        <>
+          Choisissez <strong>Sur l’écran d’accueil</strong>, puis touchez{' '}
+          <strong>Ajouter</strong>.
+        </>
+      ),
+    },
+  ],
+  'in-app': [
+    {
+      icon: Compass,
+      text: (
+        <>
+          Cette page est ouverte dans une autre application, qui ne peut pas
+          installer Nagaw. Touchez <strong>« … »</strong> puis{' '}
+          <strong>Ouvrir dans Safari</strong>, ou copiez l’adresse ci-dessous et
+          collez-la dans Safari.
+        </>
+      ),
+    },
+    {
+      icon: SquarePlus,
+      text: (
+        <>
+          Dans Safari, touchez <strong>Partager</strong> puis{' '}
+          <strong>Sur l’écran d’accueil</strong>.
+        </>
+      ),
+    },
+  ],
+};
+
+/** The address to open in Safari, with a button to copy it. */
+function CopyAddress() {
+  const [copied, setCopied] = useState(false);
+  const address = `${window.location.origin}/espace`;
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl bg-surface-muted p-3">
+      <span className="font-semibold break-all">{address}</span>
+      <button
+        type="button"
+        onClick={() =>
+          void navigator.clipboard
+            .writeText(address)
+            .then(() => setCopied(true))
+            .catch((error: unknown) => {
+              // Some in-app browsers refuse the clipboard: the address
+              // stays on screen to be copied by hand.
+              console.warn('Adresse non copiée', error);
+            })
+        }
+        className={buttonClasses('secondary', 'w-full')}
+      >
+        <Copy aria-hidden className="size-5" />
+        {copied ? 'Adresse copiée' : 'Copier l’adresse'}
+      </button>
+    </div>
+  );
+}
+
+/** What to do on this iPhone or iPad, step by step. */
+function IosSteps() {
+  const guide = currentIosGuide() ?? 'safari';
+  return (
+    <>
+      <ol className="flex flex-col gap-3">
+        {STEPS[guide].map(({ icon: Icon, text }, index) => (
+          <li key={index} className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
+              <Icon aria-hidden className="size-5" />
+            </span>
+            <span>
+              {index + 1}. {text}
+            </span>
+          </li>
+        ))}
+      </ol>
+      {guide === 'in-app' && <CopyAddress />}
+      {guide !== 'in-app' && (
+        <p className="text-ink-muted">
+          Vous ne voyez pas <strong>Sur l’écran d’accueil</strong> ? Faites
+          défiler la liste vers le bas. Si elle n’y est toujours pas, ouvrez
+          cette page dans Safari.
+        </p>
+      )}
+      <p className="flex items-start gap-2 text-ink-muted">
+        <LogIn aria-hidden className="mt-0.5 size-5 shrink-0" />
+        <span>
+          À la première ouverture depuis l’écran d’accueil, connectez-vous une
+          fois avec votre numéro et votre code : c’est normal sur iPhone.
+        </span>
+      </p>
+    </>
+  );
 }
 
 /**
@@ -101,25 +273,7 @@ function InstallSheet({
           </p>
           {state === 'ios' ? (
             <>
-              <ol className="flex flex-col gap-3">
-                <li className="flex items-center gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
-                    <Share aria-hidden className="size-5" />
-                  </span>
-                  <span>
-                    1. Touchez <strong>Partager</strong>, en bas de l’écran.
-                  </span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
-                    <SquarePlus aria-hidden className="size-5" />
-                  </span>
-                  <span>
-                    2. Choisissez <strong>Sur l’écran d’accueil</strong>, puis{' '}
-                    <strong>Ajouter</strong>.
-                  </span>
-                </li>
-              </ol>
+              <IosSteps />
               <button
                 type="button"
                 onClick={onClose}
