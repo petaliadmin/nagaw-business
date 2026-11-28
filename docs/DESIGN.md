@@ -66,6 +66,8 @@ Ces valeurs deviennent des jetons CSS (`@theme` de Tailwind 4) dans `apps/web/sr
 - **Sensation d'application installée** : panneaux depuis le bas (composant `BottomSheet`), « Retour » dans l'en-tête des sous-pages, retour visuel au toucher (ADR-044).
 - Bandeau d'état de connexion permanent mais discret : « Hors ligne — vos ventes sont gardées sur ce téléphone » / « 3 ventes en attente d'envoi » / « Tout est à jour ».
 
+- **Administration de la plateforme** (2026-11-24) : même charte que les boutiques (ADR-063). Barre latérale blanche avec « Administration » en pilule `brand-soft` ; sur téléphone, barre du haut (« Retour », « Administration », « Menu ») et barre du bas Accueil · Boutiques · Comptes · Factures, le reste dans le Menu. Onglets et filtres par `tabClasses` (choisi en encre), comme `SectionTabs`.
+
 ## Accessibilité (WCAG 2.2 AA minimum)
 
 - Cibles tactiles d'au moins **44 × 44 px** (standard iPhone ; WCAG 2.2 AA en demande 24), espacées de 8 px ; un pas d'espacement vaut 44/48 de celui de Tailwind (ADR-066).

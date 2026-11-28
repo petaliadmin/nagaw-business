@@ -22,6 +22,7 @@ import { UnitTemplatesService } from './unit-templates.service.js';
     UnitTemplatesService,
   ],
   // The offline checkout sends stock corrections with its sales.
-  exports: [StockService],
+  // The administration archives products and references (ADR-074).
+  exports: [StockService, ProductsService, ReferencesService],
 })
 export class CatalogModule {}

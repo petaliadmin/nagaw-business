@@ -1088,6 +1088,36 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
 - **Tests** : `orders.integration-spec.ts` (option éteinte et refusée, création idempotente et numérotée, avance dans Argent, contrôles, étapes, remise unique avec avances comptées une fois, stock, statistiques et journal, annulation avec remboursement, retard, droits, isolation entre boutiques, ajout seul en base) ; `orders.spec.ts` (totaux, schémas) ; `navigation.test.ts` ; `orders.spec.ts` de bout en bout (option, Accueil, Menu, prise de commande, étape, avance, remise et ticket, annulation).
 - **Non fait** : voir « Reporté » d'ADR-072.
 
+## Abonnements : durée, renouvellement, factures, à vie (ADR-073)
+
+- **Statut** : livré sur la branche `admin-abonnements` le 2026-11-23, à valider par le propriétaire. Migration `20261123130000_subscription_billing` à appliquer avant l'API.
+- **Fait** : période et fin d'abonnement, prix annuel, `subscription_invoices`, délai de grâce en base, `BillingService` (début de période, prolongation, factures payées ou annulées, renouvellement, retour en Gratuit, suspension et réouverture, à vie), endpoints `/admin/shops/:id/renew`, `PATCH /admin/shops/:id/subscription`, `/admin/invoices`, `PATCH /subscription` ; écrans de la boutique et de l'administration.
+- **Tests** : `billing.integration-spec.ts` (1 mois ou 1 an, prolongation, facture automatique unique, suspension après le délai et réouverture, retour en Gratuit, à vie réservé à la plateforme, isolation) ; `admin.spec.ts` et `subscription.spec.ts` de bout en bout.
+
+## Archiver depuis l'administration (ADR-074)
+
+- **Statut** : livré sur la branche `admin-abonnements` le 2026-11-23, à valider par le propriétaire. Migration `20261123140000_archives` à appliquer avant l'API.
+- **Fait** : statut `archived` des boutiques et archivage des comptes (garde d'authentification, connexion par numéro) ; `/admin/shops/:id/archive|restore`, `/admin/users`, `/admin/users/:id/archive|restore` ; `AdminDataService` et `/admin/shops/:id/data/:kind` (liste, archiver, restaurer, annuler), réservés à l'administrateur entré dans la boutique ; pages « Comptes » et « Données », onglets « Suspendues » et « Archivées » des boutiques.
+- **Tests** : `archives.integration-spec.ts` (boutique fermée et rangée puis restaurée, compte refusé puis rouvert, compte de l'administration protégé, droits) ; `admin-data.integration-spec.ts` (accès avec motif exigé, produits et clients archivés et restaurés au nom de la plateforme, vente et facture annulées avec leurs règles, isolation) ; `admin.spec.ts` de bout en bout.
+
+## Administration plus simple
+
+- **Statut** : livré sur la branche `admin-abonnements` le 2026-11-23, à valider par le propriétaire. Aucune migration.
+- **Fait** : bloc « À faire » du tableau de bord (factures à encaisser avec montant et retards, demandes d'offre, boutiques suspendues) ; menu réordonné (Tableau de bord, Boutiques, Comptes, Factures, Demandes d'offre, Finances, Synchronisation, Avis) ; liste des boutiques avec pastilles « À vie », « jusqu'au … », « Facture à payer » ou « en retard » (`currentPeriodEnd`, `lifetime`, `pendingInvoices`, `overdueInvoice` ajoutés à la liste) ; fiche boutique avec ligne d'état et navigation « Sur cette fiche ».
+- **Tests** : `admin.integration-spec.ts` (nouveaux champs de la liste) ; `admin.spec.ts` de bout en bout (« À faire » mène aux factures, liens de la fiche).
+
+## L'administration à la charte de l'application
+
+- **Statut** : livré sur la branche `admin-charte` le 2026-11-24, à valider par le propriétaire. Aucune migration, aucun changement d'API.
+- **Fait** : cadre `app/admin/layout.tsx` calqué sur `AppShell` (barre latérale blanche, `MoreMenu`, barre du bas), `AdminNav` en trois formes (`sidebar`, `sheet`, `bottom`) ; `tabClasses` partagé dans `button-styles.ts` (onglets de l'administration et `SectionTabs`) ; tuiles « À faire » et pastilles de la liste des boutiques ajustées.
+- **Tests** : `admin.spec.ts` et `subscription.spec.ts` de bout en bout, ordinateur et téléphone.
+
+## Installation sur iPhone et iPad
+
+- **Statut** : livré sur la branche `installation-iphone` le 2026-11-26, à valider par le propriétaire. Aucune migration.
+- **Fait** : `iosGuide` (`lib/pwa/install.ts`) distingue Safari 26 (version de Safari, la version d'iOS étant figée dans l'agent depuis iOS 26), Safari plus ancien, Chrome, Edge et Firefox, et les navigateurs intégrés aux applications ; iPad reconnu par `maxTouchPoints` ; `install-app.tsx` montre les étapes de chacun, l'adresse à copier pour Safari, et la reconnexion à prévoir.
+- **Tests** : `install.test.ts` ; e2e `install-iphone.spec.ts` (Safari 26, Instagram). Non vérifié sur un iPhone réel depuis l'environnement de développement.
+
 ## Ma vitrine (ADR-075)
 
 - **Statut** : **livrée sur la branche `claude/ma-vitrine`, à valider par le propriétaire**. Construite sur `profils-affichage` (Commandes, ADR-072), à fusionner avant.

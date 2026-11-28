@@ -235,7 +235,7 @@ export interface OrganizationDto {
   id: string;
   name: string;
   slug: string;
-  status: 'active' | 'suspended';
+  status: 'active' | 'suspended' | 'archived';
   timezone: string;
   defaultCurrency: string;
   /** Lifetime of new invitations. */

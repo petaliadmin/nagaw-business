@@ -1,6 +1,10 @@
 'use server';
 
-import { planChangeRequestSchema, type SubscriptionDto } from '@nagaw/shared';
+import {
+  planChangeRequestSchema,
+  subscriptionSettingsSchema,
+  type SubscriptionDto,
+} from '@nagaw/shared';
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { apiErrorState } from '@/lib/api/form-error';
@@ -33,6 +37,7 @@ export async function requestPlan(
   if (!shop) return { status: 'error', message: SHOP_CHANGED };
   const parsed = parseValues(planChangeRequestSchema, {
     planKey: text(formData, 'planKey'),
+    period: text(formData, 'period') || 'month',
   });
   if (!parsed.ok) return parsed.state;
   const result = await apiAsUser<SubscriptionDto>(shop.token, {
@@ -63,4 +68,31 @@ export async function cancelPlanRequest(
   if (!result.ok) return apiErrorState(result);
   refresh();
   return { status: 'success', message: 'Demande annulée.' };
+}
+
+/** The owner turns the automatic renewal on or off (ADR-073). */
+export async function setAutoRenew(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const shop = await shopOf(text(formData, 'organizationId'));
+  if (!shop) return { status: 'error', message: SHOP_CHANGED };
+  const parsed = parseValues(subscriptionSettingsSchema, {
+    autoRenew: text(formData, 'autoRenew') === 'true',
+  });
+  if (!parsed.ok) return parsed.state;
+  const result = await apiAsUser<SubscriptionDto>(shop.token, {
+    method: 'PATCH',
+    path: '/subscription',
+    organizationId: shop.organizationId,
+    body: parsed.data,
+  });
+  if (!result.ok) return apiErrorState(result);
+  refresh();
+  return {
+    status: 'success',
+    message: result.data.autoRenew
+      ? 'Renouvellement automatique activé.'
+      : 'Renouvellement automatique arrêté : l’offre s’arrêtera à la fin de la période.',
+  };
 }

@@ -19,5 +19,7 @@ import { SyncService } from './sync.service.js';
     SyncService,
     OrdersService,
   ],
+  // The administration cancels sales and archives customers (ADR-074).
+  exports: [SalesService, CustomersService],
 })
 export class SalesModule {}

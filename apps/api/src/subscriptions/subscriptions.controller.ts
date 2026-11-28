@@ -4,11 +4,14 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
 } from '@nestjs/common';
 import {
   planChangeRequestSchema,
+  subscriptionSettingsSchema,
   type PlanChangeRequestInput,
+  type SubscriptionSettingsInput,
   type PlanDto,
   type SubscriptionDto,
 } from '@nagaw/shared';
@@ -59,8 +62,22 @@ export class SubscriptionsController {
       tenant,
       user,
       body.planKey,
+      body.period,
       requestId,
     );
+  }
+
+  /** The owner turns the automatic renewal on or off (ADR-073). */
+  @Patch('subscription')
+  @RequirePermission('subscription.manage')
+  settings(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(subscriptionSettingsSchema))
+    body: SubscriptionSettingsInput,
+    @RequestId() requestId: string | null,
+  ): Promise<SubscriptionDto> {
+    return this.subscriptions.updateSettings(tenant, user, body, requestId);
   }
 
   @Post('subscription/requests/cancel')

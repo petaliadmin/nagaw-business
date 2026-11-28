@@ -921,6 +921,33 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
 - **Reporté (phase 2 et suivantes)** : modifier une commande après coup, réservation du stock, photo du modèle, mesures sur la fiche client, devis accepté → commande, commande et avance hors ligne, bouton « Commande » dans la caisse, « Annulée, avance à rendre plus tard », message « Votre commande est prête », ligne « Avances reçues, à livrer » des rapports, rappel des commandes prêtes non retirées sur l'Accueil (le seuil `order_ready_reminder_days`, 7 jours, est déjà en base et compté par `/orders/summary`).
 - **Conséquences** : appliquer `20261123110000_orders` (après `20261123090000_open_price`) avant de déployer l'API. Un vendeur limité dans ses remises ne peut remettre une commande dont un prix convenu dépasse sa limite : le propriétaire ou un gérant la remet.
 
+## ADR-073 — Abonnements d'un mois ou d'un an, renouvellement et factures, abonnement à vie
+
+- **Statut** : **Proposée**, branche `admin-abonnements` (demande du propriétaire du 2026-11-23).
+- **Contexte** : un abonnement payant n'avait pas de date de fin ; la plateforme changeait l'offre à la main après un paiement reçu (ADR-056), sans rien pour le renouveler ni pour réclamer un paiement.
+- **Décision** :
+  - une offre payante dure **1 mois**, ou **1 an** si la boutique le choisit (`subscriptions.period`, `current_period_end`) ; le prix d'un an est `plans.yearly_price`, ou douze mois quand il est vide ; une offre gratuite n'a pas de fin ;
+  - **renouvellement manuel** : l'administrateur « prolonge » d'un mois ou d'un an depuis la fin de la période (paiement reçu), ce qui crée une facture payée ; accepter une demande ou changer l'offre démarre une période aujourd'hui, avec sa facture payée ;
+  - **renouvellement automatique** (`auto_renew`, coché au départ ; le propriétaire ou l'administrateur l'arrête) : à la fin de la période, le passage quotidien crée une **facture à payer** et ouvre la période suivante, sans prélever d'argent ; la boutique voit la facture, le montant, la date limite, les numéros Wave et Orange Money et la référence `AB-…` ;
+  - **suspension pour impayé** : si l'administrateur n'a pas marqué la facture payée après `platform_settings.subscription_grace_days` jours (15), la boutique est suspendue (`suspended_invoice_id`) ; marquer la facture payée, l'annuler ou accorder l'abonnement à vie la rouvre aussitôt, sauf autre facture en retard ;
+  - sans renouvellement, la boutique repasse en **Gratuit** à la fin de la période ; rien n'est effacé ;
+  - **abonnement à vie** : seul l'administrateur de la plateforme (ADR-039) l'accorde ou le retire, avec confirmation ; il n'a ni fin ni facture, et annule les factures en attente ; retiré, une période commence le jour même ;
+  - chaque prolongation, facture émise, payée ou annulée, suspension et changement est inscrit au journal de la boutique (au nom de « Nagaw (plateforme) » ou du système) ;
+  - admin : carte « Durée et factures » de la fiche boutique, page « Factures » (à encaisser, en retard d'abord), alerte du tableau de bord.
+- **Conséquences** : migration `20261123130000_subscription_billing` ; les boutiques déjà payantes reçoivent une période d'un mois à compter de l'application. Le passage quotidien (`/cron/daily`) traite les abonnements avant les notifications. Aucun paiement en ligne : la plateforme confirme chaque paiement.
+
+## ADR-074 — Archiver depuis l'administration : boutiques, comptes, données d'une boutique
+
+- **Statut** : **Proposée**, branche `admin-abonnements` (demande du propriétaire du 2026-11-23).
+- **Contexte** : l'administration pouvait suspendre une boutique, mais ni ranger une boutique fermée pour de bon, ni fermer un compte, ni faire le ménage dans les données d'une boutique sans y entrer et passer par chaque écran.
+- **Décision** :
+  - **archiver ne détruit rien** : ventes, factures et historique restent (comptabilité et loi) ; tout se restaure ; chaque action demande un motif et une confirmation, et s'inscrit au journal de la boutique au nom de « Nagaw (plateforme) » ;
+  - **boutique archivée** (`organizations.status = 'archived'`, migration `20261123140000_archives`) : fermée à ses membres comme une boutique suspendue, absente des listes de l'administration sauf l'onglet « Archivées », plus de suspension ni de renouvellement ; l'archivage ferme l'accès ouvert de l'administrateur ; une boutique archivée se restaure avant d'être suspendue ;
+  - **compte archivé** (`user_profiles.archived_at`) : l'API refuse toute requête de ce compte (`403 ACCOUNT_ARCHIVED`, vérifié par la garde d'authentification) et la connexion par numéro le dit ; ses boutiques et leurs données restent ; le compte de l'administration ne s'archive pas ; nouvelle page « Comptes » (recherche par numéro, e-mail ou nom, onglet « Archivés ») ;
+  - **données d'une boutique** : produits, clients, fournisseurs, catégories (archiver, restaurer), ventes et factures émises (annuler), depuis la page « Données » de la fiche boutique. Elles ne s'ouvrent **qu'après être entré dans la boutique avec un motif** (ADR-040 : le contenu d'une boutique n'est jamais visible autrement, `403 SHOP_ACCESS_REQUIRED`). Chaque action passe par le service de la boutique, avec ses règles (stock rendu, avoir pour une facture), et ajoute au journal `platform.data_changed` avec le motif ;
+  - « Vente au montant » et les frais de livraison (produits système) n'apparaissent pas.
+- **Conséquences** : appliquer `20261123140000_archives` avant l'API. Une requête authentifiée lit désormais `user_profiles.archived_at` (clé primaire).
+
 ## ADR-075 — Ma vitrine : le catalogue en lien web, les commandes à confirmer, le paiement à la remise
 
 - **Statut** : **Proposée**, livrée sur la branche `claude/ma-vitrine` (partie de `profils-affichage`) (demande du propriétaire du 2026-11-28 : « partager son catalogue sous forme de lien web sur statut, réseaux sociaux, où les clients peuvent consulter ses articles, services, faire une commande » ; choix du même jour : nom « Ma vitrine », paiement à la remise, pas de livraison). Dépend d'ADR-072 (Commandes, branche `profils-affichage`), à fusionner avant.

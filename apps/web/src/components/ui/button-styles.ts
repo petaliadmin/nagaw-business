@@ -24,3 +24,15 @@ export function buttonClasses(
 ): string {
   return `inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 py-2 text-base font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${VARIANTS[variant]} ${className}`.trim();
 }
+
+/**
+ * A tab or filter among a few (« Toutes », « Archivées »…): grey pills, the
+ * chosen one in ink like the main action (ADR-063). Pass `aria-current`.
+ */
+export function tabClasses(active: boolean): string {
+  return `inline-flex min-h-12 items-center rounded-full border-2 px-4 text-base font-bold ${
+    active
+      ? 'border-ink bg-ink text-canvas'
+      : 'border-transparent bg-surface text-ink hover:bg-line'
+  }`;
+}

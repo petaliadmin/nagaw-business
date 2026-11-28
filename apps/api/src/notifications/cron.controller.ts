@@ -3,6 +3,7 @@ import { Controller, Get, Headers, HttpStatus, Inject } from '@nestjs/common';
 import { Public } from '../auth/public.decorator.js';
 import { ApiException } from '../common/api-exception.js';
 import { ENV, type Env } from '../config/env.js';
+import { BillingService } from '../subscriptions/billing.service.js';
 import { DailyService } from './daily.service.js';
 
 function sameSecret(given: string, expected: string): boolean {
@@ -20,6 +21,7 @@ function sameSecret(given: string, expected: string): boolean {
 export class CronController {
   constructor(
     private readonly daily: DailyService,
+    private readonly billing: BillingService,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
@@ -27,7 +29,11 @@ export class CronController {
   @Get('daily')
   async run(
     @Headers('authorization') authorization: string | undefined,
-  ): Promise<{ shops: number; pending: number }> {
+  ): Promise<{
+    shops: number;
+    pending: number;
+    subscriptions: { renewed: number; expired: number; suspended: number };
+  }> {
     const secret = this.env.CRON_SECRET;
     if (!secret)
       throw new ApiException(
@@ -41,6 +47,9 @@ export class CronController {
         'UNAUTHENTICATED',
         'Authentification requise.',
       );
-    return this.daily.runDue();
+    // Ends of term and unpaid invoices first (ADR-073): a shop suspended
+    // today gets no day's notifications.
+    const subscriptions = await this.billing.runDue();
+    return { ...(await this.daily.runDue()), subscriptions };
   }
 }

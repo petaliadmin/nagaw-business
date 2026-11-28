@@ -9,8 +9,20 @@ Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est
 - **Protection** : champ piège contre les robots, limites par adresse et par téléphone réglables en base, aucun paiement possible sur une commande à confirmer (vérifié aussi en SQL), nom et numéro d'une demande refusée effacés après 90 jours.
 - **Chiffres** : visites, commandes envoyées et acceptées des 7 derniers jours, sans cookie.
 
+## Non publié — branche `installation-iphone`
+
+- **Installation sur iPhone et iPad** : les étapes suivent maintenant le navigateur. Safari d'iOS 26 (« … », Partager, Sur l'écran d'accueil, « Ouvrir comme app web »), Safari plus ancien (Partager en bas), Chrome, Edge et Firefox (qui savent aussi l'ajouter à l'écran d'accueil). Dans le navigateur d'Instagram, Facebook ou TikTok, la fenêtre dit d'ouvrir la page dans Safari, avec l'adresse à copier. L'iPad, qui se présente comme un Mac, est reconnu à son écran tactile. Une phrase prévient qu'il faut se connecter une fois dans l'application installée.
+
+## Non publié — branche `admin-charte`
+
+- **L'administration à la charte de l'application** (ADR-063) : barre latérale blanche avec liens en pilules, sur téléphone barre du haut avec « Retour », « Administration » et « Menu » (tuiles rondes), barre du bas Accueil · Boutiques · Comptes · Factures ; onglets en pilules noires comme dans les boutiques ; cartes « À faire » sans ombre, icônes sur pastille ; pastilles de la liste des boutiques en ligne sur téléphone.
+
 ## Non publié — branche `profils-affichage`
 
+- **Recherche de l'administration corrigée** : chercher un compte par son adresse e-mail, ou une boutique dont le nom contient un chiffre, ne remonte plus les numéros de téléphone qui contiennent ces chiffres.
+- **Administration plus simple** : un bloc « À faire » en tête du tableau de bord (factures à encaisser, demandes d'offre, boutiques suspendues), un menu rangé par usage, des pastilles dans la liste des boutiques (à vie, échéance, facture à payer ou en retard) et, sur la fiche d'une boutique, une ligne d'état et des liens « Sur cette fiche » vers chaque partie.
+- **Archiver depuis l'administration** (ADR-074) : une boutique (fermée et rangée, restaurable), un compte (plus de connexion, page « Comptes »), les produits, clients, fournisseurs et catégories d'une boutique, et annuler ses ventes et factures, une fois entré dans la boutique avec un motif. Rien n'est effacé.
+- **Abonnements d'un mois ou d'un an** (ADR-073) : prolongation à la main par l'administration, renouvellement automatique avec une facture à payer, suspension si elle n'est pas marquée payée après 15 jours, retour en Gratuit sans renouvellement, abonnement à vie accordé par l'administrateur seul ; page « Factures » de l'administration.
 - **Une application à la taille de chaque boutique (ADR-067)** : à la création, « Comment travaillez-vous ? » (crédit, stock, factures, équipe) ; le Menu et l'Accueil n'affichent que ce qui sert ; Paramètres › Mon application pour cacher ou rallumer chaque partie, choisir si les nouveaux produits comptent leur stock, ou tout afficher ; « Produits » à la place de « Stock » dans la barre du bas quand rien n'est compté. Rien n'est supprimé, et les boutiques existantes ne voient aucun changement.
 - **La barre du bas suit la boutique** : un atelier qui facture a « Factures », une boutique qui vend à crédit sans compter son stock a « Crédit » ; ce qui quitte la barre reste dans le Menu.
 - **Création de boutique en trois étapes**, comme la maquette : votre boutique, ce que vous vendez, vos habitudes, puis un aperçu « Voici votre application ».

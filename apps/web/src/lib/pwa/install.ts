@@ -3,9 +3,9 @@
  *
  * Chrome and Edge (Android, computers) fire `beforeinstallprompt`: the
  * event is kept so that our own dialog, then a button of the menu, can
- * open the browser's installation. Safari on iPhone has no such event:
- * the person is shown the two taps to do (Partager, Sur l'écran
- * d'accueil). Once installed, nothing is proposed any more.
+ * open the browser's installation. An iPhone has no such event: the
+ * person is shown the taps to do for its browser (`iosGuide`). Once
+ * installed, nothing is proposed any more.
  */
 
 /** The non-standard event Chrome fires when the app can be installed. */
@@ -19,32 +19,71 @@ export type InstallState =
   | 'installed'
   /** The browser can install it at a tap. */
   | 'prompt'
-  /** iPhone or iPad Safari: install by hand from « Partager ». */
+  /** iPhone or iPad: install by hand from « Partager » (see `iosGuide`). */
   | 'ios'
   /** Nothing to offer (browser without installation, or not yet ready). */
   | 'unavailable';
+
+/**
+ * How to put the app on the home screen of an iPhone or iPad, which has no
+ * installation event:
+ * - `safari-26`: Safari of iOS 26 and later, « Partager » is under « … »;
+ * - `safari`: older Safari, « Partager » in the bar at the bottom;
+ * - `browser`: Chrome, Edge or Firefox, which add to the home screen too
+ *   since iOS 17.4, from their own « Partager »;
+ * - `in-app`: a page opened inside Facebook, Instagram, TikTok…, where the
+ *   home screen is out of reach: open it in Safari first.
+ */
+export type IosGuide = 'safari-26' | 'safari' | 'browser' | 'in-app';
 
 export function installState(environment: {
   standalone: boolean;
   installed: boolean;
   hasPrompt: boolean;
   userAgent: string;
+  /** Touch points: an iPad presents itself as a Mac with a touch screen. */
+  touchPoints?: number;
 }): InstallState {
   if (environment.standalone || environment.installed) return 'installed';
   if (environment.hasPrompt) return 'prompt';
-  if (isIosSafari(environment.userAgent)) return 'ios';
+  if (iosGuide(environment.userAgent, environment.touchPoints ?? 0))
+    return 'ios';
   return 'unavailable';
 }
 
-/** Safari on iPhone or iPad (other iOS browsers cannot install a PWA). */
-export function isIosSafari(userAgent: string): boolean {
-  const ios =
-    /iPhone|iPad|iPod/.test(userAgent) ||
-    // iPadOS presents itself as a Mac with a touch screen.
-    (/Macintosh/.test(userAgent) && /Mobile\//.test(userAgent));
+/** An iPhone, iPod or iPad, whatever the browser. */
+export function isIos(userAgent: string, touchPoints = 0): boolean {
   return (
-    ios && /Safari\//.test(userAgent) && !/CriOS|FxiOS|EdgiOS/.test(userAgent)
+    /iPhone|iPad|iPod/.test(userAgent) ||
+    // iPadOS presents itself as a Mac, with a touch screen.
+    (/Macintosh/.test(userAgent) &&
+      (touchPoints > 1 || /Mobile\//.test(userAgent)))
   );
+}
+
+/** The steps to show on this iPhone or iPad; null elsewhere. */
+export function iosGuide(userAgent: string, touchPoints = 0): IosGuide | null {
+  if (!isIos(userAgent, touchPoints)) return null;
+  // Apps that open links in their own browser, with no home screen.
+  if (
+    /FBAN|FBAV|FB_IAB|Instagram|TikTok|musical_ly|BytedanceWebview|Snapchat|Line\/|LinkedInApp|Twitter|GSA\//.test(
+      userAgent,
+    )
+  )
+    return 'in-app';
+  if (/CriOS|EdgiOS|FxiOS|OPiOS|DuckDuckGo|Brave/.test(userAgent))
+    return 'browser';
+  if (!/Safari\//.test(userAgent)) return 'in-app';
+  // Since iOS 26 the system version is frozen in the user agent: Safari's
+  // own version (`Version/26.0`) says which bar it has.
+  const version = Number(/Version\/(\d+)/.exec(userAgent)?.[1] ?? 0);
+  return version >= 26 ? 'safari-26' : 'safari';
+}
+
+/** Safari on iPhone or iPad. */
+export function isIosSafari(userAgent: string, touchPoints = 0): boolean {
+  const guide = iosGuide(userAgent, touchPoints);
+  return guide === 'safari' || guide === 'safari-26';
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +139,14 @@ export function currentInstallState(): InstallState {
     installed: justInstalled,
     hasPrompt: deferred !== null,
     userAgent: navigator.userAgent,
+    touchPoints: navigator.maxTouchPoints,
   });
+}
+
+/** The steps for this iPhone or iPad, in the browser; null elsewhere. */
+export function currentIosGuide(): IosGuide | null {
+  if (typeof window === 'undefined') return null;
+  return iosGuide(navigator.userAgent, navigator.maxTouchPoints);
 }
 
 /** Opens the browser's installation; true when the person accepted. */
