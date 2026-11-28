@@ -20,6 +20,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { PhoneAuthModule } from './phone-auth/phone-auth.module.js';
 import { SalesModule } from './sales/sales.module.js';
+import { StorefrontModule } from './storefront/storefront.module.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
 import { TenantGuard } from './tenancy/tenant.guard.js';
 import { TreasuryModule } from './treasury/treasury.module.js';
@@ -50,6 +51,7 @@ import { TreasuryModule } from './treasury/treasury.module.js';
     SubscriptionsModule,
     AdminModule,
     FeedbackModule,
+    StorefrontModule,
   ],
   providers: [
     // Order matters: authenticate first, then resolve the tenant.

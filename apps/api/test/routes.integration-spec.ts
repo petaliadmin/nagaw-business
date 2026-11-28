@@ -32,6 +32,14 @@ const NOT_SHOP_SCOPED: Record<string, 'public' | 'user' | 'admin'> = {
   'POST /api/v1/auth/phone/sign-in': 'public',
   'POST /api/v1/auth/phone/sign-up': 'public',
   'POST /api/v1/auth/phone/link': 'user',
+  // Ma vitrine (ADR-075): found by its address, without a session
+  // (storefront.integration-spec).
+  'GET /api/v1/public/storefronts/:slug': 'public',
+  'GET /api/v1/public/storefronts/:slug/logo': 'public',
+  'GET /api/v1/public/storefronts/:slug/articles/:handle/photo': 'public',
+  'POST /api/v1/public/storefronts/:slug/visits': 'public',
+  'POST /api/v1/public/storefronts/:slug/orders': 'public',
+  'GET /api/v1/public/storefronts/:slug/tracking/:token': 'public',
 };
 
 /** API documentation: public, and not served in production (Phase 1). */

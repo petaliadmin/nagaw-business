@@ -3,6 +3,7 @@ import {
   isOpenOrder,
   ORDER_STATUS_LABELS,
   roleHasPermission,
+  type CustomerDto,
   type OrderDto,
 } from '@nagaw/shared';
 import { MessageCircle } from 'lucide-react';
@@ -17,10 +18,16 @@ import { Card } from '@/components/ui/card';
 import { PageFallback } from '@/components/ui/page-fallback';
 import { apiAsUser } from '@/lib/api/server';
 import { formatDateTime } from '@/lib/format';
-import { dueLabel, ORDER_STATUS_TONES, orderText } from '@/lib/orders';
+import {
+  dueLabel,
+  ORDER_STATUS_TONES,
+  orderPerson,
+  orderText,
+} from '@/lib/orders';
 import { PAYMENT_LABELS, PROVIDER_LABELS } from '@/lib/sales/labels';
 import { whatsappLink } from '@/lib/sales/ticket';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
+import { ConfirmActions } from './confirm-actions';
 import {
   CancelForm,
   DeliverForm,
@@ -70,6 +77,26 @@ async function Order({ params }: Props) {
   const open = isOpenOrder(order.status);
   const canManage = roleHasPermission(role, 'orders.manage');
   const canDeliver = canManage && roleHasPermission(role, 'sales.create');
+  const person = orderPerson(order);
+  const toConfirm = order.status === 'to_confirm';
+  // A customer with the same number, proposed when accepting (ADR-075).
+  let match: { id: string; name: string } | null = null;
+  const digits = person.phone.replace(/\D/g, '').slice(-8);
+  if (
+    toConfirm &&
+    canManage &&
+    digits.length === 8 &&
+    roleHasPermission(role, 'customers.read')
+  ) {
+    const found = await apiAsUser<CustomerDto[]>(accessToken, {
+      path: `/customers?q=${digits}&limit=5`,
+      organizationId: organization.id,
+    });
+    const first = found.ok
+      ? found.data.find((c) => c.phone.replace(/\D/g, '').endsWith(digits))
+      : undefined;
+    if (first) match = { id: first.id, name: first.name };
+  }
 
   return (
     <>
@@ -84,13 +111,20 @@ async function Order({ params }: Props) {
           {order.late && <Badge tone="danger">En retard</Badge>}
         </div>
         <p className="text-lg">
-          <Link
-            href={`/espace/clients/${order.customer.id}`}
-            className="font-bold underline underline-offset-4"
-          >
-            {order.customer.name}
-          </Link>
-          {order.customer.phone ? ` · ${order.customer.phone}` : ''}
+          {order.customer ? (
+            <Link
+              href={`/espace/clients/${order.customer.id}`}
+              className="font-bold underline underline-offset-4"
+            >
+              {order.customer.name}
+            </Link>
+          ) : (
+            <span className="font-bold">{person.name || 'Client effacé'}</span>
+          )}
+          {person.phone ? ` · ${person.phone}` : ''}
+          {order.source === 'storefront' && (
+            <span className="text-ink-muted"> · envoyée de la vitrine</span>
+          )}
         </p>
         <p className="text-ink-muted">
           Pour le {dueLabel(order)} ·{' '}
@@ -121,6 +155,20 @@ async function Order({ params }: Props) {
         </Alert>
       )}
 
+      {toConfirm && canManage && (
+        <Card title="À confirmer" titleId="order-confirm">
+          <ConfirmActions
+            organizationId={organization.id}
+            order={order}
+            currency={currency}
+            shopName={organization.name}
+            countryCode={organization.phoneCountryCode}
+            match={match}
+            canDecline={roleHasPermission(role, 'orders.cancel')}
+          />
+        </Card>
+      )}
+
       {open && canManage && (
         <Card title="Où en est-elle ?" titleId="order-steps">
           <StatusSteps organizationId={organization.id} order={order} />
@@ -136,7 +184,7 @@ async function Order({ params }: Props) {
                   {line.label} × {String(line.quantity).replace('.', ',')}
                 </span>
                 <span className="font-bold tabular-nums">
-                  {money(line.lineTotal)}
+                  {line.priceToSet ? 'Prix à donner' : money(line.lineTotal)}
                 </span>
               </div>
               {line.note && <p className="text-ink-muted">{line.note}</p>}
@@ -197,7 +245,7 @@ async function Order({ params }: Props) {
       <a
         href={whatsappLink(
           orderText(order, organization.name, money),
-          order.customer.phone,
+          person.phone,
           organization.phoneCountryCode,
         )}
         target="_blank"

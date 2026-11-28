@@ -20,3 +20,4 @@ export * from './stats.js';
 export * from './treasury.js';
 export * from './notifications.js';
 export * from './orders.js';
+export * from './storefront.js';

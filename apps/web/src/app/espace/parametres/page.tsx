@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  Globe,
   History,
   LayoutGrid,
   Percent,
@@ -114,6 +115,15 @@ function SettingsMenu({
                 href: '/espace/parametres?partie=application',
                 label: 'Mon application : ce qui s’affiche',
                 icon: LayoutGrid,
+              },
+            ]
+          : []),
+        ...(can('storefront.manage')
+          ? [
+              {
+                href: '/espace/vitrine',
+                label: 'Ma vitrine : mon catalogue en lien',
+                icon: Globe,
               },
             ]
           : []),

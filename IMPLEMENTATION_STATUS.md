@@ -1087,3 +1087,28 @@ Ce fichier reflète **l'état réel du code**. Il est mis à jour à la fin de c
   - web : option dans Mon application, entrée du Menu, rond de l'Accueil avec pastille, pages `/espace/commandes`, `/nouvelle`, `/[id]` (étapes, avance, remise, annulation, bon WhatsApp), ticket « Commande C-… » et « Avance, … ».
 - **Tests** : `orders.integration-spec.ts` (option éteinte et refusée, création idempotente et numérotée, avance dans Argent, contrôles, étapes, remise unique avec avances comptées une fois, stock, statistiques et journal, annulation avec remboursement, retard, droits, isolation entre boutiques, ajout seul en base) ; `orders.spec.ts` (totaux, schémas) ; `navigation.test.ts` ; `orders.spec.ts` de bout en bout (option, Accueil, Menu, prise de commande, étape, avance, remise et ticket, annulation).
 - **Non fait** : voir « Reporté » d'ADR-072.
+
+## Ma vitrine (ADR-075)
+
+- **Statut** : **livrée sur la branche `claude/ma-vitrine`, à valider par le propriétaire**. Construite sur `profils-affichage` (Commandes, ADR-072), à fusionner avant.
+- **Fonctionnalités terminées** :
+  - migration `20261128090000_storefront.sql` : réglages de la vitrine, adresses (`storefront_slugs`, anciennes adresses gardées), articles visibles, statut `to_confirm` et source des commandes, compteurs de limites, chiffres par jour, seuils en base (`platform_settings`), catégorie de notifications `orders`, déclencheur qui refuse tout paiement d'une commande à confirmer ;
+  - API publique `public/storefronts/:slug` (vitrine, logo, photo d'un article visible, visite, commande, suivi), sans session, réponse construite sur une liste fermée de champs ; API boutique `storefront` (réglages, articles) et `orders/:id/accept|reschedule|decline` ;
+  - web : vitrine publique `/b/[adresse]` (panier gardé dans le navigateur, trois étapes, commande envoyée), suivi `/b/[adresse]/suivi/[jeton]`, pages `/espace/vitrine` et `/espace/vitrine/articles`, « À confirmer » dans Commandes et sur la fiche d'une commande, entrée dans les Paramètres, rond « Commandes » de l'Accueil ;
+  - effacement du nom et du numéro des demandes refusées par le passage quotidien.
+- **Tests exécutés** (2026-11-28, Postgres 16 local) :
+
+  | Commande                | Résultat                                                                                                                   |
+  | ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+  | `pnpm format:check`     | OK                                                                                                                         |
+  | `pnpm lint`             | OK                                                                                                                         |
+  | `pnpm typecheck`        | OK                                                                                                                         |
+  | `pnpm test`             | shared 123, api 65, web 275 : OK                                                                                           |
+  | `pnpm test:integration` | 274 OK, dont `storefront.integration-spec.ts` (13)                                                                         |
+  | `pnpm build`            | API OK ; web OK avec la police Nunito neutralisée le temps du build (Google Fonts inaccessible depuis le poste de travail) |
+  | `pnpm check:bundle`     | aucun secret dans le bundle client                                                                                         |
+
+  Parcours vérifié dans Chrome à 360 px sur l'API et une base locales : vitrine, ajout au panier, choix du jour, coordonnées, envoi, suivi, sans erreur dans la console.
+
+- **Problèmes connus / non fait** : image pour le statut, QR code, page par article et images Open Graph par article ; test de bout en bout Playwright du parcours ; vérification en préproduction. `STOREFRONT_RELAY_SECRET` (même valeur dans l'API et le site, 32 caractères au moins) est à définir sur Vercel, sinon les limites par adresse tombent sur `X-Forwarded-For` reçu par l'API, qui est celle du site.
+- **Configuration nécessaire** : appliquer la migration avant de déployer l'API ; définir `STOREFRONT_RELAY_SECRET` dans les deux projets Vercel.

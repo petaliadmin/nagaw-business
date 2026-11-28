@@ -59,7 +59,7 @@ export async function apiAsUser<T>(
  */
 export async function apiPublic<T>(
   path: string,
-  options: Pick<CallApiOptions, 'method' | 'body'> = {},
+  options: Pick<CallApiOptions, 'method' | 'body' | 'extraHeaders'> = {},
 ): Promise<ApiResult<T>> {
   return callApi<T>({
     ...options,
@@ -104,6 +104,37 @@ export async function fetchBinaryAsUser(
     };
   } catch (error) {
     console.error('Fichier indisponible', path, error);
+    return { ok: false, status: 502 };
+  }
+}
+
+/** Binary GET of a public route (storefront photo and logo, ADR-075). */
+export async function fetchPublicBinary(
+  path: string,
+): Promise<
+  | { ok: true; data: ArrayBuffer; contentType: string }
+  | { ok: false; status: number }
+> {
+  const baseUrl = apiBaseUrl();
+  if (!baseUrl) return { ok: false, status: 503 };
+  const headers: Record<string, string> = {};
+  const bypass = apiProtectionBypass();
+  if (bypass) headers['x-vercel-protection-bypass'] = bypass;
+  try {
+    const response = await fetch(new URL(`/api/v1${path}`, baseUrl), {
+      headers,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) return { ok: false, status: response.status };
+    return {
+      ok: true,
+      data: await response.arrayBuffer(),
+      contentType:
+        response.headers.get('content-type') ?? 'application/octet-stream',
+    };
+  } catch (error) {
+    console.error('Image publique indisponible', path, error);
     return { ok: false, status: 502 };
   }
 }

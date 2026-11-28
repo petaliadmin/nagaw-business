@@ -920,3 +920,75 @@ Chaque décision a un statut : **Proposée**, **Acceptée**, **Remplacée**, **R
   - **comptabilité** : le journal est un journal de recettes et de dépenses (ADR-046) : une avance y est une recette du jour où elle est reçue, répartie entre 701 et 706 comme les articles de la commande, une avance rendue la reprend ; la remise n'y ajoute que ce qui est payé ce jour-là. Le compte 4191 « Clients, avances et acomptes reçus » proposé par la note reste **à valider avec le comptable**, comme le compte des frais de livraison (706 pour l'instant).
 - **Reporté (phase 2 et suivantes)** : modifier une commande après coup, réservation du stock, photo du modèle, mesures sur la fiche client, devis accepté → commande, commande et avance hors ligne, bouton « Commande » dans la caisse, « Annulée, avance à rendre plus tard », message « Votre commande est prête », ligne « Avances reçues, à livrer » des rapports, rappel des commandes prêtes non retirées sur l'Accueil (le seuil `order_ready_reminder_days`, 7 jours, est déjà en base et compté par `/orders/summary`).
 - **Conséquences** : appliquer `20261123110000_orders` (après `20261123090000_open_price`) avant de déployer l'API. Un vendeur limité dans ses remises ne peut remettre une commande dont un prix convenu dépasse sa limite : le propriétaire ou un gérant la remet.
+
+## ADR-075 — Ma vitrine : le catalogue en lien web, les commandes à confirmer, le paiement à la remise
+
+- **Statut** : **Proposée**, livrée sur la branche `claude/ma-vitrine` (partie de `profils-affichage`) (demande du propriétaire du 2026-11-28 : « partager son catalogue sous forme de lien web sur statut, réseaux sociaux, où les clients peuvent consulter ses articles, services, faire une commande » ; choix du même jour : nom « Ma vitrine », paiement à la remise, pas de livraison). Dépend d'ADR-072 (Commandes, branche `profils-affichage`), à fusionner avant.
+- **Contexte** : les commerçants montrent déjà leurs articles en photos sur leur statut WhatsApp, Instagram, Facebook ou TikTok, puis prennent les commandes à la main, dans les messages. Rien n'arrive dans Nagaw : pas de commande suivie, pas de stock qui baisse, pas de chiffre. Les Commandes (ADR-072) savent déjà suivre une vente promise et la remettre comme une vraie vente ; il leur manque une porte d'entrée pour le client.
+- **Décision** :
+  - **option éteinte au départ** pour toutes les boutiques : `organizations.storefront_enabled`, allumée seulement par le propriétaire ou un gérant dans Paramètres › Mon application › Ma vitrine, jamais par « Tout afficher » ni par les réponses à la création (comme ADR-072). Allumer Ma vitrine allume les Commandes, après un écran qui le dit. Éteinte, ou boutique suspendue ou archivée : la vitrine répond « Cette vitrine n'est pas disponible » (404), et les commandes déjà reçues restent à suivre dans l'application ;
+  - **adresse** : `{domaine}/b/{adresse}`, l'adresse proposée d'après le nom de la boutique (`chez-aissatou`), modifiable : 3 à 40 caractères `a-z`, `0-9` et `-`, unique sur la plateforme, liste de mots réservés (`admin`, `api`, `naagaw`…). Les anciennes adresses restent dans `app.storefront_slugs` et redirigent vers la nouvelle, pour qu'un statut déjà publié ne mène jamais à une impasse. Un article a son lien `{domaine}/b/{adresse}/a/{article}`, d'après son nom, unique dans la boutique ;
+  - **ce que la vitrine montre** : nom, logo, phrase de présentation (160 caractères), repère (« Marché Tilène, allée 4 »), horaires en texte libre, bouton WhatsApp (numéro de la boutique par défaut, modifiable). Puis les produits et services cochés « Sur ma vitrine » (`products.storefront_visible`, décoché au départ ; à l'allumage, l'écran propose « Tout montrer » ou « Choisir ») : photo, nom, catégorie, unité, prix de vente, courte description facultative (`products.storefront_description`, 300 caractères) ;
+  - **disponibilité en mots, jamais en chiffres** : « Disponible », « Plus que quelques-uns » (stock compté au plus égal au seuil d'alerte du produit), « Épuisé » (non commandable). Un produit dont le stock n'est pas compté, et un service, sont « Disponible » ;
+  - **prix** : affiché, ou « Prix sur demande » (`products.storefront_price_mode`). Un produit au prix tapé (ADR-069) est toujours « Prix sur demande » ; sa ligne arrive sans prix et le commerçant le fixe en acceptant ;
+  - **jamais montré** : prix d'achat, marge, quantités en stock, code-barres, taux de taxe, membres, identifiants internes. La réponse publique est construite à partir d'une liste fermée de champs, et un test vérifie qu'aucun autre champ n'en sort ;
+  - **commander sans compte, en trois étapes** : 1. « Ce que je veux » (panier, gardé dans le navigateur ; lecture et écriture protégées contre les erreurs, sans rien de vital) ; 2. « Quand je passe » : retrait à la boutique seulement, date (aujourd'hui à 30 jours, aujourd'hui par défaut) et heure facultative, une heure obligatoire pour un service (rendez-vous, ADR-072) ; 3. « Qui je suis » : prénom et nom, téléphone (drapeau et plan de numérotation, ADR-064), note facultative (300 caractères). « Envoyer ma commande » mène à « Commande envoyée ✓ — la boutique va la confirmer », avec le numéro `C-…`, « Prévenir la boutique sur WhatsApp » (message déjà écrit) et le lien de suivi ;
+  - **paiement à la remise seulement** : la vitrine dit « Vous payez en venant chercher votre commande », avec les moyens que la boutique accepte (espèces, Wave, Orange Money…). Elle n'affiche aucun numéro de paiement et ne reçoit ni avance ni paiement. À la remise, tout se passe comme dans ADR-072 : vraie vente, ticket, stock qui baisse, tout moyen de paiement, ou crédit ;
+  - **pas de livraison** : une commande de la vitrine est toujours `fulfilment = 'pickup'`, sans frais de livraison. La boutique peut toujours en convenir avec le client sur WhatsApp, hors de Nagaw ;
+  - **le commerçant confirme** : nouvelle étape **« À confirmer »** (`to_confirm`), avant « Reçue ». Elle apparaît en tête de Commandes, sur le rond « Commandes » de l'Accueil (« 3 à confirmer ») et dans les notifications de l'application (ADR-036). Trois gestes :
+    - « Accepter » (`orders.manage`) : la commande passe à « Reçue ». La personne est liée à un client existant (proposé si son téléphone est connu) ou devient un nouveau client ; un prix sur demande est fixé ici ;
+    - « Autre jour » : nouvelle date proposée, puis « Accepter » ;
+    - « Refuser » (`orders.cancel`), motif en pastilles : Épuisé, Fermé ce jour-là, Autre. C'est une annulation (ADR-072), sans avance à rendre.
+  - Après chaque geste, « Prévenir sur WhatsApp » ouvre un message déjà écrit et modifiable vers le client. Rien n'est envoyé par Nagaw (ADR-015, ADR-017) ;
+  - **suivi par le client** : `{domaine}/b/{adresse}/suivi/{jeton}`, un jeton aléatoire de 128 bits (seule son empreinte est en base). La page montre l'étape, le jour, les articles et le total, et le prénom seul. Pas de liste des commandes d'un téléphone ;
+  - **partager** :
+    - « Partager ma vitrine » ouvre le menu de partage du téléphone (lien et phrase) ;
+    - « Image pour le statut » : une image verticale 1080 × 1920 (photo, nom, prix en grand, nom de la boutique, adresse courte), pour un article ou pour la vitrine (quatre articles), préparée à l'avance comme le ticket (ADR-063) pour que le partage s'ouvre tout de suite sur iPhone ;
+    - un QR code à imprimer (PNG et PDF A6), dans une version suivante ;
+    - chaque lien a son aperçu (image Open Graph : photo, nom, prix, boutique), dont l'adresse change avec la version de l'article, pour qu'un prix modifié ne reste pas figé dans le cache de WhatsApp ;
+  - **chiffres pour le commerçant** : `app.storefront_daily_stats` (boutique, jour, visites, commandes envoyées, acceptées), sans cookie, sans adresse IP gardée. Une carte « Ma vitrine cette semaine » sur l'Accueil pour qui peut la gérer (`storefront.manage`) ;
+  - **trouvable sur Google** : non au départ (`noindex`) ; « Être trouvée sur Google » dans les réglages ;
+  - **droits** : `storefront.manage` (propriétaire, gérant : allumer, adresse, présentation, articles visibles, chiffres) ; accepter : `orders.manage` ; refuser : `orders.cancel`. Allumer, éteindre, changer d'adresse, accepter et refuser sont inscrits dans l'historique.
+- **API** :
+  - module `storefront` à part, **sans session ni `TenantGuard`** : la boutique est trouvée par le serveur d'après l'adresse, jamais d'après un identifiant envoyé par le client ;
+  - `GET /api/v1/public/storefronts/{adresse}` (vitrine, articles, disponibilité), et la photo de chaque article visible et le logo ;
+  - `POST /api/v1/public/storefronts/{adresse}/orders` `{ clientOperationId, lines[{ article, quantity, note }], dueOn, dueTime?, name, phone, note, website }` → `{ number, status: 'to_confirm', trackingUrl }`. Les prix et la disponibilité sont recalculés par le serveur (`packages/shared`), puis figés. Un article absent, caché ou épuisé refuse la commande avec un message par ligne. Au plus 30 lignes, avec des quantités bornées. Idempotent par `clientOperationId` ;
+  - **contre les abus** : champ piège `website` (rempli : réponse identique, rien d'enregistré) ; limites par adresse IP et par téléphone sur une fenêtre glissante, comptées en base (`app.storefront_order_attempts`, purgée par le passage quotidien d'ADR-073, sans Redis ni processus permanent) ; au plus N commandes « À confirmer » par téléphone et par boutique. Les valeurs sont dans `platform_settings` (`storefront_max_orders_per_ip_hour` 10, `storefront_max_orders_per_phone_day` 5, `storefront_max_pending_per_phone` 3), jamais en dur ;
+  - `GET /api/v1/public/storefronts/{adresse}/tracking/{jeton}` (suivi) et `POST …/visits` (compteur, sans corps) ;
+  - côté boutique : `GET/PATCH /api/v1/storefront` (réglages) ; `POST /orders/{id}/accept`, `POST /orders/{id}/reschedule`, `POST /orders/{id}/decline`, tous idempotents.
+- **Schéma** (nouvelle migration, après `20261123110000_orders`, rien de modifié dans les migrations existantes) :
+  - `organizations` : `storefront_enabled`, `storefront_tagline`, `storefront_landmark`, `storefront_hours`, `storefront_whatsapp`, `storefront_indexable` ;
+  - `app.storefront_slugs` (adresse unique, boutique, actuelle ou ancienne) ;
+  - `products` : `storefront_visible`, `storefront_handle` (unique par boutique), `storefront_description`, `storefront_price_mode` ;
+  - `orders` :
+    - `source` (`counter` / `storefront`, `counter` par défaut) ;
+    - statut `to_confirm` ajouté à la liste ;
+    - `created_by` facultatif seulement pour `source = 'storefront'` ;
+    - `customer_id` facultatif seulement en `to_confirm` ;
+    - `requester_name` et `requester_phone`, toujours remplis pour `storefront` ;
+    - `tracking_token_hash` ;
+    - prix d'une ligne facultatif seulement en `to_confirm` ;
+    - contrôle : `source = 'storefront'` ⇒ `fulfilment = 'pickup'`, et aucun paiement de commande tant qu'elle est `to_confirm` ;
+  - `app.storefront_daily_stats`, `app.storefront_order_attempts` ; droits accordés au seul rôle `nagaw_api`, RLS active, comme ADR-072.
+- **Web** : pages `/b/[adresse]`, `/b/[adresse]/a/[article]` et `/b/[adresse]/suivi/[jeton]`, rendues à l'avance et mises en cache (Cache Components, données dynamiques sous `<Suspense>`). Budget : premier écran utile en 3G, moins de 150 Ko avant les photos, photos redimensionnées. Charte V3 (ADR-063, ADR-066), en français seul (ADR-012), sans IA (ADR-007). Le pied de page « Vitrine créée avec Naagaw » mène au site public.
+- **Données personnelles** : sous le formulaire, une phrase dit que le nom et le téléphone ne servent qu'à la boutique pour cette commande, avec un lien vers la page de confidentialité. Une commande refusée garde son motif, mais le nom et le téléphone sont effacés après `storefront_declined_retention_days` (90, en base), par le passage quotidien.
+- **Tests** :
+  - isolation : l'adresse d'une boutique ne rend jamais un article d'une autre ; un article caché, une boutique éteinte, suspendue ou archivée donnent 404 ; accepter ou refuser la commande d'une autre boutique donne 404 ;
+  - fonctionnement : rejeu sans doublon, prix recalculés et écart refusé, champs interdits absents de la réponse publique, limites et champ piège ;
+  - parcours de bout en bout à 360 px et 1280 px (voir, commander, accepter, remettre), axe-core sans violation sérieuse ni critique.
+- **Non fait (versions suivantes)** : paiement en ligne et avance depuis la vitrine (prestataire à choisir par le propriétaire, ADR à part) ; livraison ; réservation du stock à l'acceptation (déjà reportée par ADR-072) ; compte client et historique de ses commandes ; vérification du téléphone par SMS ; catalogue WhatsApp Business ; codes promo ; avis ; vitrine commune à plusieurs boutiques.
+- **Choix par défaut, à confirmer par le propriétaire** (questions restées ouvertes le 2026-11-28) :
+  1. le pied de page « Vitrine créée avec Naagaw » est toujours présent, quelle que soit l'offre ;
+  2. le domaine des liens est l'adresse du site (`SITE_URL`, `https://www.naagaw.com` en production) ;
+  3. un vendeur accepte et propose un autre jour (`orders.manage`) ; seuls le propriétaire et le gérant refusent (`orders.cancel`).
+- **Écarts à la mise en œuvre (2026-11-28)** :
+  - la vitrine publique est gardée **une minute** par le site (`'use cache'`, `cacheLife`) au lieu d'être invalidée à chaque changement : l'API ne peut pas vider le cache du site ; un prix ou un stock changé se voit en moins d'une minute ;
+  - les limites sont des compteurs à fenêtre glissante (`app.storefront_order_limits`, une ligne par clé, comme `phone_sign_in_failures`) : le rôle `nagaw_api` n'a le droit de supprimer dans aucune table ;
+  - l'adresse du visiteur vient de `X-Forwarded-For` (réécrit par Vercel) ; le site la relaie à l'API derrière le secret partagé `STOREFRONT_RELAY_SECRET`, sans quoi toutes les commandes passées par le site compteraient pour une seule adresse ;
+  - `GET /storefront` (chiffres et réglages) est lisible avec `orders.read` ; le changer et choisir les articles demandent `storefront.manage` ;
+  - nouvelle catégorie de notifications « Commandes de la vitrine » (`orders`), reçue par défaut par le propriétaire, le gérant et le vendeur ;
+  - **pas encore fait** : image pour le statut 1080 × 1920, QR code à imprimer, page par article (`/b/{adresse}/a/{article}`) et images Open Graph propres à chaque article (l'aperçu WhatsApp montre le nom et la présentation de la boutique) ; tests de bout en bout Playwright du parcours.
+- **Conséquences** :
+  - fusionner `profils-affichage` (ADR-072) avant ce lot, puis appliquer la nouvelle migration avant de déployer l'API ;
+  - les pages `/b/…` sont publiques : vérifier les en-têtes de sécurité et que la vérification du bundle client (`check:bundle`) n'y trouve aucun secret ;
+  - le site public et le guide peuvent présenter Ma vitrine **seulement une fois vérifiée en production** (règle « ne jamais annoncer une intégration non vérifiée »).

@@ -2,6 +2,13 @@
 
 Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est close par une PR fusionnée dans `main`, puis l'étiquette `vX.Y.Z` posée par le propriétaire sur le commit de fusion.
 
+## Non publié — branche `claude/ma-vitrine`
+
+- **Ma vitrine** (ADR-075), à allumer dans Paramètres › Ma vitrine : le catalogue de la boutique en lien web (`/b/chez-awa`) à partager sur le statut WhatsApp et les réseaux. Les clients voient les articles et services choisis (prix ou « Prix sur demande », disponibilité en mots, jamais de chiffre de stock ni de prix d'achat), commandent en trois étapes sans compte, choisissent le jour du retrait et suivent leur commande par un lien. Paiement à la remise, retrait à la boutique seulement.
+- **Commandes « À confirmer »** : une commande de la vitrine arrive en tête de Commandes et sur le rond de l'Accueil, avec une notification ; « Accepter » (le client est lié ou créé, les prix sur demande sont tapés), « Autre jour » ou « Refuser » avec un motif, puis un message WhatsApp déjà écrit. Rien n'est envoyé par Nagaw.
+- **Protection** : champ piège contre les robots, limites par adresse et par téléphone réglables en base, aucun paiement possible sur une commande à confirmer (vérifié aussi en SQL), nom et numéro d'une demande refusée effacés après 90 jours.
+- **Chiffres** : visites, commandes envoyées et acceptées des 7 derniers jours, sans cookie.
+
 ## Non publié — branche `profils-affichage`
 
 - **Une application à la taille de chaque boutique (ADR-067)** : à la création, « Comment travaillez-vous ? » (crédit, stock, factures, équipe) ; le Menu et l'Accueil n'affichent que ce qui sert ; Paramètres › Mon application pour cacher ou rallumer chaque partie, choisir si les nouveaux produits comptent leur stock, ou tout afficher ; « Produits » à la place de « Stock » dans la barre du bas quand rien n'est compté. Rien n'est supprimé, et les boutiques existantes ne voient aucun changement.

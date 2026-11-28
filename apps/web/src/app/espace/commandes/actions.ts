@@ -1,6 +1,9 @@
 'use server';
 
 import {
+  acceptOrderSchema,
+  declineOrderSchema,
+  rescheduleOrderSchema,
   cancelOrderSchema,
   createCustomerSchema,
   createOrderSchema,
@@ -244,5 +247,62 @@ export async function cancelOrder(
         refund,
       }),
     'Commande annulée.',
+  );
+}
+
+// Orders sent from the storefront (ADR-075).
+
+export async function acceptOrder(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const customer = text(formData, 'customer');
+  const prices = formData
+    .getAll('priceLine')
+    .map((line) => Number(line.toString()));
+  return call(
+    formData,
+    (id) => `/orders/${id}/accept`,
+    (currency) =>
+      parseValues(acceptOrderSchema, {
+        customerId: customer === 'nouveau' || customer === '' ? null : customer,
+        prices: prices.map((line) => ({
+          line,
+          lineTotal: amountOf(formData, `price-${line}`, currency),
+        })),
+      }),
+    'Commande acceptée. Prévenez le client sur WhatsApp.',
+  );
+}
+
+export async function rescheduleOrder(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  return call(
+    formData,
+    (id) => `/orders/${id}/reschedule`,
+    () =>
+      parseValues(rescheduleOrderSchema, {
+        dueOn: text(formData, 'dueOn'),
+        dueTime: text(formData, 'dueTime') || null,
+      }),
+    'Nouveau jour enregistré. Prévenez le client, puis acceptez.',
+  );
+}
+
+export async function declineOrder(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  return call(
+    formData,
+    (id) => `/orders/${id}/decline`,
+    () =>
+      parseValues(declineOrderSchema, {
+        reason: text(formData, 'reason'),
+        detail: text(formData, 'detail'),
+      }),
+    'Commande refusée. Prévenez le client sur WhatsApp.',
   );
 }

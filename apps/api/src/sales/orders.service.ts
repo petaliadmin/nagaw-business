@@ -1,8 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
+  declineReasonText,
   formatAmount,
   isOpenOrder,
+  storefrontDueOnAllowed,
+  type AcceptOrderInput,
+  type DeclineOrderInput,
+  type RescheduleOrderInput,
   orderLineTotal,
   orderTotals,
   roleHasPermission,
@@ -37,10 +42,21 @@ import type {
   StoredOrderLine,
 } from '../database/schema.js';
 import { takeSequenceNumber } from '../database/sequences.js';
+import { CustomersService } from './customers.service.js';
 import { SalesService } from './sales.service.js';
 
 const orderNotFound = () =>
   notFound('ORDER_NOT_FOUND', 'Commande introuvable.');
+const toConfirm = () =>
+  conflict(
+    'ORDER_TO_CONFIRM',
+    'Cette commande vient de la vitrine : acceptez-la ou refusez-la d’abord.',
+  );
+const notToConfirm = () =>
+  conflict(
+    'ORDER_NOT_TO_CONFIRM',
+    'Cette commande n’attend plus de confirmation.',
+  );
 const closed = () =>
   conflict(
     'ORDER_CLOSED',
@@ -52,8 +68,8 @@ const CLOSED_SHOWN = 100;
 
 type OrderRow = Selectable<OrdersTable> & {
   due_day: string;
-  customer_name: string;
-  customer_phone: string;
+  customer_name: string | null;
+  customer_phone: string | null;
 };
 
 /**
@@ -67,6 +83,7 @@ export class OrdersService {
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
     private readonly sales: SalesService,
+    private readonly customers: CustomersService,
   ) {}
 
   private async shop(executor: Executor, organizationId: string) {
@@ -84,20 +101,23 @@ export class OrdersService {
   }
 
   private baseQuery(executor: Executor, organizationId: string) {
-    return executor
-      .selectFrom('app.orders as o')
-      .innerJoin('app.customers as c', (join) =>
-        join
-          .onRef('c.organization_id', '=', 'o.organization_id')
-          .onRef('c.id', '=', 'o.customer_id'),
-      )
-      .selectAll('o')
-      .select([
-        sql<string>`o.due_on::text`.as('due_day'),
-        'c.name as customer_name',
-        'c.phone as customer_phone',
-      ])
-      .where('o.organization_id', '=', organizationId);
+    return (
+      executor
+        .selectFrom('app.orders as o')
+        // An order « À confirmer » has no customer yet (ADR-075).
+        .leftJoin('app.customers as c', (join) =>
+          join
+            .onRef('c.organization_id', '=', 'o.organization_id')
+            .onRef('c.id', '=', 'o.customer_id'),
+        )
+        .selectAll('o')
+        .select([
+          sql<string>`o.due_on::text`.as('due_day'),
+          'c.name as customer_name',
+          'c.phone as customer_phone',
+        ])
+        .where('o.organization_id', '=', organizationId)
+    );
   }
 
   private async payments(
@@ -145,11 +165,18 @@ export class OrdersService {
       id: row.id,
       number: row.number,
       status: row.status,
-      customer: {
-        id: row.customer_id,
-        name: row.customer_name,
-        phone: row.customer_phone,
-      },
+      source: row.source,
+      customer: row.customer_id
+        ? {
+            id: row.customer_id,
+            name: row.customer_name ?? '',
+            phone: row.customer_phone ?? '',
+          }
+        : null,
+      requester:
+        row.source === 'storefront'
+          ? { name: row.requester_name, phone: row.requester_phone }
+          : null,
       lines: row.lines,
       itemsTotal,
       deliveryFee,
@@ -250,12 +277,14 @@ export class OrdersService {
     const shop = await this.shop(db, organizationId);
     const day = today(shop.timezone);
     const { rows } = await sql<{
+      to_confirm: string;
       due_now: string;
       late: string;
       waiting: string;
     }>`
-      select count(*) filter (where due_on <= ${day}::date) as due_now,
-             count(*) filter (where due_on < ${day}::date) as late,
+      select count(*) filter (where status = 'to_confirm') as to_confirm,
+             count(*) filter (where status <> 'to_confirm' and due_on <= ${day}::date) as due_now,
+             count(*) filter (where status <> 'to_confirm' and due_on < ${day}::date) as late,
              count(*) filter (
                where status = 'ready'
                  and updated_at < now() - make_interval(days => ${shop.order_ready_reminder_days})
@@ -265,6 +294,7 @@ export class OrdersService {
          and status not in ('delivered', 'cancelled')`.execute(db);
     const row = rows[0]!;
     return {
+      toConfirm: toNumber(row.to_confirm),
       dueNow: toNumber(row.due_now),
       late: toNumber(row.late),
       waitingReady: toNumber(row.waiting),
@@ -468,6 +498,7 @@ export class OrdersService {
             throw conflict('OPERATION_REUSED', 'Opération déjà utilisée.');
           return true;
         }
+        if (order.status === 'to_confirm') throw toConfirm();
         if (!isOpenOrder(order.status)) throw closed();
         const current = await this.find(trx, organizationId, id);
         const shop = await this.shop(trx, organizationId);
@@ -521,6 +552,7 @@ export class OrdersService {
     const organizationId = tenant.organizationId;
     await this.database.db.transaction().execute(async (trx) => {
       const order = await this.lock(trx, organizationId, id);
+      if (order.status === 'to_confirm') throw toConfirm();
       if (!isOpenOrder(order.status)) throw closed();
       if (
         input.status === 'out_for_delivery' &&
@@ -574,11 +606,14 @@ export class OrdersService {
         'Seuls ceux qui vendent remettent une commande.',
       );
     const order = await this.get(organizationId, id);
+    if (order.status === 'to_confirm') throw toConfirm();
     if (!isOpenOrder(order.status)) {
       // A handover sent twice answers with the order handed over.
       if (order.status === 'delivered') return order;
       throw closed();
     }
+    // Accepted orders always have their customer (ADR-075).
+    const customer = order.customer!;
     const db = this.database.db;
     const system = async (role: 'open_sale' | 'delivery_fee') => {
       const found = await db
@@ -647,7 +682,7 @@ export class OrdersService {
     const sale: CreateSaleInput = {
       // The order's own id: a handover sent twice records one sale.
       clientOperationId: order.id,
-      customerId: order.customer.id,
+      customerId: customer.id,
       lines: [
         ...order.lines.map((line) => ({
           productId: line.productId ?? freeId!,
@@ -716,6 +751,7 @@ export class OrdersService {
     const organizationId = tenant.organizationId;
     await this.database.db.transaction().execute(async (trx) => {
       const order = await this.lock(trx, organizationId, id);
+      if (order.status === 'to_confirm') throw toConfirm();
       if (!isOpenOrder(order.status)) throw closed();
       const current = await this.find(trx, organizationId, id);
       if (current.paid > 0) {
@@ -762,6 +798,214 @@ export class OrdersService {
           reason: input.reason,
           ...(current.paid > 0 ? { refunded: current.paid } : {}),
         },
+        requestId,
+      });
+    });
+    return this.get(organizationId, id);
+  }
+
+  // -------------------------------------------------------------------------
+  // Orders sent from the storefront (ADR-075)
+  // -------------------------------------------------------------------------
+
+  /** The order to confirm, locked; null when it was already accepted. */
+  private async lockToConfirm(
+    trx: Executor,
+    organizationId: string,
+    id: string,
+  ) {
+    if (!UUID_RE.test(id)) throw orderNotFound();
+    const row = await trx
+      .selectFrom('app.orders')
+      .select([
+        'id',
+        'status',
+        'number',
+        'source',
+        'lines',
+        'requester_name',
+        'requester_phone',
+      ])
+      .where('organization_id', '=', organizationId)
+      .where('id', '=', id)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!row) throw orderNotFound();
+    return row;
+  }
+
+  /**
+   * « Accepter »: the order becomes « Reçue ». The person is linked to a
+   * customer of the shop, or becomes one; the prices « sur demande » are
+   * set here. Sent twice, it answers with the accepted order.
+   */
+  async accept(
+    tenant: TenantContext,
+    user: AuthContext,
+    id: string,
+    input: AcceptOrderInput,
+    requestId: string | null,
+  ): Promise<OrderDto> {
+    const organizationId = tenant.organizationId;
+    await this.database.db.transaction().execute(async (trx) => {
+      const order = await this.lockToConfirm(trx, organizationId, id);
+      if (order.status === 'cancelled') throw closed();
+      if (order.status !== 'to_confirm') return;
+
+      let customerId = input.customerId;
+      if (customerId) {
+        const customer = await trx
+          .selectFrom('app.customers')
+          .select(['id', 'status'])
+          .where('organization_id', '=', organizationId)
+          .where('id', '=', customerId)
+          .executeTakeFirst();
+        if (!customer || customer.status !== 'active')
+          throw invalid('customerId', 'Client inconnu.');
+      } else {
+        // The order's id as the operation: accepting twice creates one
+        // customer.
+        const { customer } = await this.customers.create(
+          trx,
+          tenant,
+          user,
+          {
+            name: order.requester_name,
+            phone: order.requester_phone,
+            notes: '',
+            email: '',
+            address: '',
+            taxId: '',
+            creditLimit: null,
+            clientOperationId: order.id,
+          },
+          requestId,
+        );
+        customerId = customer.id;
+      }
+
+      const prices = new Map(input.prices.map((p) => [p.line, p.lineTotal]));
+      const lines: StoredOrderLine[] = order.lines.map((line, index) => {
+        if (!line.priceToSet) return line;
+        const lineTotal = prices.get(index);
+        if (lineTotal === undefined)
+          throw invalid(
+            `prices.${index}`,
+            `Tapez le prix de « ${line.label} ».`,
+          );
+        return {
+          ...line,
+          lineTotal,
+          unitPrice: Math.round(lineTotal / line.quantity),
+          priceToSet: false,
+        };
+      });
+      const itemsTotal = lines.reduce((sum, l) => sum + l.lineTotal, 0);
+      await trx
+        .updateTable('app.orders')
+        .set({
+          status: 'received',
+          customer_id: customerId,
+          lines: JSON.stringify(lines),
+          items_total: itemsTotal,
+        })
+        .where('organization_id', '=', organizationId)
+        .where('id', '=', id)
+        .execute();
+      const shop = await this.shop(trx, organizationId);
+      await sql`
+        insert into app.storefront_daily_stats (organization_id, day, orders_accepted)
+        values (${organizationId}, ${today(shop.timezone)}::date, 1)
+        on conflict (organization_id, day)
+        do update set orders_accepted = app.storefront_daily_stats.orders_accepted + 1`.execute(
+        trx,
+      );
+      await this.audit.record(trx, {
+        organizationId,
+        actorType: 'user',
+        actorId: user.userId,
+        action: 'order.accepted',
+        targetType: 'order',
+        targetId: id,
+        metadata: { number: order.number, total: itemsTotal },
+        requestId,
+      });
+    });
+    return this.get(organizationId, id);
+  }
+
+  /** « Autre jour »: another day proposed, before accepting. */
+  async reschedule(
+    tenant: TenantContext,
+    user: AuthContext,
+    id: string,
+    input: RescheduleOrderInput,
+    requestId: string | null,
+  ): Promise<OrderDto> {
+    const organizationId = tenant.organizationId;
+    await this.database.db.transaction().execute(async (trx) => {
+      const order = await this.lockToConfirm(trx, organizationId, id);
+      if (order.status !== 'to_confirm') throw notToConfirm();
+      const shop = await this.shop(trx, organizationId);
+      if (!storefrontDueOnAllowed(input.dueOn, today(shop.timezone)))
+        throw invalid(
+          'dueOn',
+          'Choisissez un jour entre aujourd’hui et dans 30 jours.',
+        );
+      await trx
+        .updateTable('app.orders')
+        .set({ due_on: input.dueOn, due_time: input.dueTime })
+        .where('organization_id', '=', organizationId)
+        .where('id', '=', id)
+        .execute();
+      await this.audit.record(trx, {
+        organizationId,
+        actorType: 'user',
+        actorId: user.userId,
+        action: 'order.rescheduled',
+        targetType: 'order',
+        targetId: id,
+        metadata: { number: order.number, dueOn: input.dueOn },
+        requestId,
+      });
+    });
+    return this.get(organizationId, id);
+  }
+
+  /** « Refuser »: an order to confirm is cancelled, with its reason. */
+  async decline(
+    tenant: TenantContext,
+    user: AuthContext,
+    id: string,
+    input: DeclineOrderInput,
+    requestId: string | null,
+  ): Promise<OrderDto> {
+    const organizationId = tenant.organizationId;
+    const reason = declineReasonText(input);
+    await this.database.db.transaction().execute(async (trx) => {
+      const order = await this.lockToConfirm(trx, organizationId, id);
+      // Refused twice: the same answer.
+      if (order.status === 'cancelled' && order.source === 'storefront') return;
+      if (order.status !== 'to_confirm') throw notToConfirm();
+      await trx
+        .updateTable('app.orders')
+        .set({
+          status: 'cancelled',
+          cancelled_at: new Date(),
+          cancelled_by: user.userId,
+          cancellation_reason: reason,
+        })
+        .where('organization_id', '=', organizationId)
+        .where('id', '=', id)
+        .execute();
+      await this.audit.record(trx, {
+        organizationId,
+        actorType: 'user',
+        actorId: user.userId,
+        action: 'order.declined',
+        targetType: 'order',
+        targetId: id,
+        metadata: { number: order.number, reason },
         requestId,
       });
     });

@@ -9,6 +9,12 @@ import {
   Res,
 } from '@nestjs/common';
 import {
+  acceptOrderSchema,
+  declineOrderSchema,
+  rescheduleOrderSchema,
+  type AcceptOrderInput,
+  type DeclineOrderInput,
+  type RescheduleOrderInput,
   cancelOrderSchema,
   createOrderSchema,
   deliverOrderSchema,
@@ -153,5 +159,50 @@ export class OrdersController {
   ): Promise<OrderDto> {
     res.status(HttpStatus.OK);
     return this.orders.cancel(tenant, user, id, body, requestId);
+  }
+
+  // Orders sent from the storefront (ADR-075).
+
+  @Post(':id/accept')
+  @RequirePermission('orders.manage')
+  async accept(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(acceptOrderSchema)) body: AcceptOrderInput,
+    @RequestId() requestId: string | null,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<OrderDto> {
+    res.status(HttpStatus.OK);
+    return this.orders.accept(tenant, user, id, body, requestId);
+  }
+
+  @Post(':id/reschedule')
+  @RequirePermission('orders.manage')
+  async reschedule(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(rescheduleOrderSchema))
+    body: RescheduleOrderInput,
+    @RequestId() requestId: string | null,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<OrderDto> {
+    res.status(HttpStatus.OK);
+    return this.orders.reschedule(tenant, user, id, body, requestId);
+  }
+
+  @Post(':id/decline')
+  @RequirePermission('orders.cancel')
+  async decline(
+    @CurrentTenant() tenant: TenantContext,
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(declineOrderSchema)) body: DeclineOrderInput,
+    @RequestId() requestId: string | null,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<OrderDto> {
+    res.status(HttpStatus.OK);
+    return this.orders.decline(tenant, user, id, body, requestId);
   }
 }

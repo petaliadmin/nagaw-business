@@ -80,6 +80,11 @@ const envSchema = z
       .optional(),
     /** Sent by Vercel Cron as a bearer token (secret, ADR-006). */
     CRON_SECRET: z.string().min(16).optional(),
+    /**
+     * Shared with the web app (secret, ADR-075): only a request carrying
+     * it may say which visitor address it relays to the storefront limits.
+     */
+    STOREFRONT_RELAY_SECRET: z.string().min(32).optional(),
   })
   .refine(
     (env) => {
