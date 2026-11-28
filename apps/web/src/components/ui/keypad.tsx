@@ -26,7 +26,7 @@ export function Keypad({
     >
       {KEYS.map((key, index) =>
         key === '' ? (
-          <span key={index} aria-hidden />
+          <span key={`blank-${index}`} aria-hidden />
         ) : (
           <button
             key={key}
