@@ -34,3 +34,11 @@ export function siteUrl(): string {
 export function apiProtectionBypass(): string | undefined {
   return process.env.API_PROTECTION_BYPASS || undefined;
 }
+
+/**
+ * Shared with the API (secret, ADR-075): lets the storefront tell the API
+ * which visitor address sent an order, for its limits. Never public.
+ */
+export function storefrontRelaySecret(): string | undefined {
+  return process.env.STOREFRONT_RELAY_SECRET || undefined;
+}

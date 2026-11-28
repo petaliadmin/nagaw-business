@@ -2,6 +2,13 @@
 
 Le numéro suit [SemVer](https://semver.org/lang/fr/) (ADR-061). Une version est close par une PR fusionnée dans `main`, puis l'étiquette `vX.Y.Z` posée par le propriétaire sur le commit de fusion.
 
+## Non publié — branche `claude/ma-vitrine`
+
+- **Ma vitrine** (ADR-075), à allumer dans Paramètres › Ma vitrine : le catalogue de la boutique en lien web (`/b/chez-awa`) à partager sur le statut WhatsApp et les réseaux. Les clients voient les articles et services choisis (prix ou « Prix sur demande », disponibilité en mots, jamais de chiffre de stock ni de prix d'achat), commandent en trois étapes sans compte, choisissent le jour du retrait et suivent leur commande par un lien. Paiement à la remise, retrait à la boutique seulement.
+- **Commandes « À confirmer »** : une commande de la vitrine arrive en tête de Commandes et sur le rond de l'Accueil, avec une notification ; « Accepter » (le client est lié ou créé, les prix sur demande sont tapés), « Autre jour » ou « Refuser » avec un motif, puis un message WhatsApp déjà écrit. Rien n'est envoyé par Nagaw.
+- **Protection** : champ piège contre les robots, limites par adresse et par téléphone réglables en base, aucun paiement possible sur une commande à confirmer (vérifié aussi en SQL), nom et numéro d'une demande refusée effacés après 90 jours.
+- **Chiffres** : visites, commandes envoyées et acceptées des 7 derniers jours, sans cookie.
+
 ## Non publié — branche `installation-iphone`
 
 - **Installation sur iPhone et iPad** : les étapes suivent maintenant le navigateur. Safari d'iOS 26 (« … », Partager, Sur l'écran d'accueil, « Ouvrir comme app web »), Safari plus ancien (Partager en bas), Chrome, Edge et Firefox (qui savent aussi l'ajouter à l'écran d'accueil). Dans le navigateur d'Instagram, Facebook ou TikTok, la fenêtre dit d'ouvrir la page dans Safari, avec l'adresse à copier. L'iPad, qui se présente comme un Mac, est reconnu à son écran tactile. Une phrase prévient qu'il faut se connecter une fois dans l'application installée.

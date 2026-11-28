@@ -37,6 +37,8 @@ Après la Phase 18 : **notifications, accès élargi des vendeurs et contrôle d
 
 **Réglages d'affichage selon la boutique** (ADR-067, proposée le 2026-11-21) : phase 1 sur la branche `profils-affichage`, puis sur la même branche (2026-11-23, à valider) : vente au montant et prix tapés (ADR-069), suggestion de compter le stock (ADR-070), services et produits sur l'Accueil (ADR-071), commandes et rendez-vous, phase 1 (ADR-072). Commandes phases 2 et 3 : voir ADR-072.
 
+**Ma vitrine** (ADR-075, proposée le 2026-11-28) : catalogue en lien web, commandes des clients à confirmer, paiement à la remise ; branche `claude/ma-vitrine`, partie de `profils-affichage` (Commandes, ADR-072).
+
 **Version 1.0.0** (2026-11-04, ADR-061) : clôture de tout ce qui est livré ci-dessus et des lots fusionnés jusqu'au 2026-11-03. Contenu et réserves dans `CHANGELOG.md`. Le pilote de la Phase 18 reste à mener.
 
 ## Critères d'acceptation du MVP

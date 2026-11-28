@@ -994,7 +994,10 @@ async function Overview({ searchParams }: PageProps<'/espace'>) {
             label: 'Commandes',
             icon: ClipboardList,
             tone: 'bg-invoices-soft text-invoices-ink',
-            badge: orders.ok ? orders.data.dueNow : undefined,
+            // Due now, and those sent from the storefront to confirm (ADR-075).
+            badge: orders.ok
+              ? orders.data.dueNow + orders.data.toConfirm
+              : undefined,
           },
         ]
       : []),

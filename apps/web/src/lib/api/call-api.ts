@@ -23,6 +23,8 @@ export interface CallApiOptions {
   organizationId?: string;
   /** Vercel deployment-protection bypass secret (previews only). */
   protectionBypass?: string;
+  /** Extra headers (the storefront relay, ADR-075); server side only. */
+  extraHeaders?: Record<string, string>;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }
@@ -60,6 +62,7 @@ export async function callApi<T>(
   if (options.protectionBypass) {
     headers['x-vercel-protection-bypass'] = options.protectionBypass;
   }
+  Object.assign(headers, options.extraHeaders);
 
   let response: Response;
   try {

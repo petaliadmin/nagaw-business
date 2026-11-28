@@ -63,6 +63,30 @@ export class AlertsService {
     private readonly push: PushService,
   ) {}
 
+  /** An order sent from the storefront, to confirm (ADR-075). */
+  async storefrontOrder(
+    trx: Executor,
+    order: {
+      organizationId: string;
+      orderId: string;
+      number: string;
+      firstName: string;
+      articles: number;
+    },
+  ): Promise<void> {
+    await this.notifications.notify(trx, {
+      organizationId: order.organizationId,
+      category: 'orders',
+      kind: 'order.storefront',
+      severity: 'info',
+      title: `Nouvelle commande de ${order.firstName}`,
+      body: `${order.number} · ${order.articles} ${order.articles > 1 ? 'articles' : 'article'} · à confirmer`,
+      link: `/espace/commandes/${order.orderId}`,
+      groupKey: `storefront-order:${order.orderId}`,
+      data: { orderId: order.orderId, number: order.number },
+    });
+  }
+
   /** Low or out of stock, told once when the line is crossed. */
   async stockChanged(
     trx: Executor,

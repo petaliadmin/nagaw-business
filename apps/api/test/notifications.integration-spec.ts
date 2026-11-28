@@ -322,7 +322,8 @@ describe('Notifications, seller access and stock checks (ADR-036)', () => {
       const prefs = (
         await get(carol, acmeId, '/notifications/preferences').expect(200)
       ).body as { category: string; enabled: boolean }[];
-      expect(prefs.map((p) => p.category)).toEqual(['stock']);
+      // A seller also hears of the orders sent from the storefront (ADR-075).
+      expect(prefs.map((p) => p.category)).toEqual(['stock', 'orders']);
       await put(carol, acmeId, '/notifications/preferences', {
         preferences: [{ category: 'controls', enabled: true, push: true }],
       }).expect(400);

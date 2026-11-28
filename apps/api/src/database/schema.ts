@@ -94,6 +94,12 @@ export interface OrganizationsTable {
   orders_enabled: Generated<boolean>;
   suspended_invoice_id: string | null;
   order_ready_reminder_days: Generated<number>;
+  storefront_enabled: Generated<boolean>;
+  storefront_tagline: Generated<string>;
+  storefront_landmark: Generated<string>;
+  storefront_hours: Generated<string>;
+  storefront_whatsapp: Generated<string>;
+  storefront_indexable: Generated<boolean>;
   trade_register: Generated<string>;
   invoice_footer: Generated<string>;
   invoice_due_days: Generated<number>;
@@ -227,6 +233,10 @@ export interface ProductsTable {
   status: CatalogStatus;
   version: Generated<number>;
   photo_sha256: string | null;
+  storefront_visible: Generated<boolean>;
+  storefront_handle: string | null;
+  storefront_description: Generated<string>;
+  storefront_price_mode: Generated<'shown' | 'on_request'>;
   client_operation_id: string;
   created_by: string;
   created_at: Timestamp;
@@ -443,13 +453,16 @@ export interface StoredOrderLine {
   unitPrice: number;
   lineTotal: number;
   note: string;
+  /** « Prix sur demande » from the storefront, set when accepted (ADR-075). */
+  priceToSet?: boolean;
 }
 
 export interface OrdersTable {
   id: Generated<string>;
   organization_id: string;
   number: string;
-  customer_id: string;
+  /** Null while « À confirmer » (ADR-075). */
+  customer_id: string | null;
   status: Generated<OrderStatus>;
   lines: Json<StoredOrderLine[]>;
   items_total: Numeric;
@@ -472,7 +485,12 @@ export interface OrdersTable {
   cancelled_by: string | null;
   cancellation_reason: string | null;
   client_operation_id: string;
-  created_by: string;
+  /** Null for an order sent from the storefront. */
+  created_by: string | null;
+  source: Generated<'counter' | 'storefront'>;
+  requester_name: Generated<string>;
+  requester_phone: Generated<string>;
+  tracking_token_hash: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -728,8 +746,33 @@ export interface PlatformSettingsTable {
   payment_orange_money_number: string | null;
   pin_max_failures: number;
   pin_lock_minutes: number;
+  storefront_max_orders_per_ip_hour: number;
+  storefront_max_orders_per_phone_day: number;
+  storefront_max_pending_per_phone: number;
+  storefront_declined_retention_days: number;
   subscription_grace_days: Generated<number>;
   updated_at: ColumnType<Date, never, never>;
+}
+
+export interface StorefrontSlugsTable {
+  slug: string;
+  organization_id: string;
+  is_current: Generated<boolean>;
+  created_at: Generated<Date>;
+}
+
+export interface StorefrontDailyStatsTable {
+  organization_id: string;
+  day: ColumnType<Date, string, string>;
+  visits: Generated<number>;
+  orders_sent: Generated<number>;
+  orders_accepted: Generated<number>;
+}
+
+export interface StorefrontOrderLimitsTable {
+  key: string;
+  count: number;
+  window_started_at: Generated<Date>;
 }
 
 export interface PhoneSignInFailuresTable {
@@ -851,6 +894,9 @@ export interface Database {
   'app.device_users': DeviceUsersTable;
   'app.document_sequences': DocumentSequencesTable;
   'app.orders': OrdersTable;
+  'app.storefront_slugs': StorefrontSlugsTable;
+  'app.storefront_daily_stats': StorefrontDailyStatsTable;
+  'app.storefront_order_limits': StorefrontOrderLimitsTable;
   'app.order_payments': OrderPaymentsTable;
   'app.quotes': QuotesTable;
   'app.invoices': InvoicesTable;

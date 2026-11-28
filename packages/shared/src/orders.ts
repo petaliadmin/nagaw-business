@@ -19,6 +19,8 @@ const text = (max: number) =>
   z.string().trim().max(max, `${max} caractères au plus`).default('');
 
 export const ORDER_STATUSES = [
+  // Sent from the storefront, waiting for the shop (ADR-075).
+  'to_confirm',
   'received',
   'in_preparation',
   'ready',
@@ -28,7 +30,11 @@ export const ORDER_STATUSES = [
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-/** Statuses of an order not handed over yet: it can still move. */
+/**
+ * Statuses of an order accepted and not handed over yet: it can still
+ * move. An order « À confirmer » is not one of them: it is accepted or
+ * refused first (ADR-075).
+ */
 export const OPEN_ORDER_STATUSES = [
   'received',
   'in_preparation',
@@ -38,6 +44,7 @@ export const OPEN_ORDER_STATUSES = [
 export type OpenOrderStatus = (typeof OPEN_ORDER_STATUSES)[number];
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  to_confirm: 'À confirmer',
   received: 'Reçue',
   in_preparation: 'En préparation',
   ready: 'Prête',
@@ -204,6 +211,8 @@ export type OrderListQuery = z.infer<typeof orderListQuerySchema>;
 
 export interface OrderLineDto {
   productId: string | null;
+  /** « Prix sur demande » from the storefront: the shop sets it (ADR-075). */
+  priceToSet?: boolean;
   label: string;
   unit: Unit;
   quantity: number;
@@ -227,7 +236,12 @@ export interface OrderDto {
   id: string;
   number: string;
   status: OrderStatus;
-  customer: { id: string; name: string; phone: string };
+  /** Where it was taken: at the counter, or sent from the storefront. */
+  source: OrderSource;
+  /** Null for an order « À confirmer », or refused before it was accepted. */
+  customer: { id: string; name: string; phone: string } | null;
+  /** The person who sent it from the storefront. */
+  requester: { name: string; phone: string } | null;
   lines: OrderLineDto[];
   itemsTotal: number;
   deliveryFee: number;
@@ -252,7 +266,12 @@ export interface OrderDto {
   createdAt: string;
 }
 
+export const ORDER_SOURCES = ['counter', 'storefront'] as const;
+export type OrderSource = (typeof ORDER_SOURCES)[number];
+
 export interface OrdersSummaryDto {
+  /** Sent from the storefront, waiting for the shop (ADR-075). */
+  toConfirm: number;
   /** Open orders due today or late: the badge of the shortcut. */
   dueNow: number;
   late: number;

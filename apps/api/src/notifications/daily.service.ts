@@ -92,8 +92,38 @@ export class DailyService {
   ) {}
 
   /** Every shop whose day is due (scheduled run). */
+  /**
+   * Ma vitrine (ADR-075): the name and number of a person whose order was
+   * refused before it was accepted are erased after the retention days of
+   * the platform. The order, its reason and its number stay.
+   */
+  async forgetDeclinedRequesters(): Promise<number> {
+    try {
+      const result = await sql`
+        update app.orders o
+           set requester_name = '', requester_phone = ''
+          from app.platform_settings ps
+         where o.source = 'storefront'
+           and o.status = 'cancelled'
+           and o.customer_id is null
+           and o.requester_phone <> ''
+           and o.cancelled_at < now() - make_interval(days => ps.storefront_declined_retention_days)`.execute(
+        this.database.db,
+      );
+      return Number(result.numAffectedRows ?? 0);
+    } catch (error) {
+      // The day's notifications go on: the erasure is tried again tomorrow.
+      this.logger.error(
+        { err: error },
+        'Effacement des demandes refusées de la vitrine impossible',
+      );
+      return 0;
+    }
+  }
+
   async runDue(now = new Date()): Promise<{ shops: number; pending: number }> {
     const started = Date.now();
+    await this.forgetDeclinedRequesters();
     const shops = await this.database.db
       .selectFrom('app.organizations')
       .select([

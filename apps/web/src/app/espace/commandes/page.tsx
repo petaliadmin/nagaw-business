@@ -4,7 +4,7 @@ import {
   roleHasPermission,
   type OrderDto,
 } from '@nagaw/shared';
-import { Plus } from 'lucide-react';
+import { Globe, Plus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -16,7 +16,7 @@ import { PageFallback } from '@/components/ui/page-fallback';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiAsUser } from '@/lib/api/server';
 import { todayIn } from '@/lib/format';
-import { dueLabel, ORDER_STATUS_TONES } from '@/lib/orders';
+import { dueLabel, ORDER_STATUS_TONES, orderPerson } from '@/lib/orders';
 import { requireReadyWorkspace } from '@/lib/workspace/load';
 
 export const metadata: Metadata = { title: 'Commandes — Nagaw Business' };
@@ -29,7 +29,7 @@ function OrderCard({ order, currency }: { order: OrderDto; currency: string }) {
         className="flex flex-col gap-2 rounded-3xl bg-surface p-4 hover:ring-2 hover:ring-line hover:ring-inset"
       >
         <span className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-lg font-bold">{order.customer.name}</span>
+          <span className="text-lg font-bold">{orderPerson(order).name}</span>
           <Badge tone={ORDER_STATUS_TONES[order.status]}>
             {ORDER_STATUS_LABELS[order.status]}
           </Badge>
@@ -37,13 +37,16 @@ function OrderCard({ order, currency }: { order: OrderDto; currency: string }) {
         <span className="text-ink-muted">
           {order.number} · {dueLabel(order)}
           {order.fulfilment === 'delivery' ? ' · livraison' : ''}
+          {order.source === 'storefront' ? ' · vitrine' : ''}
         </span>
         <span className="flex flex-wrap items-center justify-between gap-2">
           {order.late ? <Badge tone="danger">En retard</Badge> : <span />}
           <span className="font-extrabold tabular-nums">
-            {order.remaining > 0
-              ? `Reste ${formatAmount(order.remaining, currency)}`
-              : 'Payée'}
+            {order.status === 'to_confirm'
+              ? formatAmount(order.total, currency)
+              : order.remaining > 0
+                ? `Reste ${formatAmount(order.remaining, currency)}`
+                : 'Payée'}
           </span>
         </span>
       </Link>
@@ -65,6 +68,9 @@ async function Orders({ searchParams }: Props) {
     organizationId: organization.id,
   });
   const today = todayIn(organization.timezone);
+  const confirmed = orders.ok
+    ? orders.data.filter((o) => o.status !== 'to_confirm')
+    : [];
   const canTake =
     organization.ordersEnabled &&
     roleHasPermission(organization.role, 'orders.manage');
@@ -72,15 +78,22 @@ async function Orders({ searchParams }: Props) {
     ? done
       ? [{ title: 'Remises et annulées', rows: orders.data }]
       : [
-          { title: 'En retard', rows: orders.data.filter((o) => o.late) },
+          // Sent from the storefront (ADR-075): the shop answers first.
           {
-            title: 'Aujourd’hui',
-            rows: orders.data.filter((o) => o.dueOn === today),
+            title: 'À confirmer',
+            rows: orders.data.filter((o) => o.status === 'to_confirm'),
           },
-          {
-            title: 'À venir',
-            rows: orders.data.filter((o) => o.dueOn > today),
-          },
+          ...[
+            { title: 'En retard', rows: confirmed.filter((o) => o.late) },
+            {
+              title: 'Aujourd’hui',
+              rows: confirmed.filter((o) => o.dueOn === today),
+            },
+            {
+              title: 'À venir',
+              rows: confirmed.filter((o) => o.dueOn > today),
+            },
+          ],
         ]
     : [];
   return (
@@ -89,12 +102,20 @@ async function Orders({ searchParams }: Props) {
         title="Commandes"
         description="Ce que vos clients recevront plus tard."
         actions={
-          canTake && (
-            <ButtonLink href="/espace/commandes/nouvelle">
-              <Plus aria-hidden className="size-5" />
-              Nouvelle commande
-            </ButtonLink>
-          )
+          <>
+            {roleHasPermission(organization.role, 'storefront.manage') && (
+              <ButtonLink href="/espace/vitrine" variant="secondary">
+                <Globe aria-hidden className="size-5" />
+                Ma vitrine
+              </ButtonLink>
+            )}
+            {canTake && (
+              <ButtonLink href="/espace/commandes/nouvelle">
+                <Plus aria-hidden className="size-5" />
+                Nouvelle commande
+              </ButtonLink>
+            )}
+          </>
         }
       />
       {!organization.ordersEnabled && (

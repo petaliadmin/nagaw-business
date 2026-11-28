@@ -10,6 +10,7 @@ export const ORDER_STATUS_TONES: Record<
   OrderStatus,
   'neutral' | 'brand' | 'success' | 'warning' | 'danger'
 > = {
+  to_confirm: 'warning',
   received: 'neutral',
   in_preparation: 'brand',
   ready: 'success',
@@ -22,6 +23,14 @@ export const ORDER_STATUS_TONES: Record<
 export function dueLabel(order: Pick<OrderDto, 'dueOn' | 'dueTime'>): string {
   const day = formatCalendarDate(order.dueOn);
   return order.dueTime ? `${day} à ${order.dueTime}` : day;
+}
+
+/** Who the order is for: the customer, or the person who sent it. */
+export function orderPerson(order: Pick<OrderDto, 'customer' | 'requester'>): {
+  name: string;
+  phone: string;
+} {
+  return order.customer ?? order.requester ?? { name: '', phone: '' };
 }
 
 /** The order as text, to send on WhatsApp: the « bon de commande ». */

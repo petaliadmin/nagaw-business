@@ -329,7 +329,12 @@ describe('Customer orders', () => {
     await order({ dueOn: '2020-01-01' }).expect(201);
     const summary = (await get(dan, acmeId, '/orders/summary').expect(200))
       .body;
-    expect(summary).toEqual({ dueNow: 1, late: 1, waitingReady: 0 });
+    expect(summary).toEqual({
+      toConfirm: 0,
+      dueNow: 1,
+      late: 1,
+      waitingReady: 0,
+    });
     const late = (await get(dan, acmeId, '/orders').expect(200)).body as {
       late: boolean;
     }[];

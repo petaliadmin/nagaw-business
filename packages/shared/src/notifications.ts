@@ -16,6 +16,7 @@ export const NOTIFICATION_CATEGORIES = [
   'credit',
   'activity',
   'summary',
+  'orders',
 ] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 
@@ -66,6 +67,12 @@ export const NOTIFICATION_CATEGORY_RULES: Record<
       'Chaque soir : chiffre du jour comparé à la semaine passée, meilleurs produits, factures, dépenses, à réapprovisionner.',
     permission: 'stats.read',
     defaultRoles: ['owner'],
+  },
+  orders: {
+    label: 'Commandes de la vitrine',
+    description: 'Une commande envoyée depuis votre vitrine, à confirmer.',
+    permission: 'orders.read',
+    defaultRoles: ['owner', 'admin', 'member'],
   },
 };
 
